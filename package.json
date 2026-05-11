@@ -1,0 +1,27 @@
+{
+  "name": "@jeremyfellaz/ddalggak",
+  "version": "0.1.0",
+  "description": "ddalggak workflow skill for Claude Code",
+  "bin": {
+    "ddalggak": "./bin/ddalggak.js"
+  },
+  "files": [
+    "ddalggak/",
+    "bin/",
+    "README.md",
+    "LICENSE"
+  ],
+  "license": "MIT",
+  "keywords": [
+    "claude-code",
+    "workflow",
+    "skill"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JeremyDev87/ddalggak.git"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
