@@ -23,22 +23,28 @@ user-invocable: true
 
 **파싱 규칙** — Arguments의 **첫 번째 단어만** 서브커맨드로 판정한다:
 
-1. 첫 단어가 아래 목록과 **정확히 일치**하면 해당 서브커맨드로 라우팅. 나머지 인수는 해당 서브커맨드에 전달한다.
+1. 첫 단어가 아래 표의 서브커맨드와 **정확히 일치**하면 해당 서브커맨드로 라우팅. 나머지 인수는 해당 서브커맨드에 전달한다.
 2. 첫 단어가 목록에 없거나 인수 전체가 없으면 → Start Workflow.
 3. 서브커맨드로 판정된 이후에는 나머지 인수가 "구현 요청처럼 보여도" Start로 폴백하지 않는다. 절대 예외 없음.
 4. 라우팅 결정 직후 **반드시 한 줄 출력**: `→ [서브커맨드] 실행` (복명복창). 이후 해당 섹션으로 이동.
+5. 라우팅된 서브커맨드는 아래 표의 "코드 변경" 컬럼이 정의하는 범위를 절대 벗어나지 않는다. ❌ 표시 서브커맨드(`status`, `plan`, `issue`, `check`)는 어떤 파일도 직접 수정하지 않는다.
+6. **메타 요청 차단**: 인수에 SKILL.md 자체, 서브커맨드 정의, 파싱 규칙, ddalggak skill 동작 변경 같은 의도가 보이면 라우팅을 중단하고 한 줄로 안내한다 — "메타 요청 감지 — 이 작업은 ddalggak 서브커맨드 범위 밖입니다. /ddalggak 외부 일반 메시지로 다시 요청해 주세요." 사용자가 같은 호출 내에서 "그래도 진행" 명시 확인을 주면 그때만 SKILL.md를 수정한다. 직전 confirmation 없이 Edit 금지.
+7. 인수 파싱은 **공백 기준 첫 단어**만 본다. 따옴표·이스케이프·복합 표현은 무시한다. 첫 단어가 서브커맨드 목록에 있으면 라우팅이 끝나고, 이후 어떤 의미적 해석도 라우팅을 바꿀 수 없다.
 
 서브커맨드 목록:
-- `start` 또는 인수 없음 → [Start Workflow](#start-workflow)
-- `review` → [Cross-Review Loop](#cross-review-loop)
-- `status` → [Status](#status)
-- `plan` → [Issue-Ready Plan](#issue-ready-plan)
-- `issue` → [Plan to Issues](#plan-to-issues)
-- `clean` → [Merge Cleanup](#merge-cleanup)
-- `ship` → [Ship](#ship)
-- `check` → [Local Diff Check](#local-diff-check)
-- `retro` → [Retrospective](#retrospective)
-- `prompt` → [Prompt Optimizer](#prompt-optimizer)
+
+| 서브커맨드 | 라우팅 대상 | 코드 변경 |
+|------------|-------------|-----------|
+| `start` (또는 인수 없음) | [Start Workflow](#start-workflow) | ✅ worker teammate가 구현 |
+| `review` | [Cross-Review Loop](#cross-review-loop) | ✅ author teammate가 수정 |
+| `status` | [Status](#status) | ❌ read-only |
+| `plan` | [Issue-Ready Plan](#issue-ready-plan) | ❌ read-only (계획 문서만 출력) |
+| `issue` | [Plan to Issues](#plan-to-issues) | ❌ 로컬 코드 변경 없음 (GitHub 이슈만 생성) |
+| `clean` | [Merge Cleanup](#merge-cleanup) | ⚠️ 로컬 브랜치·worktree 정리만 |
+| `ship` | [Ship](#ship) | ✅ commit·push·PR 생성 |
+| `check` | [Local Diff Check](#local-diff-check) | ❌ read-only (리뷰 결과만 출력) |
+| `retro` | [Retrospective](#retrospective) | ⚠️ 회고 파일·메모리만 작성 |
+| `prompt` | [Prompt Optimizer](#prompt-optimizer) | ⚠️ Step 4 확인 후 **대상 프롬프트 파일만**. SKILL.md/소스코드 수정 금지 |
 
 ---
 
@@ -1833,6 +1839,11 @@ compact 또는 세션 재시작 후 첫 액션:
 ## Prompt Optimizer
 
 프롬프트를 Opus 4.7 원칙에 맞게 점검·개선한다.
+
+> **동작 범위 가드** (이 서브커맨드는 이것만 한다):
+> - Step 4 사용자 확인 후 **대상 프롬프트 파일**(BRIEF.md, REVIEW_BRIEF*.md, FIX_BRIEF*.md 또는 인수로 받은 파일)만 Edit한다.
+> - **수정 금지**: `SKILL.md`(이 파일), ddalggak skill의 다른 정의 파일, 일반 소스 코드 파일.
+> - 인수에 "SKILL.md 수정", "서브커맨드 정의 변경" 같은 메타 의도가 보이면 즉시 라우팅 중단 + 사용자에게 안내. 사용자의 명시적 "진행" 확인 없이 SKILL.md를 Edit하지 않는다.
 
 ### 서브커맨드
 
