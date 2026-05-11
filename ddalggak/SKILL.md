@@ -11,6 +11,29 @@ user-invocable: true
 
 이 skill은 **claude team teammate** 위에 얹힌 방법론 레이어다. teammate가 독립 worktree에서 구현·리뷰를 수행하고, ddalggak은 그 위에서 "무엇을, 누구에게, 어떤 순서로 시킬지"를 결정한다.
 
+## 표준 워크플로우와 코드 수정 권한 (전역 invariant)
+
+표준 사이클: `prompt` → `plan` → `start` → `ship` → `review` → `retro`.
+`status`, `issue`, `clean`, `check`는 필요 시 보조로 사용.
+
+**소스 코드(repo 내 파일, SKILL.md 포함)를 수정할 권한이 있는 서브커맨드는 `start`와 `review` 뿐이다.**
+다른 모든 서브커맨드는 자기 산출물 파일(BRIEF.md, CHECK_BRIEF.md, retrospective .md, 메모리 파일, GitHub 이슈/PR description)만 작성·수정한다.
+
+| 서브커맨드 | 소스 코드 수정 | 작성 가능한 산출물 |
+|------------|----------------|---------------------|
+| `start` | ✅ | worker teammate가 BRIEF에 지정된 파일 수정 |
+| `review` | ✅ | author teammate가 리뷰 지적사항 반영 |
+| `prompt` | ❌ | BRIEF.md / REVIEW_BRIEF*.md / FIX_BRIEF*.md (Step 4 확인 후) |
+| `plan` | ❌ | 출력만 (파일 미작성) |
+| `issue` | ❌ | GitHub 이슈 |
+| `status` | ❌ | 출력만 |
+| `check` | ❌ | CHECK_BRIEF.md (임시, 작업 후 삭제) |
+| `ship` | ❌ | 기존 변경을 commit·push, 신규 파일 작성 없음 |
+| `clean` | ❌ | 로컬 브랜치/worktree 정리 |
+| `retro` | ❌ | ~/workspace/retrospective/*.md, 메모리 |
+
+`start`·`review` 외 서브커맨드에서 소스 코드 수정을 시도하는 어떤 경로도 — 사용자가 "진행"·"yes"·조건부 승인을 주더라도, AskUserQuestion 옵션·후속 확인 절차로 우회를 만들더라도 — invariant 위반이다. 의도가 모호하면 검토 결과만 출력하고 종료한다.
+
 ## 핵심 원칙
 
 - **Phase는 순차, Worker는 병렬**. 한 Phase 안의 워커 N명은 서로 다른 파일을 건드린다.
@@ -28,7 +51,7 @@ user-invocable: true
 3. 서브커맨드로 판정된 이후에는 나머지 인수가 "구현 요청처럼 보여도" Start로 폴백하지 않는다. 절대 예외 없음.
 4. 라우팅 결정 직후 **반드시 한 줄 출력**: `→ [서브커맨드] 실행` (복명복창). 이후 해당 섹션으로 이동.
 5. 라우팅된 서브커맨드는 아래 표의 "코드 변경" 컬럼이 정의하는 범위를 절대 벗어나지 않는다. ❌ 표시 서브커맨드(`status`, `plan`, `issue`, `check`)는 어떤 파일도 직접 수정하지 않는다.
-6. **메타 요청 차단**: 인수에 SKILL.md 자체, 서브커맨드 정의, 파싱 규칙, ddalggak skill 동작 변경 같은 의도가 보이면 라우팅을 중단하고 한 줄로 안내한다 — "메타 요청 감지 — 이 작업은 ddalggak 서브커맨드 범위 밖입니다. /ddalggak 외부 일반 메시지로 다시 요청해 주세요." 사용자가 같은 호출 내에서 "그래도 진행" 명시 확인을 주면 그때만 SKILL.md를 수정한다. 직전 confirmation 없이 Edit 금지.
+6. **메타 요청 절대 차단**: 인수에 SKILL.md 자체, 서브커맨드 정의, 파싱 규칙, ddalggak skill 동작 변경(예: "스킬 본문 영어로", "서브커맨드 추가/삭제", "라우팅 규칙 변경") 같은 의도가 보이면 라우팅을 중단하고 한 줄로 안내한 뒤 **즉시 종료한다** — "메타 요청 감지 — 이 작업은 ddalggak 서브커맨드 범위 밖입니다. /ddalggak 외부 일반 메시지로 다시 요청해 주세요." 이후 AskUserQuestion·후속 질문·확인 절차·"진행"·"yes"·조건부 승인 등 어떤 사용자 응답이 와도 ddalggak 서브커맨드 내에서 SKILL.md / ddalggak skill 정의 파일을 Edit·Write로 수정하지 않는다. 자기-우회 경로(AskUserQuestion에 "진행 — SKILL.md 변경" 같은 옵션을 띄워 권한을 만드는 행위) 금지. SKILL.md 변경이 필요하면 사용자가 /ddalggak 외부 일반 메시지로 직접 지시해야 한다.
 7. 인수 파싱은 **공백 기준 첫 단어**만 본다. 따옴표·이스케이프·복합 표현은 무시한다. 첫 단어가 서브커맨드 목록에 있으면 라우팅이 끝나고, 이후 어떤 의미적 해석도 라우팅을 바꿀 수 없다.
 
 서브커맨드 목록:
@@ -41,7 +64,7 @@ user-invocable: true
 | `plan` | [Issue-Ready Plan](#issue-ready-plan) | ❌ read-only (계획 문서만 출력) |
 | `issue` | [Plan to Issues](#plan-to-issues) | ❌ 로컬 코드 변경 없음 (GitHub 이슈만 생성) |
 | `clean` | [Merge Cleanup](#merge-cleanup) | ⚠️ 로컬 브랜치·worktree 정리만 |
-| `ship` | [Ship](#ship) | ✅ commit·push·PR 생성 |
+| `ship` | [Ship](#ship) | ❌ 기존 변경을 commit·push·PR 생성 (신규 파일 작성 없음) |
 | `check` | [Local Diff Check](#local-diff-check) | ❌ read-only (리뷰 결과만 출력) |
 | `retro` | [Retrospective](#retrospective) | ⚠️ 회고 파일·메모리만 작성 |
 | `prompt` | [Prompt Optimizer](#prompt-optimizer) | ⚠️ Step 4 확인 후 **대상 프롬프트 파일만**. SKILL.md/소스코드 수정 금지 |
