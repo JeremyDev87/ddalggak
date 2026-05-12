@@ -556,8 +556,14 @@ PR 목록 확정 후 Step 1로 진행.
 ## 리뷰 방법
 1. gh pr view <num> --json title,body,files,commits
 2. gh pr diff <num>
-3. diff만으로 런타임 동작 판단 불가한 경우(빌드 의존 로직, 환경 변수 분기 등)에만 gh pr checkout <num> --force → 실제 빌드/테스트 돌려봐
+3. CI 결과 우선:
+   - `gh pr checks <num>` 결과를 먼저 확인하고 그대로 인용한다.
+   - CI가 이미 실행하는 검증(typecheck / lint / unit test / build)은 로컬에서 중복 실행하지 않는다. CI 결과를 신뢰한다.
+   - CI fail이면 → 자동 Critical (선결 체크 1과 일관). 재현 위한 직접 실행 불필요.
+   - CI가 커버하지 않는 영역(통합 시나리오, UI 동작, 환경 변수 분기, 빌드 산출물 확인 등) 또는 diff만으로 동작 판단이 불가한 경우에만 `gh pr checkout <num> --force` → 직접 검증.
 4. 심각도 분류
+
+> **리뷰 초점**: CI는 코드 정상성을 검증한다. 리뷰어는 CI가 잡지 못하는 영역 — 설계, 추상화, edge case 누락, 스펙 일치성, 보안, 의도 — 에 집중한다.
 
 ## 선결 체크 (리뷰 전 반드시)
 1. `gh pr checks <num>` — **fail이 하나라도 있으면 자동 Critical**. 이유 기록 필수.
@@ -594,14 +600,26 @@ REVIEW DONE PR#<num>: <APPROVE|CHANGES_REQUESTED> critical=N high=N medium=N low
 
 **주의**: 같은 GitHub 계정이면 self-approve가 막힘. "Cannot approve your own pull request" 에러 시 `gh pr review <num> --comment --body ...` 사용.
 
-### Step 3. 리뷰 수집
+### Step 3. 리뷰 수집 (streaming)
 
-- ScheduleWakeup으로 4-5분 뒤 체크
-- `TaskGet <reviewer-task-id>`로 reviewer teammate 완료 여부 확인
-- `TaskOutput`에서 `REVIEW DONE PR#` 라인 추출
-- **실패 복구**: ScheduleWakeup 3회 후 응답 없으면 "리뷰어 N 응답 없음" 보고 후 사용자 대기
+reviewer teammate 여러 명의 완료를 streaming polling으로 들어오는 대로 사용자에게 보고한다. Step 4 batch Fix 라우팅 흐름은 그대로 유지.
 
-PR마다 (verdict, critical, high) 파싱.
+폴링 절차:
+1. 첫 ScheduleWakeup: 240s (270s 미만, 캐시 창 유지).
+2. 깨어나면 `TaskList`로 `reviewer-pr*` 전체 상태 조회.
+3. 새로 완료된 teammate마다 `TaskOutput`에서 `REVIEW DONE PR#` 라인 추출 → 사용자에게 즉시 한 줄 보고:
+   `✅ PR#<num> 리뷰 완료 — verdict: <APPROVE|CHANGES_REQUESTED> critical=N high=N medium=N low=N`
+   → "수집 완료" 집합에 추가.
+4. 미완료 teammate가 남아 있으면 다시 ScheduleWakeup(~240s) 반복.
+5. 모두 완료(또는 명시적 wait 처리)될 때까지 반복.
+
+**중복 보고 방지**: "수집 완료" 집합으로 동일 PR이 두 번 보고되지 않도록 추적한다.
+
+**실패 복구**: 동일 reviewer가 3회(~12분) 폴링 후에도 미완료면 "리뷰어 PR#<num> 응답 없음 — 수동 개입 필요" 보고. **해당 PR만** wait 처리, 다른 PR 폴링은 계속 진행.
+
+> **역할 분리**: GitHub 코멘트(`gh pr review`)는 reviewer teammate가 본인이 직접 단다. Step 3 폴링은 Conductor 진행 가시성 확보용이다. Conductor는 `gh pr review`를 호출하지 않는다.
+
+종료 후 PR마다 `(verdict, critical, high)`을 파싱해 Step 4로 전달한다. Step 4 진입 조건은 **모든 PR 수집 완료**이다 (batch Fix 라우팅 흐름 유지).
 
 ### Step 4. Fix 라우팅
 
