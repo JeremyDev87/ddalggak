@@ -1,0 +1,7 @@
+interface:
+  display_name: "ddalggak"
+  short_description: "Codex-native ddalggak workflow orchestration"
+  default_prompt: "Use $ddalggak to route a GitHub issue through Codex-native planning, parallel worktree lanes, validation, PR shipping, independent review, cleanup, and retrospective steps."
+
+policy:
+  allow_implicit_invocation: true
