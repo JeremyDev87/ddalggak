@@ -6,6 +6,10 @@
   "bin": {
     "ddalggak": "./bin/ddalggak.js"
   },
+  "scripts": {
+    "test": "node scripts/smoke.mjs",
+    "prepublishOnly": "node scripts/smoke.mjs"
+  },
   "publishConfig": {
     "access": "public"
   },
