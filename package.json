@@ -2,8 +2,12 @@
   "name": "@jeremyfellaz/ddalggak",
   "version": "0.1.0",
   "description": "ddalggak workflow skill for Claude Code",
+  "type": "module",
   "bin": {
     "ddalggak": "./bin/ddalggak.js"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "files": [
     "ddalggak/",
