@@ -1,2 +1,8 @@
 .remember-plugin/
 node_modules/
+.ddalggak/
+.worktrees/
+BRIEF.md
+REVIEW_BRIEF_PR*.md
+FIX_BRIEF_PR*.md
+CHECK_BRIEF.md

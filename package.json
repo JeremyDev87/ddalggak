@@ -8,12 +8,14 @@
   },
   "scripts": {
     "test": "node scripts/smoke.mjs",
+    "verify:codex-skill": "node scripts/verify-codex-skill.mjs",
     "prepublishOnly": "node scripts/smoke.mjs"
   },
   "publishConfig": {
     "access": "public"
   },
   "files": [
+    ".codex/",
     "ddalggak/",
     "bin/",
     "README.md",
