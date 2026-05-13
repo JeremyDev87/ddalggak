@@ -19,24 +19,40 @@ const SUBCOMMANDS = [
   "check",
 ];
 
-const HELP_TEXT = `ddalggak — Workflow skill for Claude Code
+const HELP_TEXT = `ddalggak - workflow skill for Codex App and Claude Code legacy
 
 Usage:
   ddalggak <subcommand> [args]
 
+Codex App:
+  Skill source path: .codex/skills/ddalggak/
+  Invocation name: ddalggak
+
 Subcommands:
-  setup                Install skill globally to ~/.claude/skills/ddalggak/
-  start, review, status, plan, issue, clean, ship, retro, prompt, check
-                       Dispatch to claude CLI as /ddalggak <subcommand>
+  setup                Install legacy Claude Code skill to ~/.claude/skills/ddalggak/
+  start                Run issue-based implementation lanes
+  review               Run independent review and accepted-fix loops
+  status               Inspect current lane, worktree, and PR state
+  plan                 Create an issue-ready implementation plan
+  issue                Convert a plan into GitHub issues
+  clean                Clean local state after merge verification
+  ship                 Commit, push, and open a draft PR for existing lane changes
+  retro                Write a workflow retrospective
+  prompt               Improve lane or review briefs
+  check                Run a local diff check
+
+Claude Code legacy:
+  Non-setup subcommands dispatch to claude CLI as /ddalggak <subcommand>.
+  Use --print to print the slash command without spawning claude CLI.
 
 Options:
   --help, -h           Show this help
   --version, -v        Print version
 
 Examples:
-  npx @jeremyfellaz/ddalggak setup
-  npx @jeremyfellaz/ddalggak prompt "결제 재시도 로직"
-  npx @jeremyfellaz/ddalggak status
+  ddalggak setup
+  ddalggak plan --print "Split issue 22 into reviewable PR units"
+  ddalggak status
 
 More info: https://github.com/JeremyDev87/ddalggak
 `;
@@ -126,7 +142,7 @@ async function main() {
   if (first === "setup") {
     const mod = await loadLib(
       "./lib/setup.mjs",
-      "ddalggak setup: implementation not installed yet.\n(./bin/lib/setup.mjs is missing — this CLI is in active development.)"
+      "ddalggak setup: implementation not installed yet.\n(./bin/lib/setup.mjs is missing - this CLI is in active development.)"
     );
     const code = await mod.run(rest);
     return typeof code === "number" ? code : 0;
@@ -135,7 +151,7 @@ async function main() {
   if (SUBCOMMANDS.includes(first)) {
     const mod = await loadLib(
       "./lib/dispatch.mjs",
-      `ddalggak ${first}: dispatch implementation not installed yet.\n(./bin/lib/dispatch.mjs is missing — this CLI is in active development.)`
+      `ddalggak ${first}: dispatch implementation not installed yet.\n(./bin/lib/dispatch.mjs is missing - this CLI is in active development.)`
     );
     const code = await mod.run(first, rest);
     return typeof code === "number" ? code : 0;
