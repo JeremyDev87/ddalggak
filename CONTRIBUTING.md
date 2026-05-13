@@ -24,6 +24,27 @@
 4. 실패 경로를 추가했다면 에러 메시지와 종료 코드도 함께 검증합니다.
 5. 마지막으로 `npm test`로 전체 스모크 케이스를 실행합니다.
 
+## Codex Skill 변경 검증
+
+`.codex/skills/ddalggak/SKILL.md` 또는 Codex skill metadata를 바꾸는 PR은 반드시 `npm run verify:codex-skill`을 실행해 통과시켜야 합니다.
+
+`verify:codex-skill`은 현재 아래 계약을 확인합니다.
+
+1. `.codex/skills/ddalggak/SKILL.md`가 존재합니다.
+2. frontmatter에 `name: ddalggak`이 있습니다.
+3. Claude primitive leftovers가 0건입니다.
+4. `package.json`의 `files`에 `.codex/`가 포함되어 있습니다.
+
+## Packaging 변경 검증
+
+`package.json`의 `files`나 package artifact 포함 범위를 바꾸는 PR은 아래 dry-run으로 실제 포함 대상을 확인합니다.
+
+```bash
+env npm_config_cache=/tmp/ddalggak-npm-cache npm pack --dry-run --ignore-scripts --loglevel=silent
+```
+
+실제 release 또는 publish 실행은 maintainer confirmation이 필요한 별도 절차로 다룹니다.
+
 ## Contact
 
 메인테이너: [@JeremyDev87](https://github.com/JeremyDev87)
