@@ -85,6 +85,18 @@ Common subcommand options:
 
 Install path priority is `--target <path>`, then `$CLAUDE_HOME`, then `~/.claude`.
 
+## Maintainer Verification
+
+Before changing the CLI bridge, Codex skill source, or package artifact boundaries, maintainers should run the relevant local checks:
+
+```bash
+npm test
+npm run verify:codex-skill
+env npm_config_cache=/tmp/ddalggak-npm-cache npm pack --dry-run --ignore-scripts --loglevel=silent
+```
+
+Use `npm test` for CLI setup and dispatch behavior, `npm run verify:codex-skill` for Codex skill source or metadata changes, and the pack dry-run to inspect the package artifact list.
+
 ## Platform Support
 
 macOS and Linux are the primary supported platforms. Windows support is best-effort when Node.js and the `claude` CLI environment are compatible.
