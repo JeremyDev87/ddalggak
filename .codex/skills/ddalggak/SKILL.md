@@ -189,16 +189,16 @@ git -C <repo-root> worktree add <repo-root>/.worktrees/<branch-name> -b <branch-
 
 ## `review` - Cross-Review Loop
 
-Use for independent PR or local-lane review.
+Use for independent PR or local-lane review. Treat review as an AI code quality gate, not a praise pass or summary. The gatekeeper must block bugs, security issues, and long-term maintainability risks. Prefer smaller scope, existing repository patterns, deletable code, explicit ownership, and clear data flow. Treat unnecessary complexity as a defect, including premature abstraction, duplicate paths, silent fallback, avoidable local state, and increased type escape.
 
 1. Determine target PRs from arguments or open PR discovery.
 2. For each PR, collect a review packet before spawning review:
    - `gh pr view <num> --json title,body,files,commits,baseRefName,headRefName,reviews,statusCheckRollup`
    - `gh pr diff <num>`
    - `gh pr checks <num>` when available; failing CI is Critical unless proven unrelated.
-   - issue body and comments, validation already run, skipped checks, constraints, severity rubric, and merge-order context.
-3. For each PR, create a fresh reviewer agent with `spawn_agent`. Do not reuse the author agent for review.
-4. Give the reviewer only the review packet: issue context, diff or PR URL, files changed, validation already run, skipped checks, constraints, merge-order context, and severity rubric.
+   - issue body and comments, validation already run, skipped checks, constraints, Review Rubric, AI Code Quality Gate checklist, and merge-order context.
+3. For each PR, create a fresh reviewer agent with `spawn_agent`. Do not reuse the author or implementation agent for review, and do not let an agent review its own code.
+4. Give the reviewer only the review packet: issue context, diff or PR URL, files changed, validation already run, skipped checks, constraints, merge-order context, Review Rubric, and AI Code Quality Gate checklist.
 5. Reviewer reports findings only. It does not edit files, and it does not run branch switching or PR checkout commands inside an implementation worktree.
 6. If build or test reproduction is needed, use a separate temporary checkout such as `/tmp/<pr-num>-review`; otherwise prefer `gh pr diff` and `gh pr view --json files`.
 7. Main session triages every finding as accept, reject, or defer.
@@ -208,9 +208,26 @@ Use for independent PR or local-lane review.
 11. Re-run relevant validation and request delta review with `send_input` or a new `spawn_agent` when isolation is more important than continuity.
 12. Stop when Critical and High are zero, or after three rounds with an explicit blocker.
 
-Review output must include severity, confidence, evidence, impact, suggested fix, file and line when available, and a repro or test idea.
+### Review Rubric
 
-FIX_BRIEF packets must include: `수정은 새 커밋으로 만들고 일반 push만 사용하라. Medium/Low 지적이 미머지 PR이나 공유 계약 전환에 걸려 있으면 과잉 수정하지 말고 TODO/follow-up으로 제한하라.`
+- **Critical**: security vulnerability, data loss, CI/test failure, obvious malfunction, destructive migration, or secret exposure.
+- **High**: architecture or domain boundary violation, existing pattern drift that creates a parallel path or changes ownership, data, error, or validation flow, AI-generated complexity that makes the change harder to delete or review, wrong data flow, silent fallback that hides failure, excessive scope creep, abstraction that is hard to delete or modify, or tests missing a core contract.
+- **Medium**: localized duplicate implementation, naming or ownership confusion, unnecessary local state, increased type escape, inconsistent error handling, or subtle mismatch with existing patterns that does not create a blocking parallel path.
+- **Low**: documentation, comments, readability, or follow-up cleanup that does not affect the merge gate.
+
+### REVIEW_BRIEF Requirements
+
+Every REVIEW_BRIEF or review packet must include this AI Code Quality Gate checklist:
+
+- **Scope & Ownership**: Is the diff limited to the issue, owned by the right module, and free of broad refactors or feature creep?
+- **Simplicity & Deletability**: Does the change avoid unnecessary abstraction, duplication, fallback paths, local state, and type escape? Could it be deleted or modified later without surprising callers?
+- **Existing Patterns**: Does it follow current repository patterns, naming, boundaries, error handling, validation style, and dependency rules instead of inventing a parallel path?
+- **Failure Semantics**: Are failures explicit, testable, and observable rather than silently swallowed or converted into misleading success?
+- **Human Reviewability**: Is the data flow clear, the diff small enough to review, and the contract covered by tests or a concrete validation signal?
+
+Review output must include severity, confidence, evidence, impact, suggested fix, file and line when available, and a repro or test idea. Findings should be concise and adversarial; avoid praise-only comments.
+
+FIX_BRIEF packets must include: `기능은 유지하되 diff를 줄이고, 중복/성급한 추상화/불필요한 fallback/type escape를 제거하며, 기존 저장소 패턴에 맞춰라. 새 기능이나 광범위한 리팩터는 하지 마라. 수정은 새 커밋으로 만들고 일반 push만 사용하라. Medium/Low 지적이 미머지 PR이나 공유 계약 전환에 걸려 있으면 과잉 수정하지 말고 TODO/follow-up으로 제한하라.`
 
 ## `status` - Current State Snapshot
 
