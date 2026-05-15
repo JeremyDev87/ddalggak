@@ -580,6 +580,15 @@ git ls-remote --heads origin <branch>
 
 ## Cross-Review Loop
 
+Cross-Review Loop의 리뷰는 칭찬이나 요약이 아니라 **AI code quality gate**다. CI는 테스트·타입·빌드로 현재 동작의 correctness를 확인하고, fresh reviewer teammate는 PR의 방향·스코프·유지보수성·삭제 가능성을 막는 gatekeeper로 동작한다. "버그가 없다"만으로 통과하지 말고, 장기적으로 repo의 domain boundary, data flow, failure semantics, 기존 패턴을 흐리는 변경도 결함으로 다룬다.
+
+리뷰어는 특히 아래 방향을 선호한다:
+- scope 축소: 이슈 완료에 필요한 최소 diff인지 확인한다.
+- 기존 패턴 정렬: repo 안의 이미 합의된 구조·명명·오류 처리·테스트 패턴을 우선한다.
+- 삭제 가능성: 새 abstraction이 나중에 안전하게 제거·수정 가능한지 본다.
+- 명확한 data flow: 상태·fallback·type escape가 실패를 숨기거나 ownership을 흐리지 않는지 본다.
+- 복잡도 증가를 defect로 취급: 불필요한 abstraction, duplication, silent fallback, local state, `any`/type assertion 같은 type escape 증가는 최소 Medium 이상으로 기록한다.
+
 ### Step 0. 대상 PR 확정
 
 PR 목록을 보기 전 base freshness를 먼저 확인한다:
@@ -659,9 +668,31 @@ PR 목록 확정 후 Step 1로 진행.
    - CI fail이면 → 자동 Critical (선결 체크 1과 일관). 재현 위한 직접 실행 불필요.
    - CI가 커버하지 않는 영역(통합 시나리오, UI 동작, 환경 변수 분기, 빌드 산출물 확인 등) 또는 diff만으로 동작 판단이 불가한 경우에만 별도 review checkout(`/tmp/pr-<num>-review`)에서 직접 검증. implementation worktree에서 `git checkout` / `gh pr checkout` 금지.
 4. wave 내 merge-order 의존성이 있으면 선행 PR, 비교 기준, 현재 base와의 불일치가 의도된 것인지 기록
-5. 심각도 분류
+5. 아래 AI Code Quality Gate checklist와 Review Rubric으로 심각도 분류
 
-> **리뷰 초점**: CI는 코드 정상성을 검증한다. 리뷰어는 CI가 잡지 못하는 영역 — 설계, 추상화, edge case 누락, 스펙 일치성, 보안, 의도 — 에 집중한다.
+> **리뷰 초점**: CI는 코드 정상성을 검증한다. 리뷰어는 AI가 만든 diff가 repo의 방향을 망가뜨리지 않는지 지키는 gatekeeper다. 설계, domain boundary, data flow, failure semantics, scope creep, 추상화 삭제 가능성, 기존 패턴 drift, 보안, 의도 불일치에 집중한다.
+
+## AI Code Quality Gate checklist
+- Scope & Ownership
+  - 이 PR이 이슈 완료 기준에 필요한 최소 범위인가?
+  - author branch가 건드리면 안 되는 파일·domain·team ownership을 침범하지 않았는가?
+  - 새 기능·광범위 refactor·관련 없는 cleanup이 섞였으면 severity를 올린다.
+- Simplicity & Deletability
+  - 불필요한 abstraction/layer/config/fallback/local state가 추가되지 않았는가?
+  - 6개월 뒤 이 변경을 쉽게 수정·삭제할 수 있는가?
+  - "나중에 확장 가능"만을 이유로 복잡도가 늘었으면 결함으로 본다.
+- Existing Patterns
+  - repo의 기존 파일 구조, naming, error handling, test style, dependency 사용 패턴과 맞는가?
+  - 유사 기능을 새로 복제하지 않고 기존 helper/contract를 재사용했는가?
+  - pattern drift가 있으면 "동작함"이어도 Medium/High로 기록한다.
+- Failure Semantics
+  - 실패를 조용히 삼키는 fallback/default/cache/local state가 없는가?
+  - 에러가 호출자·사용자·로그·테스트에 명확히 드러나는가?
+  - silent fallback이 core contract 실패를 숨기면 High로 본다.
+- Human Reviewability
+  - diff가 작고 읽기 쉬우며 data flow가 한눈에 추적되는가?
+  - type escape(`any`, broad assertion, unchecked cast), 중복 구현, naming/ownership 혼동이 리뷰 가능성을 낮추지 않는가?
+  - reviewer가 diff만으로 의도를 검증하기 어렵다면 scope 축소 또는 follow-up 분리를 요구한다.
 
 ## 선결 체크 (리뷰 전 반드시)
 1. `gh pr checks <num>` — **fail이 하나라도 있으면 자동 Critical**. 이유 기록 필수.
@@ -669,11 +700,13 @@ PR 목록 확정 후 Step 1로 진행.
    - `cancelled` 상태만 있는 경우: **Warning**으로 분류하고 재실행 권장
 2. `gh pr view <num> --json baseRefName` — base가 main이 아니면 stacked PR. diff는 base 브랜치 기준으로 읽어야 맞음.
 
-## 심각도 기준
-- Critical: CI fail(typecheck/lint/test/build 중 하나라도), 보안 구멍, 데이터 유실, 스펙과 정반대 동작
-- High: 중대한 버그, 중대 성능 이슈, 잘못된 추상화로 후속 작업이 막힘, 스펙 핵심 동작 불일치
-- Medium: 마이너 버그, 누락된 edge case 테스트, 코드 스멜
-- Low: 네이밍, 주석, 스타일 nit
+## Review Rubric / 심각도 기준
+- Critical: 보안 취약점, secret 노출, 데이터 유실, CI/test/typecheck/lint/build 실패, 명백한 오작동, destructive migration, 스펙과 정반대 동작.
+- High: architecture/domain boundary 위반, 잘못된 data flow, silent fallback이 실패를 숨김, 과도한 scope creep, 삭제·수정하기 어려운 abstraction, core contract 테스트 누락, 중대한 성능/동작 버그, 스펙 핵심 동작 불일치.
+- Medium: duplicate implementation, naming/ownership confusion, 불필요한 local state, type escape 증가(`any`, broad assertion, unchecked cast), inconsistent error handling, 기존 패턴과 subtle mismatch, 마이너 버그, 누락된 edge case 테스트.
+- Low: docs/comments/readability, 스타일 nit, follow-up cleanup. 단, Low가 core contract나 shared contract를 흐리면 Medium 이상으로 올린다.
+
+복잡도 증가는 자체로 결함이다. 불필요한 abstraction, duplication, fallback, local state, type escape가 추가되면 "동작한다"는 이유만으로 통과시키지 말고 위 기준에 따라 기록한다.
 
 ## 리뷰 작성
 Critical+High = 0이면 `gh pr review <num> --approve --body "..."`
@@ -739,9 +772,12 @@ FIX_BRIEF 내용:
 - Verdict, 심각도별 카운트
 
 ## 너의 할 일
+기본 방향: 기존 기능은 유지하되 diff를 줄인다. 중복, premature abstraction, silent fallback, type escape, 불필요한 local state를 제거하고 repo의 기존 패턴에 맞춘다. 새 기능이나 광범위 refactor는 하지 않는다.
+
 ### High (필수 수정)
 - <구체 이슈 1> — 사유 + 수정 방향 (2가지 옵션 제시)
 ### Medium/Low (권장)
+- 미머지 PR 출력값·공유 계약 전환에 의존하는 Medium/Low는 직접 구현하지 말고 TODO/follow-up으로 제한
 
 ## 작업 순서
 1. 코드 수정
@@ -758,6 +794,8 @@ FIX FAILED PR#<num> iterN: <사유>
 ## 규칙
 - 수정은 새 커밋 + 일반 push가 기본. `commit --amend` / `push --force-with-lease`는 사용자가 명시 승인하고 branch protection·SafetyGuard·stacked PR 영향을 확인한 경우만 허용
 - 리뷰어가 지적 안 한 곳은 수정 금지
+- 기존 기능 유지, diff 축소, 기존 repo 패턴 정렬이 기본값이다. 새 feature, broad refactor, 임의 dependency 추가 금지
+- duplication/premature abstraction/silent fallback/type escape/local state 증가는 제거하거나 리뷰 코멘트에 근거 있는 예외를 남긴다
 - Medium/Low만 남았고 미머지 PR이나 공유 계약 전환에 의존하면 직접 수정 대신 TODO/follow-up issue로 제한
 ```
 
