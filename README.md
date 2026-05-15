@@ -37,6 +37,14 @@ Codex App usage should prefer `.codex/skills/ddalggak/` as the source of truth. 
 
 ddalggak treats review as the guardrail that keeps AI-generated implementation work aligned with the codebase. AI implementation productivity remains with the implementation lanes, while review protects codebase direction, maintainability, and long-term ownership. Reviewers should block not only broken code, but also unnecessary abstraction, silent fallback, scope creep, pattern drift, and changes that humans cannot easily understand, modify, or delete later.
 
+## Quality Defaults
+
+- Branch names should describe the purpose of the change and must not include dates, timestamps, or generated time suffixes.
+- Commit messages and PR descriptions must explain **What** changed and **Why** it changed. PR descriptions should also include **Validation**, **Risk**, and linked **Issues**.
+- Worker briefs should bias toward single-responsibility changes, pure functions where practical, TDD or unit-test coverage for core behavior, and the repository's naming plus companion-file conventions.
+- Review should cite CI status as evidence, then focus on behavior intent, scope, code quality, architecture/domain boundaries, maintainability, and deletability.
+- For no-argument `start`, `status:unlocked` issues are preferred candidates. If none exist, ddalggak falls back to open issues without mutating labels; `status:locked` issues are excluded without changing the label. Labels are selection hints, not workflow-outcome triggers.
+
 ## Claude Code Legacy
 
 The legacy CLI bridge builds `/ddalggak <subcommand>` slash commands for Claude Code. From a source checkout, run the CLI directly with Node.js:

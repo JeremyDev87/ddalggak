@@ -78,6 +78,7 @@ Apply these rules to every subcommand without weakening the routing or code-modi
 - **Reviewer isolation**: reviewers do not switch branches inside an implementation worktree. Prefer `gh pr diff`, `gh pr view --json files`, and isolated temporary checkouts when build or test reproduction is needed.
 - **Merge-order context**: when PRs in the same wave depend on merge order or compare against different baselines, review packets must name predecessor PRs, comparison targets, and whether base mismatch is expected.
 - **Completion is not test pass**: a lane is incomplete until tests, commit, push, draft PR, and requested review or handoff signals are verified. Idle notifications are not completion evidence.
+- **PR quality defaults**: branch names must describe purpose and must not include dates or timestamps. Commit messages and PR descriptions must include What and Why, and PR descriptions must also include Validation and Risk.
 - **Exact command rescue**: if a worker repeatedly idles after commit without push or PR, send the exact `git push` and `gh pr create` commands verified by the conductor instead of a generic reminder.
 - **Gitignored and local-only handling**: for ignored, local-only, permission-cache, or repo-external paths, include `git check-ignore -v <path>` in the brief when applicable. Do not force such files into PR workflow; use direct local modification signals and manual issue handling when the path cannot be represented in git.
 - **Medium fix restraint**: Medium findings are non-blocking by default. If a Medium or Low fix depends on an unmerged PR output or shared contract transition, prefer TODO or follow-up issue over speculative code changes.
@@ -138,6 +139,8 @@ Use for implementation from one or more GitHub issues.
 1. Collect issue context.
    - For a specified issue, run `gh issue view <number> --json number,title,body,labels,assignees,milestone,url,comments`.
    - For batch mode, list candidate issues first, then inspect each issue with comments when possible.
+   - For no-argument start, treat labels as selection hints only: first list `status:unlocked` open issues; if none exist, fall back to open issues without adding, removing, or changing labels. Exclude `status:locked` issues from the batch, but never mutate their labels.
+   - Do not let workflow outcome depend excessively on label presence. Labels help choose candidates; they are not an issue mutation trigger and are not a substitute for issue body, comments, ownership, and completion criteria.
    - If comments conflict with the body, prefer the latest explicit comment and include the conflict in the lane brief.
 2. Clarification gate.
    - **Clear**: goal, change scope, completion criteria, and validation method are all identifiable; continue.
@@ -157,6 +160,7 @@ Use for implementation from one or more GitHub issues.
    - Wave 1 is the largest set with no hard blockers.
    - Later waves must name the exact blocking file, contract, ignored/local-only path, repo-external path, or unpublished dependency.
 6. Prepare isolated worktrees.
+   - Branch names must be purpose-centered, such as `docs/pr-quality-and-label-filtering` or `fix/issue-42-pr-quality`, and must not contain dates, timestamps, or generated time suffixes.
    - Keep `.worktrees/` local by writing to `.git/info/exclude`, not to the tracked ignore file:
 
 ```bash
@@ -173,11 +177,13 @@ git -C <repo-root> worktree add <repo-root>/.worktrees/<branch-name> -b <branch-
    - allowed files, forbidden files, and inspect-only files;
    - shared language, domain terms, deep-module boundaries, and gray-box boundaries;
    - test-first contract when feasible: failing test or expected behavior before implementation;
+   - worker implementation quality rules: prefer arrow functions where the repository style allows, keep each unit single-responsibility, isolate pure functions from side effects when practical, use TDD or unit tests for core behavior, and follow the repository's file naming plus companion test/story/helper conventions;
    - validation commands and success signals;
    - no-new-dependency rule with proof required before any new import;
    - ignored/local-only handling with `git check-ignore -v <path>` when relevant;
    - requirement to use absolute worktree paths or `git -C <worktree>` for git and file commands;
    - commit format, draft PR format, and stop conditions;
+   - commit and draft PR body requirements: What, Why, Validation, Risk, and issue references when applicable;
    - completion rule: test pass is insufficient; commit, push, and draft PR are required when publish is requested.
 9. Use `spawn_agent` for each approved lane and record agent IDs in `.ddalggak/session-state.json`.
 10. Progressive review start.
@@ -199,6 +205,7 @@ Use for independent PR or local-lane review. Treat review as an AI code quality 
    - issue body and comments, validation already run, skipped checks, constraints, Review Rubric, AI Code Quality Gate checklist, and merge-order context.
 3. For each PR, create a fresh reviewer agent with `spawn_agent`. Do not reuse the author or implementation agent for review, and do not let an agent review its own code.
 4. Give the reviewer only the review packet: issue context, diff or PR URL, files changed, validation already run, skipped checks, constraints, merge-order context, Review Rubric, and AI Code Quality Gate checklist.
+   - Require reviewers to cite CI status as evidence when available, but to focus findings on behavior intent, issue scope, code quality, architecture and domain boundaries, maintainability, and deletability.
 5. Reviewer reports findings only. It does not edit files, and it does not run branch switching or PR checkout commands inside an implementation worktree.
 6. If build or test reproduction is needed, use a separate temporary checkout such as `/tmp/<pr-num>-review`; otherwise prefer `gh pr diff` and `gh pr view --json files`.
 7. Main session triages every finding as accept, reject, or defer.
@@ -281,8 +288,9 @@ Use only for changes that already exist in the current lane.
 7. Run the local adversarial review gate when feasible.
 8. Stage only intended files.
 9. Commit with the requested convention.
+   - The commit body must include `What:` and `Why:` lines unless the repository's explicit convention is stricter.
 10. Push the current branch with ordinary push by default.
-11. Open a draft PR.
+11. Open a draft PR whose body includes What, Why, Validation, Risk, and issue references.
 12. Verify PR existence with `gh pr list --head <branch>` or equivalent.
 13. Record PR metadata in `.ddalggak/session-state.json` when the state file is in scope.
 
