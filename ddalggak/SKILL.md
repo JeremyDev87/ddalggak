@@ -630,14 +630,14 @@ PR 목록 확정 후 Step 1로 진행.
 
 **배포**: `SendMessage`로 리뷰 작업 전달
   ```
-  SendMessage(to="reviewer-pr<num>", content="PR #<num>을 리뷰해. REVIEW_BRIEF_PR<num>.md(.worktrees/<author-branch>/REVIEW_BRIEF_PR<num>.md)를 읽고 지시대로 수행. 완료 후 한 줄: REVIEW DONE PR#<num>: <APPROVE|CHANGES_REQUESTED> critical=N high=N medium=N low=N")
+  SendMessage(to="reviewer-pr<num>", content="PR #<num>을 리뷰해. REVIEW_BRIEF_PR<num>.md(<repo-root>/.ddalggak/reviews/REVIEW_BRIEF_PR<num>.md)를 읽고 지시대로 수행. implementation worktree에는 들어가지 말고 gh pr view/diff/checks를 우선 사용해. 완료 후 한 줄: REVIEW DONE PR#<num>: <APPROVE|CHANGES_REQUESTED> critical=N high=N medium=N low=N")
   ```
 
 **재리뷰(Step 5)**: 같은 `reviewer-pr<num>` teammate 유지. 이전 iteration에서 지적한 항목 기억이 재리뷰 정확도에 도움된다.
 
 ### Step 2. REVIEW_BRIEF 작성
 
-각 PR author의 worktree(`reviewer-pr<num>` teammate의 cwd)에 `REVIEW_BRIEF_PR<num>.md`를 작성. 포함할 내용:
+리뷰 brief는 implementation worktree가 아니라 repo root의 local-only 상태 경로(권장: `<repo-root>/.ddalggak/reviews/REVIEW_BRIEF_PR<num>.md`) 또는 `/tmp`에 작성한다. reviewer teammate의 cwd도 implementation worktree가 아니라 repo root 또는 별도 review checkout이어야 한다. 포함할 내용:
 
 ```
 # Reviewer Brief — Teammate X reviews PR #<num>
