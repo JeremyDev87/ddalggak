@@ -177,7 +177,7 @@ git -C <repo-root> worktree add <repo-root>/.worktrees/<branch-name> -b <branch-
    - allowed files, forbidden files, and inspect-only files;
    - shared language, domain terms, deep-module boundaries, and gray-box boundaries;
    - test-first contract when feasible: failing test or expected behavior before implementation;
-   - worker implementation quality rules: prefer arrow functions where the repository style allows, keep each unit single-responsibility, isolate pure functions from side effects when practical, use TDD or unit tests for core behavior, and follow the repository's file naming plus companion test/story/helper conventions;
+   - worker implementation quality rules: prefer arrow functions where the repository style allows, keep each unit single-responsibility, isolate pure functions from side effects when practical, use TDD or unit tests for core behavior, and follow the repository's file naming plus companion test/story/helper conventions such as `ABC.styles.tsx`, `ABC.constants.tsx`, `ABC.types.tsx`, and `ABC.parts.tsx` when that pattern fits the codebase;
    - validation commands and success signals;
    - no-new-dependency rule with proof required before any new import;
    - ignored/local-only handling with `git check-ignore -v <path>` when relevant;

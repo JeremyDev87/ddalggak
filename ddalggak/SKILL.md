@@ -510,7 +510,7 @@ echo "FIX_BRIEF*.md" >> .worktrees/<branch>/.gitignore
 
 ## 구체 요구사항
 (함수 시그니처, 알고리즘, 테스트 케이스 최소 3개: happy path + edge case + error case)
-- 구현 품질 기본값: repo 스타일이 허용하면 arrow function 우선, 단일 책임(SRP) 유지, side effect와 pure function 분리, TDD 또는 Unit Test로 핵심 동작 고정, 파일 naming과 companion test/story/helper convention 준수.
+- 구현 품질 기본값: repo 스타일이 허용하면 arrow function 우선, 단일 책임(SRP) 유지, side effect와 pure function 분리, TDD 또는 Unit Test로 핵심 동작 고정, 파일 naming과 companion test/story/helper convention 준수. 컴포넌트/함수 companion 파일이 필요하면 repo convention을 우선하되 `ABC.styles.tsx`, `ABC.constants.tsx`, `ABC.types.tsx`, `ABC.parts.tsx`처럼 대표 이름과 역할 suffix가 드러나는 형태를 사용한다.
 
 ## 테스트 우선 계약
 - 가능하면 실패 테스트 또는 기대 동작을 먼저 작성한다.
