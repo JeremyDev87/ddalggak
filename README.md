@@ -41,7 +41,7 @@ ddalggak treats review as the guardrail that keeps AI-generated implementation w
 
 - Branch names should describe the purpose of the change and must not include dates, timestamps, or generated time suffixes.
 - Commit messages and PR descriptions must explain **What** changed and **Why** it changed. PR descriptions should also include **Validation**, **Risk**, and linked **Issues**.
-- Worker briefs should bias toward single-responsibility changes, pure functions where practical, TDD or unit-test coverage for core behavior, and the repository's naming plus companion-file conventions.
+- Worker briefs should bias toward single-responsibility changes, pure functions where practical, TDD or unit-test coverage for core behavior, and the repository's naming plus companion-file conventions such as `ABC.styles.tsx`, `ABC.constants.tsx`, `ABC.types.tsx`, and `ABC.parts.tsx` when that pattern fits the codebase.
 - Review should cite CI status as evidence, then focus on behavior intent, scope, code quality, architecture/domain boundaries, maintainability, and deletability.
 - For no-argument `start`, `status:unlocked` issues are preferred candidates. If none exist, ddalggak falls back to open issues without mutating labels; `status:locked` issues are excluded without changing the label. Labels are selection hints, not workflow-outcome triggers.
 
