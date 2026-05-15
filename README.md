@@ -21,7 +21,7 @@ Example invocations:
 The Codex skill supports these subcommands:
 
 - `start`: run issue-based implementation lanes.
-- `review`: run independent review and accepted-fix loops.
+- `review`: run independent review as an AI code quality gate, checking not only correctness but also scope, existing patterns, failure semantics, simplicity, and human reviewability before accepted-fix loops.
 - `status`: inspect current lane, worktree, and PR state.
 - `plan`: create an issue-ready implementation plan.
 - `issue`: convert a plan into GitHub issues.
@@ -32,6 +32,10 @@ The Codex skill supports these subcommands:
 - `check`: run a local diff check.
 
 Codex App usage should prefer `.codex/skills/ddalggak/` as the source of truth. The top-level `ddalggak/` directory is retained for the Claude Code legacy setup path described below.
+
+## Review as Quality Gate
+
+ddalggak treats review as the guardrail that keeps AI-generated implementation work aligned with the codebase. AI implementation productivity remains with the implementation lanes, while review protects codebase direction, maintainability, and long-term ownership. Reviewers should block not only broken code, but also unnecessary abstraction, silent fallback, scope creep, pattern drift, and changes that humans cannot easily understand, modify, or delete later.
 
 ## Claude Code Legacy
 
