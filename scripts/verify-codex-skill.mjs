@@ -4,6 +4,7 @@ import path from "node:path";
 const rootDir = process.cwd();
 const skillDir = path.join(rootDir, ".codex", "skills", "ddalggak");
 const skillPath = path.join(skillDir, "SKILL.md");
+const legacySkillPath = path.join(rootDir, "ddalggak", "SKILL.md");
 const packagePath = path.join(rootDir, "package.json");
 const bannedTerms = [
   "TeamCreate",
@@ -36,6 +37,36 @@ const requiredSkillAnchors = [
   "prompt titles",
   "full query strings",
   "Transitive rendered fallback",
+  "PR numbers",
+  "commit SHAs",
+  "single-session completion logs",
+  "incident records",
+  "durable reusable knowledge",
+];
+const requiredLegacySkillAnchors = [
+  "Rendered evidence gate",
+  "route evidence",
+  "viewport evidence",
+  "rendered DOM evidence",
+  "screenshot evidence",
+  "fallback evidence",
+  "contract graph evidence",
+  "Transitive rendered fallback audit",
+  "list/detail surface",
+  "shared card/media primitive",
+  "Analytics/privacy allowlist·denylist",
+  "raw search terms",
+  "prompt titles/bodies",
+  "full query strings",
+  "harness-engineering/*",
+  "principles/*",
+  "frontend/*",
+  "llm-wiki/*",
+  "PR numbers",
+  "commit SHAs",
+  "single-session completion logs",
+  "incident records",
+  "durable reusable knowledge",
 ];
 
 const failures = [];
@@ -90,28 +121,41 @@ function countOccurrences(text, term) {
   return count;
 }
 
-if (!statSync(skillPath, { throwIfNoEntry: false })?.isFile()) {
-  fail(".codex/skills/ddalggak/SKILL.md must exist.");
-} else {
-  const skillText = readText(skillPath);
-  const frontmatter = getFrontmatter(skillText);
-  if (!frontmatter) {
-    fail(".codex/skills/ddalggak/SKILL.md must start with YAML frontmatter.");
-  } else if (getFrontmatterValue(frontmatter, "name") !== "ddalggak") {
-    fail(".codex/skills/ddalggak/SKILL.md frontmatter must include name: ddalggak.");
+function verifySkillFile(filePath, { label, requiredAnchors }) {
+  if (!statSync(filePath, { throwIfNoEntry: false })?.isFile()) {
+    fail(`${label} must exist.`);
+    return;
   }
 
-  const missingAnchors = requiredSkillAnchors.filter(
+  const skillText = readText(filePath);
+  const frontmatter = getFrontmatter(skillText);
+  if (!frontmatter) {
+    fail(`${label} must start with YAML frontmatter.`);
+  } else if (getFrontmatterValue(frontmatter, "name") !== "ddalggak") {
+    fail(`${label} frontmatter must include name: ddalggak.`);
+  }
+
+  const missingAnchors = requiredAnchors.filter(
     (anchor) => !skillText.includes(anchor),
   );
   if (missingAnchors.length > 0) {
     fail(
-      `#44 guardrail anchors missing from .codex/skills/ddalggak/SKILL.md:\n${missingAnchors
+      `guardrail anchors missing from ${label}:\n${missingAnchors
         .map((anchor) => `  - ${anchor}`)
         .join("\n")}`,
     );
   }
 }
+
+verifySkillFile(skillPath, {
+  label: ".codex/skills/ddalggak/SKILL.md",
+  requiredAnchors: requiredSkillAnchors,
+});
+
+verifySkillFile(legacySkillPath, {
+  label: "ddalggak/SKILL.md",
+  requiredAnchors: requiredLegacySkillAnchors,
+});
 
 const packageJson = JSON.parse(readText(packagePath));
 const packageFiles = Array.isArray(packageJson.files) ? packageJson.files : [];
