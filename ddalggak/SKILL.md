@@ -46,7 +46,7 @@ user-invocable: true
 - **암묵적 의존성 금지**. BRIEF에 "PyYAML 또는 텍스트 파싱"처럼 선택지를 열어두지 않는다. 기존 의존성 확인 전 새 라이브러리 import 금지. 불확실하면 stdlib 또는 repo의 기존 패턴을 명시한다.
 - **전략과 전술 분리**. AI worker는 코드 변경 전술을 수행하고, Conductor/reviewer는 시스템 경계·검증·삭제 가능성·장기 유지보수성을 지킨다. "동작함"보다 "6개월 뒤 이해·수정·삭제 가능함"을 우선한다.
 - **결과 기준 우선**. BRIEF는 장황한 절차보다 성공 기준, 허용 파일, 금지 조건, 정확한 검증 명령, 완료 신호를 명확히 한다. 단, 안전/스코프/완료 신호는 절대 규칙이다.
-- **반복 교훈 흡수**. stale repo, 외부 의존성 환각, gitignored/local-only 파일, force-push fix loop, worker commit/push/PR 누락은 모든 start/review/fix/ship의 기본 guardrail로 적용한다.
+- **반복 교훈 흡수**. stale repo, 외부 의존성 환각, gitignored/local-only 파일, force-push fix loop, worker commit/push/PR 누락은 모든 start/review/fix/ship의 기본 guardrail로 적용한다. PR numbers, commit SHAs, single-session completion logs 같은 일회성 산출물은 incident records이며, 일반화된 cross-session rule로 정리되기 전까지 durable reusable knowledge로 저장하지 않는다.
 
 ## myWiki-derived 운영 Guardrails
 
@@ -1938,7 +1938,7 @@ gh pr view <확정된-PR-번호> --json number,state,mergedAt,title
 - **교훈**: 다음엔 어떻게 다르게 할 것인가
 
 ## 지식 추출 분리
-- 일회성 incident record: 이번 PR/환경/사람/순서에만 해당하는 사실
+- 일회성 incident record: 이번 PR/환경/사람/순서에만 해당하는 사실. PR numbers, commit SHAs, single-session completion logs는 일반화하지 않는 한 incident records이며 durable reusable knowledge가 아니다.
 - 재사용 가능한 knowledge extraction: `harness-engineering/*`, `principles/*`, `frontend/*`, `llm-wiki/*` 중 하나로 분류한 durable rule
 - frontend/analytics 관련 누락 증거가 있었다면 rendered evidence, transitive fallback, privacy allowlist/denylist 중 어느 guardrail로 흡수할지 기록
 
@@ -1972,6 +1972,7 @@ gh pr view <확정된-PR-번호> --json number,state,mergedAt,title
 저장하지 않는 것:
 - 이미 코드나 CLAUDE.md에 반영된 것
 - 이번 PR에만 해당하는 일회성 맥락
+- PR numbers, commit SHAs, single-session completion logs처럼 특정 incident records에 속하고 아직 durable reusable knowledge로 일반화되지 않은 산출물
 
 각 메모리 파일은 `~/.claude/projects/.../memory/`에 저장하고 `MEMORY.md` 인덱스를 업데이트한다.
 

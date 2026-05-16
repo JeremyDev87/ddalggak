@@ -385,7 +385,7 @@ Before declaring a lane, review, or ship step complete, verify:
 - Frontend changes include rendered evidence: route evidence, viewport evidence, rendered DOM evidence, screenshot evidence, fallback evidence, and contract graph evidence, or missing evidence classification as `not-applicable: <reason>`, Medium, or High.
 - Review covered Transitive rendered fallback risks across list/detail surfaces, shared card/media primitives, missing media, empty DB/data, nullable fields, mapper defaults, and any callsite mitigation or follow-up/blocker.
 - Analytics privacy work includes an allowlist/denylist contract and excludes raw search terms, prompt titles or bodies, arbitrary user-entered text, email/name/profile identifiers, and full query strings by default.
-- Retro outputs distinguish incident records from reusable knowledge extraction and categorize reusable lessons under `harness-engineering/*`, `principles/*`, `frontend/*`, or `llm-wiki/*`.
+- Retro outputs distinguish incident records from reusable knowledge extraction and categorize reusable lessons under `harness-engineering/*`, `principles/*`, `frontend/*`, or `llm-wiki/*`. PR numbers, commit SHAs, and single-session completion logs are incident records, not durable reusable knowledge unless generalized into a cross-session rule.
 
 ## Stop Conditions
 
