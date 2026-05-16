@@ -64,6 +64,9 @@ user-invocable: true
 10. **Gitignored/local-only handling**: `.claude/settings.local.json`, permission cache, repo 밖 파일, ignored 파일은 `git check-ignore -v <path>`로 확인한다. PR workflow가 불가능하면 직접 수정 + `MODIFIED:` 신호 + 수동 이슈 처리로 분리한다.
 11. **Medium fix restraint**: Medium은 기본 non-blocking이다. 미머지 PR 출력값·공유 계약 전환에 의존하는 Medium/Low는 과잉 수정하지 말고 TODO/follow-up으로 제한한다.
 12. **Markdown surgery discipline**: SKILL.md/문서 블록 교체 시 기존 동작 보존 체크, heading anchor 보존, 번호 재정렬, fenced code block 균형 확인을 즉시 수행한다.
+13. **Rendered evidence gate**: frontend 작업은 CI/typecheck만으로 완료 증거가 아니다. route evidence, viewport evidence, rendered DOM evidence, screenshot evidence, fallback evidence, contract graph evidence를 요구하고, 누락 증거는 `not-applicable: <reason>`, Medium, High 중 하나로 분류한다.
+14. **Transitive rendered fallback audit**: 리뷰는 list/detail surface, shared card/media primitive, missing media, empty DB/data, nullable fields, mapper defaults까지 전이적으로 본다. shared primitive 수정이 범위 밖이면 callsite mitigation 또는 follow-up/blocker를 남긴다.
+15. **Analytics/privacy allowlist·denylist**: analytics/privacy 작업은 명시적 계약을 둔다. raw search terms, prompt titles/bodies, arbitrary user-entered text, email/name/profile identifiers, full query strings는 기본 denylist이고, stable IDs, categories, buckets, booleans, GTM-managed transformations를 선호한다.
 
 ## 서브커맨드 분기
 
@@ -700,6 +703,15 @@ PR 목록 확정 후 Step 1로 진행.
   - diff가 작고 읽기 쉬우며 data flow가 한눈에 추적되는가?
   - type escape(`any`, broad assertion, unchecked cast), 중복 구현, naming/ownership 혼동이 리뷰 가능성을 낮추지 않는가?
   - reviewer가 diff만으로 의도를 검증하기 어렵다면 scope 축소 또는 follow-up 분리를 요구한다.
+- Rendered Evidence
+  - frontend 변경은 route evidence, viewport evidence, rendered DOM evidence, screenshot evidence, fallback evidence, contract graph evidence를 제공했는가?
+  - 누락된 증거는 `not-applicable: <reason>`, Medium, High로 분류했는가? 완료 기준·critical path·privacy/security·fallback 누락은 High 후보로 본다.
+- Transitive rendered fallback
+  - list/detail surface, shared card/media primitive, missing media, empty DB/data, nullable fields, mapper defaults를 전이적으로 검토했는가?
+  - shared primitive가 범위 밖이면 callsite mitigation 또는 follow-up/blocker가 있는가?
+- Analytics/privacy
+  - analytics 이벤트는 allowlist/denylist 계약을 따르는가?
+  - raw search terms, prompt titles/bodies, arbitrary user-entered text, email/name/profile identifiers, full query strings가 기본 전송되지 않는가?
 
 ## 선결 체크 (리뷰 전 반드시)
 1. `gh pr checks <num>` — **fail이 하나라도 있으면 자동 Critical**. 이유 기록 필수.
@@ -1079,6 +1091,9 @@ Wave 구성 (graph-coloring):
 - 리뷰어가 기대해야 할 테스트/명령어
 - 먼저 확인할 파일
 - `changes requested` 트리거 모호성
+- frontend 변경이면 rendered evidence 요구사항: route evidence, viewport evidence, rendered DOM evidence, screenshot evidence, fallback evidence, contract graph evidence
+- 누락된 증거의 분류: `not-applicable: <reason>`, Medium, High (완료 기준·critical path·privacy/security·fallback은 High 후보)
+- analytics/privacy 변경이면 allowlist/denylist: raw search terms, prompt titles/bodies, arbitrary user-entered text, email/name/profile identifiers, full query strings 금지; stable IDs/categories/buckets/booleans/GTM 변환 선호
 
 ### 7. 검증 및 증거 요구사항
 
@@ -1089,6 +1104,8 @@ Wave 구성 (graph-coloring):
 - 자동화 불가 시 수동 검증 단계
 - 성공 시그널
 - 차단 케이스 보고 형식
+- frontend 작업의 rendered evidence 목록과 저장/첨부 위치
+- 증거를 제공하지 못한 항목별 `not-applicable: <reason>` / Medium / High 분류
 
 "테스트 실행" 같은 지시는 금지. 정확한 명령어를 명시한다.
 
@@ -1919,6 +1936,11 @@ gh pr view <확정된-PR-번호> --json number,state,mergedAt,title
 - **결과**: 무슨 일이 생겼는가
 - **근본 원인**: 왜 그렇게 됐는가
 - **교훈**: 다음엔 어떻게 다르게 할 것인가
+
+## 지식 추출 분리
+- 일회성 incident record: 이번 PR/환경/사람/순서에만 해당하는 사실
+- 재사용 가능한 knowledge extraction: `harness-engineering/*`, `principles/*`, `frontend/*`, `llm-wiki/*` 중 하나로 분류한 durable rule
+- frontend/analytics 관련 누락 증거가 있었다면 rendered evidence, transitive fallback, privacy allowlist/denylist 중 어느 guardrail로 흡수할지 기록
 
 ## 아키텍처 정리 (해당 시)
 (미래 참고용 구조 다이어그램이나 규칙)

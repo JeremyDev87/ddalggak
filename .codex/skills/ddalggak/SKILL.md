@@ -86,6 +86,9 @@ Apply these rules to every subcommand without weakening the routing or code-modi
 - **Strategy versus tactics**: worker agents execute tactical code changes. The conductor and reviewers protect system design, boundaries, validation, and deletability; code that merely works is lower priority than code understandable, changeable, and removable in six months.
 - **Result criteria first**: briefs should emphasize success criteria, allowed files, forbidden conditions, validation commands, and completion signals over long step-by-step scripts, while safety, scope, and completion signals remain absolute rules.
 - **Absorb repeated lessons**: stale repositories, hallucinated dependencies, unsafe force-push loops, ignored-file mistakes, and missing worker commit/push/PR steps are default guardrails for every start, review, fix, and ship flow.
+- **Evidence is a first-class deliverable**: CI or typecheck success is not enough for user-visible frontend behavior. Plans and reviews must request rendered evidence when frontend work changes routes, responsive layouts, DOM states, screenshots, fallbacks, or shared data contracts.
+- **Missing evidence classification**: every skipped evidence item must be classified as `not-applicable: <reason>`, Medium, or High. Missing evidence is High when it covers an explicit acceptance criterion, user-visible critical path, privacy/security behavior, or a fallback likely to hide broken data; otherwise it is Medium unless truly out of scope.
+- **Analytics privacy**: analytics plans and reviews must state an allowlist/denylist contract. Deny raw search terms, prompt titles or bodies, arbitrary user-entered text, email/name/profile identifiers, and full query strings by default. Prefer stable IDs, categories, buckets, booleans, and GTM-managed transformations.
 
 ## State Contract
 
@@ -177,6 +180,9 @@ git -C <repo-root> worktree add <repo-root>/.worktrees/<branch-name> -b <branch-
    - allowed files, forbidden files, and inspect-only files;
    - shared language, domain terms, deep-module boundaries, and gray-box boundaries;
    - test-first contract when feasible: failing test or expected behavior before implementation;
+   - for frontend work, rendered evidence requirements: route evidence, viewport evidence, rendered DOM evidence, screenshot evidence, fallback evidence, and contract graph evidence;
+   - missing evidence classification for each unavailable item as `not-applicable: <reason>`, Medium, or High;
+   - for analytics or privacy work, an explicit allowlist/denylist contract that excludes raw search terms, prompt titles or bodies, arbitrary user-entered text, email/name/profile identifiers, and full query strings by default;
    - worker implementation quality rules: prefer arrow functions where the repository style allows, keep each unit single-responsibility, isolate pure functions from side effects when practical, use TDD or unit tests for core behavior, and follow the repository's file naming plus companion test/story/helper conventions such as `ABC.styles.tsx`, `ABC.constants.tsx`, `ABC.types.tsx`, and `ABC.parts.tsx` when that pattern fits the codebase;
    - validation commands and success signals;
    - no-new-dependency rule with proof required before any new import;
@@ -231,6 +237,9 @@ Every REVIEW_BRIEF or review packet must include this AI Code Quality Gate check
 - **Existing Patterns**: Does it follow current repository patterns, naming, boundaries, error handling, validation style, and dependency rules instead of inventing a parallel path?
 - **Failure Semantics**: Are failures explicit, testable, and observable rather than silently swallowed or converted into misleading success?
 - **Human Reviewability**: Is the data flow clear, the diff small enough to review, and the contract covered by tests or a concrete validation signal?
+- **Rendered Evidence**: For frontend changes, did the PR provide rendered evidence covering route evidence, viewport evidence, rendered DOM evidence, screenshot evidence, fallback evidence, and contract graph evidence, or classify each missing item as `not-applicable: <reason>`, Medium, or High?
+- **Transitive rendered fallback**: Did review audit list/detail surfaces, shared card/media primitives, missing media, empty DB/data, nullable fields, and mapper defaults? If a shared primitive is out of scope, did the PR include callsite mitigation or a follow-up/blocker?
+- **Analytics privacy**: For analytics/privacy changes, does the diff enforce the allowlist/denylist contract by excluding raw search terms, prompt titles or bodies, arbitrary user-entered text, email/name/profile identifiers, and full query strings by default?
 
 Review output must include severity, confidence, evidence, impact, suggested fix, file and line when available, and a repro or test idea. Findings should be concise and adversarial; avoid praise-only comments.
 
@@ -304,6 +313,8 @@ Verify the PR is actually merged before cleanup. Start with `git fetch --prune`,
 
 After merge, summarize what happened, what broke, what validation caught, and what should change in future briefs or skills. Write only retrospective or memory-update request artifacts, not source code. Capture whether stale base, implicit dependencies, unsafe push strategy, ignored files, worker completion ambiguity, or Markdown surgery contributed to the outcome.
 
+Retrospectives must separate one-off incident records from reusable knowledge extraction. Tag reusable lessons into `harness-engineering/*`, `principles/*`, `frontend/*`, or `llm-wiki/*`, and keep project-specific incident facts out of reusable guidance unless they generalize into a durable rule.
+
 ## `prompt` - Prompt Optimizer
 
 Audit and improve lane briefs or review briefs. Do not edit this skill or repository source files. If the requested prompt change would alter skill behavior, stop and tell the user to make that as a normal repo edit outside ddalggak.
@@ -353,6 +364,9 @@ lane_completion_state: review_loop_passed|review_loop_blocked
 - Over-fixing Medium findings that depend on unmerged PRs or shared contracts.
 - Losing behavior during Markdown or skill block replacement.
 - Forgetting merge-order context for same-wave code and docs or follow-up PRs.
+- Accepting frontend work with only CI/typecheck evidence and no rendered evidence.
+- Auditing a visible fallback at one callsite while missing transitive rendered fallback risks in list/detail surfaces, shared card/media primitives, missing media, empty DB/data, nullable fields, or mapper defaults.
+- Shipping analytics events without a privacy allowlist/denylist, especially raw search terms, prompt titles or bodies, arbitrary user-entered text, email/name/profile identifiers, or full query strings.
 
 ## Verification Checklist
 
@@ -368,6 +382,10 @@ Before declaring a lane, review, or ship step complete, verify:
 - Reviewer isolation and merge-order context were preserved.
 - Accepted Critical and High findings were fixed and revalidated; remaining Medium/Low items are documented or deferred.
 - Markdown or skill edits preserve frontmatter, routing, code permissions, fenced blocks, and numbering.
+- Frontend changes include rendered evidence: route evidence, viewport evidence, rendered DOM evidence, screenshot evidence, fallback evidence, and contract graph evidence, or missing evidence classification as `not-applicable: <reason>`, Medium, or High.
+- Review covered Transitive rendered fallback risks across list/detail surfaces, shared card/media primitives, missing media, empty DB/data, nullable fields, mapper defaults, and any callsite mitigation or follow-up/blocker.
+- Analytics privacy work includes an allowlist/denylist contract and excludes raw search terms, prompt titles or bodies, arbitrary user-entered text, email/name/profile identifiers, and full query strings by default.
+- Retro outputs distinguish incident records from reusable knowledge extraction and categorize reusable lessons under `harness-engineering/*`, `principles/*`, `frontend/*`, or `llm-wiki/*`.
 
 ## Stop Conditions
 

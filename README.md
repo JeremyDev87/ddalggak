@@ -37,6 +37,8 @@ Codex App usage should prefer `.codex/skills/ddalggak/` as the source of truth. 
 
 ddalggak treats review as the guardrail that keeps AI-generated implementation work aligned with the codebase. AI implementation productivity remains with the implementation lanes, while review protects codebase direction, maintainability, and long-term ownership. Reviewers should block not only broken code, but also unnecessary abstraction, silent fallback, scope creep, pattern drift, and changes that humans cannot easily understand, modify, or delete later.
 
+For guardrail coverage, the Codex skill also requires frontend rendered evidence gates, transitive fallback audits, missing-evidence severity classification, retrospective knowledge extraction categories, and analytics/privacy allowlist/denylist contracts. `npm run verify:codex-skill` checks stable anchors for these #44 guardrails so maintainer edits cannot silently remove them.
+
 ## Quality Defaults
 
 - Branch names should describe the purpose of the change and must not include dates, timestamps, or generated time suffixes.

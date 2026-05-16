@@ -17,6 +17,26 @@ const bannedTerms = [
   "CLAUDE.md",
   "teammate",
 ];
+const requiredSkillAnchors = [
+  "knowledge extraction",
+  "harness-engineering/*",
+  "principles/*",
+  "frontend/*",
+  "llm-wiki/*",
+  "rendered evidence",
+  "route evidence",
+  "viewport evidence",
+  "rendered DOM evidence",
+  "screenshot evidence",
+  "fallback evidence",
+  "contract graph evidence",
+  "not-applicable",
+  "Analytics privacy",
+  "raw search terms",
+  "prompt titles",
+  "full query strings",
+  "Transitive rendered fallback",
+];
 
 const failures = [];
 
@@ -79,6 +99,17 @@ if (!statSync(skillPath, { throwIfNoEntry: false })?.isFile()) {
     fail(".codex/skills/ddalggak/SKILL.md must start with YAML frontmatter.");
   } else if (getFrontmatterValue(frontmatter, "name") !== "ddalggak") {
     fail(".codex/skills/ddalggak/SKILL.md frontmatter must include name: ddalggak.");
+  }
+
+  const missingAnchors = requiredSkillAnchors.filter(
+    (anchor) => !skillText.includes(anchor),
+  );
+  if (missingAnchors.length > 0) {
+    fail(
+      `#44 guardrail anchors missing from .codex/skills/ddalggak/SKILL.md:\n${missingAnchors
+        .map((anchor) => `  - ${anchor}`)
+        .join("\n")}`,
+    );
   }
 }
 
