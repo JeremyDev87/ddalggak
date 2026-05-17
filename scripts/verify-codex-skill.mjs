@@ -42,6 +42,10 @@ const requiredSkillAnchors = [
   "single-session completion logs",
   "incident records",
   "durable reusable knowledge",
+  "Self-created complexity is a defect",
+  "forced modularization",
+  "Client-side patches",
+  "mock-only tests",
 ];
 const requiredLegacySkillAnchors = [
   "Rendered evidence gate",
@@ -67,6 +71,10 @@ const requiredLegacySkillAnchors = [
   "single-session completion logs",
   "incident records",
   "durable reusable knowledge",
+  "Self-created complexity is a defect",
+  "forced modularization",
+  "client-side patch",
+  "mock-only tests",
 ];
 
 const failures = [];

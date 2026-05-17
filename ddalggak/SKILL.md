@@ -45,6 +45,7 @@ user-invocable: true
 - **이슈 코멘트도 source-of-truth 후보**. GitHub issue body만 보지 말고 `comments`를 함께 읽는다. 최신 comment가 body와 충돌하면 comment를 우선하되 충돌 사실과 판단 근거를 BRIEF/REVIEW_BRIEF에 명시한다.
 - **암묵적 의존성 금지**. BRIEF에 "PyYAML 또는 텍스트 파싱"처럼 선택지를 열어두지 않는다. 기존 의존성 확인 전 새 라이브러리 import 금지. 불확실하면 stdlib 또는 repo의 기존 패턴을 명시한다.
 - **전략과 전술 분리**. AI worker는 코드 변경 전술을 수행하고, Conductor/reviewer는 시스템 경계·검증·삭제 가능성·장기 유지보수성을 지킨다. "동작함"보다 "6개월 뒤 이해·수정·삭제 가능함"을 우선한다.
+- **Self-created complexity is a defect**. 새 helper/module/provider/wrapper/fallback을 추가하기 전에 삭제·직접화·경계 명확화를 우선한다. forced modularization은 실제 반복 코드를 줄이거나 경계를 명확히 한다는 근거가 있어야 하며, AI 패치를 정돈돼 보이게 하려는 목적이면 결함이다. client-side patch로 server/request/auth/data boundary 문제를 덮지 말고, auth/redirect/data-boundary 동작은 mock-only tests만으로 완료 처리하지 않는다.
 - **결과 기준 우선**. BRIEF는 장황한 절차보다 성공 기준, 허용 파일, 금지 조건, 정확한 검증 명령, 완료 신호를 명확히 한다. 단, 안전/스코프/완료 신호는 절대 규칙이다.
 - **반복 교훈 흡수**. stale repo, 외부 의존성 환각, gitignored/local-only 파일, force-push fix loop, worker commit/push/PR 누락은 모든 start/review/fix/ship의 기본 guardrail로 적용한다. PR numbers, commit SHAs, single-session completion logs 같은 일회성 산출물은 incident records이며, 일반화된 cross-session rule로 정리되기 전까지 durable reusable knowledge로 저장하지 않는다.
 
@@ -596,7 +597,7 @@ Cross-Review Loop의 리뷰는 칭찬이나 요약이 아니라 **AI code qualit
 - 기존 패턴 정렬: repo 안의 이미 합의된 구조·명명·오류 처리·테스트 패턴을 우선한다.
 - 삭제 가능성: 새 abstraction이 나중에 안전하게 제거·수정 가능한지 본다.
 - 명확한 data flow: 상태·fallback·type escape가 실패를 숨기거나 ownership을 흐리지 않는지 본다.
-- 복잡도 증가를 defect로 취급: 불필요한 abstraction, duplication, silent fallback, local state, `any`/type assertion 같은 type escape 증가는 최소 Medium 이상으로 기록한다.
+- 복잡도 증가를 defect로 취급: self-created complexity, forced modularization, 불필요한 abstraction/helper/module/provider/wrapper, duplication, silent fallback, local state, client-side patch로 boundary 문제 덮기, `any`/type assertion 같은 type escape 증가는 최소 Medium 이상으로 기록한다. failure semantics를 숨기거나 delivered contract를 이해·수정·삭제하기 어렵게 만들면 High로 본다.
 
 ### Step 0. 대상 PR 확정
 
@@ -688,8 +689,9 @@ PR 목록 확정 후 Step 1로 진행.
   - author branch가 건드리면 안 되는 파일·domain·team ownership을 침범하지 않았는가?
   - 새 기능·광범위 refactor·관련 없는 cleanup이 섞였으면 severity를 올린다.
 - Simplicity & Deletability
-  - 불필요한 abstraction/layer/config/fallback/local state가 추가되지 않았는가?
+  - 불필요한 abstraction/layer/config/helper/module/provider/wrapper/fallback/local state가 추가되지 않았는가?
   - 6개월 뒤 이 변경을 쉽게 수정·삭제할 수 있는가?
+  - 새 추상화가 실제 반복 코드를 줄이거나 boundary를 명확히 한다고 증명되는가, 아니면 forced modularization인가?
   - "나중에 확장 가능"만을 이유로 복잡도가 늘었으면 결함으로 본다.
 - Existing Patterns
   - repo의 기존 파일 구조, naming, error handling, test style, dependency 사용 패턴과 맞는가?
@@ -698,6 +700,8 @@ PR 목록 확정 후 Step 1로 진행.
 - Failure Semantics
   - 실패를 조용히 삼키는 fallback/default/cache/local state가 없는가?
   - 에러가 호출자·사용자·로그·테스트에 명확히 드러나는가?
+  - client-side patch가 server/request/auth/data boundary 실패를 숨기지 않는가?
+  - auth/redirect/data-boundary 동작을 mock-only tests가 아니라 실제 계약에 가까운 검증으로 확인했는가?
   - silent fallback이 core contract 실패를 숨기면 High로 본다.
 - Human Reviewability
   - diff가 작고 읽기 쉬우며 data flow가 한눈에 추적되는가?
@@ -721,11 +725,11 @@ PR 목록 확정 후 Step 1로 진행.
 
 ## Review Rubric / 심각도 기준
 - Critical: 보안 취약점, secret 노출, 데이터 유실, CI/test/typecheck/lint/build 실패, 명백한 오작동, destructive migration, 스펙과 정반대 동작.
-- High: architecture/domain boundary 위반, 잘못된 data flow, silent fallback이 실패를 숨김, 과도한 scope creep, 삭제·수정하기 어려운 abstraction, core contract 테스트 누락, 중대한 성능/동작 버그, 스펙 핵심 동작 불일치.
+- High: architecture/domain boundary 위반, 잘못된 data flow, silent fallback이 실패를 숨김, client-side patch가 server/request/auth/data boundary 문제를 우회함, 과도한 scope creep, 삭제·수정하기 어려운 abstraction 또는 forced modularization, core contract 테스트 누락, 중대한 성능/동작 버그, 스펙 핵심 동작 불일치.
 - Medium: duplicate implementation, naming/ownership confusion, 불필요한 local state, type escape 증가(`any`, broad assertion, unchecked cast), inconsistent error handling, 기존 패턴과 subtle mismatch, 마이너 버그, 누락된 edge case 테스트.
 - Low: docs/comments/readability, 스타일 nit, follow-up cleanup. 단, Low가 core contract나 shared contract를 흐리면 Medium 이상으로 올린다.
 
-복잡도 증가는 자체로 결함이다. 불필요한 abstraction, duplication, fallback, local state, type escape가 추가되면 "동작한다"는 이유만으로 통과시키지 말고 위 기준에 따라 기록한다.
+복잡도 증가는 자체로 결함이다. self-created complexity, forced modularization, 불필요한 abstraction/helper/module/provider/wrapper, duplication, fallback, local state, type escape가 추가되면 "동작한다"는 이유만으로 통과시키지 말고 위 기준에 따라 기록한다. 새 추상화보다 삭제·직접화·boundary clarification이 가능한지 먼저 묻는다.
 
 ## 리뷰 작성
 Critical+High = 0이면 `gh pr review <num> --approve --body "..."`
@@ -791,7 +795,7 @@ FIX_BRIEF 내용:
 - Verdict, 심각도별 카운트
 
 ## 너의 할 일
-기본 방향: 기존 기능은 유지하되 diff를 줄인다. 중복, premature abstraction, silent fallback, type escape, 불필요한 local state를 제거하고 repo의 기존 패턴에 맞춘다. 새 기능이나 광범위 refactor는 하지 않는다.
+기본 방향: 기존 기능은 유지하되 diff를 줄인다. 중복, premature abstraction, forced modularization, 불필요한 helper/module/provider/wrapper/fallback, silent fallback, type escape, 불필요한 local state를 제거하고 repo의 기존 패턴과 올바른 server/request/auth/data boundary에 맞춘다. 새 추상화를 추가하기 전에 삭제·직접화·boundary clarification으로 해결할 수 있는지 증명한다. auth/redirect/data-boundary 수정은 mock-only tests만으로 완료 처리하지 않는다. 새 기능이나 광범위 refactor는 하지 않는다.
 
 ### High (필수 수정)
 - <구체 이슈 1> — 사유 + 수정 방향 (2가지 옵션 제시)
@@ -814,7 +818,8 @@ FIX FAILED PR#<num> iterN: <사유>
 - 수정은 새 커밋 + 일반 push가 기본. `commit --amend` / `push --force-with-lease`는 사용자가 명시 승인하고 branch protection·SafetyGuard·stacked PR 영향을 확인한 경우만 허용
 - 리뷰어가 지적 안 한 곳은 수정 금지
 - 기존 기능 유지, diff 축소, 기존 repo 패턴 정렬이 기본값이다. 새 feature, broad refactor, 임의 dependency 추가 금지
-- duplication/premature abstraction/silent fallback/type escape/local state 증가는 제거하거나 리뷰 코멘트에 근거 있는 예외를 남긴다
+- duplication/premature abstraction/forced modularization/silent fallback/type escape/local state 증가는 제거하거나 리뷰 코멘트에 근거 있는 예외를 남긴다
+- client-side patch로 server/request/auth/data boundary 문제를 덮지 말고, mock-only tests가 boundary 동작의 유일한 증거가 되지 않게 한다
 - Medium/Low만 남았고 미머지 PR이나 공유 계약 전환에 의존하면 직접 수정 대신 TODO/follow-up issue로 제한
 ```
 
