@@ -84,6 +84,7 @@ Apply these rules to every subcommand without weakening the routing or code-modi
 - **Medium fix restraint**: Medium findings are non-blocking by default. If a Medium or Low fix depends on an unmerged PR output or shared contract transition, prefer TODO or follow-up issue over speculative code changes.
 - **Markdown surgery discipline**: when editing Markdown or skill files, preserve existing behavior, update headings and numbering immediately, keep fenced blocks valid, and re-check the diff for accidental block deletion.
 - **Strategy versus tactics**: worker agents execute tactical code changes. The conductor and reviewers protect system design, boundaries, validation, and deletability; code that merely works is lower priority than code understandable, changeable, and removable in six months.
+- **Self-created complexity is a defect**: before adding helpers, modules, providers, wrappers, or fallback branches, prefer deletion, direct code, and boundary clarification. Forced modularization must prove it reduces real repeated code rather than making an AI patch look organized. Client-side patches must not replace correct server, request, auth, or data boundary fixes, and mock-only tests are insufficient for auth, redirect, or data-boundary behavior.
 - **Result criteria first**: briefs should emphasize success criteria, allowed files, forbidden conditions, validation commands, and completion signals over long step-by-step scripts, while safety, scope, and completion signals remain absolute rules.
 - **Absorb repeated lessons**: stale repositories, hallucinated dependencies, unsafe force-push loops, ignored-file mistakes, and missing worker commit/push/PR steps are default guardrails for every start, review, fix, and ship flow.
 - **Evidence is a first-class deliverable**: CI or typecheck success is not enough for user-visible frontend behavior. Plans and reviews must request rendered evidence when frontend work changes routes, responsive layouts, DOM states, screenshots, fallbacks, or shared data contracts.
@@ -201,7 +202,7 @@ git -C <repo-root> worktree add <repo-root>/.worktrees/<branch-name> -b <branch-
 
 ## `review` - Cross-Review Loop
 
-Use for independent PR or local-lane review. Treat review as an AI code quality gate, not a praise pass or summary. The gatekeeper must block bugs, security issues, and long-term maintainability risks. Prefer smaller scope, existing repository patterns, deletable code, explicit ownership, and clear data flow. Treat unnecessary complexity as a defect, including premature abstraction, duplicate paths, silent fallback, avoidable local state, and increased type escape.
+Use for independent PR or local-lane review. Treat review as an AI code quality gate, not a praise pass or summary. The gatekeeper must block bugs, security issues, and long-term maintainability risks. Prefer smaller scope, existing repository patterns, deletable code, explicit ownership, and clear data flow. Treat unnecessary complexity and self-created complexity as defects, including forced modularization, premature abstraction, duplicate paths, silent fallback, avoidable local state, client-side boundary patches, and increased type escape.
 
 1. Determine target PRs from arguments or open PR discovery.
 2. For each PR, collect a review packet before spawning review:
@@ -224,7 +225,7 @@ Use for independent PR or local-lane review. Treat review as an AI code quality 
 ### Review Rubric
 
 - **Critical**: security vulnerability, data loss, CI/test failure, obvious malfunction, destructive migration, or secret exposure.
-- **High**: architecture or domain boundary violation, existing pattern drift that creates a parallel path or changes ownership, data, error, or validation flow, AI-generated complexity that makes the change harder to delete or review, wrong data flow, silent fallback that hides failure, excessive scope creep, abstraction that is hard to delete or modify, or tests missing a core contract.
+- **High**: architecture or domain boundary violation, existing pattern drift that creates a parallel path or changes ownership, data, error, or validation flow, AI-generated complexity that makes the change harder to delete or review, wrong data flow, silent fallback that hides failure, client-side patches that bypass the real server/request/auth/data boundary, excessive scope creep, abstraction that is hard to delete or modify, or tests missing a core contract.
 - **Medium**: localized duplicate implementation, naming or ownership confusion, unnecessary local state, increased type escape, inconsistent error handling, or subtle mismatch with existing patterns that does not create a blocking parallel path.
 - **Low**: documentation, comments, readability, or follow-up cleanup that does not affect the merge gate.
 
@@ -233,9 +234,9 @@ Use for independent PR or local-lane review. Treat review as an AI code quality 
 Every REVIEW_BRIEF or review packet must include this AI Code Quality Gate checklist:
 
 - **Scope & Ownership**: Is the diff limited to the issue, owned by the right module, and free of broad refactors or feature creep?
-- **Simplicity & Deletability**: Does the change avoid unnecessary abstraction, duplication, fallback paths, local state, and type escape? Could it be deleted or modified later without surprising callers?
+- **Simplicity & Deletability**: Does the change avoid unnecessary abstraction, forced modularization, duplication, fallback paths, local state, and type escape? Could it be deleted or modified later without surprising callers? Did any new helper/module/provider/wrapper prove that it reduces real repeated code or clarifies a boundary?
 - **Existing Patterns**: Does it follow current repository patterns, naming, boundaries, error handling, validation style, and dependency rules instead of inventing a parallel path?
-- **Failure Semantics**: Are failures explicit, testable, and observable rather than silently swallowed or converted into misleading success?
+- **Failure Semantics**: Are failures explicit, testable, and observable rather than silently swallowed or converted into misleading success? Do client-side patches avoid masking server/request/auth/data boundary defects, and do auth, redirect, and data-boundary checks use more than mock-only tests?
 - **Human Reviewability**: Is the data flow clear, the diff small enough to review, and the contract covered by tests or a concrete validation signal?
 - **Rendered Evidence**: For frontend changes, did the PR provide rendered evidence covering route evidence, viewport evidence, rendered DOM evidence, screenshot evidence, fallback evidence, and contract graph evidence, or classify each missing item as `not-applicable: <reason>`, Medium, or High?
 - **Transitive rendered fallback**: Did review audit list/detail surfaces, shared card/media primitives, missing media, empty DB/data, nullable fields, and mapper defaults? If a shared primitive is out of scope, did the PR include callsite mitigation or a follow-up/blocker?
@@ -243,7 +244,7 @@ Every REVIEW_BRIEF or review packet must include this AI Code Quality Gate check
 
 Review output must include severity, confidence, evidence, impact, suggested fix, file and line when available, and a repro or test idea. Findings should be concise and adversarial; avoid praise-only comments.
 
-FIX_BRIEF packets must include: `기능은 유지하되 diff를 줄이고, 중복/성급한 추상화/불필요한 fallback/type escape를 제거하며, 기존 저장소 패턴에 맞춰라. 새 기능이나 광범위한 리팩터는 하지 마라. 수정은 새 커밋으로 만들고 일반 push만 사용하라. Medium/Low 지적이 미머지 PR이나 공유 계약 전환에 걸려 있으면 과잉 수정하지 말고 TODO/follow-up으로 제한하라.`
+FIX_BRIEF packets must include: `기능은 유지하되 diff를 줄이고, 중복/성급한 추상화/forced modularization/불필요한 helper·module·provider·wrapper·fallback/type escape를 제거하며, 기존 저장소 패턴과 올바른 server/request/auth/data boundary에 맞춰라. 새 abstraction을 추가하기 전에 삭제·직접화·경계 정리로 해결할 수 있는지 먼저 증명하라. auth/redirect/data-boundary 수정은 mock-only tests만으로 완료 처리하지 마라. 새 기능이나 광범위한 리팩터는 하지 마라. 수정은 새 커밋으로 만들고 일반 push만 사용하라. Medium/Low 지적이 미머지 PR이나 공유 계약 전환에 걸려 있으면 과잉 수정하지 말고 TODO/follow-up으로 제한하라.`
 
 ## `status` - Current State Snapshot
 
