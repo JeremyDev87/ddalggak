@@ -24,16 +24,16 @@ const DOC_SECTION = {
   check: "Local Diff Check",
 };
 
-// 큰따옴표 escape가 필요한 문자
-const QUOTE_TRIGGERS = [" ", '"', "'", "\\", "$", "`"];
+// Slash command arguments are printed as one command string for Claude Code.
+// Use JSON string literal escaping when quoting is needed so backslashes and
+// control characters cannot make the emitted command ambiguous.
+const QUOTE_PATTERN = /[\s"'\\$`]/;
 
 function quoteIfNeeded(s) {
-  for (const ch of QUOTE_TRIGGERS) {
-    if (s.includes(ch)) {
-      return '"' + s.replace(/"/g, '\\"') + '"';
-    }
+  if (!QUOTE_PATTERN.test(s)) {
+    return s;
   }
-  return s;
+  return JSON.stringify(s);
 }
 
 function buildSlashString(subcmd, parts) {

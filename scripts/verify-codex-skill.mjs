@@ -6,6 +6,32 @@ const skillDir = path.join(rootDir, ".codex", "skills", "ddalggak");
 const skillPath = path.join(skillDir, "SKILL.md");
 const legacySkillPath = path.join(rootDir, "ddalggak", "SKILL.md");
 const packagePath = path.join(rootDir, "package.json");
+const cliPath = path.join(rootDir, "bin", "ddalggak.js");
+const dispatchPath = path.join(rootDir, "bin", "lib", "dispatch.mjs");
+const requiredSubcommands = [
+  "start",
+  "review",
+  "status",
+  "plan",
+  "issue",
+  "clean",
+  "ship",
+  "retro",
+  "prompt",
+  "check",
+];
+const requiredLegacyHeadings = {
+  start: "Start Workflow",
+  review: "Cross-Review Loop",
+  status: "Status",
+  plan: "Issue-Ready Plan",
+  issue: "Plan to Issues",
+  clean: "Merge Cleanup",
+  ship: "Ship",
+  retro: "Retrospective",
+  prompt: "Prompt Optimizer",
+  check: "Local Diff Check",
+};
 const bannedTerms = [
   "TeamCreate",
   "SendMessage",
@@ -115,6 +141,31 @@ function getFrontmatterValue(frontmatter, key) {
   return match[1].replace(/^["']|["']$/g, "");
 }
 
+function extractStringArray(text, constName) {
+  const pattern = new RegExp(String.raw`const ${constName} = \[([\s\S]*?)\];`);
+  const match = text.match(pattern);
+  if (!match) {
+    return null;
+  }
+  return [...match[1].matchAll(/"([^"]+)"/g)].map((item) => item[1]);
+}
+
+function extractDocSectionMap(text) {
+  const match = text.match(/const DOC_SECTION = \{([\s\S]*?)\};/);
+  if (!match) {
+    return null;
+  }
+  const entries = {};
+  for (const item of match[1].matchAll(/\s*([a-z]+):\s*"([^"]+)"/g)) {
+    entries[item[1]] = item[2];
+  }
+  return entries;
+}
+
+function arraysEqual(a, b) {
+  return a.length === b.length && a.every((item, index) => item === b[index]);
+}
+
 function countOccurrences(text, term) {
   if (term.length === 0) {
     return 0;
@@ -169,6 +220,39 @@ const packageJson = JSON.parse(readText(packagePath));
 const packageFiles = Array.isArray(packageJson.files) ? packageJson.files : [];
 if (!packageFiles.includes(".codex/")) {
   fail('package.json files must include ".codex/".');
+}
+
+const cliText = readText(cliPath);
+const cliSubcommands = extractStringArray(cliText, "SUBCOMMANDS");
+if (!cliSubcommands) {
+  fail("bin/ddalggak.js must define SUBCOMMANDS.");
+} else if (!arraysEqual(cliSubcommands, requiredSubcommands)) {
+  fail(
+    `SUBCOMMANDS drifted. Expected ${requiredSubcommands.join(", ")}; got ${cliSubcommands.join(", ")}`
+  );
+}
+
+const dispatchText = readText(dispatchPath);
+const docSectionMap = extractDocSectionMap(dispatchText);
+if (!docSectionMap) {
+  fail("bin/lib/dispatch.mjs must define DOC_SECTION.");
+} else {
+  for (const subcommand of requiredSubcommands) {
+    if (docSectionMap[subcommand] !== requiredLegacyHeadings[subcommand]) {
+      fail(
+        `DOC_SECTION.${subcommand} must map to "${requiredLegacyHeadings[subcommand]}".`
+      );
+    }
+  }
+}
+
+const legacySkillText = statSync(legacySkillPath, { throwIfNoEntry: false })?.isFile()
+  ? readText(legacySkillPath)
+  : "";
+for (const [subcommand, heading] of Object.entries(requiredLegacyHeadings)) {
+  if (!legacySkillText.includes(`## ${heading}`)) {
+    fail(`ddalggak/SKILL.md must include ## ${heading} for '${subcommand}'.`);
+  }
 }
 
 if (statSync(skillDir, { throwIfNoEntry: false })?.isDirectory()) {

@@ -109,7 +109,7 @@ npm run verify:codex-skill
 env npm_config_cache=/tmp/ddalggak-npm-cache npm pack --dry-run --ignore-scripts --loglevel=silent
 ```
 
-Use `npm test` for CLI setup and dispatch behavior, `npm run verify:codex-skill` for Codex skill source or metadata changes, and the pack dry-run to inspect the package artifact list.
+Use `npm test` for CLI setup and dispatch behavior, including setup safety/idempotency and dispatch quoting edge cases. Use `npm run verify:codex-skill` for Codex skill source, metadata, or subcommand routing changes; it also checks that CLI `SUBCOMMANDS`, dispatch `DOC_SECTION`, and legacy skill headings stay aligned. Use the pack dry-run to inspect the package artifact list.
 
 ## Platform Support
 
