@@ -1,10 +1,12 @@
 import { spawnSync } from "node:child_process";
 import {
   existsSync,
+  mkdirSync,
   mkdtempSync,
   readdirSync,
   readFileSync,
   rmSync,
+  writeFileSync,
 } from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -75,6 +77,22 @@ function assertIncludes(value, needle, streamName) {
   );
 }
 
+function listNames(dir) {
+  return readdirSync(dir).sort();
+}
+
+function skillDirFor(claudeHome) {
+  return path.join(claudeHome, "skills", "ddalggak");
+}
+
+function writeExistingInstall(claudeHome, version = "0.0.0") {
+  const skillDir = skillDirFor(claudeHome);
+  mkdirSync(skillDir, { recursive: true });
+  writeFileSync(path.join(skillDir, "SKILL.md"), "old skill\n", "utf8");
+  writeFileSync(path.join(skillDir, ".installed-version"), `${version}\n`, "utf8");
+  return skillDir;
+}
+
 const cases = [
   {
     name: "--version prints package version",
@@ -109,6 +127,14 @@ const cases = [
     },
   },
   {
+    name: "unknown command suggests close match",
+    run() {
+      const result = runCli(["stats"]);
+      assertExit(result, 2);
+      assertIncludes(result.stderr, "Did you mean: status?", "stderr");
+    },
+  },
+  {
     name: "setup --dry-run does not create files",
     run() {
       const claudeHome = makeTempHome();
@@ -120,6 +146,22 @@ const cases = [
         readdirSync(claudeHome).length === 0,
         `expected dry-run home to stay empty, found ${readdirSync(claudeHome).join(", ")}`
       );
+    },
+  },
+  {
+    name: "setup rejects missing --target value",
+    run() {
+      const result = runCli(["setup", "--target"]);
+      assertExit(result, 2);
+      assertIncludes(result.stderr, "--target requires a path argument", "stderr");
+    },
+  },
+  {
+    name: "setup rejects filesystem root target",
+    run() {
+      const result = runCli(["setup", "--target", path.parse(rootDir).root]);
+      assertExit(result, 2);
+      assertIncludes(result.stderr, "safety check failed", "stderr");
     },
   },
   {
@@ -158,11 +200,92 @@ const cases = [
     },
   },
   {
+    name: "setup backs up stale existing install by default",
+    run() {
+      const claudeHome = makeTempHome();
+      writeExistingInstall(claudeHome);
+      const result = runCli(["setup"], {
+        env: { CLAUDE_HOME: claudeHome },
+      });
+      assertExit(result, 0);
+      assertIncludes(result.stdout, "Backed up existing install", "stdout");
+      assert(
+        listNames(path.join(claudeHome, "skills")).some((name) =>
+          name.startsWith("ddalggak.bak.")
+        ),
+        "expected stale install backup next to skills/ddalggak"
+      );
+      assert(
+        readFileSync(path.join(skillDirFor(claudeHome), ".installed-version"), "utf8") ===
+          `${pkg.version}\n`,
+        "expected fresh install version after backup"
+      );
+    },
+  },
+  {
+    name: "setup --no-backup replaces stale install without backup",
+    run() {
+      const claudeHome = makeTempHome();
+      writeExistingInstall(claudeHome);
+      const result = runCli(["setup", "--no-backup"], {
+        env: { CLAUDE_HOME: claudeHome },
+      });
+      assertExit(result, 0);
+      assert(
+        !listNames(path.join(claudeHome, "skills")).some((name) =>
+          name.startsWith("ddalggak.bak.")
+        ),
+        "expected --no-backup not to create backup directories"
+      );
+      assert(
+        readFileSync(path.join(skillDirFor(claudeHome), ".installed-version"), "utf8") ===
+          `${pkg.version}\n`,
+        "expected fresh install version after --no-backup replace"
+      );
+    },
+  },
+  {
     name: "prompt --print emits slash command",
     run() {
       const result = runCli(["prompt", "--print"]);
       assertExit(result, 0);
       assertStdout(result, "/ddalggak prompt\n");
+    },
+  },
+  {
+    name: "dispatch --print quotes ambiguous args safely",
+    run() {
+      const result = runCli([
+        "plan",
+        "--print",
+        "simple",
+        "two words",
+        'quote"here',
+        "path\\with\\slashes",
+        "line\nbreak",
+      ]);
+      assertExit(result, 0);
+      assertStdout(
+        result,
+        '/ddalggak plan simple "two words" "quote\\"here" "path\\\\with\\\\slashes" "line\\nbreak"\n'
+      );
+    },
+  },
+  {
+    name: "dispatch -- stops local flag parsing",
+    run() {
+      const result = runCli(["plan", "--print", "--", "--show-doc", "two words"]);
+      assertExit(result, 0);
+      assertStdout(result, '/ddalggak plan --show-doc "two words"\n');
+    },
+  },
+  {
+    name: "dispatch --show-doc extracts requested section",
+    run() {
+      const result = runCli(["review", "--show-doc"]);
+      assertExit(result, 0);
+      assertIncludes(result.stdout, "## Cross-Review Loop", "stdout");
+      assertIncludes(result.stdout, "AI code quality gate", "stdout");
     },
   },
   {
