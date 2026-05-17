@@ -237,6 +237,12 @@ const docSectionMap = extractDocSectionMap(dispatchText);
 if (!docSectionMap) {
   fail("bin/lib/dispatch.mjs must define DOC_SECTION.");
 } else {
+  const docSectionKeys = Object.keys(docSectionMap);
+  if (!arraysEqual(docSectionKeys, requiredSubcommands)) {
+    fail(
+      `DOC_SECTION keys drifted. Expected ${requiredSubcommands.join(", ")}; got ${docSectionKeys.join(", ")}`
+    );
+  }
   for (const subcommand of requiredSubcommands) {
     if (docSectionMap[subcommand] !== requiredLegacyHeadings[subcommand]) {
       fail(

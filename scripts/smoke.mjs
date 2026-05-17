@@ -263,11 +263,13 @@ const cases = [
         'quote"here',
         "path\\with\\slashes",
         "line\nbreak",
+        "$HOME",
+        "`cmd`",
       ]);
       assertExit(result, 0);
       assertStdout(
         result,
-        '/ddalggak plan simple "two words" "quote\\"here" "path\\\\with\\\\slashes" "line\\nbreak"\n'
+        '/ddalggak plan simple "two words" "quote\\"here" "path\\\\with\\\\slashes" "line\\nbreak" "$HOME" "`cmd`"\n'
       );
     },
   },
