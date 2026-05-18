@@ -144,8 +144,8 @@ const requiredSkillAnchors = [
   "Regression Library Candidate",
   "class-level risks",
   "transient incidents in memory",
-  "No stacked PRs by default",
-  "Single-PR Commit-Lane Strategy",
+  "Issue-PRs by default",
+  "Issue-PR Strategy with Conflict Fallback",
   "Parallelization Decision",
   "Must not touch",
   "one PR",
@@ -227,11 +227,11 @@ const requiredLegacySkillAnchors = [
   "Regression Library Candidate",
   "class-level failure",
   "transient incident",
-  "No stacked PRs by default",
-  "Single-PR Commit-Lane Strategy",
+  "Issue-PRs by default",
+  "Issue-PR Strategy with Conflict Fallback",
   "Parallelization Decision",
   "Must not touch",
-  "PR count: 1",
+  "PR count: one PR per issue by default",
   "serial commit",
 ];
 
@@ -792,9 +792,9 @@ for (const subcommand of requiredRouterSubcommands) {
     fail("ddalggak plan --show-doc section must expose Frontend Design Brief.");
   }
   if (subcommand === "plan") {
-    for (const planCommitLaneAnchor of ["Single-PR Commit-Lane Strategy", "PR count: 1", "Stacked PRs: forbidden unless explicitly requested", "Parallelization Decision", "Must not touch", "Evidence / validation", "Commit message"]) {
+    for (const planCommitLaneAnchor of ["Issue-PR Strategy with Conflict Fallback", "PR count: one PR per issue by default", "Default PR shape: one PR per issue; conflict fallback only when issue conflicts require it", "Parallelization Decision", "Must not touch", "Evidence / validation", "Commit message"]) {
       if (!section.includes(planCommitLaneAnchor)) {
-        fail(`ddalggak plan --show-doc section must expose single-PR commit-lane contract (${planCommitLaneAnchor}).`);
+        fail(`ddalggak plan --show-doc section must expose issue-PR conflict-fallback contract (${planCommitLaneAnchor}).`);
       }
     }
     for (const planAnchor of ["Applicable upstream skill families", "React/Next.js performance risks", "Explicit anti-goals", "Backend-only skip/lightweight reason"]) {
@@ -812,9 +812,9 @@ for (const subcommand of requiredRouterSubcommands) {
     fail("ddalggak start --show-doc section must expose small direct change first.");
   }
   if (subcommand === "start") {
-    for (const startCommitLaneAnchor of ["Single-PR Commit-Lane Strategy", "Stacked PRs: forbidden unless explicitly requested", "Parallelization Decision", "Integration commit", "PR CREATE — 기본 금지"]) {
+    for (const startCommitLaneAnchor of ["Issue-PR Strategy with Conflict Fallback", "Default PR shape: one PR per issue; conflict fallback only when issue conflicts require it", "Parallelization Decision", "Integration commit", "PR CREATE — 독립 이슈는 기본 생성"]) {
       if (!section.includes(startCommitLaneAnchor)) {
-        fail(`ddalggak start --show-doc section must expose single-PR commit-lane contract (${startCommitLaneAnchor}).`);
+        fail(`ddalggak start --show-doc section must expose issue-PR conflict-fallback contract (${startCommitLaneAnchor}).`);
       }
     }
     for (const startAnchor of ["aesthetic direction", "screenshot/viewport/manual evidence", "server/client boundary", "token source without printing secrets", "preview-first"]) {
