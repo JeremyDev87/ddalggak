@@ -89,6 +89,7 @@ Apply these rules to every subcommand without weakening the routing or code-modi
 - **Absorb repeated lessons**: stale repositories, hallucinated dependencies, unsafe force-push loops, ignored-file mistakes, and missing worker commit/push/PR steps are default guardrails for every start, review, fix, and ship flow.
 - **Evidence Contract is mandatory for readiness claims**: `plan`, `start`, and `review` must read `references/evidence-contract.md` whenever work claims completion, PR readiness, approval, deploy readiness, performance, UI, security, data, or API behavior. The contract defines required evidence, applied templates, explicit `not-applicable: <reason>` items, and blocking evidence gaps.
 - **Simplicity / Deletability Gate is mandatory for code-shape decisions**: `plan`, `start`, and `review` must read `references/simplicity-deletability-gate.md` whenever work may add code, abstraction, indirection, helpers, providers, wrappers, fallbacks, or patterns. Start from the smallest direct change that preserves real boundaries. SOLID and named patterns are useful tools, but they do not outrank human readability or deletability.
+- **Frontend Design Gate is conditional for visual work**: `plan`, `start`, and `review` must read `references/frontend-design-gate.md` when request text, issue/PR files, diff paths, or product context indicate UI/frontend/design/page/component/layout/polish/responsive/dashboard/card/CTA/typography/animation/screenshot work. Backend/API-only, test-only, or narrow functional bugfix work should skip or keep this gate lightweight and record the reason. Product-specific constraints outrank novelty, and forced abstraction is blocked for one-off UI changes.
 - **Evidence is a first-class deliverable**: CI or typecheck success is not enough for user-visible frontend behavior. Plans and reviews must request rendered evidence when frontend work changes routes, responsive layouts, DOM states, screenshots, fallbacks, or shared data contracts.
 - **Missing evidence classification**: every skipped evidence item must be classified as `not-applicable: <reason>`, Medium, or High. Missing evidence is High when it covers an explicit acceptance criterion, user-visible critical path, PR readiness, deploy/performance claim, privacy/security/auth behavior, data/API contract, or a fallback likely to hide broken data; otherwise it is Medium unless truly out of scope.
 - **No evidence, no readiness or approval**: without required evidence, do not leave a PR ready, `APPROVE`, `ready for review`, `ship`, or `merge ready` conclusion. Request changes or block until evidence is supplied or reclassified with a specific `not-applicable` reason.
@@ -98,6 +99,8 @@ Apply these rules to every subcommand without weakening the routing or code-modi
 ## Quality Lens Router
 
 Before `plan`, `start`, or `review` selects detailed gates, route the work through the Quality Lens Router. Read `references/quality-lens-router.md` for the full predicate table and keep the router output in the plan, worker brief, or review packet. When `simplicity-deletability` applies, also read `references/simplicity-deletability-gate.md`.
+
+When `frontend-design` applies, read `references/frontend-design-gate.md`. Activation includes visible UI/front-end requests, `.tsx`/`.jsx`/CSS/Tailwind/design-token/Storybook/route/page/component/shared primitive changes, screenshot or responsive acceptance, and visually sensitive product contexts such as Bokbuk or orbit-dashboard. Backend-only work must skip this gate unless it changes rendered behavior or visual evidence requirements.
 
 The router inspects request text, issue body and comments, PR files, diff paths, and repository or product conventions. It must emit this stable contract:
 
@@ -233,11 +236,13 @@ git -C <repo-root> worktree add <repo-root>/.worktrees/<branch-name> -b <branch-
    - Quality Lens Router Output with applicable gate families, skipped gates, and repo/product conventions that outrank generic rules;
    - Evidence Contract from `references/evidence-contract.md`, including required evidence, applied UI/deploy/performance/bugfix/security/data/API templates, explicit `not-applicable: <reason>` items, and blocking evidence gaps;
    - Simplicity / Deletability Gate from `references/simplicity-deletability-gate.md`, including the instruction **small direct change first**, why any proposed abstraction is necessary, whether it clarifies a boundary or removes real repetition, and why SOLID/pattern use does not reduce human readability;
+   - for frontend-design work, Frontend Design Gate from `references/frontend-design-gate.md`, including aesthetic direction, main visual idea, typography/color/layout/motion choices, preserved product constraints, generic AI UI patterns avoided, and no forced abstraction for one-off UI changes;
    - repository root, absolute worktree path, branch, base branch, and base freshness result;
    - allowed files, forbidden files, and inspect-only files;
    - shared language, domain terms, deep-module boundaries, and gray-box boundaries;
    - test-first contract when feasible: failing test or expected behavior before implementation;
    - for frontend work, rendered evidence requirements: route evidence, viewport evidence, rendered DOM evidence, screenshot evidence, fallback evidence, and contract graph evidence;
+   - for frontend work with visual acceptance, screenshot/viewport/manual evidence conditions, including exact routes, desktop/mobile viewport matrix, browser or Storybook checks, and explicit `not-applicable: <reason>` classifications where evidence cannot be collected;
    - missing evidence classification for each unavailable item as `not-applicable: <reason>`, Medium, or High;
    - for analytics or privacy work, an explicit allowlist/denylist contract that excludes raw search terms, prompt titles or bodies, arbitrary user-entered text, email/name/profile identifiers, and full query strings by default;
    - worker implementation quality rules: prefer arrow functions where the repository style allows, keep each unit single-responsibility, isolate pure functions from side effects when practical, use TDD or unit tests for core behavior, and follow the repository's file naming plus companion test/story/helper conventions such as `ABC.styles.tsx`, `ABC.constants.tsx`, `ABC.types.tsx`, and `ABC.parts.tsx` when that pattern fits the codebase;
@@ -268,6 +273,7 @@ Use for independent PR or local-lane review. Treat review as an AI code quality 
    - `gh pr checks <num>` when available; failing CI is Critical unless proven unrelated.
    - issue body and comments, Quality Lens Router Output, Evidence Contract, validation already run, skipped checks, constraints, Review Rubric, AI Code Quality Gate checklist, and merge-order context.
    - Simplicity / Deletability Gate notes from `references/simplicity-deletability-gate.md`, including any abstraction necessity claim and any human readability/deletability risk.
+   - For UI PRs, Frontend Design Review Gate notes from `references/frontend-design-gate.md`, including design intent, product fit, typography/hierarchy/spacing, palette, layout/grid/alignment/density/responsive behavior, useful performant motion, empty/loading/error states, keyboard/contrast/semantics/reduced motion/focus states, minimal code, and screenshot/viewport/Storybook/browser/manual evidence.
 3. For each PR, create a fresh reviewer agent with `spawn_agent`. Do not reuse the author or implementation agent for review, and do not let an agent review its own code.
 4. Give the reviewer only the review packet: issue context, diff or PR URL, files changed, validation already run, skipped checks, constraints, merge-order context, Review Rubric, and AI Code Quality Gate checklist.
    - Require reviewers to cite CI status as evidence when available, but to focus findings on behavior intent, issue scope, code quality, architecture and domain boundaries, maintainability, and deletability.
@@ -298,6 +304,7 @@ Every REVIEW_BRIEF or review packet must include this AI Code Quality Gate check
 - **Failure Semantics**: Are failures explicit, testable, and observable rather than silently swallowed or converted into misleading success? Do client-side patches avoid masking server/request/auth/data boundary defects, and do auth, redirect, and data-boundary checks use more than mock-only tests?
 - **Human Reviewability**: Is the data flow clear, the diff small enough to review, and the contract covered by tests or a concrete validation signal?
 - **Rendered Evidence**: For frontend changes, did the PR provide rendered evidence covering route evidence, viewport evidence, rendered DOM evidence, screenshot evidence, fallback evidence, and contract graph evidence, or classify each missing item as `not-applicable: <reason>`, Medium, or High?
+- **Frontend Design Review Gate**: For UI PRs, does the implementation match the Frontend Design Brief, preserve product-specific constraints over novelty, avoid generic AI/template UI, include design direction plus visual evidence, and avoid one-off wrapper/provider/design-system layers or other forced abstraction?
 - **Transitive rendered fallback**: Did review audit list/detail surfaces, shared card/media primitives, missing media, empty DB/data, nullable fields, and mapper defaults? If a shared primitive is out of scope, did the PR include callsite mitigation or a follow-up/blocker?
 - **Analytics privacy**: For analytics/privacy changes, does the diff enforce the allowlist/denylist contract by excluding raw search terms, prompt titles or bodies, arbitrary user-entered text, email/name/profile identifiers, and full query strings by default?
 
@@ -339,6 +346,7 @@ The plan must include:
 - Quality Lens Router Output with applicable and skipped gate families
 - Evidence Contract with required evidence, applied UI/deploy/performance/bugfix/security/data/API templates, exact artifacts or commands expected when known, and missing-evidence severity rules
 - Simplicity / Deletability Gate output from `references/simplicity-deletability-gate.md`, including the question "why is this abstraction necessary?", the small direct change alternative, and a human readability/deletability check. State that SOLID does not outrank readability.
+- For UI/frontend/design work, a `Frontend Design Brief` from `references/frontend-design-gate.md` before implementation units, covering product/user context, existing design constraints/system, aesthetic direction, memorable visual idea, typography, color/theme, layout/spatial composition, motion/interactions, background/detail, accessibility constraints, and explicit anti-goals.
 - Review agent checklist
 
 Do not create issues or edit source files unless the user separately asks outside this subcommand's read-only source-code boundary.

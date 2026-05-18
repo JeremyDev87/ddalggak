@@ -17,6 +17,10 @@ const simplicityReferencePaths = [
   path.join(skillDir, "references", "simplicity-deletability-gate.md"),
   path.join(rootDir, "ddalggak", "references", "simplicity-deletability-gate.md"),
 ];
+const frontendDesignReferencePaths = [
+  path.join(skillDir, "references", "frontend-design-gate.md"),
+  path.join(rootDir, "ddalggak", "references", "frontend-design-gate.md"),
+];
 const packagePath = path.join(rootDir, "package.json");
 const cliPath = path.join(rootDir, "bin", "ddalggak.js");
 const dispatchPath = path.join(rootDir, "bin", "lib", "dispatch.mjs");
@@ -97,6 +101,10 @@ const requiredSkillAnchors = [
   "No evidence, no readiness or approval",
   "Simplicity / Deletability Gate",
   "references/simplicity-deletability-gate.md",
+  "Frontend Design Gate",
+  "references/frontend-design-gate.md",
+  "Frontend Design Brief",
+  "Frontend Design Review Gate",
   "small direct change first",
   "why any proposed abstraction is necessary",
   "one-off abstraction",
@@ -144,6 +152,10 @@ const requiredLegacySkillAnchors = [
   "PR ready/APPROVE",
   "Simplicity / Deletability Gate",
   "references/simplicity-deletability-gate.md",
+  "Frontend Design Gate",
+  "references/frontend-design-gate.md",
+  "Frontend Design Brief",
+  "Frontend Design Review Gate",
   "small direct change first",
   "why is this abstraction necessary?",
   "one-off abstraction",
@@ -193,6 +205,39 @@ const requiredSimplicityReferenceAnchors = [
   "do not outrank human readability",
   "client-side patch",
   "Non-Goals",
+];
+const requiredFrontendDesignReferenceAnchors = [
+  "Frontend Design Gate",
+  "summarizes and adapts",
+  "Activation",
+  "backend/API-only",
+  "narrow functional bugfix",
+  "Frontend Design Brief",
+  "Product/user context",
+  "Existing product constraints",
+  "Aesthetic direction",
+  "Memorable visual idea",
+  "Typography direction",
+  "Color/theme direction",
+  "Layout/spatial composition",
+  "Motion/interactions",
+  "Accessibility constraints",
+  "Explicit anti-goals",
+  "generic AI/template",
+  "Product-specific constraints outrank novelty",
+  "Implementation Handoff",
+  "screenshot/viewport/manual evidence",
+  "small direct change first",
+  "Do not force a new abstraction",
+  "Frontend Design Review Gate",
+  "typography, hierarchy",
+  "layout, grid, alignment",
+  "responsive behavior",
+  "empty, loading, and error states",
+  "keyboard access",
+  "Blocking examples",
+  "generic AI/template layout",
+  "one-off wrapper",
 ];
 
 const failures = [];
@@ -406,6 +451,33 @@ if (codexSimplicityExists && legacySimplicityExists) {
   }
 }
 
+const [codexFrontendDesignPath, legacyFrontendDesignPath] = frontendDesignReferencePaths;
+const codexFrontendDesignExists = statSync(codexFrontendDesignPath, { throwIfNoEntry: false })?.isFile();
+const legacyFrontendDesignExists = statSync(legacyFrontendDesignPath, { throwIfNoEntry: false })?.isFile();
+if (!codexFrontendDesignExists) {
+  fail(`${path.relative(rootDir, codexFrontendDesignPath)} must exist for Frontend Design Gate parity.`);
+}
+if (!legacyFrontendDesignExists) {
+  fail(`${path.relative(rootDir, legacyFrontendDesignPath)} must exist for Frontend Design Gate parity.`);
+}
+if (codexFrontendDesignExists && legacyFrontendDesignExists) {
+  const codexFrontendDesignText = readText(codexFrontendDesignPath);
+  const legacyFrontendDesignText = readText(legacyFrontendDesignPath);
+  if (codexFrontendDesignText !== legacyFrontendDesignText) {
+    fail("Frontend Design Gate references must match between .codex and ddalggak directories.");
+  }
+  const missingFrontendDesignAnchors = requiredFrontendDesignReferenceAnchors.filter(
+    (anchor) => !codexFrontendDesignText.includes(anchor),
+  );
+  if (missingFrontendDesignAnchors.length > 0) {
+    fail(
+      `Frontend Design Gate anchors missing:\n${missingFrontendDesignAnchors
+        .map((anchor) => `  - ${anchor}`)
+        .join("\n")}`,
+    );
+  }
+}
+
 const packageJson = JSON.parse(readText(packagePath));
 const packageFiles = Array.isArray(packageJson.files) ? packageJson.files : [];
 if (!packageFiles.includes(".codex/")) {
@@ -464,14 +536,27 @@ for (const subcommand of requiredRouterSubcommands) {
   if (!section.includes("Simplicity / Deletability")) {
     fail(`ddalggak ${subcommand} --show-doc section must expose Simplicity / Deletability Gate.`);
   }
+  if (!section.includes("Frontend Design")) {
+    fail(`ddalggak ${subcommand} --show-doc section must expose Frontend Design Gate.`);
+  }
   if (subcommand === "plan" && !section.includes("why is this abstraction necessary?")) {
     fail("ddalggak plan --show-doc section must expose the abstraction necessity question.");
+  }
+  if (subcommand === "plan" && !section.includes("Frontend Design Brief")) {
+    fail("ddalggak plan --show-doc section must expose Frontend Design Brief.");
   }
   if (subcommand === "start" && !section.includes("small direct change first")) {
     fail("ddalggak start --show-doc section must expose small direct change first.");
   }
+  if (subcommand === "start") {
+    for (const startAnchor of ["aesthetic direction", "screenshot/viewport/manual evidence"]) {
+      if (!section.includes(startAnchor)) {
+        fail(`ddalggak start --show-doc section must expose ${startAnchor}.`);
+      }
+    }
+  }
   if (subcommand === "review") {
-    for (const reviewAnchor of ["one-off abstraction", "human readability"]) {
+    for (const reviewAnchor of ["one-off abstraction", "human readability", "Frontend Design Review Gate", "generic AI/template", "screenshot/manual verification"]) {
       if (!section.includes(reviewAnchor)) {
         fail(`ddalggak review --show-doc section must expose ${reviewAnchor}.`);
       }
