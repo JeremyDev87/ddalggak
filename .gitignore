@@ -2,6 +2,7 @@
 node_modules/
 .ddalggak/
 .worktrees/
+.DS_Store
 BRIEF.md
 REVIEW_BRIEF_PR*.md
 FIX_BRIEF_PR*.md
