@@ -154,6 +154,10 @@ gh issue view <number> --json number,title,body,labels,assignees,milestone,url,c
 이슈 body + comments에서 파악할 항목: Goal / Why / 작업 내용 / 완료 기준 / 연관 이슈·블로커.  
 comments는 body에 누락된 맥락·설계 결정·요구사항 변경을 담고 있는 경우가 많다. 최신 코멘트가 body와 충돌하면 코멘트를 우선한다.
 
+### Quality Lens Router Output
+
+각 worker BRIEF에는 `references/quality-lens-router.md` 기준으로 applicable gate families, skipped gates, repo/product conventions that outrank generic rules를 명시한다. backend-only 작업은 rendered user-facing contract, deploy surface, auth/security boundary, data privacy contract, performance claim에 직접 영향이 없으면 frontend/UI/domain gates를 skipped로 기록한다.
+
 **Clarification Gate 판정**:
 - 명확: Goal, 변경 범위, 완료 기준, 검증 방법이 모두 식별됨 → 진행
 - 부분적으로 불명확: 구현 가능하지만 선택지가 2개 이상임 → 객관식 질문 후 진행
@@ -473,7 +477,7 @@ echo "FIX_BRIEF*.md" >> .worktrees/<branch>/.gitignore
    body 전문을 그대로 삽입하고 이어서 코멘트는 body에 없는 요구사항·설계 결정·범위 변경만 발췌.
    최신 코멘트가 body와 충돌하면 코멘트를 우선한다. 코멘트가 없거나 body와 동일하면 "없음")
 
-## Quality Lens Router Output
+### Quality Lens Router Output
 - Applicable gate families:
 - Skipped gates:
 - Repo/product conventions that outrank generic rules:
@@ -604,6 +608,10 @@ Cross-Review Loop의 리뷰는 칭찬이나 요약이 아니라 **AI code qualit
 - 삭제 가능성: 새 abstraction이 나중에 안전하게 제거·수정 가능한지 본다.
 - 명확한 data flow: 상태·fallback·type escape가 실패를 숨기거나 ownership을 흐리지 않는지 본다.
 - 복잡도 증가를 defect로 취급: self-created complexity, forced modularization, 불필요한 abstraction/helper/module/provider/wrapper, duplication, silent fallback, local state, client-side patch로 boundary 문제 덮기, `any`/type assertion 같은 type escape 증가는 최소 Medium 이상으로 기록한다. failure semantics를 숨기거나 delivered contract를 이해·수정·삭제하기 어렵게 만들면 High로 본다.
+
+### Quality Lens Router Output
+
+각 REVIEW_BRIEF에는 `references/quality-lens-router.md` 기준의 applicable gate families, skipped gates, repo/product conventions that outrank generic rules를 포함한다. 리뷰어는 이 출력으로 unrelated backend-only diff에 frontend/UI/deploy/mobile gate를 과적용하지 않는다.
 
 ### Step 0. 대상 PR 확정
 
@@ -926,6 +934,10 @@ uncommitted 작업이 있으면 즉시 중단하고 사용자에게 보고한다
 GitHub issue 등록 전, 저성능 모델이 실행 가능하고 review agent가 평가 가능한 구체 구현 계획을 작성한다. `/ddalggak issue`의 소스 자료가 된다.
 
 구현 코드를 작성하지 않는다. 사용자가 명시적으로 요청하지 않으면 GitHub issue도 등록하지 않는다.
+
+### Quality Lens Router Output
+
+계획서는 구현 단위보다 먼저 `references/quality-lens-router.md` 기준의 applicable gate families, skipped gates, repo/product conventions that outrank generic rules를 기록한다. UI, React/Next, component API, motion, deploy/token, bugfix, backend-only 같은 작업 유형별 gate 적용·생략 이유를 명시한다.
 
 ### Step -1. 인수 처리
 

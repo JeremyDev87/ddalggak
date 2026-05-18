@@ -218,6 +218,26 @@ function countOccurrences(text, term) {
   return count;
 }
 
+
+function extractLegacySection(text, heading) {
+  const lines = text.split("\n");
+  const target = `## ${heading}`;
+  const startIdx = lines.findIndex((line) => line.trim() === target);
+  if (startIdx === -1) {
+    return "";
+  }
+
+  let endIdx = lines.length;
+  for (let index = startIdx + 1; index < lines.length; index += 1) {
+    if (lines[index].startsWith("## ")) {
+      endIdx = index;
+      break;
+    }
+  }
+
+  return lines.slice(startIdx, endIdx).join("\n");
+}
+
 function verifySkillFile(filePath, { label, requiredAnchors }) {
   if (!statSync(filePath, { throwIfNoEntry: false })?.isFile()) {
     fail(`${label} must exist.`);
@@ -327,6 +347,15 @@ const legacySkillText = statSync(legacySkillPath, { throwIfNoEntry: false })?.is
 for (const [subcommand, heading] of Object.entries(requiredLegacyHeadings)) {
   if (!legacySkillText.includes(`## ${heading}`)) {
     fail(`ddalggak/SKILL.md must include ## ${heading} for '${subcommand}'.`);
+  }
+}
+
+const requiredRouterSubcommands = ["plan", "start", "review"];
+for (const subcommand of requiredRouterSubcommands) {
+  const heading = requiredLegacyHeadings[subcommand];
+  const section = extractLegacySection(legacySkillText, heading);
+  if (!section.includes("Quality Lens Router Output")) {
+    fail(`ddalggak ${subcommand} --show-doc section must expose Quality Lens Router Output.`);
   }
 }
 
