@@ -65,7 +65,7 @@ Use Codex App native orchestration names in all briefs and status records:
 - Ask structured questions with `request_user_input` when available; otherwise ask one concise plain question with explicit choices.
 - Create a heartbeat automation only when the user explicitly asks for later continuation. Do not create timed follow-up automation as a default polling mechanism.
 
-The state file is the source of truth for lane IDs, worktree paths, branch names, issue numbers, PR URLs, validation commands, review verdicts, and unresolved blockers.
+The state file is the source of truth for lane IDs, worktree paths, branch names, issue numbers, the single integration PR URL, validation commands, review verdicts, and unresolved blockers.
 
 ## Global Guardrails
 
@@ -76,17 +76,19 @@ Apply these rules to every subcommand without weakening the routing or code-modi
 - **No implicit dependencies**: do not give workers vague choices such as "add a library or parse text". Before any new import or package is used, prove it already exists in the repository. If uncertain, require the standard library or an existing repository pattern.
 - **No force-push fix loop by default**: fixes after review use a new commit and ordinary push. Amend plus force push is allowed only after explicit user approval and after branch-protection or safety constraints are checked.
 - **Reviewer isolation**: reviewers do not switch branches inside an implementation worktree. Prefer `gh pr diff`, `gh pr view --json files`, and isolated temporary checkouts when build or test reproduction is needed.
-- **Merge-order context**: when PRs in the same wave depend on merge order or compare against different baselines, review packets must name predecessor PRs, comparison targets, and whether base mismatch is expected.
-- **Completion is not test pass**: a lane is incomplete until tests, commit, push, draft PR, and requested review or handoff signals are verified. Idle notifications are not completion evidence.
+- **Commit-lane order context**: when lanes in the same PR depend on commit order or compare against different baselines, review packets must name predecessor commits or contracts, comparison targets, and whether base mismatch is expected.
+- **Completion is not test pass**: a lane is incomplete until tests, lane commit or patch, integration handoff, and requested review signals are verified. Idle notifications are not completion evidence. Publish completion happens on the single integration PR, not per lane.
 - **PR quality defaults**: branch names must describe purpose and must not include dates or timestamps. Commit messages and PR descriptions must include What and Why, and PR descriptions must also include Validation and Risk.
-- **Exact command rescue**: if a worker repeatedly idles after commit without push or PR, send the exact `git push` and `gh pr create` commands verified by the conductor instead of a generic reminder.
+- **No stacked PRs by default**: for 박정욱/default ddalggak workflows, do not create stacked PRs, branch matrices, or lane-specific PRs. When work can be parallelized, use one base branch, one integration branch, one PR, and separate commits for independent lanes. Only use stacked PRs when the user explicitly asks for them.
+- **Single-PR commit-lane planning**: every parallel plan must name owned files, must-not-touch files, why each lane is independent, lane-specific evidence/validation, and the integration gate between commit groups. Shared files, shared contracts, or runtime flips make lanes serial commits in the same PR, not independent parallel writers.
+- **Exact handoff rescue**: if a worker repeatedly idles after implementation without lane evidence, send exact validation, patch/export, or integration-handoff commands verified by the conductor instead of a generic reminder. Do not rescue by creating lane-specific PRs unless the user explicitly requested stacked PRs.
 - **Gitignored and local-only handling**: for ignored, local-only, permission-cache, or repo-external paths, include `git check-ignore -v <path>` in the brief when applicable. Do not force such files into PR workflow; use direct local modification signals and manual issue handling when the path cannot be represented in git.
 - **Medium fix restraint**: Medium findings are non-blocking by default. If a Medium or Low fix depends on an unmerged PR output or shared contract transition, prefer TODO or follow-up issue over speculative code changes.
 - **Markdown surgery discipline**: when editing Markdown or skill files, preserve existing behavior, update headings and numbering immediately, keep fenced blocks valid, and re-check the diff for accidental block deletion.
 - **Strategy versus tactics**: worker agents execute tactical code changes. The conductor and reviewers protect system design, boundaries, validation, and deletability; code that merely works is lower priority than code understandable, changeable, and removable in six months.
 - **Self-created complexity is a defect**: before adding helpers, modules, providers, wrappers, or fallback branches, prefer deletion, direct code, and boundary clarification. Forced modularization must prove it reduces real repeated code rather than making an AI patch look organized. Client-side patches must not replace correct server, request, auth, or data boundary fixes, and mock-only tests are insufficient for auth, redirect, or data-boundary behavior.
 - **Result criteria first**: briefs should emphasize success criteria, allowed files, forbidden conditions, validation commands, and completion signals over long step-by-step scripts, while safety, scope, and completion signals remain absolute rules.
-- **Absorb repeated lessons**: stale repositories, hallucinated dependencies, unsafe force-push loops, ignored-file mistakes, and missing worker commit/push/PR steps are default guardrails for every start, review, fix, and ship flow.
+- **Absorb repeated lessons**: stale repositories, hallucinated dependencies, unsafe force-push loops, ignored-file mistakes, and missing worker validation or integration handoff steps are default guardrails for every start, review, fix, and ship flow.
 - **Evidence Contract is mandatory for readiness claims**: `plan`, `start`, and `review` must read `references/evidence-contract.md` whenever work claims completion, PR readiness, approval, deploy readiness, performance, UI, security, data, or API behavior. The contract defines required evidence, applied templates, explicit `not-applicable: <reason>` items, and blocking evidence gaps.
 - **Simplicity / Deletability Gate is mandatory for code-shape decisions**: `plan`, `start`, and `review` must read `references/simplicity-deletability-gate.md` whenever work may add code, abstraction, indirection, helpers, providers, wrappers, fallbacks, or patterns. Start from the smallest direct change that preserves real boundaries. SOLID and named patterns are useful tools, but they do not outrank human readability or deletability.
 - **Frontend Design Gate is conditional for visual work**: `plan`, `start`, and `review` must read `references/frontend-design-gate.md` when request text, issue/PR files, diff paths, or product context indicate UI/frontend/design/page/component/layout/polish/responsive/dashboard/card/CTA/typography/animation/screenshot work. Backend/API-only, test-only, or narrow functional bugfix work should skip or keep this gate lightweight and record the reason. Product-specific constraints outrank novelty, and forced abstraction is blocked for one-off UI changes.
@@ -165,8 +167,10 @@ Maintain `.ddalggak/session-state.json` when running multi-lane or multi-step fl
 
 ```json
 {
-  "phase": "wave-1",
+  "phase": "commit-lane-integration",
   "base_branch": "origin/master",
+  "integration_branch": "feature/single-pr-commit-lanes",
+  "integration_pr_url": null,
   "lanes": [
     {
       "id": "issue-20",
@@ -178,7 +182,7 @@ Maintain `.ddalggak/session-state.json` when running multi-lane or multi-step fl
       "state": "briefed",
       "allowed_files": [],
       "validation": [],
-      "pr_url": null,
+      "integration_commit": null,
       "review": null,
       "blocker": null
     }
@@ -186,15 +190,16 @@ Maintain `.ddalggak/session-state.json` when running multi-lane or multi-step fl
 }
 ```
 
-Use lane states such as `planned`, `briefed`, `implemented`, `validated`, `review_loop_passed`, `pr_opened`, `pr_review_approved`, and `blocked`. Do not call a lane complete immediately after code-writing.
+Use lane states such as `planned`, `briefed`, `implemented`, `validated`, `review_loop_passed`, `integrated`, `single_pr_opened`, `single_pr_review_approved`, and `blocked`. Do not call a lane complete immediately after code-writing.
 
 ## Shared Workflow Rules
 
 - Inspect whether work can be split into independent lanes before choosing sequential execution.
 - Parallel lanes must not share write surfaces, generated artifacts, branch mutation, or unpublished code dependencies.
+- Default PR shape is one base branch, one integration branch, one PR, and multiple separated commits. Lane-specific PRs are forbidden unless the user explicitly overrides the no-stacked default.
 - In one shared checkout, serialize branch mutation, push, and PR creation.
-- In isolated worktrees, implementation, validation, and PR creation may proceed per lane after each lane clears its local review gate.
-- Final merge gates and whole-repo verification are serialized unless the user explicitly chooses otherwise.
+- In isolated worktrees, implementation and validation may proceed per lane, but lane outputs must be integrated into the single PR as separate commits unless stacked PRs were explicitly requested.
+- Final PR readiness gates and whole-repo verification are serialized unless the user explicitly chooses otherwise.
 - Protected default-branch pushes, release tags, package publication, and release-triggering workflows require an explicit pause for confirmation.
 - Hard blockers include the same existing file, same generated artifact, shared registry or barrel, shared schema, unpublished code dependency, gitignored or local-only path, repo-external file, and atomic transition of the same delivery or output contract.
 - Soft blockers include tracker order, review preference, or semantic ordering with no file, contract, or unpublished-code dependency.
@@ -228,11 +233,14 @@ Use for implementation from one or more GitHub issues.
    - Hard blockers: same existing file, same generated artifact, shared registry or barrel, shared schema, unpublished code dependency, gitignored or local-only file, repo-external file, or same delivery/output contract requiring atomic transition.
    - Soft blockers: tracker order, review preference, or semantic ordering with no file, contract, or unpublished-code dependency.
    - Only hard blockers reduce the number of simultaneous implementation lanes.
-5. Build waves.
-   - Wave 1 is the largest set with no hard blockers.
-   - Later waves must name the exact blocking file, contract, ignored/local-only path, repo-external path, or unpublished dependency.
-6. Prepare isolated worktrees.
+5. Build a single-PR commit-lane plan.
+   - Create a `Single-PR Commit-Lane Strategy` before spawning agents: one base branch, one integration branch, one PR, and separate commits for independent lanes.
+   - Emit a lane matrix with `Lane`, `Issue/scope`, `Boundary`, `Owned files`, `Independent because`, `Must not touch`, `Evidence / validation`, and `Commit message`.
+   - Add a `Parallelization Decision` section: `Parallel lanes` have disjoint owned files and no shared runtime flip; `Serial lanes` share files/contracts and must be integrated as ordered commits; `Blocked lanes` depend on open PRs, missing credentials, unclear acceptance criteria, or repo-external state.
+   - Later commit groups must name the exact blocking file, contract, ignored/local-only path, repo-external path, or unpublished dependency.
+6. Prepare isolated worktrees or patch lanes without creating lane PRs.
    - Branch names must be purpose-centered, such as `docs/pr-quality-and-label-filtering` or `fix/issue-42-pr-quality`, and must not contain dates, timestamps, or generated time suffixes.
+   - Worker branches/worktrees may produce implementation patches or local commits, but the conductor/integrator applies approved lane outputs to the integration branch as separate commits and opens only one draft PR by default.
    - Keep `.worktrees/` local by writing to `.git/info/exclude`, not to the tracked ignore file:
 
 ```bash
@@ -240,7 +248,7 @@ grep -qxF '.worktrees/' <repo-root>/.git/info/exclude || printf '\n.worktrees/\n
 git -C <repo-root> worktree add <repo-root>/.worktrees/<branch-name> -b <branch-name>
 ```
 
-7. Present the execution plan and ask for confirmation before spawning implementation lanes.
+7. Present the execution plan and ask for confirmation before spawning implementation lanes. The plan must explicitly say `Stacked PRs: forbidden unless explicitly requested` and show which lanes are parallel, serial, or blocked.
 8. Write a brief per lane. Each brief must include:
    - task, issue URL, issue body summary, and issue comments summary;
    - latest comment conflicts or supplements when present;
@@ -265,16 +273,17 @@ git -C <repo-root> worktree add <repo-root>/.worktrees/<branch-name> -b <branch-
    - no-new-dependency rule with proof required before any new import;
    - ignored/local-only handling with `git check-ignore -v <path>` when relevant;
    - requirement to use absolute worktree paths or `git -C <worktree>` for git and file commands;
-   - commit format, draft PR format, and stop conditions;
-   - commit and draft PR body requirements: What, Why, Validation, Risk, and issue references when applicable;
-   - completion rule: test pass is insufficient; commit, push, and draft PR are required when publish is requested.
+   - commit-lane metadata: owned files, must-not-touch files, independence reason, lane-specific evidence, and the exact commit message;
+   - commit format, single draft PR format, and stop conditions;
+   - commit and draft PR body requirements: What, Why, Validation, Risk, the lane matrix, and issue references when applicable;
+   - completion rule: test pass is insufficient; lane patch/commit, validation, and integration handoff are required when publish is requested.
 9. Use `spawn_agent` for each approved lane and record agent IDs in `.ddalggak/session-state.json`.
-10. Progressive review start.
-   - Use `wait_agent` to collect lane updates, but do not wait for every worker before starting review.
-   - When a branch reports `PUSHED` or idles after apparent completion, run `gh pr list --head <branch>` to verify PR existence.
-   - If a PR exists, start review for that PR while other workers continue.
-   - If there is an idle signal without a PR, it is not complete. If only push or PR creation is missing after a commit, send exact `git push` and `gh pr create` commands with `send_input`.
-11. A lane is not terminal until validation, adversarial review, accepted Critical and High fixes, commit, push, draft PR, and requested publish steps are finished or blocked.
+10. Integrate lane outputs into the single PR branch.
+   - Use `wait_agent` to collect lane updates, but do not let workers open lane-specific PRs by default.
+   - Apply each approved lane to the integration branch as a separate commit.
+   - Run the lane's validation before committing and run integration gates between commit groups when shared contracts are affected.
+   - If a worker reports only test pass or an idle state, it is not complete. Request the missing patch, validation evidence, or integration handoff with exact commands.
+11. Open or update one draft PR for the integration branch, then run progressive review on that integrated PR. A lane is not terminal until validation, adversarial review, accepted Critical and High fixes, integration commit, push, and requested publish steps are finished or blocked.
 
 ## `review` - Cross-Review Loop
 
@@ -285,13 +294,13 @@ Use for independent PR or local-lane review. Treat review as an AI code quality 
    - `gh pr view <num> --json title,body,files,commits,baseRefName,headRefName,reviews,statusCheckRollup`
    - `gh pr diff <num>`
    - `gh pr checks <num>` when available; failing CI is Critical unless proven unrelated.
-   - issue body and comments, Quality Lens Router Output, Evidence Contract, validation already run, skipped checks, constraints, Review Rubric, AI Code Quality Gate checklist, and merge-order context.
+   - issue body and comments, Quality Lens Router Output, Evidence Contract, validation already run, skipped checks, constraints, Review Rubric, AI Code Quality Gate checklist, and commit-lane order context.
    - Simplicity / Deletability Gate notes from `references/simplicity-deletability-gate.md`, including any abstraction necessity claim and any human readability/deletability risk.
    - For UI PRs, Frontend Design Review Gate notes from `references/frontend-design-gate.md`, including design intent, product fit, typography/hierarchy/spacing, palette, layout/grid/alignment/density/responsive behavior, useful performant motion, empty/loading/error states, keyboard/contrast/semantics/reduced motion/focus states, minimal code, and screenshot/viewport/Storybook/browser/manual evidence.
    - For React/Next, component API, motion, Vercel deployment/token, web design/a11y, or React Native/Expo PRs, Vercel Agent Skills Gate notes from `references/vercel-agent-skills-gates.md`, including React/Next correctness, performance evidence, component API quality, animation meaning, UI/a11y evidence, Vercel deploy safety, and React Native/Expo constraints.
    - Continuous Regression Library notes from `references/regression-library.md` when findings repeat a Medium/High AI code-quality pattern or resemble an existing class such as generic AI UI, unnecessary provider/helper/wrapper, silent fallback, server/client boundary violation, token leakage, screenshot-free UI approval, production deploy without explicit request, overfitted incident rule, test-after instead of TDD, or readability-hostile SOLID/pattern application.
-3. For each PR, create a fresh reviewer agent with `spawn_agent`. Do not reuse the author or implementation agent for review, and do not let an agent review its own code.
-4. Give the reviewer only the review packet: issue context, diff or PR URL, files changed, validation already run, skipped checks, constraints, merge-order context, Review Rubric, and AI Code Quality Gate checklist.
+3. For each integrated PR or local lane diff, create a fresh reviewer agent with `spawn_agent`. Do not reuse the author or implementation agent for review, and do not let an agent review its own code.
+4. Give the reviewer only the review packet: issue context, diff or PR URL, files changed, validation already run, skipped checks, constraints, commit-lane order context, Review Rubric, and AI Code Quality Gate checklist.
    - Require reviewers to cite CI status as evidence when available, but to focus findings on behavior intent, issue scope, code quality, architecture and domain boundaries, maintainability, and deletability.
    - Require reviewers to compare the PR body, issue criteria, validation, screenshots/logs/responses, and other artifacts against the Evidence Contract. Missing required evidence is a High blocking finding, and review output must not conclude `APPROVE` or PR-ready while a required evidence gap remains.
    - Require reviewers to suggest a **Regression Library Candidate** when a repeated Medium/High pattern is not covered by the Continuous Regression Library. The suggestion must generalize the class-level failure and include a detection signal, blocking review rule, and minimal fixture/evidence idea; do not add transient incidents to memory.
@@ -359,7 +368,9 @@ The plan must include:
 - Forbidden files and inspect-only files
 - Implementation units
 - Conflict matrix, including ignored/local-only paths and repo-external paths
-- Waves
+- Single-PR Commit-Lane Strategy: one base branch, one integration branch, one PR, and stacked PRs forbidden unless explicitly requested
+- Commit-lane matrix with `Lane`, `Issue/scope`, `Boundary`, `Owned files`, `Independent because`, `Must not touch`, `Evidence / validation`, and `Commit message`
+- Parallelization Decision with `Parallel lanes`, `Serial lanes`, and `Blocked lanes`
 - Validation commands and success signals
 - Completion signals beyond test pass when publish is expected
 - Quality Lens Router Output with applicable and skipped gate families
@@ -374,7 +385,7 @@ Do not create issues or edit source files unless the user separately asks outsid
 
 ## `issue` - Plan To GitHub Issues
 
-Convert a plan into GitHub issues. Preserve file ownership, hard blockers, waves, prerequisites, validation, result criteria, and review checklists. Parent tracker issues should not be assigned implementation write surfaces. Do not edit repository files.
+Convert a plan into GitHub issues. Preserve file ownership, hard blockers, single-PR commit-lane strategy, prerequisites, validation, result criteria, and review checklists. Every generated implementation issue must include `Owned files`, `Must not touch`, `Parallelization note`, `Commit lane suggestion`, `Validation/evidence`, and `Dependencies / blocked by`. Parent tracker issues should not be assigned implementation write surfaces; they should contain a child lane table that marks which children can run in parallel, which must be serial commits, and which are blocked. Do not edit repository files.
 
 ## `ship` - Publish Current Lane
 
@@ -455,7 +466,7 @@ lane_completion_state: review_loop_passed|review_loop_blocked
 - Pulling gitignored, local-only, permission-cache, or repo-external files into a PR.
 - Over-fixing Medium findings that depend on unmerged PRs or shared contracts.
 - Losing behavior during Markdown or skill block replacement.
-- Forgetting merge-order context for same-wave code and docs or follow-up PRs.
+- Forgetting commit-lane order context for same-PR code/docs or follow-up work.
 - Accepting frontend work with only CI/typecheck evidence and no rendered evidence.
 - Auditing a visible fallback at one callsite while missing transitive rendered fallback risks in list/detail surfaces, shared card/media primitives, missing media, empty DB/data, nullable fields, or mapper defaults.
 - Shipping analytics events without a privacy allowlist/denylist, especially raw search terms, prompt titles or bodies, arbitrary user-entered text, email/name/profile identifiers, or full query strings.
@@ -470,8 +481,8 @@ Before declaring a lane, review, or ship step complete, verify:
 - Ignored, local-only, generated, and repo-external paths were checked when relevant.
 - New dependencies or imports were either avoided or proven already present.
 - Subagent side effects were independently rechecked with git and GitHub commands.
-- Test pass is distinguished from commit, push, draft PR, and review completion.
-- Reviewer isolation and merge-order context were preserved.
+- Test pass is distinguished from lane handoff, integration commit, single PR publish, and review completion.
+- Reviewer isolation and commit-lane order context were preserved.
 - Accepted Critical and High findings were fixed and revalidated; remaining Medium/Low items are documented or deferred.
 - Markdown or skill edits preserve frontmatter, routing, code permissions, fenced blocks, and numbering.
 - Frontend changes include rendered evidence: route evidence, viewport evidence, rendered DOM evidence, screenshot evidence, fallback evidence, and contract graph evidence, or missing evidence classification as `not-applicable: <reason>`, Medium, or High.
