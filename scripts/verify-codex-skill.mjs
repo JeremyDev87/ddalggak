@@ -25,6 +25,10 @@ const vercelAgentSkillsReferencePaths = [
   path.join(skillDir, "references", "vercel-agent-skills-gates.md"),
   path.join(rootDir, "ddalggak", "references", "vercel-agent-skills-gates.md"),
 ];
+const regressionLibraryReferencePaths = [
+  path.join(skillDir, "references", "regression-library.md"),
+  path.join(rootDir, "ddalggak", "references", "regression-library.md"),
+];
 const packagePath = path.join(rootDir, "package.json");
 const cliPath = path.join(rootDir, "bin", "ddalggak.js");
 const dispatchPath = path.join(rootDir, "bin", "lib", "dispatch.mjs");
@@ -135,6 +139,11 @@ const requiredSkillAnchors = [
   "one-off abstraction",
   "human readability",
   "SOLID",
+  "Continuous Regression Library",
+  "references/regression-library.md",
+  "Regression Library Candidate",
+  "class-level risks",
+  "transient incidents in memory",
 ];
 const requiredLegacySkillAnchors = [
   "Rendered evidence gate",
@@ -207,6 +216,11 @@ const requiredLegacySkillAnchors = [
   "one-off abstraction",
   "human readability/deletability",
   "SOLID",
+  "Continuous Regression Library",
+  "references/regression-library.md",
+  "Regression Library Candidate",
+  "class-level failure",
+  "transient incident",
 ];
 
 const requiredRouterGateFamilies = [
@@ -232,7 +246,9 @@ const requiredRouterReferenceAnchors = [
   "Lightweight or limited gates",
   "backend-only: no rendered",
   "This priority is exact",
-  "do not pre-enforce a new regression library workflow from this router",
+  "references/regression-library.md",
+  "repeated Medium/High pattern",
+  "one-off incidents without a generalized detection signal",
 ];
 const requiredEvidenceReferenceAnchors = [
   "Evidence Contract",
@@ -330,6 +346,48 @@ const requiredVercelAgentSkillsReferenceAnchors = [
   "token values",
   "file/line/screenshot/viewport evidence",
 ];
+const requiredRegressionLibraryReferenceAnchors = [
+  "Continuous Regression Library",
+  "durable reference material, not session memory",
+  "Regression Library Candidate",
+  "Medium/High pattern",
+  "Symptom:",
+  "Generalized failure class:",
+  "Detection signal:",
+  "Blocking review rule:",
+  "Minimal fixture/evidence idea:",
+  "Related gates:",
+  "Generic AI UI",
+  "Unnecessary provider/helper/wrapper",
+  "Silent fallback",
+  "Server/client boundary violation",
+  "Token leakage",
+  "Screenshot-free UI approval",
+  "Production deploy without explicit request",
+  "Overfitted incident rule",
+  "Test-after instead of TDD",
+  "Readability-hostile pattern application",
+];
+const requiredRegressionLibraryClasses = [
+  "Generic AI UI",
+  "Unnecessary provider/helper/wrapper",
+  "Silent fallback",
+  "Server/client boundary violation",
+  "Token leakage",
+  "Screenshot-free UI approval",
+  "Production deploy without explicit request",
+  "Overfitted incident rule",
+  "Test-after instead of TDD",
+  "Readability-hostile pattern application",
+];
+const requiredRegressionLibraryFields = [
+  "Symptom:",
+  "Generalized failure class:",
+  "Detection signal:",
+  "Blocking review rule:",
+  "Minimal fixture/evidence idea:",
+  "Related gates:",
+];
 
 const failures = [];
 
@@ -410,6 +468,10 @@ function countOccurrences(text, term) {
 
 
 function extractLegacySection(text, heading) {
+  return extractMarkdownSection(text, heading);
+}
+
+function extractMarkdownSection(text, heading) {
   const lines = text.split("\n");
   const target = `## ${heading}`;
   const startIdx = lines.findIndex((line) => line.trim() === target);
@@ -596,6 +658,50 @@ if (codexVercelAgentSkillsExists && legacyVercelAgentSkillsExists) {
   }
 }
 
+const [codexRegressionLibraryPath, legacyRegressionLibraryPath] = regressionLibraryReferencePaths;
+const codexRegressionLibraryExists = statSync(codexRegressionLibraryPath, { throwIfNoEntry: false })?.isFile();
+const legacyRegressionLibraryExists = statSync(legacyRegressionLibraryPath, { throwIfNoEntry: false })?.isFile();
+if (!codexRegressionLibraryExists) {
+  fail(`${path.relative(rootDir, codexRegressionLibraryPath)} must exist for Continuous Regression Library parity.`);
+}
+if (!legacyRegressionLibraryExists) {
+  fail(`${path.relative(rootDir, legacyRegressionLibraryPath)} must exist for Continuous Regression Library parity.`);
+}
+if (codexRegressionLibraryExists && legacyRegressionLibraryExists) {
+  const codexRegressionLibraryText = readText(codexRegressionLibraryPath);
+  const legacyRegressionLibraryText = readText(legacyRegressionLibraryPath);
+  if (codexRegressionLibraryText !== legacyRegressionLibraryText) {
+    fail("Continuous Regression Library references must match between .codex and ddalggak directories.");
+  }
+  const missingRegressionLibraryAnchors = requiredRegressionLibraryReferenceAnchors.filter(
+    (anchor) => !codexRegressionLibraryText.includes(anchor),
+  );
+  if (missingRegressionLibraryAnchors.length > 0) {
+    fail(
+      `Continuous Regression Library anchors missing:\n${missingRegressionLibraryAnchors
+        .map((anchor) => `  - ${anchor}`)
+        .join("\n")}`,
+    );
+  }
+  for (const className of requiredRegressionLibraryClasses) {
+    const section = extractMarkdownSection(codexRegressionLibraryText, className);
+    if (!section) {
+      fail(`Continuous Regression Library class missing: ${className}`);
+      continue;
+    }
+    const missingFields = requiredRegressionLibraryFields.filter(
+      (field) => !section.includes(`- ${field}`),
+    );
+    if (missingFields.length > 0) {
+      fail(
+        `Continuous Regression Library class ${className} missing fields:\n${missingFields
+          .map((field) => `  - ${field}`)
+          .join("\n")}`,
+      );
+    }
+  }
+}
+
 const packageJson = JSON.parse(readText(packagePath));
 const packageFiles = Array.isArray(packageJson.files) ? packageJson.files : [];
 if (!packageFiles.includes(".codex/")) {
@@ -672,6 +778,11 @@ for (const subcommand of requiredRouterSubcommands) {
         fail(`ddalggak plan --show-doc section must expose ${planAnchor}.`);
       }
     }
+    for (const planRegressionAnchor of ["references/regression-library.md", "유용한 범위", "Regression Library Candidate"]) {
+      if (!section.includes(planRegressionAnchor)) {
+        fail(`ddalggak plan --show-doc section must mention regression-library reference only where useful (${planRegressionAnchor}).`);
+      }
+    }
   }
   if (subcommand === "start" && !section.includes("small direct change first")) {
     fail("ddalggak start --show-doc section must expose small direct change first.");
@@ -682,9 +793,14 @@ for (const subcommand of requiredRouterSubcommands) {
         fail(`ddalggak start --show-doc section must expose ${startAnchor}.`);
       }
     }
+    for (const startRegressionAnchor of ["references/regression-library.md", "유용한 범위", "class-level risk"]) {
+      if (!section.includes(startRegressionAnchor)) {
+        fail(`ddalggak start --show-doc section must mention regression-library reference only where useful (${startRegressionAnchor}).`);
+      }
+    }
   }
   if (subcommand === "review") {
-    for (const reviewAnchor of ["one-off abstraction", "human readability", "Frontend Design Review Gate", "generic AI/template", "screenshot/manual verification", "Vercel deploy safety", "component API quality", "animation meaning", "React Native/Expo"]) {
+    for (const reviewAnchor of ["one-off abstraction", "human readability", "Frontend Design Review Gate", "generic AI/template", "screenshot/manual verification", "Vercel deploy safety", "component API quality", "animation meaning", "React Native/Expo", "Continuous Regression Library", "Regression Library Candidate", "references/regression-library.md"]) {
       if (!section.includes(reviewAnchor)) {
         fail(`ddalggak review --show-doc section must expose ${reviewAnchor}.`);
       }
