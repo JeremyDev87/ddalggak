@@ -65,7 +65,7 @@ Use Codex App native orchestration names in all briefs and status records:
 - Ask structured questions with `request_user_input` when available; otherwise ask one concise plain question with explicit choices.
 - Create a heartbeat automation only when the user explicitly asks for later continuation. Do not create timed follow-up automation as a default polling mechanism.
 
-The state file is the source of truth for lane IDs, worktree paths, branch names, issue numbers, the single integration PR URL, validation commands, review verdicts, and unresolved blockers.
+The state file is the source of truth for lane IDs, worktree paths, branch names, issue numbers, the per-issue PR URL, validation commands, review verdicts, and unresolved blockers.
 
 ## Global Guardrails
 
@@ -77,10 +77,10 @@ Apply these rules to every subcommand without weakening the routing or code-modi
 - **No force-push fix loop by default**: fixes after review use a new commit and ordinary push. Amend plus force push is allowed only after explicit user approval and after branch-protection or safety constraints are checked.
 - **Reviewer isolation**: reviewers do not switch branches inside an implementation worktree. Prefer `gh pr diff`, `gh pr view --json files`, and isolated temporary checkouts when build or test reproduction is needed.
 - **Commit-lane order context**: when lanes in the same PR depend on commit order or compare against different baselines, review packets must name predecessor commits or contracts, comparison targets, and whether base mismatch is expected.
-- **Completion is not test pass**: a lane is incomplete until tests, lane commit or patch, integration handoff, and requested review signals are verified. Idle notifications are not completion evidence. Publish completion happens on the single integration PR, not per lane.
+- **Completion is not test pass**: a lane is incomplete until tests, lane commit or patch, integration handoff, and requested review signals are verified. Idle notifications are not completion evidence. Publish completion happens on the per-issue PR, not per lane.
 - **PR quality defaults**: branch names must describe purpose and must not include dates or timestamps. Commit messages and PR descriptions must include What and Why, and PR descriptions must also include Validation and Risk.
-- **No stacked PRs by default**: for 박정욱/default ddalggak workflows, do not create stacked PRs, branch matrices, or lane-specific PRs. When work can be parallelized, use one base branch, one integration branch, one PR, and separate commits for independent lanes. Only use stacked PRs when the user explicitly asks for them.
-- **Single-PR commit-lane planning**: every parallel plan must name owned files, must-not-touch files, why each lane is independent, lane-specific evidence/validation, and the integration gate between commit groups. Shared files, shared contracts, or runtime flips make lanes serial commits in the same PR, not independent parallel writers.
+- **Issue-PRs by default**: for 박정욱/default ddalggak workflows, do not create stacked PRs, branch matrices, or lane-specific PRs. When work can be parallelized, use one base branch and one PR per independent issue; use a single PR with issue-separated commits only when conflicts make separate PRs unsafe. Only use stacked PRs when the user explicitly asks for them.
+- **Conflict-fallback planning**: every parallel plan must name owned files, must-not-touch files, why each issue can have its own PR, lane-specific evidence/validation, and conflict gates. Shared files, shared contracts, or runtime flips make affected issues serial commits in one fallback PR, not the default for independent issues.
 - **Exact handoff rescue**: if a worker repeatedly idles after implementation without lane evidence, send exact validation, patch/export, or integration-handoff commands verified by the conductor instead of a generic reminder. Do not rescue by creating lane-specific PRs unless the user explicitly requested stacked PRs.
 - **Gitignored and local-only handling**: for ignored, local-only, permission-cache, or repo-external paths, include `git check-ignore -v <path>` in the brief when applicable. Do not force such files into PR workflow; use direct local modification signals and manual issue handling when the path cannot be represented in git.
 - **Medium fix restraint**: Medium findings are non-blocking by default. If a Medium or Low fix depends on an unmerged PR output or shared contract transition, prefer TODO or follow-up issue over speculative code changes.
@@ -196,10 +196,10 @@ Use lane states such as `planned`, `briefed`, `implemented`, `validated`, `revie
 
 - Inspect whether work can be split into independent lanes before choosing sequential execution.
 - Parallel lanes must not share write surfaces, generated artifacts, branch mutation, or unpublished code dependencies.
-- Default PR shape is one base branch, one integration branch, one PR, and multiple separated commits. Lane-specific PRs are forbidden unless the user explicitly overrides the no-stacked default.
+- Default PR shape is one base branch and one PR per independent issue. Lane-specific/per-issue PRs are required for independent issues; only conflicting issues use one fallback integration PR with separated issue commits.
 - In one shared checkout, serialize branch mutation, push, and PR creation.
-- In isolated worktrees, implementation and validation may proceed per lane, but lane outputs must be integrated into the single PR as separate commits unless stacked PRs were explicitly requested.
-- Final PR readiness gates and whole-repo verification are serialized unless the user explicitly chooses otherwise.
+- In isolated worktrees, implementation, validation, and issue PR creation may proceed per independent lane. Only hard-conflict lane outputs are integrated into a fallback single PR as separate commits.
+- Final issue PR readiness gates and whole-repo verification are serialized unless the user explicitly chooses otherwise.
 - Protected default-branch pushes, release tags, package publication, and release-triggering workflows require an explicit pause for confirmation.
 - Hard blockers include the same existing file, same generated artifact, shared registry or barrel, shared schema, unpublished code dependency, gitignored or local-only path, repo-external file, and atomic transition of the same delivery or output contract.
 - Soft blockers include tracker order, review preference, or semantic ordering with no file, contract, or unpublished-code dependency.
@@ -233,11 +233,11 @@ Use for implementation from one or more GitHub issues.
    - Hard blockers: same existing file, same generated artifact, shared registry or barrel, shared schema, unpublished code dependency, gitignored or local-only file, repo-external file, or same delivery/output contract requiring atomic transition.
    - Soft blockers: tracker order, review preference, or semantic ordering with no file, contract, or unpublished-code dependency.
    - Only hard blockers reduce the number of simultaneous implementation lanes.
-5. Build a single-PR commit-lane plan.
-   - Create a `Single-PR Commit-Lane Strategy` before spawning agents: one base branch, one integration branch, one PR, and separate commits for independent lanes.
-   - Emit a lane matrix with `Lane`, `Issue/scope`, `Boundary`, `Owned files`, `Independent because`, `Must not touch`, `Evidence / validation`, and `Commit message`.
-   - Add a `Parallelization Decision` section: `Parallel lanes` have disjoint owned files and no shared runtime flip; `Serial lanes` share files/contracts and must be integrated as ordered commits; `Blocked lanes` depend on open PRs, missing credentials, unclear acceptance criteria, or repo-external state.
-   - Later commit groups must name the exact blocking file, contract, ignored/local-only path, repo-external path, or unpublished dependency.
+5. Build an issue-PR conflict-fallback plan.
+   - Create an `Issue-PR Strategy with Conflict Fallback` before spawning agents: one base branch and one PR per independent issue; use a single PR with issue-separated commits only when conflicts make separate PRs unsafe.
+   - Emit a lane matrix with `Lane`, `Issue/scope`, `Boundary`, `Owned files`, `Independent because`, `Must not touch`, `Evidence / validation`, `Commit message`, and `PR shape`.
+   - Add a `Parallelization Decision` section: `Parallel issue PRs` have disjoint owned files and no shared runtime flip; `Conflict fallback serial commits` share files/contracts and must be integrated as ordered commits in one PR; `Blocked lanes` depend on open PRs, missing credentials, unclear acceptance criteria, or repo-external state.
+   - Conflict-fallback commit groups must name the exact blocking file, contract, ignored/local-only path, repo-external path, or unpublished dependency.
 6. Prepare isolated worktrees or patch lanes without creating lane PRs.
    - Branch names must be purpose-centered, such as `docs/pr-quality-and-label-filtering` or `fix/issue-42-pr-quality`, and must not contain dates, timestamps, or generated time suffixes.
    - Worker branches/worktrees may produce implementation patches or local commits, but the conductor/integrator applies approved lane outputs to the integration branch as separate commits and opens only one draft PR by default.
@@ -248,7 +248,7 @@ grep -qxF '.worktrees/' <repo-root>/.git/info/exclude || printf '\n.worktrees/\n
 git -C <repo-root> worktree add <repo-root>/.worktrees/<branch-name> -b <branch-name>
 ```
 
-7. Present the execution plan and ask for confirmation before spawning implementation lanes. The plan must explicitly say `Stacked PRs: forbidden unless explicitly requested` and show which lanes are parallel, serial, or blocked.
+7. Present the execution plan and ask for confirmation before spawning implementation lanes. The plan must explicitly say `Default PR shape: one PR per issue; conflict fallback only when issue conflicts require it` and show which lanes are parallel, serial, or blocked.
 8. Write a brief per lane. Each brief must include:
    - task, issue URL, issue body summary, and issue comments summary;
    - latest comment conflicts or supplements when present;
@@ -273,17 +273,17 @@ git -C <repo-root> worktree add <repo-root>/.worktrees/<branch-name> -b <branch-
    - no-new-dependency rule with proof required before any new import;
    - ignored/local-only handling with `git check-ignore -v <path>` when relevant;
    - requirement to use absolute worktree paths or `git -C <worktree>` for git and file commands;
-   - commit-lane metadata: owned files, must-not-touch files, independence reason, lane-specific evidence, and the exact commit message;
-   - commit format, single draft PR format, and stop conditions;
+   - issue-lane metadata: owned files, must-not-touch files, independence reason, lane-specific evidence, and the exact commit message;
+   - commit format, draft PR per issue format, and stop conditions;
    - commit and draft PR body requirements: What, Why, Validation, Risk, the lane matrix, and issue references when applicable;
    - completion rule: test pass is insufficient; lane patch/commit, validation, and integration handoff are required when publish is requested.
 9. Use `spawn_agent` for each approved lane and record agent IDs in `.ddalggak/session-state.json`.
-10. Integrate lane outputs into the single PR branch.
-   - Use `wait_agent` to collect lane updates, but do not let workers open lane-specific PRs by default.
-   - Apply each approved lane to the integration branch as a separate commit.
+10. Integrate lane outputs into the issue PR branch.
+   - Use `wait_agent` to collect lane updates, independent issue workers open their own PRs by default; conflicting lanes hand off patches/commits for the fallback PR.
+   - Apply only hard-conflict lanes to the fallback integration branch as issue-separated commits; independent lanes publish their own issue PRs.
    - Run the lane's validation before committing and run integration gates between commit groups when shared contracts are affected.
    - If a worker reports only test pass or an idle state, it is not complete. Request the missing patch, validation evidence, or integration handoff with exact commands.
-11. Open or update one draft PR for the integration branch, then run progressive review on that integrated PR. A lane is not terminal until validation, adversarial review, accepted Critical and High fixes, integration commit, push, and requested publish steps are finished or blocked.
+11. Open or update PRs per issue by default; for hard-conflict lanes, open or update one draft fallback PR for the integration branch, then run progressive review on each PR. A lane is not terminal until validation, adversarial review, accepted Critical and High fixes, integration commit, push, and requested publish steps are finished or blocked.
 
 ## `review` - Cross-Review Loop
 
@@ -368,7 +368,7 @@ The plan must include:
 - Forbidden files and inspect-only files
 - Implementation units
 - Conflict matrix, including ignored/local-only paths and repo-external paths
-- Single-PR Commit-Lane Strategy: one base branch, one integration branch, one PR, and stacked PRs forbidden unless explicitly requested
+- Issue-PR Strategy with Conflict Fallback: one base branch and one PR per independent issue, and stacked PRs forbidden unless explicitly requested
 - Commit-lane matrix with `Lane`, `Issue/scope`, `Boundary`, `Owned files`, `Independent because`, `Must not touch`, `Evidence / validation`, and `Commit message`
 - Parallelization Decision with `Parallel lanes`, `Serial lanes`, and `Blocked lanes`
 - Validation commands and success signals
@@ -385,7 +385,7 @@ Do not create issues or edit source files unless the user separately asks outsid
 
 ## `issue` - Plan To GitHub Issues
 
-Convert a plan into GitHub issues. Preserve file ownership, hard blockers, single-PR commit-lane strategy, prerequisites, validation, result criteria, and review checklists. Every generated implementation issue must include `Owned files`, `Must not touch`, `Parallelization note`, `Commit lane suggestion`, `Validation/evidence`, and `Dependencies / blocked by`. Parent tracker issues should not be assigned implementation write surfaces; they should contain a child lane table that marks which children can run in parallel, which must be serial commits, and which are blocked. Do not edit repository files.
+Convert a plan into GitHub issues. Preserve file ownership, hard blockers, issue-PR conflict-fallback strategy, prerequisites, validation, result criteria, and review checklists. Every generated implementation issue must include `Owned files`, `Must not touch`, `Parallelization note`, `Commit lane suggestion`, `Validation/evidence`, and `Dependencies / blocked by`. Parent tracker issues should not be assigned implementation write surfaces; they should contain a child lane table that marks which children can run in parallel, which must be serial commits, and which are blocked. Do not edit repository files.
 
 ## `ship` - Publish Current Lane
 
