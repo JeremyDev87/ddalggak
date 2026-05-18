@@ -144,6 +144,12 @@ const requiredSkillAnchors = [
   "Regression Library Candidate",
   "class-level risks",
   "transient incidents in memory",
+  "No stacked PRs by default",
+  "Single-PR Commit-Lane Strategy",
+  "Parallelization Decision",
+  "Must not touch",
+  "one PR",
+  "separate commits",
 ];
 const requiredLegacySkillAnchors = [
   "Rendered evidence gate",
@@ -221,6 +227,12 @@ const requiredLegacySkillAnchors = [
   "Regression Library Candidate",
   "class-level failure",
   "transient incident",
+  "No stacked PRs by default",
+  "Single-PR Commit-Lane Strategy",
+  "Parallelization Decision",
+  "Must not touch",
+  "PR count: 1",
+  "serial commit",
 ];
 
 const requiredRouterGateFamilies = [
@@ -466,6 +478,13 @@ function countOccurrences(text, term) {
   return count;
 }
 
+function assertForbiddenTermsAbsent({ label, text, terms }) {
+  for (const term of terms) {
+    if (text.includes(term)) {
+      fail(`${label} must not contain stale multi-PR/wave wording (${term}).`);
+    }
+  }
+}
 
 function extractLegacySection(text, heading) {
   return extractMarkdownSection(text, heading);
@@ -773,6 +792,11 @@ for (const subcommand of requiredRouterSubcommands) {
     fail("ddalggak plan --show-doc section must expose Frontend Design Brief.");
   }
   if (subcommand === "plan") {
+    for (const planCommitLaneAnchor of ["Single-PR Commit-Lane Strategy", "PR count: 1", "Stacked PRs: forbidden unless explicitly requested", "Parallelization Decision", "Must not touch", "Evidence / validation", "Commit message"]) {
+      if (!section.includes(planCommitLaneAnchor)) {
+        fail(`ddalggak plan --show-doc section must expose single-PR commit-lane contract (${planCommitLaneAnchor}).`);
+      }
+    }
     for (const planAnchor of ["Applicable upstream skill families", "React/Next.js performance risks", "Explicit anti-goals", "Backend-only skip/lightweight reason"]) {
       if (!section.includes(planAnchor)) {
         fail(`ddalggak plan --show-doc section must expose ${planAnchor}.`);
@@ -788,6 +812,11 @@ for (const subcommand of requiredRouterSubcommands) {
     fail("ddalggak start --show-doc section must expose small direct change first.");
   }
   if (subcommand === "start") {
+    for (const startCommitLaneAnchor of ["Single-PR Commit-Lane Strategy", "Stacked PRs: forbidden unless explicitly requested", "Parallelization Decision", "Integration commit", "PR CREATE — 기본 금지"]) {
+      if (!section.includes(startCommitLaneAnchor)) {
+        fail(`ddalggak start --show-doc section must expose single-PR commit-lane contract (${startCommitLaneAnchor}).`);
+      }
+    }
     for (const startAnchor of ["aesthetic direction", "screenshot/viewport/manual evidence", "server/client boundary", "token source without printing secrets", "preview-first"]) {
       if (!section.includes(startAnchor)) {
         fail(`ddalggak start --show-doc section must expose ${startAnchor}.`);
@@ -807,6 +836,75 @@ for (const subcommand of requiredRouterSubcommands) {
     }
   }
 }
+
+const issueSection = extractLegacySection(legacySkillText, requiredLegacyHeadings.issue);
+for (const issueCommitLaneAnchor of ["Owned files", "Must not touch", "Parallelization note", "Commit lane suggestion", "Validation/evidence", "Dependencies / blocked by"]) {
+  if (!issueSection.includes(issueCommitLaneAnchor)) {
+    fail(`ddalggak issue --show-doc section must preserve commit-lane issue fields (${issueCommitLaneAnchor}).`);
+  }
+}
+
+assertForbiddenTermsAbsent({
+  label: "ddalggak start --show-doc section",
+  text: extractLegacySection(legacySkillText, requiredLegacyHeadings.start),
+  terms: [
+    "PUSHED:",
+    "PR URL 출력",
+    "git add → commit → push → gh pr create",
+    "commit/push/draft PR까지 완료",
+    "PR 링크 요약",
+    "PR이 열렸으면",
+    "push/PR만 빠진 경우",
+    "gh pr create --draft --base",
+    "Wave",
+    "wave",
+    "복수 PR merge",
+  ],
+});
+
+assertForbiddenTermsAbsent({
+  label: "ddalggak plan --show-doc section",
+  text: extractLegacySection(legacySkillText, requiredLegacyHeadings.plan),
+  terms: [
+    "Wave",
+    "wave",
+    "복수 PR merge",
+    "별도 wave",
+    "같은 wave",
+  ],
+});
+
+assertForbiddenTermsAbsent({
+  label: "ddalggak issue --show-doc section",
+  text: issueSection,
+  terms: [
+    "Wave",
+    "wave",
+    "Wave 1",
+    "Wave 2",
+    "Wave 단위",
+    "모든 sub-issue merge",
+    "/multi-issue-executor",
+    "복수 PR merge",
+    "| # | 제목 | 파일 | Wave | Blockers | 상태 |",
+  ],
+});
+
+assertForbiddenTermsAbsent({
+  label: "Codex skill",
+  text: readText(skillPath),
+  terms: [
+    "PRs in the same wave",
+    "tests, commit, push, draft PR",
+    "worker repeatedly idles after commit without push or PR",
+    '"phase": "wave-1"',
+    '"pr_url"',
+    "`pr_opened`",
+    "`pr_review_approved`",
+    "merge-order context",
+    "one PR per lane unless",
+  ],
+});
 
 if (statSync(skillDir, { throwIfNoEntry: false })?.isDirectory()) {
   const bannedHits = [];

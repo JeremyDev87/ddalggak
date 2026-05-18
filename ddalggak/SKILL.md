@@ -37,6 +37,8 @@ user-invocable: true
 ## 핵심 원칙
 
 - **Phase는 순차, Worker는 병렬**. 한 Phase 안의 워커 N명은 서로 다른 파일을 건드린다.
+- **No stacked PRs by default**. 박정욱/default ddalggak 워크플로우에서는 stacked PR, branch matrix, lane별 PR을 기본으로 만들지 않는다. 병렬화가 필요하면 하나의 base branch, 하나의 integration branch, 하나의 PR 안에서 독립 commit lane으로 분리한다. Stacked PR은 사용자가 명시적으로 요구한 경우에만 예외다.
+- **Single-PR commit-lane planning**. 병렬 계획은 owned files, must-not-touch files, independent because, lane-specific evidence/validation, integration gate를 포함해야 한다. 같은 파일·공유 contract·runtime flip을 건드리면 병렬 worker가 아니라 같은 PR 안 serial commit으로 처리한다.
 - **Conductor(이 Claude)는 지시만 한다**. 커밋/push/PR은 워커가 직접 한다. Conductor가 대신하면 안 된다.
 - **파일 기반 BRIEF**. 짧은 인라인 프롬프트가 아니라 `BRIEF.md`/`REVIEW_BRIEF.md`/`FIX_BRIEF_N.md`를 worktree에 쓰고 워커가 읽게 한다.
 - **탈출 조건 명시**. "Critical+High = 0"처럼 기계적으로 측정 가능한 기준으로만 반복을 멈춘다.
@@ -58,22 +60,23 @@ user-invocable: true
 3. **No implicit dependencies**: 새 dependency/import는 package manifest나 repo 검색으로 존재를 증명하기 전까지 금지한다. 선택지를 열어두는 문장 대신 사용할 경로·라이브러리·stdlib 대안을 확정한다.
 4. **No force-push fix loop by default**: review fix는 새 커밋 + 일반 push가 기본이다. amend/force-push는 명시 승인, branch protection/SafetyGuard 확인, stacked PR 영향 고지 후에만 허용한다.
 5. **Reviewer isolation**: reviewer는 구현자 conversation과 worktree checkout 상태에 오염되지 않아야 한다. 기본은 `gh pr view`/`gh pr diff`; 로컬 실행이 필요하면 별도 review checkout을 만든다.
-6. **Merge-order context**: 같은 wave의 코드 PR·문서 PR·후속 PR 사이에 의존성이 있으면 선행 PR, 비교 기준, 현재 base와 diff 불일치가 의도인지 REVIEW_BRIEF에 적는다.
-7. **Completion is not test pass**: test pass는 중간 증거일 뿐이다. 완료는 요구된 commit/push/draft PR 또는 local-only 작업의 `MODIFIED:` 신호까지 검증된 상태다.
-8. **PR 품질 기본값**: 브랜치 이름은 목적 중심이어야 하며 날짜·타임스탬프를 넣지 않는다. commit/PR 본문에는 What/Why가 필수이고 PR에는 Validation/Risk도 포함한다.
-9. **Exact command rescue**: worker가 commit 후 push/PR 없이 idle이면 "BRIEF를 다시 읽으라"가 아니라 Conductor가 확인한 `git push`와 `gh pr create` 명령을 정확히 제공한다.
-10. **Gitignored/local-only handling**: `.claude/settings.local.json`, permission cache, repo 밖 파일, ignored 파일은 `git check-ignore -v <path>`로 확인한다. PR workflow가 불가능하면 직접 수정 + `MODIFIED:` 신호 + 수동 이슈 처리로 분리한다.
-11. **Medium fix restraint**: Medium은 기본 non-blocking이다. 미머지 PR 출력값·공유 계약 전환에 의존하는 Medium/Low는 과잉 수정하지 말고 TODO/follow-up으로 제한한다.
-12. **Markdown surgery discipline**: SKILL.md/문서 블록 교체 시 기존 동작 보존 체크, heading anchor 보존, 번호 재정렬, fenced code block 균형 확인을 즉시 수행한다.
-13. **Rendered evidence gate**: frontend 작업은 CI/typecheck만으로 완료 증거가 아니다. route evidence, viewport evidence, rendered DOM evidence, screenshot evidence, fallback evidence, contract graph evidence를 요구하고, 누락 증거는 `not-applicable: <reason>`, Medium, High 중 하나로 분류한다.
-14. **Transitive rendered fallback audit**: 리뷰는 list/detail surface, shared card/media primitive, missing media, empty DB/data, nullable fields, mapper defaults까지 전이적으로 본다. shared primitive 수정이 범위 밖이면 callsite mitigation 또는 follow-up/blocker를 남긴다.
-15. **Analytics/privacy allowlist·denylist**: analytics/privacy 작업은 명시적 계약을 둔다. raw search terms, prompt titles/bodies, arbitrary user-entered text, email/name/profile identifiers, full query strings는 기본 denylist이고, stable IDs, categories, buckets, booleans, GTM-managed transformations를 선호한다.
-16. **Quality Lens Router**: `plan`, `start`, `review`는 세부 gate 적용 전에 `references/quality-lens-router.md`를 읽고 request text, issue body/comments, PR files, diff paths, repo/product convention을 기준으로 `frontend-design` 등 applicable gate families, skipped gates, required references, lightweight limits를 기록한다. Domain gate is a lens, not a mandate: backend-only 작업에는 rendered user-facing contract, deploy surface, auth/security boundary, data privacy contract, performance claim에 직접 영향이 없으면 frontend/UI/domain gates를 적용하지 않고 backend-only skip 사유를 남긴다. gate 충돌은 정확히 1 explicit user request, 2 repo/product convention, 3 safety/security/correctness, 4 human readability/deletability, 5 evidence-backed performance/accessibility, 6 generic upstream best practice, 7 named principles/patterns such as SOLID 순서로 해결한다.
-17. **Evidence Contract**: `plan`, `start`, `review`는 완료·PR readiness·APPROVE·deploy/performance/UI/security/data/API 동작을 주장하기 전에 `references/evidence-contract.md`를 읽고 `Evidence Contract` 섹션을 포함한다. required evidence, 적용된 UI/deploy/performance/bugfix/security/data/API template, `not-applicable: <reason>`, blocking evidence gaps를 기록한다. 필수 증거가 없으면 PR ready/APPROVE/merge-ready 결론을 남기지 않고 High/blocking으로 분류한다.
-18. **Simplicity / Deletability Gate**: `plan`, `start`, `review`는 `references/simplicity-deletability-gate.md`를 읽고 새 abstraction/helper/provider/wrapper/component/module/fallback/pattern이 필요한지 검증한다. 기본 방향은 **small direct change first**이며, 새 추상화는 "why is this abstraction necessary?"에 답하고 실제 reuse 또는 boundary clarification을 증명해야 한다. SOLID는 유용하지만 human readability/deletability보다 우선하지 않는다.
-19. **Frontend Design Gate**: `plan`, `start`, `review`는 UI/frontend/design/page/component/layout/polish/responsive/dashboard/card/CTA/typography/animation/screenshot, `.tsx`/`.jsx`/CSS/Tailwind/design token/Storybook/route/page/component/shared frontend primitive, Bokbuk/orbit-dashboard 같은 product context가 걸리면 `references/frontend-design-gate.md`를 읽는다. backend/API-only, test-only, narrow functional bugfix는 skip 또는 lightweight로 기록한다. product-specific constraints outrank novelty이며, one-off UI 변경을 위한 forced abstraction은 막는다.
-20. **Vercel Agent Skills Gate**: `plan`, `start`, `review`는 React/Next component/page/data-fetching/performance, component library/API/refactor/composition, view transitions/page/shared element/list reorder/enter-exit animation, UI/a11y/UX/screenshot/viewport acceptance, Vercel deploy/preview URL/production deploy/env vars/project linking/token CLI, React Native/Expo/mobile performance/native/platform API가 걸리면 `references/vercel-agent-skills-gates.md`를 읽는다. backend-only 작업은 frontend/deploy/mobile surface에 영향이 없으면 skip 또는 lightweight로 기록한다. product/repo constraints, Simplicity/Deletability, Frontend Design Gate가 generic upstream pattern보다 우선한다.
-21. **Continuous Regression Library**: `review`는 반복되는 Medium/High AI code-quality pattern이 보이거나 기존 회귀 class와 닮은 finding이 있으면 `references/regression-library.md`를 읽는다. `plan`과 `start`는 알려진 반복 리스크가 있을 때만 regression-library reference를 유용한 범위에서 언급한다. transient failures, PR numbers, commit SHAs, single-session completion logs, incident records는 memory에 넣지 않는다. durable pattern은 detection signal, blocking review rule, minimal fixture/evidence idea를 갖춘 class-level failure로 일반화한 뒤 skill/reference 또는 follow-up issue로 승격한다.
+6. **No stacked PRs by default**: 동시에 진행 가능한 코드 작업도 기본은 여러 PR이 아니라 하나의 integration PR 안 commit lane이다. 순서 의존성이 있으면 lane별 PR을 쌓지 말고, 선행 파일/contract를 serial commit과 integration gate로 명시한다. Stacked PR은 사용자가 명시적으로 요구한 경우만 허용한다.
+7. **Commit-lane evidence**: 각 lane은 `Owned files`, `Must not touch`, `Independent because`, `Evidence / validation`, `Commit message`를 가져야 한다. 이 항목을 증명하지 못하면 병렬 lane이 아니라 serial 또는 blocked로 분류한다.
+8. **Completion is not test pass**: test pass는 중간 증거일 뿐이다. lane 완료는 lane patch/commit, validation evidence, integration handoff까지 검증된 상태다. publish 완료는 single integration PR에서만 판단한다.
+9. **PR 품질 기본값**: 브랜치 이름은 목적 중심이어야 하며 날짜·타임스탬프를 넣지 않는다. commit/PR 본문에는 What/Why가 필수이고 PR에는 Validation/Risk도 포함한다.
+10. **Exact handoff rescue**: worker가 구현 후 evidence/handoff 없이 idle이면 "BRIEF를 다시 읽으라"가 아니라 Conductor가 확인한 validation, patch export, integration handoff 명령을 정확히 제공한다. 사용자가 stacked PR을 명시 요청하지 않은 한 lane-specific PR 생성으로 rescue하지 않는다.
+11. **Gitignored/local-only handling**: `.claude/settings.local.json`, permission cache, repo 밖 파일, ignored 파일은 `git check-ignore -v <path>`로 확인한다. PR workflow가 불가능하면 직접 수정 + `MODIFIED:` 신호 + 수동 이슈 처리로 분리한다.
+12. **Medium fix restraint**: Medium은 기본 non-blocking이다. 미머지 PR 출력값·공유 계약 전환에 의존하는 Medium/Low는 과잉 수정하지 말고 TODO/follow-up으로 제한한다.
+13. **Markdown surgery discipline**: SKILL.md/문서 블록 교체 시 기존 동작 보존 체크, heading anchor 보존, 번호 재정렬, fenced code block 균형 확인을 즉시 수행한다.
+14. **Rendered evidence gate**: frontend 작업은 CI/typecheck만으로 완료 증거가 아니다. route evidence, viewport evidence, rendered DOM evidence, screenshot evidence, fallback evidence, contract graph evidence를 요구하고, 누락 증거는 `not-applicable: <reason>`, Medium, High 중 하나로 분류한다.
+15. **Transitive rendered fallback audit**: 리뷰는 list/detail surface, shared card/media primitive, missing media, empty DB/data, nullable fields, mapper defaults까지 전이적으로 본다. shared primitive 수정이 범위 밖이면 callsite mitigation 또는 follow-up/blocker를 남긴다.
+16. **Analytics/privacy allowlist·denylist**: analytics/privacy 작업은 명시적 계약을 둔다. raw search terms, prompt titles/bodies, arbitrary user-entered text, email/name/profile identifiers, full query strings는 기본 denylist이고, stable IDs, categories, buckets, booleans, GTM-managed transformations를 선호한다.
+17. **Quality Lens Router**: `plan`, `start`, `review`는 세부 gate 적용 전에 `references/quality-lens-router.md`를 읽고 request text, issue body/comments, PR files, diff paths, repo/product convention을 기준으로 `frontend-design` 등 applicable gate families, skipped gates, required references, lightweight limits를 기록한다. Domain gate is a lens, not a mandate: backend-only 작업에는 rendered user-facing contract, deploy surface, auth/security boundary, data privacy contract, performance claim에 직접 영향이 없으면 frontend/UI/domain gates를 적용하지 않고 backend-only skip 사유를 남긴다. gate 충돌은 정확히 1 explicit user request, 2 repo/product convention, 3 safety/security/correctness, 4 human readability/deletability, 5 evidence-backed performance/accessibility, 6 generic upstream best practice, 7 named principles/patterns such as SOLID 순서로 해결한다.
+18. **Evidence Contract**: `plan`, `start`, `review`는 완료·PR readiness·APPROVE·deploy/performance/UI/security/data/API 동작을 주장하기 전에 `references/evidence-contract.md`를 읽고 `Evidence Contract` 섹션을 포함한다. required evidence, 적용된 UI/deploy/performance/bugfix/security/data/API template, `not-applicable: <reason>`, blocking evidence gaps를 기록한다. 필수 증거가 없으면 PR ready/APPROVE/merge-ready 결론을 남기지 않고 High/blocking으로 분류한다.
+19. **Simplicity / Deletability Gate**: `plan`, `start`, `review`는 `references/simplicity-deletability-gate.md`를 읽고 새 abstraction/helper/provider/wrapper/component/module/fallback/pattern이 필요한지 검증한다. 기본 방향은 **small direct change first**이며, 새 추상화는 "why is this abstraction necessary?"에 답하고 실제 reuse 또는 boundary clarification을 증명해야 한다. SOLID는 유용하지만 human readability/deletability보다 우선하지 않는다.
+20. **Frontend Design Gate**: `plan`, `start`, `review`는 UI/frontend/design/page/component/layout/polish/responsive/dashboard/card/CTA/typography/animation/screenshot, `.tsx`/`.jsx`/CSS/Tailwind/design token/Storybook/route/page/component/shared frontend primitive, Bokbuk/orbit-dashboard 같은 product context가 걸리면 `references/frontend-design-gate.md`를 읽는다. backend/API-only, test-only, narrow functional bugfix는 skip 또는 lightweight로 기록한다. product-specific constraints outrank novelty이며, one-off UI 변경을 위한 forced abstraction은 막는다.
+21. **Vercel Agent Skills Gate**: `plan`, `start`, `review`는 React/Next component/page/data-fetching/performance, component library/API/refactor/composition, view transitions/page/shared element/list reorder/enter-exit animation, UI/a11y/UX/screenshot/viewport acceptance, Vercel deploy/preview URL/production deploy/env vars/project linking/token CLI, React Native/Expo/mobile performance/native/platform API가 걸리면 `references/vercel-agent-skills-gates.md`를 읽는다. backend-only 작업은 frontend/deploy/mobile surface에 영향이 없으면 skip 또는 lightweight로 기록한다. product/repo constraints, Simplicity/Deletability, Frontend Design Gate가 generic upstream pattern보다 우선한다.
+22. **Continuous Regression Library**: `review`는 반복되는 Medium/High AI code-quality pattern이 보이거나 기존 회귀 class와 닮은 finding이 있으면 `references/regression-library.md`를 읽는다. `plan`과 `start`는 알려진 반복 리스크가 있을 때만 regression-library reference를 유용한 범위에서 언급한다. transient failures, PR numbers, commit SHAs, single-session completion logs, incident records는 memory에 넣지 않는다. durable pattern은 detection signal, blocking review rule, minimal fixture/evidence idea를 갖춘 class-level failure로 일반화한 뒤 skill/reference 또는 follow-up issue로 승격한다.
 
 ## 서브커맨드 분기
 
@@ -108,7 +111,7 @@ user-invocable: true
 
 ### Step -1. Prerequisite Discovery — base freshness first
 
-이슈/문서 수집보다 먼저 repo와 base 상태를 확인한다. stale repo에서 Wave·리뷰·ship 판단을 시작하지 않는다.
+이슈/문서 수집보다 먼저 repo와 base 상태를 확인한다. stale repo에서 commit-lane·리뷰·ship 판단을 시작하지 않는다.
 
 ```bash
 gh repo view --json nameWithOwner,url,defaultBranchRef
@@ -120,13 +123,13 @@ git rev-list --left-right --count @{upstream}...HEAD 2>/dev/null || true
 git worktree list --porcelain
 ```
 
-현재 브랜치가 default/base branch이고 dirty 변경이 없으면 `git pull --ff-only` 후 진행한다. dirty 변경, upstream divergence, rebase/merge 중 상태가 있으면 Wave 구성 전에 블로커로 보고한다.
+현재 브랜치가 default/base branch이고 dirty 변경이 없으면 `git pull --ff-only` 후 진행한다. dirty 변경, upstream divergence, rebase/merge 중 상태가 있으면 commit-lane 구성 전에 블로커로 보고한다.
 
 ---
 
 ### Step 0. 계획 타당성 검토 게이트
 
-이슈/문서/프롬프트 수집 직후, Wave 구성 전에 실행한다.
+이슈/문서/프롬프트 수집 직후, commit-lane 구성 전에 실행한다.
 
 **제공된 구현 계획이 있는 경우** (이슈 body, 첨부 문서, 사용자 프롬프트에 구현 방향·설계 결정이 포함된 경우):
 
@@ -246,9 +249,9 @@ BRIEF에는 server/client boundary, unnecessary client component avoidance, hydr
    ```
    최신 코멘트가 body와 충돌하면 코멘트를 우선한다.
 
-   이슈별로 Clarification Gate를 적용한다. Goal/범위/완료 기준 중 2개 이상이 비어 있으면 해당 이슈는 구현 Wave에 넣지 않고 `/ddalggak plan` 또는 discovery 이슈로 돌린다.
+   이슈별로 Clarification Gate를 적용한다. Goal/범위/완료 기준 중 2개 이상이 비어 있으면 해당 이슈는 구현 commit-lane에 넣지 않고 `/ddalggak plan` 또는 discovery 이슈로 돌린다.
 
-2. parent tracker 이슈(sub-issue만 열거하고 코드 파일을 직접 소유하지 않는 이슈)를 별도 표시하고 Wave 배정에서 제외.
+2. parent tracker 이슈(sub-issue만 열거하고 코드 파일을 직접 소유하지 않는 이슈)를 별도 표시하고 commit-lane 배정에서 제외.
 
 3. **명확화 질문 루프** — 이슈 + 코멘트 파악 후, Conflict 분석 전에 실행한다.
 
@@ -294,19 +297,15 @@ BRIEF에는 server/client boundary, unnecessary client component avoidance, hydr
    | 이슈 A | 이슈 B | 겹치는 파일 | 판정 |
    |---|---|---|---|
 
-   - **Hard Blocker**: 같은 기존 파일 수정 / 같은 생성 아티팩트 / 같은 공유 설정·레지스트리·barrel / 미게시 코드 의존성 / gitignored·local-only 파일 / repo 밖 파일 / 같은 delivery·output contract의 원자적 전환 → 반드시 다른 Wave 또는 PR workflow 밖 처리
-   - **Soft Blocker**: 의미적 선행 조건 / 트래커·체크리스트 순서 → 같은 Wave 허용
-   - Hard Blocker만 Wave를 나눌 수 있다. Soft Blocker만으로 레인을 닫으면 안 된다.
+   - **Hard Blocker**: 같은 기존 파일 수정 / 같은 생성 아티팩트 / 같은 공유 설정·레지스트리·barrel / 미게시 코드 의존성 / gitignored·local-only 파일 / repo 밖 파일 / 같은 delivery·output contract의 원자적 전환 → 병렬 lane 금지, 같은 PR 안 serial commit 또는 tracked PR 대상 밖 local-only 처리
+   - **Soft Blocker**: 의미적 선행 조건 / 트래커·체크리스트 순서 → 독립 파일이면 같은 PR 안 별도 commit-lane 허용
+   - Hard Blocker만 병렬 lane을 serial lane으로 낮출 수 있다. Soft Blocker만으로 레인을 닫으면 안 된다.
 
-6. **Wave 구성** (graph-coloring):
-   - Wave 1: 내부 Hard Blocker 없는 가장 큰 안전 셋
-   - Wave N: Wave N-1에 Hard Blocker가 걸린 이슈 → 정확한 blocking 파일·이슈 쌍 명시
-   - parent tracker: wave 없음
-   - **Wave N 착수 전 필수 확인**: Wave N-1의 모든 PR이 실제로 merge됐는지 검증
-     ```bash
-     gh pr list --state open
-     # open PR 0개여야 Wave N 착수 가능
-     ```
+6. **Single-PR Commit-Lane Strategy 구성**:
+   - Base branch, integration branch, PR count `1`, commit policy를 먼저 정한다.
+   - `Stacked PRs: forbidden unless explicitly requested`를 계획에 명시한다.
+   - parent tracker는 구현 lane이 아니라 child lane table로만 둔다.
+   - Hard Blocker가 있는 작업은 별도 PR이 아니라 같은 PR 안 serial commit 또는 blocked lane으로 분류한다.
 
 7. 아래 형식으로 **실행 계획 출력**:
 
@@ -319,32 +318,36 @@ BRIEF에는 server/client boundary, unnecessary client component avoidance, hydr
 
 ### Conflict 분석
 - Hard Blocker: (없음 / 이슈 X ↔ 이슈 Y — `path/file` 겹침)
-- Soft Blocker: (없음 / 이슈 Z는 이슈 W merge 후 착수 권장)
+- Soft Blocker: (없음 / 이슈 Z는 이슈 W 이후 serial commit 권장)
 
-### Wave 1 — 완전 병렬 (N개 PR 동시)
+### Single-PR Commit-Lane Strategy
+- Base branch: `<default/current base>`
+- Integration branch: `<purpose branch; no timestamp>`
+- PR count: 1
+- Stacked PRs: forbidden unless explicitly requested
+- Commit policy: one coherent commit per independent lane; serial commits for shared files/contracts
 
-| Lane | 이슈 | 브랜치 | 수정 파일 |
-|------|------|--------|-----------|
-| L1   | #N   | `fix/N-short-name` | `scripts/foo.py` |
+| Lane | Issue/scope | Boundary | Owned files | Independent because | Must not touch | Evidence / validation | Commit message |
+|---|---|---|---|---|---|---|---|
+| L1 | #N | `<boundary>` | `scripts/foo.py` | `<why no shared file/contract/runtime flip>` | `<paths>` | `<commands/evidence>` | `docs: ...` |
 
-### Wave 2 — 단독 PR (선행 조건: Wave 1 merge 완료)
-
-| Lane | 이슈 | 브랜치 | 수정 파일 | 선행 조건 |
-|------|------|--------|-----------|-----------|
-| L4   | #M   | `fix/M-short-name` | `shared/config.py` | #N, #K merge |
+### Parallelization Decision
+- Parallel lanes: lanes with disjoint owned files and no shared runtime flip.
+- Serial lanes: lanes sharing files/contracts; keep as separate commits but do not dispatch as independent writers.
+- Blocked lanes: lanes depending on open PRs, missing credentials, unclear acceptance criteria, or repo-external state.
 ```
 
 8. 계획 출력 후 실행 방식 확인:
 
 ```
 실행 방식을 선택해 주세요:
-1. worktree + claude team teammate (병렬) — 추천
+1. worktree/agent 병렬 초안 + integrator가 하나의 PR에 commit lane으로 반영 — 추천
 2. 순차 실행 (느리지만 단순)
 ```
 
 ### Step 1.5. 간이 구현 계획 확인
 
-Wave 구성 후, 워커 배포 전에 다음 초안을 제시하고 사용자 확인을 받는다.
+Single-PR Commit-Lane Strategy 구성 후, 워커 배포 전에 다음 초안을 제시하고 사용자 확인을 받는다.
 
 **`/ddalggak plan` 결과물이 이미 있는 경우**: 해당 계획을 불러와 이 Step을 대체한다.
 
@@ -388,7 +391,7 @@ Q: 위 간이 구현 계획으로 진행할까요?
 
 브랜치 이름은 `fix/issue-42-pr-quality`처럼 목적 중심으로 정하고 날짜·타임스탬프·생성 시각 suffix를 넣지 않는다.
 
-`.worktrees/` ignore는 repo-tracked `.gitignore`가 아니라 local-only `.git/info/exclude`에 기록한다. Wave 1 Lane마다:
+`.worktrees/` ignore는 repo-tracked `.gitignore`가 아니라 local-only `.git/info/exclude`에 기록한다. 병렬 가능성이 증명된 commit lane마다:
 ```bash
 grep -qxF '.worktrees/' <repo-root>/.git/info/exclude || printf '\n.worktrees/\n' >> <repo-root>/.git/info/exclude
 git -C <repo-root> worktree add <repo-root>/.worktrees/<branch-name> -b <branch-name>
@@ -398,7 +401,7 @@ repo 밖 파일이나 gitignored/local-only 파일을 다루는 Lane은 PR workt
 
 **2A-2. Team 생성 및 배포**
 
-Lane마다 named teammate를 생성하고 동시에 작업을 배포한다.
+Lane마다 named teammate를 생성하고 동시에 작업을 배포할 수 있지만, 기본 publish 형태는 lane별 PR이 아니라 하나의 integration branch/PR이다. Worker는 patch, local commit, validation evidence를 만들고, integrator가 승인된 lane 결과를 single PR branch에 별도 commit으로 반영한다.
 
 1. 각 Lane에 teammate 생성 (Lane 수 = teammate 수):
    ```
@@ -416,25 +419,27 @@ Lane마다 named teammate를 생성하고 동시에 작업을 배포한다.
    5. MUST NOT — 다른 branch switch 금지, 허용 목록 외 파일 수정 금지, 새 외부 의존성/import 금지(기존 의존성 증명 전)
    6. COMMIT FORMAT — `type(scope): 한글 제목\n\nWhat: ...\nWhy: ...\n\nCloses #N` / `-F` 파일로 전달
    7. PR FORMAT — What / Why / Validation / Risk / Issues 구조 + `Closes #N` 또는 `Refs #N`
-   8. PR CREATE — `gh pr create`로 PR 생성까지 완료 후 PR URL 출력
+   8. PR CREATE — 기본 금지. Worker는 lane-specific PR을 만들지 않고 `LANE_READY: <lane> <commit-or-patch> <validation>`을 출력한다. 사용자가 stacked PR을 명시 요청한 경우에만 PR URL을 출력한다.
 
-모든 teammate 완료 후 PR URL 요약 테이블 출력:
+모든 teammate 완료 후 integration 요약 테이블 출력:
 ```
-| Lane | 이슈 | PR URL |
-|------|------|--------|
+| Lane | 이슈 | Integration commit | Evidence / validation |
+|------|------|--------------------|-----------------------|
 ```
+
+Integrator는 approved lane 결과를 하나의 integration branch에 별도 commit으로 적용하고, 전체 validation 후 single draft PR 하나만 생성한다.
 
 ### Step 2B. 단일 이슈 계획 (이슈 번호 지정 시)
 
 이슈에서 발견된 상태를 간결하게 요약하고 구현 계획(Phases + Workers) 제시:
 
 - 전체 작업을 Phase로 나누기 (Foundation=의존성 없는 신규 코드 / Integration=기존 코드 연결·수정 / Regression=전체 동작 검증)
-- 각 Phase는 파일 소유 겹침 없는 Worker들로 병렬화
-- Phase 간 데이터 의존 → 순차
+- 각 Phase는 파일 소유 겹침 없는 Worker들로 병렬화할 수 있지만 publish는 single PR commit lane으로 통합
+- Phase 간 데이터 의존 → 같은 PR 안 serial commit
 
 계획 표:
 ```
-| Phase | Worker | 범위(파일) | 완료 조건 |
+| Phase | Worker/Lane | 범위(파일) | Independent because | 완료 조건 |
 ```
 
 계획 확정 후 실행 방식 선택 → Step 1.5(간이 구현 계획 확인) → Step 2A 진행.
@@ -602,8 +607,8 @@ echo "FIX_BRIEF*.md" >> .worktrees/<branch>/.gitignore
 1. lint pass (scope 명시)
 2. test pass
 3. regression 없음 (전체 테스트)
-4. git add → commit → push → gh pr create (워커 본인이 전부)
-5. PR URL 출력 후 `PUSHED: Phase Y W<번호>` 한 줄 출력
+4. lane patch 또는 local commit 준비 + validation evidence 정리
+5. `LANE_READY: Phase Y W<번호> <patch-or-commit> <validation>` 한 줄 출력. Worker는 lane-specific PR을 만들지 않는다.
 6. 최종 출력에 `Evidence provided`, `Evidence not applicable`, `Blocking evidence gaps` 포함. required evidence가 비어 있으면 PR ready/approval ready를 주장하지 말고 blocking gap으로 보고
 
 ## 병행 워커 참고 (수정 금지)
@@ -612,7 +617,7 @@ echo "FIX_BRIEF*.md" >> .worktrees/<branch>/.gitignore
 - 기존 시그니처 호환성 유지
 - 테스트 fixture는 가짜 데이터
 - BRIEF 범위 밖은 건드리지 마
-- 테스트 pass만으로 완료 아님 — commit/push/draft PR까지 완료해야 함
+- 테스트 pass만으로 완료 아님 — lane patch/commit, validation evidence, integration handoff까지 완료해야 함. Single integration PR 생성은 integrator 단계에서만 수행
 - 새 외부 의존성/import 금지. 필요하면 package manifest 또는 repo 검색으로 기존 의존성 존재를 먼저 증명
 - 모든 git/file 명령은 worktree 절대 경로 또는 `git -C <worktree>` 사용
 - ignored/local-only 파일이면 `git check-ignore -v <path>` 확인 후 PR에 포함하지 말 것
@@ -620,7 +625,7 @@ echo "FIX_BRIEF*.md" >> .worktrees/<branch>/.gitignore
 ## Conductor Recovery Anchor
 - conductor-state 경로: `.ddalggak/conductor-state.md`
 - 이 BRIEF의 위치: Phase Y / Worker N
-- 완료 시그널 예상: `PUSHED: Phase Y WN`
+- 완료 시그널 예상: `LANE_READY: Phase Y WN <patch-or-commit> <validation>`
 
 시작해.
 ```
@@ -630,7 +635,7 @@ echo "FIX_BRIEF*.md" >> .worktrees/<branch>/.gitignore
 Step 2A-2에서 teammate에 이미 BRIEF 경로를 포함했으면 별도 전송 불필요.
 추가 지시가 필요한 경우:
 ```
-SendMessage(to="worker-<N>", content="BRIEF.md(.worktrees/<branch>/BRIEF.md)를 읽고 지시된 대로 구현해. 완료 후 한 줄: PUSHED: Phase Y W<번호>")
+SendMessage(to="worker-<N>", content="BRIEF.md(.worktrees/<branch>/BRIEF.md)를 읽고 지시된 대로 구현해. 완료 후 한 줄: LANE_READY: Phase Y W<번호> <patch-or-commit> <validation>")
 ```
 
 ### Step 4. 대기 및 상태 수집
@@ -639,29 +644,30 @@ SendMessage(to="worker-<N>", content="BRIEF.md(.worktrees/<branch>/BRIEF.md)를 
 
 **완료 확인**:
 - `TaskGet <task-id>`로 각 teammate 완료 여부 확인
-- 완료된 `TaskOutput`에서 `PUSHED:` 라인 추출
-- **실패 복구**: ScheduleWakeup 3회(~13분) 후에도 `PUSHED:` 없으면:
+- 완료된 `TaskOutput`에서 `LANE_READY:` 라인과 validation evidence 추출
+- **실패 복구**: ScheduleWakeup 3회(~13분) 후에도 `LANE_READY:` 없으면:
   1. `TaskOutput`으로 teammate 출력 확인 후 원인 진단
   2. "워커 N 응답 없음 — 수동 개입 필요" 보고 후 사용자 대기
 
-모든 워커가 `PUSHED:` 출력 나오면 Phase 완료. 사용자에게 PR 링크 요약해 보고.
+모든 워커가 `LANE_READY:` 출력 나오면 lane 초안 수집 완료. Integrator가 approved lane 결과를 integration branch에 별도 commit으로 반영한 뒤 single draft PR 하나만 생성한다.
 
 ### Step 5. Progressive Review Start
 
-모든 worker 완료를 기다리지 않는다. 각 branch에서 `PUSHED:` 또는 idle 알림이 오면 즉시 완료 여부를 사실로 검증한다.
+모든 worker 완료를 기다리지 않는다. 각 branch에서 `LANE_READY:` 또는 idle 알림이 오면 즉시 완료 여부를 사실로 검증한다.
 
 ```bash
-gh pr list --head <branch> --json number,url,state,headRefName
 git -C <worktree> log --oneline -3
-git ls-remote --heads origin <branch>
+git -C <worktree> status --short
+git -C <worktree> diff --stat
 ```
 
-- PR이 열렸으면 남은 worker 구현 대기와 병렬로 `/ddalggak review <pr-number>`를 시작할 수 있다.
-- idle 알림만 있고 PR이 없으면 완료가 아니다.
-- commit은 있는데 push/PR만 빠진 경우, Conductor는 추상 지시 대신 확인된 정확한 명령을 제공한다:
+- lane patch/commit과 evidence가 있으면 integrator가 integration branch에 별도 commit으로 적용하고, 남은 worker 구현 대기와 병렬로 local diff review를 시작할 수 있다.
+- idle 알림만 있고 lane evidence가 없으면 완료가 아니다.
+- 구현은 있는데 handoff만 빠진 경우, Conductor는 추상 지시 대신 확인된 정확한 명령을 제공한다:
   ```bash
-  git -C <worktree> push -u origin <branch>
-  gh pr create --draft --base <base-branch> --head <branch> --title "<제목>" --body-file <pr-body-file>
+  git -C <worktree> status --short
+  git -C <worktree> diff --stat
+  git -C <worktree> diff > /tmp/<lane>.patch
   ```
 - local-only 작업이면 PR 대신 `MODIFIED: <path>` 신호와 수동 이슈 처리 상태를 확인한다.
 
@@ -792,7 +798,7 @@ PR 목록 확정 후 Step 1로 진행.
    - CI가 이미 실행하는 검증(typecheck / lint / unit test / build)은 로컬에서 중복 실행하지 않는다. CI 결과를 신뢰한다.
    - CI fail이면 → 자동 Critical (선결 체크 1과 일관). 재현 위한 직접 실행 불필요.
    - CI가 커버하지 않는 영역(통합 시나리오, UI 동작, 환경 변수 분기, 빌드 산출물 확인 등) 또는 diff만으로 동작 판단이 불가한 경우에만 별도 review checkout(`/tmp/pr-<num>-review`)에서 직접 검증. implementation worktree에서 `git checkout` / `gh pr checkout` 금지.
-4. wave 내 merge-order 의존성이 있으면 선행 PR, 비교 기준, 현재 base와의 불일치가 의도된 것인지 기록
+4. 같은 PR 안 commit-lane 순서 의존성이 있으면 선행 commit/contract, 비교 기준, 현재 base와의 불일치가 의도된 것인지 기록
 5. 아래 AI Code Quality Gate checklist와 Review Rubric으로 심각도 분류
 
 > **리뷰 초점**: CI는 코드 정상성을 검증한다. 리뷰어는 AI가 만든 diff가 repo의 방향을 망가뜨리지 않는지 지키는 gatekeeper다. 설계, domain boundary, data flow, failure semantics, scope creep, 추상화 삭제 가능성, 기존 패턴 drift, 보안, 의도 불일치에 집중한다.
@@ -1226,22 +1232,33 @@ low confidence 후보는 병렬 구현 이슈 대상이 아니다. discovery 작
 
 ### 5. 병렬성 및 블로커 분석
 
-Wave 전 conflict matrix 구축:
+Single-PR Commit-Lane Strategy 전 conflict matrix 구축:
 
 | Unit A | Unit B | Overlap | Decision |
 |---|---|---|---|
-| A | B | `path/file.ts` | Hard blocker: 별도 wave |
-| C | D | 파일 분리, 시맨틱 순서만 | Soft blocker: 같은 wave 허용 |
+| A | B | `path/file.ts` | Hard blocker: serial commit lane |
+| C | D | 파일 분리, 시맨틱 순서만 | Soft blocker: parallel commit lanes allowed |
 
 Hard blocker: 같은 기존 파일 / 같은 생성 아티팩트 / 같은 공유 설정·레지스트리·스키마·barrel export / 미게시 코드 의존성
 
 Soft blocker: 트래커 순서 / 리뷰 선호 / 시맨틱 권장 (하드 블로커 아님)
 
-Wave 구성 (graph-coloring):
-- Wave 1: 내부 하드 블로커 없는 가장 큰 안전 셋
-- 이후 Wave: 정확한 blocking 이슈/파일 쌍 명시
-- 부모/epic 트래커는 wave 없음
-- 전체 시스템 검증은 병렬 구현 레인이 아닌 merge gate
+Single-PR Commit-Lane Strategy 구성:
+- Base branch:
+- Integration branch:
+- PR count: 1
+- Stacked PRs: forbidden unless explicitly requested
+- Commit policy: 독립 lane마다 하나의 coherent commit, 공유 파일/contract는 serial commit
+
+Commit-lane matrix:
+| Lane | Issue/scope | Boundary | Owned files | Independent because | Must not touch | Evidence / validation | Commit message |
+|---|---|---|---|---|---|---|---|
+
+Parallelization Decision:
+- Parallel lanes: 파일·contract·runtime flip이 분리된 lane
+- Serial lanes: 같은 파일/contract를 공유하여 같은 PR 안 순서 있는 commit으로 처리할 lane
+- Blocked lanes: open PR, missing credential, unclear acceptance criteria, repo-external state 때문에 보류할 lane
+- 전체 시스템 검증은 병렬 구현 레인이 아닌 integration gate
 
 ### 6. Review Agent Contract 추가
 
@@ -1375,10 +1392,21 @@ React/Next, component API/composition, view transition/motion, UI/a11y/UX/screen
 ### Conflict Matrix
 | Unit A | Unit B | Overlap | Decision |
 
-### Waves
-- Wave 1:
-- Wave 2:
-- Final Serialized Gate:
+### Single-PR Commit-Lane Strategy
+- Base branch:
+- Integration branch:
+- PR count: 1
+- Stacked PRs: forbidden unless explicitly requested
+- Commit policy:
+
+| Lane | Issue/scope | Boundary | Owned files | Independent because | Must not touch | Evidence / validation | Commit message |
+|---|---|---|---|---|---|---|---|
+
+### Parallelization Decision
+- Parallel lanes:
+- Serial lanes:
+- Blocked lanes:
+- Final integration gate:
 
 ### Plan-to-Issues Readiness
 - Parent epic 필요 여부와 이유:
@@ -1392,7 +1420,7 @@ React/Next, component API/composition, view transition/motion, UI/a11y/UX/screen
 
 ## Plan to Issues
 
-구현 계획을 단일 책임, conflict-aware GitHub 이슈로 변환한다. `/multi-issue-executor`로 바로 실행 가능한 형태로 만든다.
+구현 계획을 단일 책임, conflict-aware GitHub 이슈로 변환한다. 하나의 integration PR 안 commit lane으로 바로 통합 가능한 형태로 만든다.
 
 > **plan vs issue 구분**: `/ddalggak plan`은 계획 문서만 작성한다(이슈 미생성). 이슈 생성은 반드시 `/ddalggak issue`로만 수행한다. plan 내 "Phase 7: 승인 후 GitHub 이슈 생성"은 issue 서브커맨드로 위임하는 것을 의미한다.
 
@@ -1406,9 +1434,10 @@ React/Next, component API/composition, view transition/motion, UI/a11y/UX/screen
 - `why`: 목적과 사용자 가시 결과
 - `what`: 의도된 코드/문서/테스트 변경
 - `files`: 명시적 파일 소유권 또는 예상 경로
-- `order`: 선행 조건, 후행 작업, merge gate
+- `order`: 선행 조건, 후행 작업, integration gate
 - `validation`: 완료를 증명하는 명령어 또는 수동 체크
 - `scope`: 범위 외 제약사항
+- `commit_lanes`: Single-PR Commit-Lane Strategy, Parallelization Decision, lane별 owned files / must-not-touch / evidence
 
 codebase 내 작업이면 언급된 경로를 최종 draft 전 검증:
 ```bash
@@ -1427,9 +1456,9 @@ test -e <mentioned-path>
 |---|---|---|
 | Small | 파일 1개, ~10-50줄 변경 | 독립 이슈 |
 | Medium | 1-3 파일, 새 파일 + 집중 테스트 가능 | 독립 이슈 |
-| Large | 4+ 파일, 복수 이유, 2+ wave | parent epic + sub-issues |
+| Large | 4+ 파일, 복수 이유, 여러 serial/parallel lane 필요 | parent epic + sub-issues |
 
-parent epic 사용 조건: sub-issue 3개 이상 / 복수 PR merge 의존 / 2+ wave 필요 / 사용자가 tracker 요청.
+parent epic 사용 조건: sub-issue 3개 이상 / 여러 commit-lane 또는 serial integration 의존 / 사용자가 tracker 요청.
 
 ### Phase 3: 파일 소유권 매핑
 
@@ -1451,16 +1480,17 @@ Hard blocker: 같은 기존 파일 수정 / 같은 생성 아티팩트 / 같은 
 
 Soft blocker: 비즈니스/리뷰 선호 / 트래커 순서 / 같은 base를 타겟으로 하는 시맨틱 권장
 
-하드 블로커만 wave를 분리할 수 있다. 이슈를 지연시키면 정확한 공유 파일 또는 미게시 의존성을 명시한다.
+하드 블로커만 병렬 lane을 serial/blocked lane으로 낮출 수 있다. 이슈를 지연시키면 정확한 공유 파일 또는 미게시 의존성을 명시한다.
 
-### Phase 5: Wave 구성
+### Phase 5: Single-PR commit-lane 구성
 
-같은 wave의 이슈는 내부 하드 블로커가 없어야 한다.
+이슈는 여러 PR을 열기 위한 단위가 아니라, 하나의 PR 안에서 독립 commit lane을 증명하기 위한 단위다.
 
-- Wave 1: 남은 이슈 중 내부 충돌 없는 가장 큰 안전 셋
-- Wave N: 남은 이슈에서 재계산
-- Parent epic: wave 없음
-- Wave 1 외 이슈마다 정확한 블로커를 이슈/파일 쌍으로 기록
+- Base branch, integration branch, PR count `1`, `Stacked PRs: forbidden unless explicitly requested`를 parent/tracker 또는 plan-derived issue에 기록한다.
+- Parallel lane: owned files가 겹치지 않고 shared contract/runtime flip/미게시 코드 의존성이 없는 이슈.
+- Serial lane: 같은 기존 파일, shared config/registry/barrel/schema, runtime flip, delivery/output contract를 공유하므로 같은 PR 안에서 순서 있는 commit으로 처리할 이슈.
+- Blocked lane: open PR, missing credential, unclear acceptance criteria, repo-external state 때문에 아직 구현 착수 불가한 이슈.
+- Parent epic은 구현 파일을 직접 소유하지 않고 child lane table과 integration gate만 가진다.
 
 ### Phase 6: 이슈 body 초안
 
@@ -1475,6 +1505,12 @@ Plan → Issue Body 필드 매핑 체크리스트
 - [ ] Context Recovery Anchors→ ## 원본 근거 / 컨텍스트 복구
 - [ ] Constraints / Non-Goals → ## 범위 / 제외 범위
 - [ ] Existing Patterns       → ## 작업 내용의 "참고할 기존 패턴"
+- [ ] Owned files             → ## 파일 소유권
+- [ ] Must not touch          → ## 범위 / 제외 범위 또는 ## 병렬 실행 메모
+- [ ] Parallelization note    → ## 병렬 실행 메모
+- [ ] Commit lane suggestion  → ## 병렬 실행 메모
+- [ ] Validation/evidence     → ## 완료 기준
+- [ ] Dependencies / blocked by → ## 선행 조건
 ```
 
 누락 필드가 있으면 이슈 body에 보완한 뒤 초안을 작성한다.
@@ -1514,11 +1550,18 @@ Plan → Issue Body 필드 매핑 체크리스트
 ## 선행 조건
 없음 / #<number> merge 필요
 
+## Dependencies / blocked by
+없음 / open PR·missing credential·unclear acceptance criteria·repo-external state
+
 ## 후행 조건
 없음 / #<number>
 
 ## 병렬 실행 메모
-Wave N. Hard Blocker: 없음 / `path/file.ts` 겹침 때문에 #<number>와 분리.
+- Parallelization note: parallel / serial / blocked 중 하나와 근거.
+- Commit lane suggestion: `<L1/L2/...>` — single PR 안 별도 commit으로 반영.
+- Owned files: `path/to/file`.
+- Must not touch: `path/to/other-file` 또는 shared contract.
+- Validation/evidence: `<command>` 또는 manual artifact.
 ```
 
 Parent epic body:
@@ -1531,20 +1574,19 @@ Parent epic body:
 Before / After.
 
 ## 실행 순서
-Wave 단위로 작업 순서와 hard blocker 이유 명시.
+Single-PR Commit-Lane Strategy 기준으로 parallel / serial / blocked lane과 integration gate를 명시.
 
 ## Sub-issues
-### Wave 1: 동시 진행 가능
-- [ ] #N 제목
-### Wave 2: 지정된 hard blocker merge 후
-- [ ] #K 제목 (blocked by #N: `path/file.ts`)
+| Lane | Issue | Parallelization note | Commit lane suggestion | Owned files | Must not touch | Dependencies / blocked by |
+|---|---|---|---|---|---|---|
+| L1 | #N 제목 | parallel / serial / blocked | single PR commit L1 | `path/file.ts` | `shared/contract.ts` | 없음 |
 
 ## 완료 기준
-- [ ] 모든 sub-issue merge
+- [ ] 하나의 integration PR 안에 lane별 commit 반영
 - [ ] 전체 기능 검증
 
 ## 병렬 실행 메모
-`/multi-issue-executor`로 Wave 1부터 실행 가능.
+Stacked PRs: forbidden unless explicitly requested. Parallel lane은 독립성 증명 후 초안/patch만 병렬 진행하고, shared file/contract lane은 serial commit으로 통합한다.
 ```
 
 ### Phase 7: 승인 후 GitHub 이슈 생성
@@ -1571,14 +1613,17 @@ gh label list --json name
 
 ```markdown
 ## 생성된 Issue 목록
-| # | 제목 | 파일 | Wave | Blockers | 상태 |
+| # | 제목 | 파일 | Commit lane | Parallelization note | Blockers | 상태 |
 
 ## Conflict 설계 근거
 - Hard Blocker: ...
 - Soft Blocker: ...
 
-## 병렬 실행 계획
-`/multi-issue-executor`로 Wave 1부터 실행 가능.
+## Single-PR commit-lane 실행 계획
+- Parallel lanes:
+- Serial lanes:
+- Blocked lanes:
+- Integration gate:
 ```
 
 이슈 생성을 건너뛰었으면 `created` 대신 `drafted`로 표시하고 다음 명령어나 승인 절차를 제공한다.
@@ -2215,7 +2260,7 @@ cleanup이 아직 완료되지 않았으면 `/ddalggak clean`을 실행한다.
 `/setwiki`를 호출하며 다음 정보를 함께 전달한다:
 - **소스**: Step 3에서 저장된 회고 파일 경로 (`~/workspace/retrospective/YYYY-MM-DD-...md`)
 - **카테고리 힌트**: `retrospectives`
-- **태그 힌트**: `#retrospective #ddalggak #PR#N` (PR 번호 없는 wave-level 회고는 `#retrospective #ddalggak #wave`)
+- **태그 힌트**: `#retrospective #ddalggak #PR#N` (PR 번호 없는 commit-lane 회고는 `#retrospective #ddalggak #commit-lane`)
 - **제목 힌트**: 회고 파일의 H1 제목 그대로 사용
 
 setwiki 실패 시 retro 전체를 실패 처리하지 않는다. 경고를 출력하고 계속한다:
@@ -2247,12 +2292,12 @@ echo ".ddalggak/conductor-state.md" >> .gitignore
 ## 현재 Phase
 Phase N / Cross-Review Iter M / Merge Cleanup
 
-## 이슈 및 Branch 매핑
-| 이슈 | 브랜치 | worktree 경로 | Teammate | PR URL | 상태 |
+## 이슈 및 Commit Lane 매핑
+| 이슈 | 브랜치 | worktree 경로 | Teammate | Integration commit | 상태 |
 
 ## 대기 중인 시그널
-- [ ] worker-1: PUSHED: Phase Y W1
-- [x] worker-2: PUSHED: Phase Y W2
+- [ ] worker-1: LANE_READY: Phase Y W1 <patch-or-commit> <validation>
+- [x] worker-2: LANE_READY: Phase Y W2 <patch-or-commit> <validation>
 
 ## Cross-Review 상태 (해당 시)
 | PR | 리뷰어 Teammate | Iteration | 마지막 verdict |
@@ -2269,7 +2314,7 @@ Phase N / Cross-Review Iter M / Merge Cleanup
 
 compact를 실행하기 전 반드시 `.ddalggak/conductor-state.md`를 저장한 후 `/compact`를 실행한다.
 
-- **CP1**: Start Workflow Step 1 완료 직후 (이슈 분석 + Wave 계획 확정 후)
+- **CP1**: Start Workflow Step 1 완료 직후 (이슈 분석 + commit-lane 계획 확정 후)
   - 이유: 이슈 목록, git log, 파일 grep 결과 등 탐색 context가 최대
   - 절차: conductor-state.md 저장 → 사용자 안내 → /compact
 
@@ -2479,12 +2524,8 @@ Case B인 경우에만 AskUserQuestion으로 확인:
 - **개인정보 보호**: roster 파일은 커밋하지 말고, 테스트 fixture는 반드시 가짜 데이터.
 - **ScheduleWakeup 지연**: 5분 이내(60-270s)는 캐시 창 유지, 300s는 피하고, 20-30분(1200-1800s)는 idle tick용.
 - **탐색 질문에는 짧게**: 2-3 문장 + 옵션 + tradeoff로 답하고 사용자 결정 기다림. 곧바로 구현 금지.
-- **파일 소유 겹침 감지**: 두 워커가 같은 파일을 수정하면 병렬이 깨진다.
-- **Cross-dependency는 stacked PR로 처음부터 구성**: Worker A의 output을 Worker B가 import해야 하면, B의 worktree를 A의 branch에서 분기:
-  ```
-  git worktree add <wt-B> -b <branch-B> <branch-A>
-  ```
-  B의 BRIEF에 "PR base = <branch-A>" 명시. `gh pr create` 시 `--base <branch-A>`.
+- **파일 소유 겹침 감지**: 두 워커가 같은 파일을 수정하면 병렬이 깨진다. 병렬이 깨진 lane은 같은 PR 안 serial commit으로 통합한다.
+- **Cross-dependency는 stacked PR이 아니라 serial commit**: Worker A의 output을 Worker B가 import해야 하면, B를 독립 병렬 lane으로 배포하지 않는다. A의 integration commit 이후 B를 같은 integration branch에서 순차 적용하고 integration gate를 다시 실행한다.
 - **Stub 전략은 테스트 mock에만**: 프로덕션 코드에 stub 직접 박지 말고 테스트에서 `vi.mock`으로 격리.
 
 ## 실패 모드 예방
@@ -2495,7 +2536,7 @@ Case B인 경우에만 AskUserQuestion으로 확인:
 - **Stale repo 오진**: fetch/ahead-behind 없이 "이미 반영됨", "테스트 실패", "충돌"로 판단하지 않는다.
 - **외부 의존성 환각**: package manifest 또는 repo 검색 증거 없이 새 import를 지시하지 않는다.
 - **Force-push fix loop**: fix iteration은 새 커밋 + 일반 push가 기본이다. amend/force-push는 승인된 예외다.
-- **Worker 완료 신호 오판**: test pass, idle 알림, commit 존재만으로 완료가 아니다. remote branch와 draft PR 존재를 확인한다.
+- **Worker 완료 신호 오판**: test pass, idle 알림, commit 존재만으로 완료가 아니다. lane patch/commit, validation evidence, integration handoff를 확인하고 publish는 single integration PR에서만 확인한다.
 - **gitignored/local-only 파일 PR 포함**: `git check-ignore -v`로 ignored 여부를 확인하고 PR workflow와 직접 수정 workflow를 분리한다.
 - **문서/Skill 패치 회귀**: markdown 블록 교체 후 기존 라우팅, 코드 수정 권한 invariant, heading 번호, fenced code block 균형을 즉시 재확인한다.
 
@@ -2506,8 +2547,8 @@ start/review/status/ship/check/clean 종료 전 해당되는 항목을 확인한
 - `git fetch --prune` 및 base/upstream ahead-behind 확인을 수행했다.
 - issue body와 comments를 함께 확인했고, 충돌 시 우선순위와 근거를 기록했다.
 - 변경 파일이 tracked PR 대상인지, ignored/local-only/repo 밖 파일인지 확인했다.
-- subagent/teammate side effect를 `git status`, `git diff --name-only`, PR/remote branch 조회로 직접 재검증했다.
-- test pass와 commit/push/PR 완료를 구분했고, 완료 신호가 실제 산출물과 일치한다.
+- subagent/teammate side effect를 `git status`, `git diff --name-only`, lane evidence, integration commit 조회로 직접 재검증했다.
+- test pass와 lane handoff/single PR publish 완료를 구분했고, 완료 신호가 실제 산출물과 일치한다.
 - reviewer는 구현자 context와 checkout 상태에 오염되지 않았다.
 - Medium/Low 수정이 미머지 PR 또는 공유 계약 전환에 의존하면 TODO/follow-up으로 제한했다.
 - SKILL.md/문서 surgery 후 기존 동작 보존, 번호 재정렬, markdown fence 균형을 확인했다.
@@ -2518,7 +2559,7 @@ start/review/status/ship/check/clean 종료 전 해당되는 항목을 확인한
 - 파일: `BRIEF.md`, `REVIEW_BRIEF_PR<num>.md`, `FIX_BRIEF_PR<num>_1.md`, `FIX_BRIEF_PR<num>_2.md`, ...
 - Teammate: 구현자 `worker-<N>`, 리뷰어 `reviewer-pr<num>` (PR 번호 사용, worker-N 재사용 금지)
 - 완료 시그널:
-  - 구현: `PUSHED: Phase Y W<번호>`
+  - 구현: `LANE_READY: Phase Y W<번호> <patch-or-commit> <validation>`
   - 리뷰: `REVIEW DONE PR#<num>: <verdict> critical=N high=N medium=N low=N`
   - 수정: `FIX DONE PR#<num> iter<N>: high_fixed=<N> medium_fixed=<N> low_fixed=<N>`
   - Rebase: `REBASE DONE PR#<dep> on-top-of-<base>-iter<N>`
