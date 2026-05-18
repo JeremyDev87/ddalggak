@@ -1,6 +1,8 @@
 # ddalggak
 
-[![license](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
+[![npm version](https://img.shields.io/npm/v/@jeremyfellaz/ddalggak)](https://www.npmjs.com/package/@jeremyfellaz/ddalggak)
+[![license](https://img.shields.io/npm/l/@jeremyfellaz/ddalggak)](./LICENSE)
+[![npm downloads](https://img.shields.io/npm/dm/@jeremyfellaz/ddalggak)](https://www.npmjs.com/package/@jeremyfellaz/ddalggak)
 
 ddalggak is a workflow skill for turning GitHub issues into planned, parallel, reviewed, and recoverable implementation work. This repository contains both the Codex App skill source and a legacy Claude Code CLI bridge.
 
