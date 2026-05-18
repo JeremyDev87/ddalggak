@@ -2,7 +2,7 @@
 
 Use this reference when `/ddalggak plan`, `start`, or `review` must decide which quality gates apply to a request, issue, PR, or diff.
 
-The router is intentionally a small predicate table, not a rule engine. It prevents gate over-application by recording both applied and skipped gates with reasons.
+The router is intentionally a small predicate table, not a rule engine. It prevents gate over-application by recording both applied and skipped gates with reasons. Domain gate is a lens, not a mandate: a routed gate adds focused questions and required references only for the surfaces it actually touches, and it must not overwrite explicit user scope or repository/product convention.
 
 ## Inputs
 
@@ -26,7 +26,23 @@ Every routed plan, implementation brief, or review packet should include:
   - <gate>: <why it is omitted>
 - Repo/product conventions that outrank generic rules:
   - <convention or none>
+- Required references:
+  - <reference file>: <why this reference is required now>
+- Lightweight or limited gates:
+  - <gate>: <which bullets apply and which bullets are intentionally not applied>
 ```
+
+If a gate is skipped, keep it in `Skipped gates` with a concrete reason such as `backend-only: no rendered, deploy, mobile, auth/security, data privacy, or performance surface`. Skipped gates are review evidence, not missing context.
+
+## Domain Gate Integration Rule
+
+`plan`, `start`, and `review` must use the router output to decide which domain gates are included:
+
+- Include only applicable gate families and the required reference files for those families.
+- Keep applicable gates scoped to the changed surface; use lightweight gates when only one subfamily applies.
+- Do not copy every UI/deploy/mobile checklist into unrelated work.
+- Do not let a domain gate overwrite repo convention, product direction, explicit file ownership, or user-requested non-goals.
+- Backend-only work must record frontend/UI/deploy/mobile gates as skipped unless it affects a rendered user-facing contract, deploy surface, auth/security boundary, data privacy contract, or evidence-backed performance claim.
 
 ## Gate Families
 
@@ -47,6 +63,19 @@ Use these stable names so future issue-specific gates can plug into the same con
 | `evidence-contract` | Any work claims completion, readiness, review approval, performance, deploy, UI, security, or data behavior. | Almost never; if skipped, record why no completion claim is being made. |
 | `regression-library` | A review finds a repeated Medium/High failure pattern or a retrospective generalizes a failure class. | One-off incident with no generalized detection signal. |
 
+## Required Reference Mapping
+
+After choosing applicable gate families, attach only the matching references:
+
+| Applicable gate family | Required reference |
+| --- | --- |
+| `frontend-design` | `references/frontend-design-gate.md` |
+| `vercel-agent-skills`, `react-next-boundary-performance`, `composition-api`, `motion-meaning`, `web-design-a11y-evidence`, `deploy-token-safety`, `react-native-expo` | `references/vercel-agent-skills-gates.md` |
+| `simplicity-deletability` | `references/simplicity-deletability-gate.md` |
+| `evidence-contract` | `references/evidence-contract.md` |
+
+`tdd-systematic-debugging` currently routes to the Evidence Contract bugfix/regression template and existing repository testing/debugging conventions. `regression-library` is a future-library signal only; do not pre-enforce a new regression library workflow from this router.
+
 ## Priority Order
 
 When gates conflict, judge in this order:
@@ -59,11 +88,13 @@ When gates conflict, judge in this order:
 6. Generic upstream best practice.
 7. Named principles or patterns such as SOLID.
 
+This priority is exact. For example, generic upstream React, design, Vercel, or mobile guidance cannot override repo/product conventions; SOLID or named patterns cannot override human readability/deletability; evidence-backed accessibility or performance can outrank generic upstream best practice when the claim is in scope.
+
 ## Required Behavior by Subcommand
 
-- `plan`: include the router output before implementation units so work can be split without hidden gates.
-- `start`: include applicable and skipped gates in every worker brief, plus the reason each gate applies or is omitted.
-- `review`: include the router output in the review packet so reviewers do not apply UI, deploy, or mobile gates to unrelated backend-only diffs.
+- `plan`: include the router output before implementation units so work can be split without hidden gates; list applicable gates, skipped gates, required references, repo/product conventions, and any lightweight gate limits.
+- `start`: include applicable and skipped gates in every worker brief, plus the reason each gate applies or is omitted, the required references each worker must read, and any backend-only skip reason.
+- `review`: include the router output in the review packet so reviewers do not apply UI, deploy, or mobile gates to unrelated backend-only diffs. Reviewers should treat a domain gate as a lens and inspect only the applicable bullets.
 
 ## Anti-Overreach Rule
 
