@@ -21,6 +21,10 @@ const frontendDesignReferencePaths = [
   path.join(skillDir, "references", "frontend-design-gate.md"),
   path.join(rootDir, "ddalggak", "references", "frontend-design-gate.md"),
 ];
+const vercelAgentSkillsReferencePaths = [
+  path.join(skillDir, "references", "vercel-agent-skills-gates.md"),
+  path.join(rootDir, "ddalggak", "references", "vercel-agent-skills-gates.md"),
+];
 const packagePath = path.join(rootDir, "package.json");
 const cliPath = path.join(rootDir, "bin", "ddalggak.js");
 const dispatchPath = path.join(rootDir, "bin", "lib", "dispatch.mjs");
@@ -105,6 +109,24 @@ const requiredSkillAnchors = [
   "references/frontend-design-gate.md",
   "Frontend Design Brief",
   "Frontend Design Review Gate",
+  "Vercel Agent Skills Gate",
+  "references/vercel-agent-skills-gates.md",
+  "react-best-practices",
+  "composition-patterns",
+  "react-view-transitions",
+  "web-design-guidelines",
+  "deploy-to-vercel",
+  "vercel-cli-with-tokens",
+  "react-native-skills",
+  "server/client boundary",
+  "unnecessary client component avoidance",
+  "hydration/bundle regression avoidance",
+  "token source without printing secrets",
+  "preview-first",
+  "Vercel deploy safety",
+  "component API quality",
+  "animation meaning",
+  "React Native/Expo constraints",
   "small direct change first",
   "why any proposed abstraction is necessary",
   "one-off abstraction",
@@ -156,6 +178,24 @@ const requiredLegacySkillAnchors = [
   "references/frontend-design-gate.md",
   "Frontend Design Brief",
   "Frontend Design Review Gate",
+  "Vercel Agent Skills Gate",
+  "references/vercel-agent-skills-gates.md",
+  "react-best-practices",
+  "composition-patterns",
+  "react-view-transitions",
+  "web-design-guidelines",
+  "deploy-to-vercel",
+  "vercel-cli-with-tokens",
+  "react-native-skills",
+  "server/client boundary",
+  "unnecessary client component avoidance",
+  "hydration/bundle regression avoidance",
+  "token source without printing secrets",
+  "preview-first",
+  "Vercel deploy safety",
+  "component API quality",
+  "animation meaning",
+  "React Native/Expo constraints",
   "small direct change first",
   "why is this abstraction necessary?",
   "one-off abstraction",
@@ -238,6 +278,45 @@ const requiredFrontendDesignReferenceAnchors = [
   "Blocking examples",
   "generic AI/template layout",
   "one-off wrapper",
+];
+const requiredVercelAgentSkillsReferenceAnchors = [
+  "Vercel Agent Skills Quality Gates",
+  "summarizes and transforms",
+  "react-best-practices",
+  "composition-patterns",
+  "react-view-transitions",
+  "web-design-guidelines",
+  "deploy-to-vercel",
+  "vercel-cli-with-tokens",
+  "react-native-skills",
+  "Activation",
+  "backend-only",
+  "Vercel Agent Skills Gate",
+  "Applicable upstream skill families",
+  "Product/repo constraints that outrank generic rules",
+  "React/Next.js performance risks",
+  "Component API/composition risks",
+  "Animation/motion continuity rule",
+  "UI/a11y/design evidence required",
+  "Vercel deploy/env/token safety constraints",
+  "React Native/mobile constraints",
+  "Explicit anti-goals",
+  "server/client boundaries",
+  "unnecessary client components",
+  "hydration/bundle regressions",
+  "token source without printing secrets",
+  "preview-first",
+  "verified URL/env state",
+  "React/Next.js correctness",
+  "Performance evidence",
+  "Component API quality",
+  "Animation meaning",
+  "UI/a11y evidence",
+  "Vercel deploy safety",
+  "React Native/Expo",
+  "Blocking examples",
+  "token values",
+  "file/line/screenshot/viewport evidence",
 ];
 
 const failures = [];
@@ -478,6 +557,33 @@ if (codexFrontendDesignExists && legacyFrontendDesignExists) {
   }
 }
 
+const [codexVercelAgentSkillsPath, legacyVercelAgentSkillsPath] = vercelAgentSkillsReferencePaths;
+const codexVercelAgentSkillsExists = statSync(codexVercelAgentSkillsPath, { throwIfNoEntry: false })?.isFile();
+const legacyVercelAgentSkillsExists = statSync(legacyVercelAgentSkillsPath, { throwIfNoEntry: false })?.isFile();
+if (!codexVercelAgentSkillsExists) {
+  fail(`${path.relative(rootDir, codexVercelAgentSkillsPath)} must exist for Vercel Agent Skills Gate parity.`);
+}
+if (!legacyVercelAgentSkillsExists) {
+  fail(`${path.relative(rootDir, legacyVercelAgentSkillsPath)} must exist for Vercel Agent Skills Gate parity.`);
+}
+if (codexVercelAgentSkillsExists && legacyVercelAgentSkillsExists) {
+  const codexVercelAgentSkillsText = readText(codexVercelAgentSkillsPath);
+  const legacyVercelAgentSkillsText = readText(legacyVercelAgentSkillsPath);
+  if (codexVercelAgentSkillsText !== legacyVercelAgentSkillsText) {
+    fail("Vercel Agent Skills Gate references must match between .codex and ddalggak directories.");
+  }
+  const missingVercelAgentSkillsAnchors = requiredVercelAgentSkillsReferenceAnchors.filter(
+    (anchor) => !codexVercelAgentSkillsText.includes(anchor),
+  );
+  if (missingVercelAgentSkillsAnchors.length > 0) {
+    fail(
+      `Vercel Agent Skills Gate anchors missing:\n${missingVercelAgentSkillsAnchors
+        .map((anchor) => `  - ${anchor}`)
+        .join("\n")}`,
+    );
+  }
+}
+
 const packageJson = JSON.parse(readText(packagePath));
 const packageFiles = Array.isArray(packageJson.files) ? packageJson.files : [];
 if (!packageFiles.includes(".codex/")) {
@@ -539,24 +645,34 @@ for (const subcommand of requiredRouterSubcommands) {
   if (!section.includes("Frontend Design")) {
     fail(`ddalggak ${subcommand} --show-doc section must expose Frontend Design Gate.`);
   }
+  if (!section.includes("Vercel Agent Skills Gate")) {
+    fail(`ddalggak ${subcommand} --show-doc section must expose Vercel Agent Skills Gate.`);
+  }
   if (subcommand === "plan" && !section.includes("why is this abstraction necessary?")) {
     fail("ddalggak plan --show-doc section must expose the abstraction necessity question.");
   }
   if (subcommand === "plan" && !section.includes("Frontend Design Brief")) {
     fail("ddalggak plan --show-doc section must expose Frontend Design Brief.");
   }
+  if (subcommand === "plan") {
+    for (const planAnchor of ["Applicable upstream skill families", "React/Next.js performance risks", "Explicit anti-goals", "Backend-only skip/lightweight reason"]) {
+      if (!section.includes(planAnchor)) {
+        fail(`ddalggak plan --show-doc section must expose ${planAnchor}.`);
+      }
+    }
+  }
   if (subcommand === "start" && !section.includes("small direct change first")) {
     fail("ddalggak start --show-doc section must expose small direct change first.");
   }
   if (subcommand === "start") {
-    for (const startAnchor of ["aesthetic direction", "screenshot/viewport/manual evidence"]) {
+    for (const startAnchor of ["aesthetic direction", "screenshot/viewport/manual evidence", "server/client boundary", "token source without printing secrets", "preview-first"]) {
       if (!section.includes(startAnchor)) {
         fail(`ddalggak start --show-doc section must expose ${startAnchor}.`);
       }
     }
   }
   if (subcommand === "review") {
-    for (const reviewAnchor of ["one-off abstraction", "human readability", "Frontend Design Review Gate", "generic AI/template", "screenshot/manual verification"]) {
+    for (const reviewAnchor of ["one-off abstraction", "human readability", "Frontend Design Review Gate", "generic AI/template", "screenshot/manual verification", "Vercel deploy safety", "component API quality", "animation meaning", "React Native/Expo"]) {
       if (!section.includes(reviewAnchor)) {
         fail(`ddalggak review --show-doc section must expose ${reviewAnchor}.`);
       }
