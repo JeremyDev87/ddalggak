@@ -73,8 +73,9 @@ After choosing applicable gate families, attach only the matching references:
 | `vercel-agent-skills`, `react-next-boundary-performance`, `composition-api`, `motion-meaning`, `web-design-a11y-evidence`, `deploy-token-safety`, `react-native-expo` | `references/vercel-agent-skills-gates.md` |
 | `simplicity-deletability` | `references/simplicity-deletability-gate.md` |
 | `evidence-contract` | `references/evidence-contract.md` |
+| `regression-library` | `references/regression-library.md` |
 
-`tdd-systematic-debugging` currently routes to the Evidence Contract bugfix/regression template and existing repository testing/debugging conventions. `regression-library` is a future-library signal only; do not pre-enforce a new regression library workflow from this router.
+`tdd-systematic-debugging` currently routes to the Evidence Contract bugfix/regression template and existing repository testing/debugging conventions. `regression-library` applies only when a review finds a repeated Medium/High pattern or a retrospective generalizes a failure class; one-off incidents without a generalized detection signal stay skipped.
 
 ## Priority Order
 

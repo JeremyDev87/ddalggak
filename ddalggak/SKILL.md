@@ -73,6 +73,7 @@ user-invocable: true
 18. **Simplicity / Deletability Gate**: `plan`, `start`, `review`는 `references/simplicity-deletability-gate.md`를 읽고 새 abstraction/helper/provider/wrapper/component/module/fallback/pattern이 필요한지 검증한다. 기본 방향은 **small direct change first**이며, 새 추상화는 "why is this abstraction necessary?"에 답하고 실제 reuse 또는 boundary clarification을 증명해야 한다. SOLID는 유용하지만 human readability/deletability보다 우선하지 않는다.
 19. **Frontend Design Gate**: `plan`, `start`, `review`는 UI/frontend/design/page/component/layout/polish/responsive/dashboard/card/CTA/typography/animation/screenshot, `.tsx`/`.jsx`/CSS/Tailwind/design token/Storybook/route/page/component/shared frontend primitive, Bokbuk/orbit-dashboard 같은 product context가 걸리면 `references/frontend-design-gate.md`를 읽는다. backend/API-only, test-only, narrow functional bugfix는 skip 또는 lightweight로 기록한다. product-specific constraints outrank novelty이며, one-off UI 변경을 위한 forced abstraction은 막는다.
 20. **Vercel Agent Skills Gate**: `plan`, `start`, `review`는 React/Next component/page/data-fetching/performance, component library/API/refactor/composition, view transitions/page/shared element/list reorder/enter-exit animation, UI/a11y/UX/screenshot/viewport acceptance, Vercel deploy/preview URL/production deploy/env vars/project linking/token CLI, React Native/Expo/mobile performance/native/platform API가 걸리면 `references/vercel-agent-skills-gates.md`를 읽는다. backend-only 작업은 frontend/deploy/mobile surface에 영향이 없으면 skip 또는 lightweight로 기록한다. product/repo constraints, Simplicity/Deletability, Frontend Design Gate가 generic upstream pattern보다 우선한다.
+21. **Continuous Regression Library**: `review`는 반복되는 Medium/High AI code-quality pattern이 보이거나 기존 회귀 class와 닮은 finding이 있으면 `references/regression-library.md`를 읽는다. `plan`과 `start`는 알려진 반복 리스크가 있을 때만 regression-library reference를 유용한 범위에서 언급한다. transient failures, PR numbers, commit SHAs, single-session completion logs, incident records는 memory에 넣지 않는다. durable pattern은 detection signal, blocking review rule, minimal fixture/evidence idea를 갖춘 class-level failure로 일반화한 뒤 skill/reference 또는 follow-up issue로 승격한다.
 
 ## 서브커맨드 분기
 
@@ -183,6 +184,8 @@ UI worker는 코딩 전 aesthetic direction, main visual idea, typography/color/
 React/Next, composition, motion, web design/a11y, Vercel deploy/token, React Native/Expo/mobile 작업이면 worker BRIEF에 `references/vercel-agent-skills-gates.md` 기준 Vercel Agent Skills Gate를 포함한다. Applicable upstream skill families는 `react-best-practices`, `composition-patterns`, `react-view-transitions`, `web-design-guidelines`, `deploy-to-vercel`, `vercel-cli-with-tokens`, `react-native-skills` 중 해당 항목으로 기록한다. backend-only 작업은 frontend/deploy/mobile surface가 없으면 skipped 또는 lightweight 사유를 기록한다.
 
 BRIEF에는 server/client boundary, unnecessary client component avoidance, hydration/bundle regression avoidance, component API simplification evidence, animation/motion continuity meaning, contrast/focus/keyboard/responsive/empty-loading-error evidence, token source without printing secrets, preview-first, verified URL/env state, list virtualization, animation performance, platform boundary evidence 중 해당 항목을 넣는다.
+
+알려진 반복 Medium/High AI code-quality 리스크가 관련될 때만 `references/regression-library.md`를 유용한 범위에서 언급하고, one-off incident 이름이 아니라 class-level risk로 적는다.
 
 **Clarification Gate 판정**:
 - 명확: Goal, 변경 범위, 완료 기준, 검증 방법이 모두 식별됨 → 진행
@@ -679,6 +682,12 @@ Cross-Review Loop의 리뷰는 칭찬이나 요약이 아니라 **AI code qualit
 
 각 REVIEW_BRIEF에는 `references/quality-lens-router.md` 기준의 applicable gate families, skipped gates, required references, lightweight or limited gates, repo/product conventions that outrank generic rules를 포함한다. 리뷰어는 이 출력으로 unrelated backend-only diff에 frontend/UI/deploy/mobile gate를 과적용하지 않는다. Domain gate is a lens, not a mandate이므로 required references의 applicable bullets만 확인하고, backend-only skip 사유가 타당하면 UI/deploy/mobile checklist를 blocking으로 만들지 않는다.
 
+### Continuous Regression Library
+
+각 REVIEW_BRIEF는 반복되는 Medium/High 패턴이 있거나 known recurring regression class와 닮은 finding이 있을 때 `references/regression-library.md`를 포함한다. 리뷰어는 Generic AI UI, unnecessary provider/helper/wrapper, silent fallback, server/client boundary violation, token leakage, screenshot-free UI approval, production deploy without explicit request, overfitted incident rule, test-after instead of TDD, readability-hostile SOLID/pattern application 같은 class-level failures를 확인한다.
+
+반복 Medium/High 패턴이 library에 없으면 리뷰 output에 **Regression Library Candidate**를 제안한다. Candidate는 one-off PR/issue/file 이름이 아니라 generalized failure class, detection signal, blocking review rule, minimal fixture/evidence idea를 포함해야 한다. transient incident는 memory에 저장하지 않고, durable pattern만 skill/reference 또는 follow-up issue 후보로 남긴다.
+
 Gate priority/conflict order는 정확히 1 explicit user request, 2 repo/product convention, 3 safety/security/correctness, 4 human readability/deletability, 5 evidence-backed performance/accessibility, 6 generic upstream best practice, 7 named principles/patterns such as SOLID 순서로 해결한다. repo/product convention은 generic upstream best practice보다 우선한다.
 
 ### Evidence Contract
@@ -770,6 +779,7 @@ PR 목록 확정 후 Step 1로 진행.
 - Quality Lens Router Output: applicable gate families, skipped gates, required references, lightweight/limited gates, repo/product conventions that outrank generic rules, backend-only skip reason when applicable
 - Evidence Contract: required evidence, evidence templates applied(UI/deploy/performance/bugfix/security/data/API), `not-applicable: <reason>` items, blocking evidence gaps
 - Simplicity / Deletability Gate: one-off abstraction default High, human readability/deletability, "why is this abstraction necessary?", SOLID does not outrank readability
+- Continuous Regression Library: repeated Medium/High patterns checked against `references/regression-library.md`; **Regression Library Candidate** suggested when a durable generalized class is missing
 - Frontend Design Review Gate (UI PR일 때): design intent/product fit, typography/hierarchy/spacing, palette, layout/grid/alignment/density/responsive behavior, useful performant motion, empty/loading/error states, keyboard/contrast/semantics/reduced motion/focus states, minimal/reviewable code, screenshot/viewport/Storybook/browser/manual evidence, generic AI/template/evidence blockers
 - Vercel Agent Skills Gate (해당 PR일 때): React/Next correctness, performance evidence, component API quality, animation meaning, UI/a11y evidence, Vercel deploy safety, React Native/Expo constraints; backend-only skip/lightweight 사유
 - 이슈 코멘트 보완 사항: (같은 조회 결과에서, body에 없고 코멘트에만 있는 요구사항·설계 결정·범위 변경 발췌. 최신 코멘트가 body와 충돌하면 코멘트를 우선한다. 코멘트가 없거나 body와 동일하면 "없음")
@@ -1048,6 +1058,8 @@ GitHub issue 등록 전, 저성능 모델이 실행 가능하고 review agent가
 ### Quality Lens Router Output
 
 계획서는 구현 단위보다 먼저 `references/quality-lens-router.md` 기준의 applicable gate families, skipped gates, required references, lightweight or limited gates, repo/product conventions that outrank generic rules를 기록한다. Domain gate is a lens, not a mandate이므로 UI, React/Next, component API, motion, deploy/token, bugfix, backend-only 같은 작업 유형별 gate 적용·생략 이유와 backend-only skip reason을 명시하고, 필요한 domain gate만 계획에 포함한다.
+
+반복되는 AI code-quality 리스크가 이미 알려진 경우에만 `references/regression-library.md`를 계획의 review checklist에 유용한 범위에서 연결한다. 계획은 one-off incident를 memory에 저장하지 않고, class-level failure로 일반화 가능한 경우에만 follow-up issue 또는 Regression Library Candidate로 남긴다.
 
 Gate priority/conflict order는 정확히 1 explicit user request, 2 repo/product convention, 3 safety/security/correctness, 4 human readability/deletability, 5 evidence-backed performance/accessibility, 6 generic upstream best practice, 7 named principles/patterns such as SOLID 순서로 해결한다. domain gate는 repo convention이나 product direction을 덮어쓰지 않는다.
 
