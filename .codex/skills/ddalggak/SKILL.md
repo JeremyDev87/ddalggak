@@ -87,8 +87,10 @@ Apply these rules to every subcommand without weakening the routing or code-modi
 - **Self-created complexity is a defect**: before adding helpers, modules, providers, wrappers, or fallback branches, prefer deletion, direct code, and boundary clarification. Forced modularization must prove it reduces real repeated code rather than making an AI patch look organized. Client-side patches must not replace correct server, request, auth, or data boundary fixes, and mock-only tests are insufficient for auth, redirect, or data-boundary behavior.
 - **Result criteria first**: briefs should emphasize success criteria, allowed files, forbidden conditions, validation commands, and completion signals over long step-by-step scripts, while safety, scope, and completion signals remain absolute rules.
 - **Absorb repeated lessons**: stale repositories, hallucinated dependencies, unsafe force-push loops, ignored-file mistakes, and missing worker commit/push/PR steps are default guardrails for every start, review, fix, and ship flow.
+- **Evidence Contract is mandatory for readiness claims**: `plan`, `start`, and `review` must read `references/evidence-contract.md` whenever work claims completion, PR readiness, approval, deploy readiness, performance, UI, security, data, or API behavior. The contract defines required evidence, applied templates, explicit `not-applicable: <reason>` items, and blocking evidence gaps.
 - **Evidence is a first-class deliverable**: CI or typecheck success is not enough for user-visible frontend behavior. Plans and reviews must request rendered evidence when frontend work changes routes, responsive layouts, DOM states, screenshots, fallbacks, or shared data contracts.
-- **Missing evidence classification**: every skipped evidence item must be classified as `not-applicable: <reason>`, Medium, or High. Missing evidence is High when it covers an explicit acceptance criterion, user-visible critical path, privacy/security behavior, or a fallback likely to hide broken data; otherwise it is Medium unless truly out of scope.
+- **Missing evidence classification**: every skipped evidence item must be classified as `not-applicable: <reason>`, Medium, or High. Missing evidence is High when it covers an explicit acceptance criterion, user-visible critical path, PR readiness, deploy/performance claim, privacy/security/auth behavior, data/API contract, or a fallback likely to hide broken data; otherwise it is Medium unless truly out of scope.
+- **No evidence, no readiness or approval**: without required evidence, do not leave a PR ready, `APPROVE`, `ready for review`, `ship`, or `merge ready` conclusion. Request changes or block until evidence is supplied or reclassified with a specific `not-applicable` reason.
 - **Analytics privacy**: analytics plans and reviews must state an allowlist/denylist contract. Deny raw search terms, prompt titles or bodies, arbitrary user-entered text, email/name/profile identifiers, and full query strings by default. Prefer stable IDs, categories, buckets, booleans, and GTM-managed transformations.
 
 
@@ -111,6 +113,35 @@ The router inspects request text, issue body and comments, PR files, diff paths,
 Stable gate family names are: `frontend-design`, `vercel-agent-skills`, `react-next-boundary-performance`, `composition-api`, `motion-meaning`, `web-design-a11y-evidence`, `deploy-token-safety`, `react-native-expo`, `tdd-systematic-debugging`, `simplicity-deletability`, `evidence-contract`, and `regression-library`.
 
 Backend-only work must not receive frontend/UI/domain gates unless it affects a rendered user-facing contract, deploy surface, auth/security boundary, data privacy contract, or performance claim. Treat `backend-only` skip reasons as stable review evidence. Record skipped gates and skip reasons explicitly; skipped gates are part of the quality contract, not omitted context.
+
+## Evidence Contract
+
+Before `plan`, `start`, or `review` claims completion, readiness, approval, deploy safety, performance, UI, security, data, or API behavior, read `references/evidence-contract.md` and include an `Evidence Contract` section alongside the Quality Lens Router output.
+
+Stable section format:
+
+```markdown
+## Evidence Contract
+- Required evidence:
+  - <evidence item>: <why this proves the changed behavior>
+- Evidence templates applied:
+  - <template name>: <required proof>
+- Evidence not applicable:
+  - <evidence item>: not-applicable: <reason>
+- Blocking evidence gaps:
+  - <gap or none>
+```
+
+Template families that must be considered when applicable:
+
+- UI/design/frontend: route or screen path, desktop/mobile viewport matrix, rendered DOM or accessibility state, screenshot or visual artifact, fallback/empty/loading/error state evidence, and contract graph evidence for shared dependencies.
+- Deploy/release/env: preview or live URL, deployment state, environment/project context, deployed commit or version, and rollback/token-safety evidence when relevant.
+- Performance: before/after measurement, focused benchmark or profiling result, dataset/fixture size, threshold or budget, and noise/repeatability note.
+- Bugfix/regression: reproduction or failing regression test first, fix evidence, passing regression log, and adjacent edge/error coverage.
+- Security/auth/privacy: adversarial cases, auth/authz boundary tests, privacy allowlist/denylist evidence, denied cases, and secret/sensitive-input non-exposure evidence.
+- Data/API/backend: actual request/response, query result, schema or contract sample, error response evidence, migration/compatibility evidence, and fixture/source used.
+
+Missing evidence is a High blocking gap when it covers an explicit acceptance criterion, critical user path, PR/deploy readiness, performance claim, security/privacy/auth behavior, data/API contract, or fallback that could hide broken data. Without required evidence, do not conclude `APPROVE`, `ready`, `ready for review`, `ship`, or `merge ready`.
 
 ## State Contract
 
@@ -199,6 +230,7 @@ git -C <repo-root> worktree add <repo-root>/.worktrees/<branch-name> -b <branch-
    - latest comment conflicts or supplements when present;
    - expected outcome, result criteria, and machine-checkable completion signals;
    - Quality Lens Router Output with applicable gate families, skipped gates, and repo/product conventions that outrank generic rules;
+   - Evidence Contract from `references/evidence-contract.md`, including required evidence, applied UI/deploy/performance/bugfix/security/data/API templates, explicit `not-applicable: <reason>` items, and blocking evidence gaps;
    - repository root, absolute worktree path, branch, base branch, and base freshness result;
    - allowed files, forbidden files, and inspect-only files;
    - shared language, domain terms, deep-module boundaries, and gray-box boundaries;
@@ -208,6 +240,7 @@ git -C <repo-root> worktree add <repo-root>/.worktrees/<branch-name> -b <branch-
    - for analytics or privacy work, an explicit allowlist/denylist contract that excludes raw search terms, prompt titles or bodies, arbitrary user-entered text, email/name/profile identifiers, and full query strings by default;
    - worker implementation quality rules: prefer arrow functions where the repository style allows, keep each unit single-responsibility, isolate pure functions from side effects when practical, use TDD or unit tests for core behavior, and follow the repository's file naming plus companion test/story/helper conventions such as `ABC.styles.tsx`, `ABC.constants.tsx`, `ABC.types.tsx`, and `ABC.parts.tsx` when that pattern fits the codebase;
    - validation commands and success signals;
+   - final output requirement: list `Evidence provided`, `Evidence not applicable`, and `Blocking evidence gaps`; if any required evidence is missing, do not claim PR readiness or approval readiness;
    - no-new-dependency rule with proof required before any new import;
    - ignored/local-only handling with `git check-ignore -v <path>` when relevant;
    - requirement to use absolute worktree paths or `git -C <worktree>` for git and file commands;
@@ -231,10 +264,11 @@ Use for independent PR or local-lane review. Treat review as an AI code quality 
    - `gh pr view <num> --json title,body,files,commits,baseRefName,headRefName,reviews,statusCheckRollup`
    - `gh pr diff <num>`
    - `gh pr checks <num>` when available; failing CI is Critical unless proven unrelated.
-   - issue body and comments, Quality Lens Router Output, validation already run, skipped checks, constraints, Review Rubric, AI Code Quality Gate checklist, and merge-order context.
+   - issue body and comments, Quality Lens Router Output, Evidence Contract, validation already run, skipped checks, constraints, Review Rubric, AI Code Quality Gate checklist, and merge-order context.
 3. For each PR, create a fresh reviewer agent with `spawn_agent`. Do not reuse the author or implementation agent for review, and do not let an agent review its own code.
 4. Give the reviewer only the review packet: issue context, diff or PR URL, files changed, validation already run, skipped checks, constraints, merge-order context, Review Rubric, and AI Code Quality Gate checklist.
    - Require reviewers to cite CI status as evidence when available, but to focus findings on behavior intent, issue scope, code quality, architecture and domain boundaries, maintainability, and deletability.
+   - Require reviewers to compare the PR body, issue criteria, validation, screenshots/logs/responses, and other artifacts against the Evidence Contract. Missing required evidence is a High blocking finding, and review output must not conclude `APPROVE` or PR-ready while a required evidence gap remains.
 5. Reviewer reports findings only. It does not edit files, and it does not run branch switching or PR checkout commands inside an implementation worktree.
 6. If build or test reproduction is needed, use a separate temporary checkout such as `/tmp/<pr-num>-review`; otherwise prefer `gh pr diff` and `gh pr view --json files`.
 7. Main session triages every finding as accept, reject, or defer.
@@ -300,6 +334,7 @@ The plan must include:
 - Validation commands and success signals
 - Completion signals beyond test pass when publish is expected
 - Quality Lens Router Output with applicable and skipped gate families
+- Evidence Contract with required evidence, applied UI/deploy/performance/bugfix/security/data/API templates, exact artifacts or commands expected when known, and missing-evidence severity rules
 - Review agent checklist
 
 Do not create issues or edit source files unless the user separately asks outside this subcommand's read-only source-code boundary.

@@ -9,6 +9,10 @@ const routerReferencePaths = [
   path.join(skillDir, "references", "quality-lens-router.md"),
   path.join(rootDir, "ddalggak", "references", "quality-lens-router.md"),
 ];
+const evidenceReferencePaths = [
+  path.join(skillDir, "references", "evidence-contract.md"),
+  path.join(rootDir, "ddalggak", "references", "evidence-contract.md"),
+];
 const packagePath = path.join(rootDir, "package.json");
 const cliPath = path.join(rootDir, "bin", "ddalggak.js");
 const dispatchPath = path.join(rootDir, "bin", "lib", "dispatch.mjs");
@@ -83,6 +87,10 @@ const requiredSkillAnchors = [
   "Repo/product conventions",
   "frontend-design",
   "backend-only",
+  "Evidence Contract",
+  "references/evidence-contract.md",
+  "Blocking evidence gaps",
+  "No evidence, no readiness or approval",
 ];
 const requiredLegacySkillAnchors = [
   "Rendered evidence gate",
@@ -119,6 +127,10 @@ const requiredLegacySkillAnchors = [
   "Repo/product conventions",
   "frontend-design",
   "backend-only",
+  "Evidence Contract",
+  "references/evidence-contract.md",
+  "Blocking evidence gaps",
+  "PR ready/APPROVE",
 ];
 
 const requiredRouterGateFamilies = [
@@ -139,6 +151,18 @@ const requiredRouterReferenceAnchors = [
   "behavior/type tests",
   "concrete usage evidence",
   "internal plumbing",
+];
+const requiredEvidenceReferenceAnchors = [
+  "Evidence Contract",
+  "UI/design/frontend",
+  "Deploy/release/env",
+  "Performance",
+  "Bugfix/regression",
+  "Security/auth/privacy",
+  "Data/API/backend",
+  "not-applicable: <reason>",
+  "High",
+  "APPROVE",
 ];
 
 const failures = [];
@@ -305,6 +329,26 @@ for (const referencePath of routerReferencePaths) {
   }
 }
 
+for (const referencePath of evidenceReferencePaths) {
+  const label = path.relative(rootDir, referencePath);
+  if (!statSync(referencePath, { throwIfNoEntry: false })?.isFile()) {
+    fail(`${label} must exist for Evidence Contract parity.`);
+    continue;
+  }
+
+  const referenceText = readText(referencePath);
+  const missingEvidenceAnchors = requiredEvidenceReferenceAnchors.filter(
+    (anchor) => !referenceText.includes(anchor),
+  );
+  if (missingEvidenceAnchors.length > 0) {
+    fail(
+      `Evidence Contract anchors missing from ${label}:\n${missingEvidenceAnchors
+        .map((anchor) => `  - ${anchor}`)
+        .join("\n")}`,
+    );
+  }
+}
+
 const packageJson = JSON.parse(readText(packagePath));
 const packageFiles = Array.isArray(packageJson.files) ? packageJson.files : [];
 if (!packageFiles.includes(".codex/")) {
@@ -356,6 +400,9 @@ for (const subcommand of requiredRouterSubcommands) {
   const section = extractLegacySection(legacySkillText, heading);
   if (!section.includes("Quality Lens Router Output")) {
     fail(`ddalggak ${subcommand} --show-doc section must expose Quality Lens Router Output.`);
+  }
+  if (!section.includes("Evidence Contract")) {
+    fail(`ddalggak ${subcommand} --show-doc section must expose Evidence Contract.`);
   }
 }
 
