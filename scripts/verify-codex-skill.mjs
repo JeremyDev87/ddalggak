@@ -13,6 +13,10 @@ const evidenceReferencePaths = [
   path.join(skillDir, "references", "evidence-contract.md"),
   path.join(rootDir, "ddalggak", "references", "evidence-contract.md"),
 ];
+const simplicityReferencePaths = [
+  path.join(skillDir, "references", "simplicity-deletability-gate.md"),
+  path.join(rootDir, "ddalggak", "references", "simplicity-deletability-gate.md"),
+];
 const packagePath = path.join(rootDir, "package.json");
 const cliPath = path.join(rootDir, "bin", "ddalggak.js");
 const dispatchPath = path.join(rootDir, "bin", "lib", "dispatch.mjs");
@@ -91,6 +95,13 @@ const requiredSkillAnchors = [
   "references/evidence-contract.md",
   "Blocking evidence gaps",
   "No evidence, no readiness or approval",
+  "Simplicity / Deletability Gate",
+  "references/simplicity-deletability-gate.md",
+  "small direct change first",
+  "why any proposed abstraction is necessary",
+  "one-off abstraction",
+  "human readability",
+  "SOLID",
 ];
 const requiredLegacySkillAnchors = [
   "Rendered evidence gate",
@@ -131,6 +142,13 @@ const requiredLegacySkillAnchors = [
   "references/evidence-contract.md",
   "Blocking evidence gaps",
   "PR ready/APPROVE",
+  "Simplicity / Deletability Gate",
+  "references/simplicity-deletability-gate.md",
+  "small direct change first",
+  "why is this abstraction necessary?",
+  "one-off abstraction",
+  "human readability/deletability",
+  "SOLID",
 ];
 
 const requiredRouterGateFamilies = [
@@ -163,6 +181,18 @@ const requiredEvidenceReferenceAnchors = [
   "not-applicable: <reason>",
   "High",
   "APPROVE",
+];
+const requiredSimplicityReferenceAnchors = [
+  "Simplicity / Deletability Gate",
+  "small direct change first",
+  "Why is this abstraction necessary?",
+  "one-off abstraction",
+  "default severity: High",
+  "human readability",
+  "SOLID",
+  "do not outrank human readability",
+  "client-side patch",
+  "Non-Goals",
 ];
 
 const failures = [];
@@ -349,6 +379,33 @@ for (const referencePath of evidenceReferencePaths) {
   }
 }
 
+const [codexSimplicityPath, legacySimplicityPath] = simplicityReferencePaths;
+const codexSimplicityExists = statSync(codexSimplicityPath, { throwIfNoEntry: false })?.isFile();
+const legacySimplicityExists = statSync(legacySimplicityPath, { throwIfNoEntry: false })?.isFile();
+if (!codexSimplicityExists) {
+  fail(`${path.relative(rootDir, codexSimplicityPath)} must exist for Simplicity / Deletability Gate parity.`);
+}
+if (!legacySimplicityExists) {
+  fail(`${path.relative(rootDir, legacySimplicityPath)} must exist for Simplicity / Deletability Gate parity.`);
+}
+if (codexSimplicityExists && legacySimplicityExists) {
+  const codexSimplicityText = readText(codexSimplicityPath);
+  const legacySimplicityText = readText(legacySimplicityPath);
+  if (codexSimplicityText !== legacySimplicityText) {
+    fail("Simplicity / Deletability Gate references must match between .codex and ddalggak directories.");
+  }
+  const missingSimplicityAnchors = requiredSimplicityReferenceAnchors.filter(
+    (anchor) => !codexSimplicityText.includes(anchor),
+  );
+  if (missingSimplicityAnchors.length > 0) {
+    fail(
+      `Simplicity / Deletability Gate anchors missing:\n${missingSimplicityAnchors
+        .map((anchor) => `  - ${anchor}`)
+        .join("\n")}`,
+    );
+  }
+}
+
 const packageJson = JSON.parse(readText(packagePath));
 const packageFiles = Array.isArray(packageJson.files) ? packageJson.files : [];
 if (!packageFiles.includes(".codex/")) {
@@ -403,6 +460,22 @@ for (const subcommand of requiredRouterSubcommands) {
   }
   if (!section.includes("Evidence Contract")) {
     fail(`ddalggak ${subcommand} --show-doc section must expose Evidence Contract.`);
+  }
+  if (!section.includes("Simplicity / Deletability")) {
+    fail(`ddalggak ${subcommand} --show-doc section must expose Simplicity / Deletability Gate.`);
+  }
+  if (subcommand === "plan" && !section.includes("why is this abstraction necessary?")) {
+    fail("ddalggak plan --show-doc section must expose the abstraction necessity question.");
+  }
+  if (subcommand === "start" && !section.includes("small direct change first")) {
+    fail("ddalggak start --show-doc section must expose small direct change first.");
+  }
+  if (subcommand === "review") {
+    for (const reviewAnchor of ["one-off abstraction", "human readability"]) {
+      if (!section.includes(reviewAnchor)) {
+        fail(`ddalggak review --show-doc section must expose ${reviewAnchor}.`);
+      }
+    }
   }
 }
 
