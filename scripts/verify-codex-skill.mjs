@@ -5,6 +5,10 @@ const rootDir = process.cwd();
 const skillDir = path.join(rootDir, ".codex", "skills", "ddalggak");
 const skillPath = path.join(skillDir, "SKILL.md");
 const legacySkillPath = path.join(rootDir, "ddalggak", "SKILL.md");
+const routerReferencePaths = [
+  path.join(skillDir, "references", "quality-lens-router.md"),
+  path.join(rootDir, "ddalggak", "references", "quality-lens-router.md"),
+];
 const packagePath = path.join(rootDir, "package.json");
 const cliPath = path.join(rootDir, "bin", "ddalggak.js");
 const dispatchPath = path.join(rootDir, "bin", "lib", "dispatch.mjs");
@@ -72,6 +76,13 @@ const requiredSkillAnchors = [
   "forced modularization",
   "Client-side patches",
   "mock-only tests",
+  "Quality Lens Router",
+  "Quality Lens Router Output",
+  "Applicable gate families",
+  "Skipped gates",
+  "Repo/product conventions",
+  "frontend-design",
+  "backend-only",
 ];
 const requiredLegacySkillAnchors = [
   "Rendered evidence gate",
@@ -101,6 +112,33 @@ const requiredLegacySkillAnchors = [
   "forced modularization",
   "client-side patch",
   "mock-only tests",
+  "Quality Lens Router",
+  "Quality Lens Router Output",
+  "Applicable gate families",
+  "Skipped gates",
+  "Repo/product conventions",
+  "frontend-design",
+  "backend-only",
+];
+
+const requiredRouterGateFamilies = [
+  "frontend-design",
+  "vercel-agent-skills",
+  "react-next-boundary-performance",
+  "composition-api",
+  "motion-meaning",
+  "web-design-a11y-evidence",
+  "deploy-token-safety",
+  "react-native-expo",
+  "tdd-systematic-debugging",
+  "simplicity-deletability",
+  "evidence-contract",
+  "regression-library",
+];
+const requiredRouterReferenceAnchors = [
+  "behavior/type tests",
+  "concrete usage evidence",
+  "internal plumbing",
 ];
 
 const failures = [];
@@ -215,6 +253,37 @@ verifySkillFile(legacySkillPath, {
   label: "ddalggak/SKILL.md",
   requiredAnchors: requiredLegacySkillAnchors,
 });
+
+for (const referencePath of routerReferencePaths) {
+  const label = path.relative(rootDir, referencePath);
+  if (!statSync(referencePath, { throwIfNoEntry: false })?.isFile()) {
+    fail(`${label} must exist for Quality Lens Router parity.`);
+    continue;
+  }
+
+  const referenceText = readText(referencePath);
+  const missingGateFamilies = requiredRouterGateFamilies.filter(
+    (gateFamily) => !referenceText.includes(`\`${gateFamily}\``),
+  );
+  if (missingGateFamilies.length > 0) {
+    fail(
+      `Quality Lens Router gate families missing from ${label}:\n${missingGateFamilies
+        .map((gateFamily) => `  - ${gateFamily}`)
+        .join("\n")}`,
+    );
+  }
+
+  const missingReferenceAnchors = requiredRouterReferenceAnchors.filter(
+    (anchor) => !referenceText.includes(anchor),
+  );
+  if (missingReferenceAnchors.length > 0) {
+    fail(
+      `Quality Lens Router acceptance anchors missing from ${label}:\n${missingReferenceAnchors
+        .map((anchor) => `  - ${anchor}`)
+        .join("\n")}`,
+    );
+  }
+}
 
 const packageJson = JSON.parse(readText(packagePath));
 const packageFiles = Array.isArray(packageJson.files) ? packageJson.files : [];

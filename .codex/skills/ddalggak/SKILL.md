@@ -91,6 +91,27 @@ Apply these rules to every subcommand without weakening the routing or code-modi
 - **Missing evidence classification**: every skipped evidence item must be classified as `not-applicable: <reason>`, Medium, or High. Missing evidence is High when it covers an explicit acceptance criterion, user-visible critical path, privacy/security behavior, or a fallback likely to hide broken data; otherwise it is Medium unless truly out of scope.
 - **Analytics privacy**: analytics plans and reviews must state an allowlist/denylist contract. Deny raw search terms, prompt titles or bodies, arbitrary user-entered text, email/name/profile identifiers, and full query strings by default. Prefer stable IDs, categories, buckets, booleans, and GTM-managed transformations.
 
+
+## Quality Lens Router
+
+Before `plan`, `start`, or `review` selects detailed gates, route the work through the Quality Lens Router. Read `references/quality-lens-router.md` for the full predicate table and keep the router output in the plan, worker brief, or review packet.
+
+The router inspects request text, issue body and comments, PR files, diff paths, and repository or product conventions. It must emit this stable contract:
+
+```markdown
+## Quality Lens Router Output
+- Applicable gate families:
+  - <gate>: <why it applies>
+- Skipped gates:
+  - <gate>: <why it is omitted>
+- Repo/product conventions that outrank generic rules:
+  - <convention or none>
+```
+
+Stable gate family names are: `frontend-design`, `vercel-agent-skills`, `react-next-boundary-performance`, `composition-api`, `motion-meaning`, `web-design-a11y-evidence`, `deploy-token-safety`, `react-native-expo`, `tdd-systematic-debugging`, `simplicity-deletability`, `evidence-contract`, and `regression-library`.
+
+Backend-only work must not receive frontend/UI/domain gates unless it affects a rendered user-facing contract, deploy surface, auth/security boundary, data privacy contract, or performance claim. Treat `backend-only` skip reasons as stable review evidence. Record skipped gates and skip reasons explicitly; skipped gates are part of the quality contract, not omitted context.
+
 ## State Contract
 
 Maintain `.ddalggak/session-state.json` when running multi-lane or multi-step flows. The file should be JSON and should include:
@@ -177,6 +198,7 @@ git -C <repo-root> worktree add <repo-root>/.worktrees/<branch-name> -b <branch-
    - task, issue URL, issue body summary, and issue comments summary;
    - latest comment conflicts or supplements when present;
    - expected outcome, result criteria, and machine-checkable completion signals;
+   - Quality Lens Router Output with applicable gate families, skipped gates, and repo/product conventions that outrank generic rules;
    - repository root, absolute worktree path, branch, base branch, and base freshness result;
    - allowed files, forbidden files, and inspect-only files;
    - shared language, domain terms, deep-module boundaries, and gray-box boundaries;
@@ -209,7 +231,7 @@ Use for independent PR or local-lane review. Treat review as an AI code quality 
    - `gh pr view <num> --json title,body,files,commits,baseRefName,headRefName,reviews,statusCheckRollup`
    - `gh pr diff <num>`
    - `gh pr checks <num>` when available; failing CI is Critical unless proven unrelated.
-   - issue body and comments, validation already run, skipped checks, constraints, Review Rubric, AI Code Quality Gate checklist, and merge-order context.
+   - issue body and comments, Quality Lens Router Output, validation already run, skipped checks, constraints, Review Rubric, AI Code Quality Gate checklist, and merge-order context.
 3. For each PR, create a fresh reviewer agent with `spawn_agent`. Do not reuse the author or implementation agent for review, and do not let an agent review its own code.
 4. Give the reviewer only the review packet: issue context, diff or PR URL, files changed, validation already run, skipped checks, constraints, merge-order context, Review Rubric, and AI Code Quality Gate checklist.
    - Require reviewers to cite CI status as evidence when available, but to focus findings on behavior intent, issue scope, code quality, architecture and domain boundaries, maintainability, and deletability.
@@ -277,6 +299,7 @@ The plan must include:
 - Waves
 - Validation commands and success signals
 - Completion signals beyond test pass when publish is expected
+- Quality Lens Router Output with applicable and skipped gate families
 - Review agent checklist
 
 Do not create issues or edit source files unless the user separately asks outside this subcommand's read-only source-code boundary.

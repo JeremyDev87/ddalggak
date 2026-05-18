@@ -68,6 +68,7 @@ user-invocable: true
 13. **Rendered evidence gate**: frontend 작업은 CI/typecheck만으로 완료 증거가 아니다. route evidence, viewport evidence, rendered DOM evidence, screenshot evidence, fallback evidence, contract graph evidence를 요구하고, 누락 증거는 `not-applicable: <reason>`, Medium, High 중 하나로 분류한다.
 14. **Transitive rendered fallback audit**: 리뷰는 list/detail surface, shared card/media primitive, missing media, empty DB/data, nullable fields, mapper defaults까지 전이적으로 본다. shared primitive 수정이 범위 밖이면 callsite mitigation 또는 follow-up/blocker를 남긴다.
 15. **Analytics/privacy allowlist·denylist**: analytics/privacy 작업은 명시적 계약을 둔다. raw search terms, prompt titles/bodies, arbitrary user-entered text, email/name/profile identifiers, full query strings는 기본 denylist이고, stable IDs, categories, buckets, booleans, GTM-managed transformations를 선호한다.
+16. **Quality Lens Router**: `plan`, `start`, `review`는 세부 gate 적용 전에 `references/quality-lens-router.md`를 읽고 request text, issue body/comments, PR files, diff paths, repo/product convention을 기준으로 `frontend-design` 등 applicable gate families와 skipped gates를 기록한다. backend-only 작업에는 rendered user-facing contract, deploy surface, auth/security boundary, data privacy contract, performance claim에 직접 영향이 없으면 frontend/UI/domain gates를 적용하지 않는다.
 
 ## 서브커맨드 분기
 
@@ -472,6 +473,11 @@ echo "FIX_BRIEF*.md" >> .worktrees/<branch>/.gitignore
    body 전문을 그대로 삽입하고 이어서 코멘트는 body에 없는 요구사항·설계 결정·범위 변경만 발췌.
    최신 코멘트가 body와 충돌하면 코멘트를 우선한다. 코멘트가 없거나 body와 동일하면 "없음")
 
+## Quality Lens Router Output
+- Applicable gate families:
+- Skipped gates:
+- Repo/product conventions that outrank generic rules:
+
 ## 현재 상태
 - repo root: <절대경로>
 - working directory: <절대경로 — 예: /Users/x/.worktrees/fix-123-slug>
@@ -667,6 +673,7 @@ PR 목록 확정 후 Step 1로 진행.
   조회 명령어: gh issue view <issue-number> --json number,title,body,url,comments (한 번 조회)
 - 이슈 완료 기준: (BRIEF의 완료 기준 섹션 그대로)
 - 이슈 body 핵심 요구사항: (이슈 body에서 구현 기준·제약·완료 조건 발췌)
+- Quality Lens Router Output: applicable gate families, skipped gates, repo/product conventions that outrank generic rules
 - 이슈 코멘트 보완 사항: (같은 조회 결과에서, body에 없고 코멘트에만 있는 요구사항·설계 결정·범위 변경 발췌. 최신 코멘트가 body와 충돌하면 코멘트를 우선한다. 코멘트가 없거나 body와 동일하면 "없음")
 
 ## 리뷰 방법
@@ -1137,6 +1144,11 @@ Wave 구성 (graph-coloring):
 ### Non-Goals / Constraints
 ### Context Recovery Anchors
 ### Assumptions And Unknowns
+
+### Quality Lens Router Output
+- Applicable gate families:
+- Skipped gates:
+- Repo/product conventions that outrank generic rules:
 
 ### Work Inventory And File Ownership
 | Candidate | Files | Change | Source | Confidence | Notes |

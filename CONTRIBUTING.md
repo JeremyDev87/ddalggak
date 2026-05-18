@@ -34,8 +34,9 @@
 2. frontmatter에 `name: ddalggak`이 있습니다.
 3. Claude primitive leftovers가 0건입니다.
 4. `package.json`의 `files`에 `.codex/`가 포함되어 있습니다.
-5. Codex와 legacy payload가 rendered evidence, analytics/privacy, knowledge extraction, self-created complexity guardrail 같은 stable anchor를 유지합니다.
-6. CLI `SUBCOMMANDS`, dispatch `DOC_SECTION`, legacy skill H2 heading이 같은 서브커맨드 계약을 가리킵니다.
+5. Codex와 legacy payload가 rendered evidence, analytics/privacy, knowledge extraction, self-created complexity guardrail, Quality Lens Router 같은 stable anchor를 유지합니다.
+6. Quality Lens Router Output이 applicable gate families, skipped gates, repo/product conventions를 기록하도록 유지합니다.
+7. CLI `SUBCOMMANDS`, dispatch `DOC_SECTION`, legacy skill H2 heading이 같은 서브커맨드 계약을 가리킵니다.
 
 ## Packaging 변경 검증
 
