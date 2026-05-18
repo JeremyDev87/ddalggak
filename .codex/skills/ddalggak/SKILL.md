@@ -88,6 +88,7 @@ Apply these rules to every subcommand without weakening the routing or code-modi
 - **Result criteria first**: briefs should emphasize success criteria, allowed files, forbidden conditions, validation commands, and completion signals over long step-by-step scripts, while safety, scope, and completion signals remain absolute rules.
 - **Absorb repeated lessons**: stale repositories, hallucinated dependencies, unsafe force-push loops, ignored-file mistakes, and missing worker commit/push/PR steps are default guardrails for every start, review, fix, and ship flow.
 - **Evidence Contract is mandatory for readiness claims**: `plan`, `start`, and `review` must read `references/evidence-contract.md` whenever work claims completion, PR readiness, approval, deploy readiness, performance, UI, security, data, or API behavior. The contract defines required evidence, applied templates, explicit `not-applicable: <reason>` items, and blocking evidence gaps.
+- **Simplicity / Deletability Gate is mandatory for code-shape decisions**: `plan`, `start`, and `review` must read `references/simplicity-deletability-gate.md` whenever work may add code, abstraction, indirection, helpers, providers, wrappers, fallbacks, or patterns. Start from the smallest direct change that preserves real boundaries. SOLID and named patterns are useful tools, but they do not outrank human readability or deletability.
 - **Evidence is a first-class deliverable**: CI or typecheck success is not enough for user-visible frontend behavior. Plans and reviews must request rendered evidence when frontend work changes routes, responsive layouts, DOM states, screenshots, fallbacks, or shared data contracts.
 - **Missing evidence classification**: every skipped evidence item must be classified as `not-applicable: <reason>`, Medium, or High. Missing evidence is High when it covers an explicit acceptance criterion, user-visible critical path, PR readiness, deploy/performance claim, privacy/security/auth behavior, data/API contract, or a fallback likely to hide broken data; otherwise it is Medium unless truly out of scope.
 - **No evidence, no readiness or approval**: without required evidence, do not leave a PR ready, `APPROVE`, `ready for review`, `ship`, or `merge ready` conclusion. Request changes or block until evidence is supplied or reclassified with a specific `not-applicable` reason.
@@ -96,7 +97,7 @@ Apply these rules to every subcommand without weakening the routing or code-modi
 
 ## Quality Lens Router
 
-Before `plan`, `start`, or `review` selects detailed gates, route the work through the Quality Lens Router. Read `references/quality-lens-router.md` for the full predicate table and keep the router output in the plan, worker brief, or review packet.
+Before `plan`, `start`, or `review` selects detailed gates, route the work through the Quality Lens Router. Read `references/quality-lens-router.md` for the full predicate table and keep the router output in the plan, worker brief, or review packet. When `simplicity-deletability` applies, also read `references/simplicity-deletability-gate.md`.
 
 The router inspects request text, issue body and comments, PR files, diff paths, and repository or product conventions. It must emit this stable contract:
 
@@ -231,6 +232,7 @@ git -C <repo-root> worktree add <repo-root>/.worktrees/<branch-name> -b <branch-
    - expected outcome, result criteria, and machine-checkable completion signals;
    - Quality Lens Router Output with applicable gate families, skipped gates, and repo/product conventions that outrank generic rules;
    - Evidence Contract from `references/evidence-contract.md`, including required evidence, applied UI/deploy/performance/bugfix/security/data/API templates, explicit `not-applicable: <reason>` items, and blocking evidence gaps;
+   - Simplicity / Deletability Gate from `references/simplicity-deletability-gate.md`, including the instruction **small direct change first**, why any proposed abstraction is necessary, whether it clarifies a boundary or removes real repetition, and why SOLID/pattern use does not reduce human readability;
    - repository root, absolute worktree path, branch, base branch, and base freshness result;
    - allowed files, forbidden files, and inspect-only files;
    - shared language, domain terms, deep-module boundaries, and gray-box boundaries;
@@ -257,7 +259,7 @@ git -C <repo-root> worktree add <repo-root>/.worktrees/<branch-name> -b <branch-
 
 ## `review` - Cross-Review Loop
 
-Use for independent PR or local-lane review. Treat review as an AI code quality gate, not a praise pass or summary. The gatekeeper must block bugs, security issues, and long-term maintainability risks. Prefer smaller scope, existing repository patterns, deletable code, explicit ownership, and clear data flow. Treat unnecessary complexity and self-created complexity as defects, including forced modularization, premature abstraction, duplicate paths, silent fallback, avoidable local state, client-side boundary patches, and increased type escape.
+Use for independent PR or local-lane review. Treat review as an AI code quality gate, not a praise pass or summary. The gatekeeper must block bugs, security issues, and long-term maintainability risks. Prefer smaller scope, existing repository patterns, deletable code, explicit ownership, and clear data flow. Treat unnecessary complexity and self-created complexity as defects, including forced modularization, premature abstraction, one-off abstraction, duplicate paths, silent fallback, avoidable local state, client-side boundary patches, and increased type escape. Human readability and deletability outrank SOLID or named pattern application when they conflict.
 
 1. Determine target PRs from arguments or open PR discovery.
 2. For each PR, collect a review packet before spawning review:
@@ -265,6 +267,7 @@ Use for independent PR or local-lane review. Treat review as an AI code quality 
    - `gh pr diff <num>`
    - `gh pr checks <num>` when available; failing CI is Critical unless proven unrelated.
    - issue body and comments, Quality Lens Router Output, Evidence Contract, validation already run, skipped checks, constraints, Review Rubric, AI Code Quality Gate checklist, and merge-order context.
+   - Simplicity / Deletability Gate notes from `references/simplicity-deletability-gate.md`, including any abstraction necessity claim and any human readability/deletability risk.
 3. For each PR, create a fresh reviewer agent with `spawn_agent`. Do not reuse the author or implementation agent for review, and do not let an agent review its own code.
 4. Give the reviewer only the review packet: issue context, diff or PR URL, files changed, validation already run, skipped checks, constraints, merge-order context, Review Rubric, and AI Code Quality Gate checklist.
    - Require reviewers to cite CI status as evidence when available, but to focus findings on behavior intent, issue scope, code quality, architecture and domain boundaries, maintainability, and deletability.
@@ -281,7 +284,7 @@ Use for independent PR or local-lane review. Treat review as an AI code quality 
 ### Review Rubric
 
 - **Critical**: security vulnerability, data loss, CI/test failure, obvious malfunction, destructive migration, or secret exposure.
-- **High**: architecture or domain boundary violation, existing pattern drift that creates a parallel path or changes ownership, data, error, or validation flow, AI-generated complexity that makes the change harder to delete or review, wrong data flow, silent fallback that hides failure, client-side patches that bypass the real server/request/auth/data boundary, excessive scope creep, abstraction that is hard to delete or modify, or tests missing a core contract.
+- **High**: architecture or domain boundary violation, existing pattern drift that creates a parallel path or changes ownership, data, error, or validation flow, AI-generated complexity that makes the change harder to delete or review, wrong data flow, silent fallback that hides failure, client-side patches that bypass the real server/request/auth/data boundary, excessive scope creep, one-off abstraction by default, abstraction that is hard to delete or modify, SOLID/pattern use that lowers human readability, or tests missing a core contract.
 - **Medium**: localized duplicate implementation, naming or ownership confusion, unnecessary local state, increased type escape, inconsistent error handling, or subtle mismatch with existing patterns that does not create a blocking parallel path.
 - **Low**: documentation, comments, readability, or follow-up cleanup that does not affect the merge gate.
 
@@ -290,7 +293,7 @@ Use for independent PR or local-lane review. Treat review as an AI code quality 
 Every REVIEW_BRIEF or review packet must include this AI Code Quality Gate checklist:
 
 - **Scope & Ownership**: Is the diff limited to the issue, owned by the right module, and free of broad refactors or feature creep?
-- **Simplicity & Deletability**: Does the change avoid unnecessary abstraction, forced modularization, duplication, fallback paths, local state, and type escape? Could it be deleted or modified later without surprising callers? Did any new helper/module/provider/wrapper prove that it reduces real repeated code or clarifies a boundary?
+- **Simplicity & Deletability**: Does the change avoid unnecessary abstraction, forced modularization, duplication, fallback paths, local state, and type escape? Could it be deleted or modified later without surprising callers? Did any new helper/module/provider/wrapper prove that it reduces real repeated code or clarifies a boundary? Is a one-off abstraction being treated as High unless justified? Does human readability stay higher priority than SOLID or named patterns?
 - **Existing Patterns**: Does it follow current repository patterns, naming, boundaries, error handling, validation style, and dependency rules instead of inventing a parallel path?
 - **Failure Semantics**: Are failures explicit, testable, and observable rather than silently swallowed or converted into misleading success? Do client-side patches avoid masking server/request/auth/data boundary defects, and do auth, redirect, and data-boundary checks use more than mock-only tests?
 - **Human Reviewability**: Is the data flow clear, the diff small enough to review, and the contract covered by tests or a concrete validation signal?
@@ -335,6 +338,7 @@ The plan must include:
 - Completion signals beyond test pass when publish is expected
 - Quality Lens Router Output with applicable and skipped gate families
 - Evidence Contract with required evidence, applied UI/deploy/performance/bugfix/security/data/API templates, exact artifacts or commands expected when known, and missing-evidence severity rules
+- Simplicity / Deletability Gate output from `references/simplicity-deletability-gate.md`, including the question "why is this abstraction necessary?", the small direct change alternative, and a human readability/deletability check. State that SOLID does not outrank readability.
 - Review agent checklist
 
 Do not create issues or edit source files unless the user separately asks outside this subcommand's read-only source-code boundary.
