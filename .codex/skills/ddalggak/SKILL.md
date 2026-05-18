@@ -99,7 +99,7 @@ Apply these rules to every subcommand without weakening the routing or code-modi
 
 ## Quality Lens Router
 
-Before `plan`, `start`, or `review` selects detailed gates, route the work through the Quality Lens Router. Read `references/quality-lens-router.md` for the full predicate table and keep the router output in the plan, worker brief, or review packet. When `simplicity-deletability` applies, also read `references/simplicity-deletability-gate.md`.
+Before `plan`, `start`, or `review` selects detailed gates, route the work through the Quality Lens Router. Read `references/quality-lens-router.md` for the full predicate table and keep the router output in the plan, worker brief, or review packet. Domain gate is a lens, not a mandate: include only applicable domain gates, required references, skipped reasons, backend-only skip reasons, and lightweight limits from router output. When `simplicity-deletability` applies, also read `references/simplicity-deletability-gate.md`.
 
 When `frontend-design` applies, read `references/frontend-design-gate.md`. Activation includes visible UI/front-end requests, `.tsx`/`.jsx`/CSS/Tailwind/design-token/Storybook/route/page/component/shared primitive changes, screenshot or responsive acceptance, and visually sensitive product contexts such as Bokbuk or orbit-dashboard. Backend-only work must skip this gate unless it changes rendered behavior or visual evidence requirements.
 
@@ -115,11 +115,19 @@ The router inspects request text, issue body and comments, PR files, diff paths,
   - <gate>: <why it is omitted>
 - Repo/product conventions that outrank generic rules:
   - <convention or none>
+- Required references:
+  - <reference file>: <why this reference is required now>
+- Lightweight or limited gates:
+  - <gate>: <which bullets apply and which bullets are intentionally not applied>
 ```
 
 Stable gate family names are: `frontend-design`, `vercel-agent-skills`, `react-next-boundary-performance`, `composition-api`, `motion-meaning`, `web-design-a11y-evidence`, `deploy-token-safety`, `react-native-expo`, `tdd-systematic-debugging`, `simplicity-deletability`, `evidence-contract`, and `regression-library`.
 
+Required references are conditional: `frontend-design` requires `references/frontend-design-gate.md`; `vercel-agent-skills` and its React/Next, composition, motion, web design/a11y, deploy/token, or React Native/Expo subfamilies require `references/vercel-agent-skills-gates.md`; `simplicity-deletability` requires `references/simplicity-deletability-gate.md`; `evidence-contract` requires `references/evidence-contract.md`. Do not pre-enforce the future `regression-library` workflow here.
+
 Backend-only work must not receive frontend/UI/domain gates unless it affects a rendered user-facing contract, deploy surface, auth/security boundary, data privacy contract, or performance claim. Treat `backend-only` skip reasons as stable review evidence. Record skipped gates and skip reasons explicitly; skipped gates are part of the quality contract, not omitted context.
+
+When gates conflict, use this exact priority: 1 explicit user request, 2 repo/product convention, 3 safety/security/correctness, 4 human readability/deletability, 5 evidence-backed performance/accessibility, 6 generic upstream best practice, 7 named principles/patterns such as SOLID. A domain gate never overwrites a higher-priority item.
 
 ## Evidence Contract
 
