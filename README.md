@@ -39,6 +39,8 @@ ddalggak treats review as the guardrail that keeps AI-generated implementation w
 
 For guardrail coverage, the Codex skill also requires frontend rendered evidence gates, transitive fallback audits, missing-evidence severity classification, retrospective knowledge extraction categories, and analytics/privacy allowlist/denylist contracts. `npm run verify:codex-skill` checks stable anchors for these #44 guardrails so maintainer edits cannot silently remove them.
 
+The Quality Lens Router chooses applicable gate families from request text, issue body/comments, PR files, and diff paths before plan, start, or review work. It records both applicable gates and skipped gates so backend-only work does not inherit frontend, deployment, or mobile review requirements by accident.
+
 ## Quality Defaults
 
 - Branch names should describe the purpose of the change and must not include dates, timestamps, or generated time suffixes.
@@ -109,7 +111,7 @@ npm run verify:codex-skill
 env npm_config_cache=/tmp/ddalggak-npm-cache npm pack --dry-run --ignore-scripts --loglevel=silent
 ```
 
-Use `npm test` for CLI setup and dispatch behavior, including setup safety/idempotency and dispatch quoting edge cases. Use `npm run verify:codex-skill` for Codex skill source, metadata, or subcommand routing changes; it also checks that CLI `SUBCOMMANDS`, dispatch `DOC_SECTION`, and legacy skill headings stay aligned. Use the pack dry-run to inspect the package artifact list.
+Use `npm test` for CLI setup and dispatch behavior, including setup safety/idempotency and dispatch quoting edge cases. Use `npm run verify:codex-skill` for Codex skill source, metadata, Quality Lens Router anchors, or subcommand routing changes; it also checks that CLI `SUBCOMMANDS`, dispatch `DOC_SECTION`, and legacy skill headings stay aligned. Use the pack dry-run to inspect the package artifact list.
 
 ## Platform Support
 
