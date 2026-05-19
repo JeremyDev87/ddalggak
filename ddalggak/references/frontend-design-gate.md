@@ -48,6 +48,19 @@ The worker brief must also require screenshot/viewport/manual evidence when visu
 
 Preserve the small direct change first rule. Do not force a new abstraction, wrapper, provider, or design-system layer unless it removes real duplication or clarifies a real boundary.
 
+### Component methodology gate
+
+For UI/component work, treat these rules as a quality gate, worker brief, and review lens for external repositories. They are not instructions to refactor ddalggak itself into a React/UI app.
+
+- main component only assembles: the primary `ComponentName.tsx` should compose props, state, handlers, and child pieces rather than hide large conditional UI or parsing/calculation logic inline.
+- large conditional UI fragments → `ComponentName.parts.tsx`: split only when a fragment is large enough that extracting it improves readability or reviewability.
+- calculation/format/parse → `ComponentName.utils.ts`: keep pure calculation, formatting, and parsing logic testable outside rendered component assembly when that logic is non-trivial.
+- variant/size/style maps use `satisfies Record<...>` where the repository TypeScript version and style allow it, so missing variants fail loudly instead of becoming runtime drift.
+- tests prioritize user behavior and public visual-contract classes; avoid locking private implementation detail class names that users or consuming components cannot observe.
+- no silent fallback: unknown variant, size, state, or data shape must fail explicitly, be validated, or be surfaced as an intentional error state instead of being quietly coerced to a default.
+
+Recommended naming/role split when a component outgrows a small single-file implementation: `ComponentName/ComponentName.tsx`, `ComponentName.types.ts`, `ComponentName.parts.tsx`, `ComponentName.utils.ts`, `ComponentName.spec.tsx`, `ComponentName.stories.tsx`, and `index.ts`. Create only the files that have a real role, size, or verification need; do not require empty companion files.
+
 ## `review`: Frontend Design Review Gate
 
 For UI PRs, the review packet must include a `Frontend Design Review Gate` that checks:
@@ -61,6 +74,8 @@ For UI PRs, the review packet must include a `Frontend Design Review Gate` that 
 7. keyboard access, contrast, semantics, reduced motion, and focus states;
 8. minimal, reviewable code with no one-off abstraction;
 9. screenshot, viewport, Storybook/browser, or concrete manual evidence.
+
+For component PRs, also check the component methodology gate: main component only assembles, large conditional UI fragments live in `ComponentName.parts.tsx` when extraction is justified, calculation/format/parse logic moves to `ComponentName.utils.ts` when non-trivial, variant/size/style maps use `satisfies Record<...>` when supported, tests focus on user behavior and public visual-contract classes, and no silent fallback hides unknown variants, sizes, states, or data shapes.
 
 Blocking examples:
 
