@@ -44,6 +44,8 @@ user-invocable: true
 - **탈출 조건 명시**. "Critical+High = 0"처럼 기계적으로 측정 가능한 기준으로만 반복을 멈춘다.
 - **Reversibility 고려**. fix loop의 기본은 새 fix commit + 일반 push다. `commit --amend` / force-push는 사용자가 명시 승인하고 branch protection·SafetyGuard 영향을 확인한 경우에만 사용한다.
 - **Base freshness first**. start/review/status/ship/clean/check 세션은 stale repo 오진을 막기 위해 먼저 `git fetch --prune`, base branch 및 upstream ahead/behind를 확인한다. base branch에서 직접 검증·ship할 때 dirty 변경이 없으면 `git pull --ff-only` 후 진행한다.
+- **Manual merge only**. 박정욱/default workflow에서는 사용자가 현재 턴에서 정확한 merge action을 명시적으로 요청하지 않는 한 PR을 merge하거나 auto-merge를 enable하지 않는다. green CI와 `APPROVE` 결론은 `ready for manual merge` 보고까지만 허용하며, merge 권한으로 해석하지 않는다.
+- **approval-comment policy**. reviewer 독립성이 충분하지 않거나 formal GitHub approval이 부적절하면 approval review를 제출하지 않는다. 대신 top-level PR comment에 head SHA, review scope, validation evidence, blocking finding count, `APPROVE` 또는 `CHANGES_REQUESTED` conclusion을 남긴다.
 - **이슈 코멘트도 source-of-truth 후보**. GitHub issue body만 보지 말고 `comments`를 함께 읽는다. 최신 comment가 body와 충돌하면 comment를 우선하되 충돌 사실과 판단 근거를 BRIEF/REVIEW_BRIEF에 명시한다.
 - **암묵적 의존성 금지**. BRIEF에 "PyYAML 또는 텍스트 파싱"처럼 선택지를 열어두지 않는다. 기존 의존성 확인 전 새 라이브러리 import 금지. 불확실하면 stdlib 또는 repo의 기존 패턴을 명시한다.
 - **전략과 전술 분리**. AI worker는 코드 변경 전술을 수행하고, Conductor/reviewer는 시스템 경계·검증·삭제 가능성·장기 유지보수성을 지킨다. "동작함"보다 "6개월 뒤 이해·수정·삭제 가능함"을 우선한다.
@@ -63,7 +65,7 @@ user-invocable: true
 6. **Issue-PRs by default**: 동시에 진행 가능한 독립 이슈는 이슈 하나당 PR 하나가 기본이다. 같은 파일/contract/미게시 의존성이 없는 한 단일 통합 PR로 묶지 않는다.
 7. **Conflict fallback evidence**: 각 lane은 `Owned files`, `Must not touch`, `Independent because`, `Evidence / validation`, `Commit message`를 가져야 한다. 이 항목을 증명하지 못하거나 hard conflict가 확인되면 병렬 issue PR이 아니라 단일 conflict-fallback PR의 serial commit 또는 blocked로 분류한다.
 8. **Completion is not test pass**: test pass는 중간 증거일 뿐이다. 독립 이슈 lane 완료는 commit/push/issue PR/PR URL/validation evidence까지 검증된 상태다. hard conflict fallback lane 완료는 patch/local commit/validation evidence/integration handoff까지 검증된 상태이며, fallback publish 완료는 단일 integration PR에서 판단한다.
-9. **PR 품질 기본값**: 브랜치 이름은 목적 중심이어야 하며 날짜·타임스탬프를 넣지 않는다. commit/PR 본문에는 What/Why가 필수이고 PR에는 Validation/Risk도 포함한다.
+9. **PR 품질 기본값**: 브랜치 이름은 목적 중심이어야 하며 날짜·타임스탬프를 넣지 않는다. commit/PR 본문에는 What/Why가 필수이고 PR에는 Validation/Risk도 포함한다. green CI와 `APPROVE`는 `ready for manual merge` 보고까지만 허용하며, 사용자가 현재 턴에서 명시적으로 요청하지 않는 한 merge 또는 auto-merge enable로 이어지지 않는다. formal GitHub approval이 부적절하면 top-level PR comment에 head SHA, review scope, validation evidence, blocking finding count, conclusion을 남긴다.
 10. **Exact handoff rescue**: worker가 구현 후 evidence/handoff 없이 idle이면 "BRIEF를 다시 읽으라"가 아니라 Conductor가 확인한 validation, patch export, integration handoff 명령을 정확히 제공한다. 독립 이슈라면 누락된 issue PR 생성까지 rescue하고, 이슈 간 conflict fallback으로 묶은 경우에만 lane-specific PR 생성으로 rescue하지 않는다.
 11. **Gitignored/local-only handling**: `.claude/settings.local.json`, permission cache, repo 밖 파일, ignored 파일은 `git check-ignore -v <path>`로 확인한다. PR workflow가 불가능하면 직접 수정 + `MODIFIED:` 신호 + 수동 이슈 처리로 분리한다.
 12. **Medium fix restraint**: Medium은 기본 non-blocking이다. 미머지 PR 출력값·공유 계약 전환에 의존하는 Medium/Low는 과잉 수정하지 말고 TODO/follow-up으로 제한한다.
@@ -894,8 +896,10 @@ PR 목록 확정 후 Step 1로 진행.
 복잡도 증가는 자체로 결함이다. self-created complexity, forced modularization, 불필요한 abstraction/helper/module/provider/wrapper, duplication, fallback, local state, type escape가 추가되면 "동작한다"는 이유만으로 통과시키지 말고 위 기준에 따라 기록한다. 새 추상화보다 삭제·직접화·boundary clarification이 가능한지 먼저 묻는다.
 
 ## 리뷰 작성
-Critical+High = 0이고 required evidence gap = 0이면 `gh pr review <num> --approve --body "..."`
-Critical+High > 0 또는 required evidence gap > 0이면 `gh pr review <num> --request-changes --body "..."`
+Critical+High = 0이고 required evidence gap = 0이면 `gh pr review <num> --approve --body "..."`. 단, reviewer 독립성이 충분하지 않거나 formal GitHub approval이 부적절하면 approval review 대신 top-level PR comment를 남긴다.
+Critical+High > 0 또는 required evidence gap > 0이면 `gh pr review <num> --request-changes --body "..."`. formal request-changes도 부적절하면 top-level PR comment로 `CHANGES_REQUESTED` conclusion을 남긴다.
+
+Approval-comment fallback 본문에는 반드시 current head SHA, review scope, validation evidence, blocking finding count, `APPROVE` 또는 `CHANGES_REQUESTED` conclusion을 포함한다. `APPROVE` conclusion은 green CI와 함께 `ready for manual merge` 보고까지만 허용하며 merge 또는 auto-merge enable을 승인하지 않는다.
 
 본문 구조:
 ## Verdict
@@ -920,7 +924,7 @@ REVIEW DONE PR#<num>: <APPROVE|CHANGES_REQUESTED> critical=N high=N medium=N low
 - implementation worktree에서 checkout 금지. 필요 시 별도 `/tmp/pr-<num>-review` checkout 사용
 ```
 
-**주의**: 같은 GitHub 계정이면 self-approve가 막힘. "Cannot approve your own pull request" 에러 시 `gh pr review <num> --comment --body ...` 사용.
+**주의**: 같은 GitHub 계정이면 self-approve가 막힘. "Cannot approve your own pull request" 에러 시 `gh pr review <num> --comment --body ...` 또는 `gh pr comment <num> --body-file ...`로 top-level PR comment를 남기고, comment에 head SHA, review scope, validation evidence, blocking finding count, conclusion을 포함한다.
 
 ### Step 3. 리뷰 수집 (streaming)
 
@@ -1942,7 +1946,7 @@ push 성공 후 PR 생성 전이면 `ship_result: pushed_no_pr`로 표시.
 
 ### 8. Draft PR 생성
 
-사용자가 명시적으로 ready-for-review를 요청하지 않으면 draft PR.
+사용자가 명시적으로 ready-for-review를 요청하지 않으면 draft PR. Draft PR을 ready로 바꾸는 것은 current-head checks가 terminal success/skipped이고 fresh independent review가 `APPROVE` conclusion을 낸 뒤에만 가능하다. 이 상태도 `ready for manual merge` 보고까지만 허용하며 merge 또는 auto-merge enable은 사용자가 현재 턴에서 명시적으로 요청한 경우만 수행한다.
 
 PR description 형식 (What / Why / Validation / Risk / Issues):
 
