@@ -79,6 +79,8 @@ Apply these rules to every subcommand without weakening the routing or code-modi
 - **Commit-lane order context**: when lanes in the same PR depend on commit order or compare against different baselines, review packets must name predecessor commits or contracts, comparison targets, and whether base mismatch is expected.
 - **Completion is not test pass**: tests are intermediate evidence only. An independent issue lane is incomplete until commit, push, issue PR URL, validation evidence, and requested review signals are verified. A hard-conflict fallback lane is incomplete until patch or local commit, validation evidence, integration handoff, and fallback PR publish evidence are verified. Idle notifications are not completion evidence.
 - **PR quality defaults**: branch names must describe purpose and must not include dates or timestamps. Commit messages and PR descriptions must include What and Why, and PR descriptions must also include Validation and Risk.
+- **Manual merge only**: in 박정욱/default workflows, never merge a PR or enable auto-merge unless the user explicitly requests that exact merge action in the current turn. Green checks and an `APPROVE` conclusion only authorize reporting `ready for manual merge`; they do not authorize merge or auto-merge.
+- **Approval-comment policy**: when formal GitHub approval is inappropriate because the reviewer is not sufficiently independent, do not submit an approval review. Leave a top-level PR comment instead with the current head SHA, review scope, validation evidence, blocking findings count, and an `APPROVE` or `CHANGES_REQUESTED` conclusion.
 - **Issue-PRs by default**: for 박정욱/default ddalggak workflows, do not replace independent issue PRs with stacked PRs, branch matrices, or lane-only PRs. When work can be parallelized, use one base branch and one PR per independent issue; use a single PR with issue-separated commits only when conflicts make separate PRs unsafe. Only use stacked PRs when the user explicitly asks for them.
 - **Conflict-fallback planning**: every parallel plan must name owned files, must-not-touch files, why each issue can have its own PR, lane-specific evidence/validation, and conflict gates. Shared files, shared contracts, or runtime flips make affected issues serial commits in one fallback PR, not the default for independent issues.
 - **Exact handoff rescue**: if a worker repeatedly idles after implementation without lane evidence, send exact validation, patch/export, or integration-handoff commands verified by the conductor instead of a generic reminder. For independent issue lanes, rescue the missing issue PR creation and PR URL evidence; reserve integration handoff without PR creation for hard-conflict fallback lanes or explicitly requested stacked PRs.
@@ -411,8 +413,9 @@ Use only for changes that already exist in the current lane.
    - The commit body must include `What:` and `Why:` lines unless the repository's explicit convention is stricter.
 10. Push the current branch with ordinary push by default.
 11. Open a draft PR whose body includes What, Why, Validation, Risk, and issue references.
-12. Verify PR existence with `gh pr list --head <branch>` or equivalent.
-13. Record PR metadata in `.ddalggak/session-state.json` when the state file is in scope.
+12. Keep the PR draft until current-head checks are terminal success/skipped and a fresh independent review has an `APPROVE` conclusion; that state only means `ready for manual merge`, not permission to merge or enable auto-merge.
+13. Verify PR existence with `gh pr list --head <branch>` or equivalent.
+14. Record PR metadata in `.ddalggak/session-state.json` when the state file is in scope.
 
 Do not create new source changes as part of `ship`.
 
@@ -452,7 +455,8 @@ For implementation lanes, the normal finish pipeline is:
 5. Fix accepted Critical and High findings with new commits and ordinary push by default.
 6. Re-run validation.
 7. Repeat up to three rounds.
-8. Ship only after the gate passes and the user requested publish.
+8. If formal GitHub approval is inappropriate, leave a top-level PR comment instead of an approval review; include head SHA, review scope, validation evidence, blocking findings count, and `APPROVE` or `CHANGES_REQUESTED` conclusion.
+9. Ship only after the gate passes and the user requested publish; green checks plus `APPROVE` only allow `ready for manual merge` reporting and never authorize merge or auto-merge.
 
 Return the gate result as:
 
