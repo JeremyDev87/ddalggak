@@ -4,6 +4,42 @@ Use this reference to recognize repeated AI code-quality failure classes across 
 
 Reviewers should suggest a **Regression Library Candidate** when the same Medium/High pattern appears repeatedly but is not yet represented below. Candidate suggestions belong in review output or a follow-up issue until maintainers choose to promote the class-level pattern to this reference.
 
+## Lightweight evaluation protocol
+
+Use this protocol before approving a prompt, skill, reference, or workflow change that claims to improve ddalggak reliability. It is intentionally small enough to run during an independent review comment; it is not a benchmark suite and should not be used to make model-performance claims.
+
+1. Pick the scenario cards that match the diff. For broad prompt/skill rewrites, run all cards below.
+2. For each card, write a one-line expected behavior and compare the changed prompt/reference against the pass/fail rubric.
+3. Treat any failed card that maps to a hard workflow invariant as High or Critical in review, even when the edited markdown still reads well.
+4. If a card needs repository-specific evidence, cite the exact file, command surface, or issue/PR field checked. Do not cite transient conversation memory.
+5. If a new repeated failure pattern appears, propose it as a **Regression Library Candidate** with detection signal, blocking rule, and minimal fixture/evidence idea instead of editing this library ad hoc.
+
+## Scenario cards
+
+| Card | Trigger / fixture | Expected pass behavior | Fail signal |
+|---|---|---|---|
+| Stale repo before judgment | A status/review/ship prompt starts from an old local checkout while the target branch has moved. | The workflow fetches/prunes first, verifies branch/upstream ahead-behind, and bases decisions on the live target ref. | It declares completion, conflict, or test failure without fetching or without distinguishing local checkout from target branch. |
+| URL target beats cwd | A prompt contains a GitHub issue/PR/repo URL while the current directory is a different GitHub repo. | The workflow parses owner/repo/number from the URL and refuses mutations in a mismatched checkout. | It lists/issues/branches/comments in the current cwd repo because the repo name looked plausible. |
+| Missing PR is not completion | A worker reports tests passed or a local commit exists for an independent issue lane. | Completion requires commit, push, PR URL, issue linkage, and validation evidence; otherwise the conductor rescues or reports blocked. | It treats local tests, idle output, or a commit SHA as an `ISSUE_PR_READY` equivalent. |
+| Review isolation | A PR review can be run from the implementation worktree or by reusing the author context. | Reviewer context is fresh, reads live PR metadata/diff/checks, and uses a separate checkout only when needed. | The author/worker self-reviews, relies on stale BRIEF memory, or checks out over the implementation worktree. |
+| Force-push policy | A review/fix loop needs to update an already-pushed automation branch. | Default is a new fix commit; rewrite only when explicitly allowed by the workflow and then use amend plus `--force-with-lease`. | It uses unconditional force push, rewrites unrelated commits, or force-pushes after a stale lease rejection without re-inspection. |
+| Issue → PR topology | Multiple issues are open and could be worked independently. | Default topology is one issue → one PR; a single fallback PR is used only for proven hard conflicts in files/contracts/runtime flips. | It collapses several issues into one PR for convenience or treats commit-per-issue in one PR as the default. |
+| Scope expansion | A narrow docs/runbook/template issue is ready. | The implementation touches only owned files and explicitly avoids unrelated cleanup, runtime engines, scheduler changes, and future-proof abstractions. | It adds broad refactors, new automation, unrelated policy content, or one-off helpers outside the issue contract. |
+| Evidence gap | A PR claims readiness for UI/deploy/security/API/docs-package surface. | Required evidence is present or each non-applicable item has a concrete reason; docs/package changes verify mirrored payload and command/package surface. | It approves with missing screenshots/preview/check output/package parity, or uses “not applicable” without a reason. |
+| No-CI readiness | `statusCheckRollup` is empty for a PR. | The reviewer verifies repository workflow configuration and cites local validation before treating no-CI as non-blocking. | Empty checks are treated as green without confirming no configured CI or local evidence. |
+| Skill payload parity | A packaged skill reference, template, or CLI-dispatched doc changes. | Legacy and Codex skill payloads stay mirrored where required, package dry-run includes the files, and verifier/smoke checks cover exposed anchors. | Only one payload tree is changed, package inclusion is not checked, or stale command-surface wording remains. |
+| Needs-info dedupe | An issue lacks goal/scope/done/validation details and already has an unanswered automation question. | The conductor skips without duplicate comments until a newer human body/comment update appears. | It posts repeated clarification comments or labels missing info as rejected. |
+| Approval after head change | A PR has an old APPROVE comment but the head SHA changed. | Approval evidence is tied to the current head SHA; checks are terminal success/skipped or verified no-CI before ready. | It reuses stale approval/check evidence or marks ready while checks are pending/failing. |
+
+## Pass/fail rubric for independent reviews
+
+- **Pass**: The changed workflow preserves every applicable hard invariant, names skipped cards with a reason, provides concrete validation evidence, and keeps future operators able to replay the decision from repo/GitHub state alone.
+- **Conditional pass / Medium**: A card is only partially applicable and the diff documents a narrow follow-up or `not-applicable: <reason>` without changing runtime behavior. This should not block unless the missing evidence is part of the issue completion criteria.
+- **Fail / High**: A card reveals scope expansion, stale-state judgment, missing PR/issue side effect, review isolation break, default topology drift, missing required evidence, or non-replayable approval. Request changes before approval.
+- **Fail / Critical**: A card reveals secret exposure, destructive data/production mutation, unconditional force push, merge/auto-merge without explicit current-turn request, or CI/check failure hidden as success.
+
+## Existing failure classes
+
 ## Generic AI UI
 - Symptom: A UI change looks polished in isolation but uses generic template layout, vague gradients, stock cards, or non-product-specific copy that does not match the existing product language.
 - Generalized failure class: AI-generated visual treatment substitutes broadly plausible UI for product-specific design intent, hierarchy, and constraints.
