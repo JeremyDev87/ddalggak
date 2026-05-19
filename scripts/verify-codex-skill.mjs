@@ -30,6 +30,7 @@ const regressionLibraryReferencePaths = [
   path.join(rootDir, "ddalggak", "references", "regression-library.md"),
 ];
 const packagePath = path.join(rootDir, "package.json");
+const readmePath = path.join(rootDir, "README.md");
 const cliPath = path.join(rootDir, "bin", "ddalggak.js");
 const dispatchPath = path.join(rootDir, "bin", "lib", "dispatch.mjs");
 const requiredSubcommands = [
@@ -69,6 +70,12 @@ const bannedTerms = [
   "teammate",
 ];
 const requiredSkillAnchors = [
+  "Task Scope Contract",
+  "tool capability boundary",
+  "task scope contract",
+  "out-of-scope diff",
+  "scope-expansion failure",
+  "Diff Footprint / Scope Expansion Review",
   "knowledge extraction",
   "harness-engineering/*",
   "principles/*",
@@ -177,6 +184,12 @@ const requiredSkillAnchors = [
   "empty companion files",
 ];
 const requiredLegacySkillAnchors = [
+  "Task Scope Contract",
+  "tool capability boundary",
+  "task scope contract",
+  "out-of-scope diff",
+  "scope-expansion failure",
+  "Diff Footprint / Scope Expansion Review",
   "Rendered evidence gate",
   "route evidence",
   "viewport evidence",
@@ -460,6 +473,14 @@ const requiredRegressionLibraryFields = [
   "Blocking review rule:",
   "Minimal fixture/evidence idea:",
   "Related gates:",
+];
+const requiredReadmeQualityAnchors = [
+  "## Quality Defaults",
+  "Task Scope Contract",
+  "tool capability boundary",
+  "task scope contract",
+  "out-of-scope diff",
+  "scope-expansion failure",
 ];
 
 const failures = [];
@@ -780,6 +801,18 @@ if (codexRegressionLibraryExists && legacyRegressionLibraryExists) {
       );
     }
   }
+}
+
+const readmeText = readText(readmePath);
+const missingReadmeQualityAnchors = requiredReadmeQualityAnchors.filter(
+  (anchor) => !readmeText.includes(anchor),
+);
+if (missingReadmeQualityAnchors.length > 0) {
+  fail(
+    `README Quality Defaults anchors missing:\n${missingReadmeQualityAnchors
+      .map((anchor) => `  - ${anchor}`)
+      .join("\n")}`,
+  );
 }
 
 const packageJson = JSON.parse(readText(packagePath));
