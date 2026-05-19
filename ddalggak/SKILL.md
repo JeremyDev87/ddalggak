@@ -39,6 +39,7 @@ user-invocable: true
 - **Phase는 순차, Worker는 병렬**. 한 Phase 안의 워커 N명은 서로 다른 파일을 건드린다.
 - **Issue-PRs by default**. 박정욱/default ddalggak 워크플로우의 기본 publish 단위는 이슈 하나당 PR 하나다. 서로 다른 이슈가 파일·contract·runtime flip을 공유하지 않으면 병렬 worker가 각자 독립 브랜치와 PR을 만든다.
 - **Single-PR conflict fallback**. 예외적으로 이슈 간 hard conflict(같은 파일/생성물/공유 contract/미게시 코드 의존성)가 있어 독립 PR이 unsafe하면, 그때만 단일 integration PR 안에서 이슈별 commit으로 나눈다. 단일 PR은 기본값이 아니라 conflict fallback이다.
+- **Task Scope Contract**. worker BRIEF와 review packet은 tool capability boundary(도구상 가능한 범위)와 task scope contract(이번 task에서 승인된 범위)를 분리한다. Goal, Authorized files, Forbidden files/actions, Allowed side effects, Escalation-required actions, Validation commands, Completion evidence를 명시하고, out-of-scope diff는 capability failure가 아니라 authorization / scope-expansion failure로 다룬다.
 - **Conductor(이 Claude)는 지시만 한다**. 커밋/push/PR은 워커가 직접 한다. Conductor가 대신하면 안 된다.
 - **파일 기반 BRIEF**. 짧은 인라인 프롬프트가 아니라 `BRIEF.md`/`REVIEW_BRIEF.md`/`FIX_BRIEF_N.md`를 worktree에 쓰고 워커가 읽게 한다.
 - **탈출 조건 명시**. "Critical+High = 0"처럼 기계적으로 측정 가능한 기준으로만 반복을 멈춘다.
@@ -63,24 +64,25 @@ user-invocable: true
 4. **No force-push fix loop by default**: review fix는 새 커밋 + 일반 push가 기본이다. amend/force-push는 명시 승인, branch protection/SafetyGuard 확인, stacked PR 영향 고지 후에만 허용한다.
 5. **Reviewer isolation**: reviewer는 구현자 conversation과 worktree checkout 상태에 오염되지 않아야 한다. 기본은 `gh pr view`/`gh pr diff`; 로컬 실행이 필요하면 별도 review checkout을 만든다.
 6. **Issue-PRs by default**: 동시에 진행 가능한 독립 이슈는 이슈 하나당 PR 하나가 기본이다. 같은 파일/contract/미게시 의존성이 없는 한 단일 통합 PR로 묶지 않는다.
-7. **Conflict fallback evidence**: 각 lane은 `Owned files`, `Must not touch`, `Independent because`, `Evidence / validation`, `Commit message`를 가져야 한다. 이 항목을 증명하지 못하거나 hard conflict가 확인되면 병렬 issue PR이 아니라 단일 conflict-fallback PR의 serial commit 또는 blocked로 분류한다.
-8. **Completion is not test pass**: test pass는 중간 증거일 뿐이다. 독립 이슈 lane 완료는 commit/push/issue PR/PR URL/validation evidence까지 검증된 상태다. hard conflict fallback lane 완료는 patch/local commit/validation evidence/integration handoff까지 검증된 상태이며, fallback publish 완료는 단일 integration PR에서 판단한다.
-9. **PR 품질 기본값**: 브랜치 이름은 목적 중심이어야 하며 날짜·타임스탬프를 넣지 않는다. commit/PR 본문에는 What/Why가 필수이고 PR에는 Validation/Risk도 포함한다. green CI와 `APPROVE`는 `ready for manual merge` 보고까지만 허용하며, 사용자가 현재 턴에서 명시적으로 요청하지 않는 한 merge 또는 auto-merge enable로 이어지지 않는다. formal GitHub approval이 부적절하면 top-level PR comment에 head SHA, review scope, validation evidence, blocking finding count, conclusion을 남긴다.
-10. **Exact handoff rescue**: worker가 구현 후 evidence/handoff 없이 idle이면 "BRIEF를 다시 읽으라"가 아니라 Conductor가 확인한 validation, patch export, integration handoff 명령을 정확히 제공한다. 독립 이슈라면 누락된 issue PR 생성까지 rescue하고, 이슈 간 conflict fallback으로 묶은 경우에만 lane-specific PR 생성으로 rescue하지 않는다.
-11. **Gitignored/local-only handling**: `.claude/settings.local.json`, permission cache, repo 밖 파일, ignored 파일은 `git check-ignore -v <path>`로 확인한다. PR workflow가 불가능하면 직접 수정 + `MODIFIED:` 신호 + 수동 이슈 처리로 분리한다.
-12. **Medium fix restraint**: Medium은 기본 non-blocking이다. 미머지 PR 출력값·공유 계약 전환에 의존하는 Medium/Low는 과잉 수정하지 말고 TODO/follow-up으로 제한한다.
-13. **Markdown surgery discipline**: SKILL.md/문서 블록 교체 시 기존 동작 보존 체크, heading anchor 보존, 번호 재정렬, fenced code block 균형 확인을 즉시 수행한다.
-14. **Rendered evidence gate**: frontend 작업은 CI/typecheck만으로 완료 증거가 아니다. route evidence, viewport evidence, rendered DOM evidence, screenshot evidence, fallback evidence, contract graph evidence를 요구하고, 누락 증거는 `not-applicable: <reason>`, Medium, High 중 하나로 분류한다.
-15. **Transitive rendered fallback audit**: 리뷰는 list/detail surface, shared card/media primitive, missing media, empty DB/data, nullable fields, mapper defaults까지 전이적으로 본다. shared primitive 수정이 범위 밖이면 callsite mitigation 또는 follow-up/blocker를 남긴다.
-16. **Analytics/privacy allowlist·denylist**: analytics/privacy 작업은 명시적 계약을 둔다. raw search terms, prompt titles/bodies, arbitrary user-entered text, email/name/profile identifiers, full query strings는 기본 denylist이고, stable IDs, categories, buckets, booleans, GTM-managed transformations를 선호한다.
-17. **Quality Lens Router**: `plan`, `start`, `review`는 세부 gate 적용 전에 `references/quality-lens-router.md`를 읽고 request text, issue body/comments, PR files, diff paths, repo/product convention을 기준으로 `frontend-design` 등 applicable gate families, skipped gates, required references, lightweight limits를 기록한다. Domain gate is a lens, not a mandate: backend-only 작업에는 rendered user-facing contract, deploy surface, auth/security boundary, data privacy contract, performance claim에 직접 영향이 없으면 frontend/UI/domain gates를 적용하지 않고 backend-only skip 사유를 남긴다. gate 충돌은 정확히 1 explicit user request, 2 repo/product convention, 3 safety/security/correctness, 4 human readability/deletability, 5 evidence-backed performance/accessibility, 6 generic upstream best practice, 7 named principles/patterns such as SOLID 순서로 해결한다.
-18. **Evidence Contract**: `plan`, `start`, `review`는 완료·PR readiness·APPROVE·deploy/performance/UI/security/data/API 동작을 주장하기 전에 `references/evidence-contract.md`를 읽고 `Evidence Contract` 섹션을 포함한다. required evidence, 적용된 UI/deploy/performance/bugfix/security/data/API template, `not-applicable: <reason>`, blocking evidence gaps를 기록한다. 필수 증거가 없으면 PR ready/APPROVE/merge-ready 결론을 남기지 않고 High/blocking으로 분류한다.
-19. **Simplicity / Deletability Gate**: `plan`, `start`, `review`는 `references/simplicity-deletability-gate.md`를 읽고 새 abstraction/helper/provider/wrapper/component/module/fallback/pattern이 필요한지 검증한다. 기본 방향은 **small direct change first**이며, 새 추상화는 "why is this abstraction necessary?"에 답하고 실제 reuse 또는 boundary clarification을 증명해야 한다. SOLID는 유용하지만 human readability/deletability보다 우선하지 않는다.
-20. **Counterargument Pass**: `plan`과 `review`는 PR ready/APPROVE 또는 구현 착수 결론 전에 약한 가정, 기존 repo convention과 충돌할 수 있는 지점, readiness를 반증할 evidence, 이슈를 만족하는 더 작은 직접 변경 대안을 먼저 확인한다. 이 pass는 Quality Lens Router, Evidence Contract, Simplicity / Deletability Gate를 보완하는 반확증 렌즈이며, 단순 찬성·요약으로 대체할 수 없다.
-21. **Frontend Design Gate**: `plan`, `start`, `review`는 UI/frontend/design/page/component/layout/polish/responsive/dashboard/card/CTA/typography/animation/screenshot, `.tsx`/`.jsx`/CSS/Tailwind/design token/Storybook/route/page/component/shared frontend primitive, Bokbuk/orbit-dashboard 같은 product context가 걸리면 `references/frontend-design-gate.md`를 읽는다. backend/API-only, test-only, narrow functional bugfix는 skip 또는 lightweight로 기록한다. product-specific constraints outrank novelty이며, one-off UI 변경을 위한 forced abstraction은 막는다.
-22. **Component methodology gate**: `frontend-design` 또는 `composition-api`가 UI/component 작업에 적용되면 외부 repo worker brief/review lens로만 사용하고, ddalggak 자체를 React/UI 앱처럼 리팩터링하라는 규칙으로 쓰지 않는다. main component only assembles, large conditional UI fragments → `ComponentName.parts.tsx`, calculation/format/parse → `ComponentName.utils.ts`, variant/size/style maps use `satisfies Record<...>`, tests prioritize user behavior and public visual-contract classes, no silent fallback을 확인한다. 권장 구조는 `ComponentName/ComponentName.tsx`, `ComponentName.types.ts`, `ComponentName.parts.tsx`, `ComponentName.utils.ts`, `ComponentName.spec.tsx`, `ComponentName.stories.tsx`, `index.ts`이지만 실제 역할/크기/검증 필요가 있을 때만 만들고 empty companion files는 강제하지 않는다.
-23. **Vercel Agent Skills Gate**: `plan`, `start`, `review`는 React/Next component/page/data-fetching/performance, component library/API/refactor/composition, view transitions/page/shared element/list reorder/enter-exit animation, UI/a11y/UX/screenshot/viewport acceptance, Vercel deploy/preview URL/production deploy/env vars/project linking/token CLI, React Native/Expo/mobile performance/native/platform API가 걸리면 `references/vercel-agent-skills-gates.md`를 읽는다. backend-only 작업은 frontend/deploy/mobile surface에 영향이 없으면 skip 또는 lightweight로 기록한다. product/repo constraints, Simplicity/Deletability, Frontend Design Gate가 generic upstream pattern보다 우선한다.
-24. **Continuous Regression Library**: `review`는 반복되는 Medium/High AI code-quality pattern이 보이거나 기존 회귀 class와 닮은 finding이 있으면 `references/regression-library.md`를 읽는다. `plan`과 `start`는 알려진 반복 리스크가 있을 때만 regression-library reference를 유용한 범위에서 언급한다. transient failures, PR numbers, commit SHAs, single-session completion logs, incident records는 memory에 넣지 않는다. durable pattern은 detection signal, blocking review rule, minimal fixture/evidence idea를 갖춘 class-level failure로 일반화한 뒤 skill/reference 또는 follow-up issue로 승격한다.
+7. **Task Scope Contract**: 모든 plan/start/review/fix 산출물은 tool capability boundary와 task scope contract를 분리하고, Goal / Authorized files / Forbidden files/actions / Allowed side effects / Escalation-required actions / Validation commands / Completion evidence를 명시한다. 허용 파일 밖 수정, unrelated cleanup/refactor, 요청되지 않은 config 변경, credential/secret/token 파일 변경, destructive action, migration 변경, 외부 API write, production data touch, force-push 또는 branch mutation은 out-of-scope diff이며 scope-expansion failure High/Critical 후보로 리뷰한다.
+8. **Conflict fallback evidence**: 각 lane은 `Owned files`, `Must not touch`, `Independent because`, `Evidence / validation`, `Commit message`를 가져야 한다. 이 항목을 증명하지 못하거나 hard conflict가 확인되면 병렬 issue PR이 아니라 단일 conflict-fallback PR의 serial commit 또는 blocked로 분류한다.
+9. **Completion is not test pass**: test pass는 중간 증거일 뿐이다. 독립 이슈 lane 완료는 commit/push/issue PR/PR URL/validation evidence까지 검증된 상태다. hard conflict fallback lane 완료는 patch/local commit/validation evidence/integration handoff까지 검증된 상태이며, fallback publish 완료는 단일 integration PR에서 판단한다.
+10. **PR 품질 기본값**: 브랜치 이름은 목적 중심이어야 하며 날짜·타임스탬프를 넣지 않는다. commit/PR 본문에는 What/Why가 필수이고 PR에는 Validation/Risk도 포함한다. green CI와 `APPROVE`는 `ready for manual merge` 보고까지만 허용하며, 사용자가 현재 턴에서 명시적으로 요청하지 않는 한 merge 또는 auto-merge enable로 이어지지 않는다. formal GitHub approval이 부적절하면 top-level PR comment에 head SHA, review scope, validation evidence, blocking finding count, conclusion을 남긴다.
+11. **Exact handoff rescue**: worker가 구현 후 evidence/handoff 없이 idle이면 "BRIEF를 다시 읽으라"가 아니라 Conductor가 확인한 validation, patch export, integration handoff 명령을 정확히 제공한다. 독립 이슈라면 누락된 issue PR 생성까지 rescue하고, 이슈 간 conflict fallback으로 묶은 경우에만 lane-specific PR 생성으로 rescue하지 않는다.
+12. **Gitignored/local-only handling**: `.claude/settings.local.json`, permission cache, repo 밖 파일, ignored 파일은 `git check-ignore -v <path>`로 확인한다. PR workflow가 불가능하면 직접 수정 + `MODIFIED:` 신호 + 수동 이슈 처리로 분리한다.
+13. **Medium fix restraint**: Medium은 기본 non-blocking이다. 미머지 PR 출력값·공유 계약 전환에 의존하는 Medium/Low는 과잉 수정하지 말고 TODO/follow-up으로 제한한다.
+14. **Markdown surgery discipline**: SKILL.md/문서 블록 교체 시 기존 동작 보존 체크, heading anchor 보존, 번호 재정렬, fenced code block 균형 확인을 즉시 수행한다.
+15. **Rendered evidence gate**: frontend 작업은 CI/typecheck만으로 완료 증거가 아니다. route evidence, viewport evidence, rendered DOM evidence, screenshot evidence, fallback evidence, contract graph evidence를 요구하고, 누락 증거는 `not-applicable: <reason>`, Medium, High 중 하나로 분류한다.
+16. **Transitive rendered fallback audit**: 리뷰는 list/detail surface, shared card/media primitive, missing media, empty DB/data, nullable fields, mapper defaults까지 전이적으로 본다. shared primitive 수정이 범위 밖이면 callsite mitigation 또는 follow-up/blocker를 남긴다.
+17. **Analytics/privacy allowlist·denylist**: analytics/privacy 작업은 명시적 계약을 둔다. raw search terms, prompt titles/bodies, arbitrary user-entered text, email/name/profile identifiers, full query strings는 기본 denylist이고, stable IDs, categories, buckets, booleans, GTM-managed transformations를 선호한다.
+18. **Quality Lens Router**: `plan`, `start`, `review`는 세부 gate 적용 전에 `references/quality-lens-router.md`를 읽고 request text, issue body/comments, PR files, diff paths, repo/product convention을 기준으로 `frontend-design` 등 applicable gate families, skipped gates, required references, lightweight limits를 기록한다. Domain gate is a lens, not a mandate: backend-only 작업에는 rendered user-facing contract, deploy surface, auth/security boundary, data privacy contract, performance claim에 직접 영향이 없으면 frontend/UI/domain gates를 적용하지 않고 backend-only skip 사유를 남긴다. gate 충돌은 정확히 1 explicit user request, 2 repo/product convention, 3 safety/security/correctness, 4 human readability/deletability, 5 evidence-backed performance/accessibility, 6 generic upstream best practice, 7 named principles/patterns such as SOLID 순서로 해결한다.
+19. **Evidence Contract**: `plan`, `start`, `review`는 완료·PR readiness·APPROVE·deploy/performance/UI/security/data/API 동작을 주장하기 전에 `references/evidence-contract.md`를 읽고 `Evidence Contract` 섹션을 포함한다. required evidence, 적용된 UI/deploy/performance/bugfix/security/data/API template, `not-applicable: <reason>`, blocking evidence gaps를 기록한다. 필수 증거가 없으면 PR ready/APPROVE/merge-ready 결론을 남기지 않고 High/blocking으로 분류한다.
+20. **Simplicity / Deletability Gate**: `plan`, `start`, `review`는 `references/simplicity-deletability-gate.md`를 읽고 새 abstraction/helper/provider/wrapper/component/module/fallback/pattern이 필요한지 검증한다. 기본 방향은 **small direct change first**이며, 새 추상화는 "why is this abstraction necessary?"에 답하고 실제 reuse 또는 boundary clarification을 증명해야 한다. SOLID는 유용하지만 human readability/deletability보다 우선하지 않는다.
+21. **Counterargument Pass**: `plan`과 `review`는 PR ready/APPROVE 또는 구현 착수 결론 전에 약한 가정, 기존 repo convention과 충돌할 수 있는 지점, readiness를 반증할 evidence, 이슈를 만족하는 더 작은 직접 변경 대안을 먼저 확인한다. 이 pass는 Quality Lens Router, Evidence Contract, Simplicity / Deletability Gate를 보완하는 반확증 렌즈이며, 단순 찬성·요약으로 대체할 수 없다.
+22. **Frontend Design Gate**: `plan`, `start`, `review`는 UI/frontend/design/page/component/layout/polish/responsive/dashboard/card/CTA/typography/animation/screenshot, `.tsx`/`.jsx`/CSS/Tailwind/design token/Storybook/route/page/component/shared frontend primitive, Bokbuk/orbit-dashboard 같은 product context가 걸리면 `references/frontend-design-gate.md`를 읽는다. backend/API-only, test-only, narrow functional bugfix는 skip 또는 lightweight로 기록한다. product-specific constraints outrank novelty이며, one-off UI 변경을 위한 forced abstraction은 막는다.
+23. **Component methodology gate**: `frontend-design` 또는 `composition-api`가 UI/component 작업에 적용되면 외부 repo worker brief/review lens로만 사용하고, ddalggak 자체를 React/UI 앱처럼 리팩터링하라는 규칙으로 쓰지 않는다. main component only assembles, large conditional UI fragments → `ComponentName.parts.tsx`, calculation/format/parse → `ComponentName.utils.ts`, variant/size/style maps use `satisfies Record<...>`, tests prioritize user behavior and public visual-contract classes, no silent fallback을 확인한다. 권장 구조는 `ComponentName/ComponentName.tsx`, `ComponentName.types.ts`, `ComponentName.parts.tsx`, `ComponentName.utils.ts`, `ComponentName.spec.tsx`, `ComponentName.stories.tsx`, `index.ts`이지만 실제 역할/크기/검증 필요가 있을 때만 만들고 empty companion files는 강제하지 않는다.
+24. **Vercel Agent Skills Gate**: `plan`, `start`, `review`는 React/Next component/page/data-fetching/performance, component library/API/refactor/composition, view transitions/page/shared element/list reorder/enter-exit animation, UI/a11y/UX/screenshot/viewport acceptance, Vercel deploy/preview URL/production deploy/env vars/project linking/token CLI, React Native/Expo/mobile performance/native/platform API가 걸리면 `references/vercel-agent-skills-gates.md`를 읽는다. backend-only 작업은 frontend/deploy/mobile surface에 영향이 없으면 skip 또는 lightweight로 기록한다. product/repo constraints, Simplicity/Deletability, Frontend Design Gate가 generic upstream pattern보다 우선한다.
+25. **Continuous Regression Library**: `review`는 반복되는 Medium/High AI code-quality pattern이 보이거나 기존 회귀 class와 닮은 finding이 있으면 `references/regression-library.md`를 읽는다. `plan`과 `start`는 알려진 반복 리스크가 있을 때만 regression-library reference를 유용한 범위에서 언급한다. transient failures, PR numbers, commit SHAs, single-session completion logs, incident records는 memory에 넣지 않는다. durable pattern은 detection signal, blocking review rule, minimal fixture/evidence idea를 갖춘 class-level failure로 일반화한 뒤 skill/reference 또는 follow-up issue로 승격한다.
 
 ## 서브커맨드 분기
 
@@ -303,7 +305,7 @@ BRIEF에는 server/client boundary, unnecessary client component avoidance, hydr
    | 이슈 A | 이슈 B | 겹치는 파일 | 판정 |
    |---|---|---|---|
 
-   - **Hard Blocker**: 같은 기존 파일 수정 / 같은 생성 아티팩트 / 같은 공유 설정·레지스트리·barrel / 미게시 코드 의존성 / gitignored·local-only 파일 / repo 밖 파일 / 같은 delivery·output contract의 원자적 전환 → 독립 issue PR 금지, fallback PR 안 serial commit 또는 tracked PR 대상 밖 local-only 처리
+   - **Hard Blocker**: 같은 기존 파일 수정 / 같은 생성 아티팩트 / 같은 공유 설정·레지스트리·barrel / 미게시 코드 의존성 / gitignored·local-only 파일 / repo 밖 파일 / 같은 delivery·output contract 또는 task scope contract의 원자적 전환 → 독립 issue PR 금지, fallback PR 안 serial commit 또는 tracked PR 대상 밖 local-only 처리
    - **Soft Blocker**: 의미적 선행 조건 / 트래커·체크리스트 순서 → 독립 파일이면 별도 issue PR 허용
    - Hard Blocker만 병렬 lane을 serial lane으로 낮출 수 있다. Soft Blocker만으로 레인을 닫으면 안 된다.
 
@@ -531,6 +533,16 @@ echo "FIX_BRIEF*.md" >> .worktrees/<branch>/.gitignore
 - Evidence not applicable (`not-applicable: <reason>`):
 - Blocking evidence gaps:
 - Final output requirement: worker는 `Evidence provided`, `Evidence not applicable`, `Blocking evidence gaps`를 반드시 출력한다.
+
+### Task Scope Contract
+- Goal: (이번 task가 달성해야 하는 결과)
+- Authorized files: (수정 허용 파일)
+- Forbidden files/actions: (수정 금지 파일과 금지 행동)
+- Allowed side effects: (허용된 side effect; 없으면 none)
+- Escalation-required actions: (별도 승인 없이는 금지되는 행동)
+- Validation commands: (검증 명령)
+- Completion evidence: (완료 증거)
+- Boundary rule: tool capability boundary가 task scope contract보다 넓어도, contract 밖 행동은 out-of-scope diff / scope-expansion failure로 보고 중단 또는 escalation한다.
 
 ### Simplicity / Deletability Gate
 - Required reference: `references/simplicity-deletability-gate.md`
@@ -794,6 +806,8 @@ PR 목록 확정 후 Step 1로 진행.
 - 이슈 body 핵심 요구사항: (이슈 body에서 구현 기준·제약·완료 조건 발췌)
 - Quality Lens Router Output: applicable gate families, skipped gates, required references, lightweight/limited gates, repo/product conventions that outrank generic rules, backend-only skip reason when applicable
 - Evidence Contract: required evidence, evidence templates applied(UI/deploy/performance/bugfix/security/data/API), `not-applicable: <reason>` items, blocking evidence gaps
+- Task Scope Contract: Goal, Authorized files, Forbidden files/actions, Allowed side effects, Escalation-required actions, Validation commands, Completion evidence; tool capability boundary와 task scope contract 분리; out-of-scope diff / scope-expansion failure 후보
+- Diff Footprint / Scope Expansion Review: PR changed files, side effects, config/credential/migration/branch operations, cleanup/refactor footprint를 Task Scope Contract와 대조
 - Simplicity / Deletability Gate: one-off abstraction default High, human readability/deletability, "why is this abstraction necessary?", SOLID does not outrank readability
 - Counterargument Pass: 약한 가정, repo convention 충돌 가능성, readiness를 반증할 evidence, 더 작은 직접 변경 대안을 먼저 확인
 - Continuous Regression Library: repeated Medium/High patterns checked against `references/regression-library.md`; **Regression Library Candidate** suggested when a durable generalized class is missing
@@ -821,6 +835,10 @@ PR 목록 확정 후 Step 1로 진행.
   - 이 PR이 이슈 완료 기준에 필요한 최소 범위인가?
   - author branch가 건드리면 안 되는 파일·domain·team ownership을 침범하지 않았는가?
   - 새 기능·광범위 refactor·관련 없는 cleanup이 섞였으면 severity를 올린다.
+- Diff Footprint / Scope Expansion Review
+  - 모든 변경 파일과 side effect가 Task Scope Contract의 Authorized files / Allowed side effects 안에 있는가?
+  - tool capability boundary와 task scope contract가 분리되어 있는가?
+  - 허용 파일 밖 수정, unrelated cleanup/refactor, 요청되지 않은 config 변경, credential/secret/token 파일 변경, destructive action, migration 변경, 외부 API write, production data touch, force-push 또는 branch mutation은 out-of-scope diff / scope-expansion failure High/Critical 후보로 분류한다.
 - Counterargument Pass
   - 이 plan/PR을 실패하게 만들 약한 가정은 무엇인가?
   - 기존 repo convention 중 이 접근과 충돌할 수 있는 것은 무엇인가?
