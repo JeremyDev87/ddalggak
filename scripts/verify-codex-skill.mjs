@@ -74,6 +74,10 @@ const bannedTerms = [
   "teammate",
 ];
 const requiredSkillAnchors = [
+  "URL beats cwd",
+  "GitHub URL handling criteria",
+  "owner/repo/number",
+  "cwd remote does not match",
   "Task Scope Contract",
   "Context Assembly Manifest",
   "Resume Snapshot",
@@ -193,6 +197,10 @@ const requiredSkillAnchors = [
   "empty companion files",
 ];
 const requiredLegacySkillAnchors = [
+  "URL beats cwd",
+  "GitHub URL 처리 기준",
+  "owner/repo/number",
+  "cwd remote가 URL repo와 다르면",
   "Task Scope Contract",
   "Context Assembly Manifest",
   "Resume Snapshot",
