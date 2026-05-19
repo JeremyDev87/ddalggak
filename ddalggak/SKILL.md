@@ -60,6 +60,8 @@ user-invocable: true
 
 이 섹션은 myWiki 회고에서 반복 확인된 실패 패턴을 전역 운영 규칙으로 승격한 것이다. 아래 규칙은 각 서브커맨드의 세부 절차보다 우선하며, 기존 라우팅/코드 수정 권한 invariant를 완화하지 않는다.
 
+새 wiki-derived 지식을 ddalggak에 반영할 때는 `references/wiki-growth-triage.md`를 먼저 사용해 immediate guardrail, reference/template only, verifier/script candidate, GitHub issue candidate, defer/reject 중 가장 작은 durable surface를 고른다. 이 triage는 Issue-PRs by default를 보존하며 hard conflict가 있을 때만 conflict fallback을 허용한다.
+
 1. **Base freshness first**: GitHub/로컬 상태 판단 전에 `git fetch --prune`, 현재 브랜치, upstream ahead/behind, worktree dirty 여부를 확인한다. stale base에서 CI 실패·충돌·이미 merge된 변경을 오진하지 않는다.
 2. **URL beats cwd**: 사용자가 GitHub repo URL, issue URL, PR URL을 제공하면 URL의 owner/repo/number를 source of truth로 삼는다. `git remote get-url origin` 또는 명시적 repo metadata로 cwd checkout이 같은 repo임을 증명하기 전까지 cwd를 target으로 추론하지 않는다. cwd remote가 URL repo와 다르면 현재 checkout에서 branch/issue/PR mutation을 중단하고 matching checkout으로 clone/switch한 뒤 진행한다.
 3. **GitHub URL 처리 기준**: issue URL은 body/comments 수집 전에 owner/repo/issue number를 파싱하고, PR URL은 diff/check/review/linked issue 조회 전에 owner/repo/PR number를 파싱하며, repo URL은 issue/branch/label/PR 목록 조회 전에 owner/repo를 파싱한다. 이 target resolution 원칙은 `start`, `review`, `status`, `ship`, `clean` 등 mutating/검증 subcommand에 동일하게 적용한다.
