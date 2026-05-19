@@ -440,7 +440,7 @@ Verify the PR is actually merged before cleanup. If the cleanup target is a PR U
 
 ## `retro` - Retrospective
 
-After merge, summarize what happened, what broke, what validation caught, and what should change in future briefs or skills. Write only retrospective or memory-update request artifacts, not source code. Capture whether stale base, implicit dependencies, unsafe push strategy, ignored files, worker completion ambiguity, or Markdown surgery contributed to the outcome.
+After merge, summarize what happened, what broke, what validation caught, and what should change in future briefs or skills. Write only retrospective or memory-update request artifacts, not source code. Capture whether stale base, implicit dependencies, unsafe push strategy, ignored files, worker completion ambiguity, or Markdown surgery contributed to the outcome. For the full low-frequency workflow, use `references/retrospective-workflow.md`.
 
 Retrospectives must separate one-off incident records from reusable knowledge extraction. Tag reusable lessons into `harness-engineering/*`, `principles/*`, `frontend/*`, or `llm-wiki/*`, and keep project-specific incident facts out of reusable guidance unless they generalize into a durable rule.
 
@@ -450,7 +450,7 @@ Audit and improve lane briefs or review briefs. Do not edit this skill or reposi
 
 ## `check` - Local Diff Check
 
-Run a read-only local diff review.
+Run a read-only local diff review. For the full low-frequency workflow, use `references/local-diff-check.md`.
 
 1. Capture base freshness with `git fetch --prune`, `git status -sb`, and upstream ahead/behind when an upstream exists.
 2. Capture `git status --short`.
