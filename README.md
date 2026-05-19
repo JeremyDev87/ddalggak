@@ -48,7 +48,11 @@ The Quality Lens Router chooses applicable gate families from request text, issu
 - Branch names should describe the purpose of the change and must not include dates, timestamps, or generated time suffixes.
 - Commit messages and PR descriptions must explain **What** changed and **Why** it changed. PR descriptions should also include **Validation**, **Risk**, and linked **Issues**.
 - Issue-PRs by default: ddalggak should create one PR per independent issue. Use a single integration PR with issue-separated commits only when hard conflicts between issues make independent PRs unsafe.
-- Task Scope Contract: worker briefs and reviews must distinguish tool capability boundary from task scope contract, and treat out-of-scope diff as scope-expansion failure.
+- Runtime contract guardrails: ddalggak treats agent work as explicit runtime contracts rather than hidden autonomous loops.
+  - Task Scope Contract: worker briefs and reviews must distinguish tool capability boundary from task scope contract, and treat out-of-scope diff as scope-expansion failure.
+  - Context Assembly Manifest: plans, briefs, and reviews should name the issue/comments, repo conventions, loaded references, gates, assumptions, and blockers used as source context.
+  - Resume Snapshot: paused, idle, CI, review/fix, and wave-transition states should record phase, issue/branch/PR, changed files, validation evidence, blocking gaps, next gate, and exact next command.
+  - Control-flow ownership: approval, retry, side effects, force-push, production data touch, and verification completion remain conductor/reviewer-owned gates.
 - `plan`, `issue`, and `start` should prove lane independence before claiming parallelism. The issue-PR / conflict-fallback matrix must include owned files, must-not-touch files, why each lane is independent, lane-specific evidence/validation, and the integration gate. Shared files, shared contracts, or runtime flips become serial commits in the same fallback PR; otherwise lanes remain independent issue PRs.
 - Worker briefs should bias toward single-responsibility changes, pure functions where practical, TDD or unit-test coverage for core behavior, and the repository's naming plus companion-file conventions such as `ABC.styles.tsx`, `ABC.constants.tsx`, `ABC.types.tsx`, and `ABC.parts.tsx` when that pattern fits the codebase.
 - Review should cite CI status as evidence, then focus on behavior intent, scope, code quality, architecture/domain boundaries, maintainability, and deletability.

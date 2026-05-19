@@ -29,6 +29,10 @@ const regressionLibraryReferencePaths = [
   path.join(skillDir, "references", "regression-library.md"),
   path.join(rootDir, "ddalggak", "references", "regression-library.md"),
 ];
+const agentRuntimeContractReferencePaths = [
+  path.join(skillDir, "references", "agent-runtime-contract.md"),
+  path.join(rootDir, "ddalggak", "references", "agent-runtime-contract.md"),
+];
 const packagePath = path.join(rootDir, "package.json");
 const readmePath = path.join(rootDir, "README.md");
 const cliPath = path.join(rootDir, "bin", "ddalggak.js");
@@ -71,6 +75,11 @@ const bannedTerms = [
 ];
 const requiredSkillAnchors = [
   "Task Scope Contract",
+  "Context Assembly Manifest",
+  "Resume Snapshot",
+  "Control-flow ownership",
+  "Runtime contract language",
+  "Small focused workers, explicit orchestration",
   "tool capability boundary",
   "task scope contract",
   "out-of-scope diff",
@@ -185,6 +194,11 @@ const requiredSkillAnchors = [
 ];
 const requiredLegacySkillAnchors = [
   "Task Scope Contract",
+  "Context Assembly Manifest",
+  "Resume Snapshot",
+  "Control-flow ownership",
+  "Runtime contract language",
+  "Small focused workers, explicit orchestration",
   "tool capability boundary",
   "task scope contract",
   "out-of-scope diff",
@@ -474,9 +488,24 @@ const requiredRegressionLibraryFields = [
   "Minimal fixture/evidence idea:",
   "Related gates:",
 ];
+const requiredAgentRuntimeContractAnchors = [
+  "Agent Runtime Contract",
+  "Task Scope Contract",
+  "Context Assembly Manifest",
+  "Resume Snapshot",
+  "Control-flow ownership",
+  "tool capability boundary",
+  "task scope contract",
+  "conductor/reviewer-owned",
+  "Non-goals",
+];
 const requiredReadmeQualityAnchors = [
   "## Quality Defaults",
+  "Runtime contract guardrails",
   "Task Scope Contract",
+  "Context Assembly Manifest",
+  "Resume Snapshot",
+  "Control-flow ownership",
   "tool capability boundary",
   "task scope contract",
   "out-of-scope diff",
@@ -800,6 +829,33 @@ if (codexRegressionLibraryExists && legacyRegressionLibraryExists) {
           .join("\n")}`,
       );
     }
+  }
+}
+
+const [codexAgentRuntimePath, legacyAgentRuntimePath] = agentRuntimeContractReferencePaths;
+const codexAgentRuntimeExists = statSync(codexAgentRuntimePath, { throwIfNoEntry: false })?.isFile();
+const legacyAgentRuntimeExists = statSync(legacyAgentRuntimePath, { throwIfNoEntry: false })?.isFile();
+if (!codexAgentRuntimeExists) {
+  fail(`${path.relative(rootDir, codexAgentRuntimePath)} must exist for Agent Runtime Contract parity.`);
+}
+if (!legacyAgentRuntimeExists) {
+  fail(`${path.relative(rootDir, legacyAgentRuntimePath)} must exist for Agent Runtime Contract parity.`);
+}
+if (codexAgentRuntimeExists && legacyAgentRuntimeExists) {
+  const codexAgentRuntimeText = readText(codexAgentRuntimePath);
+  const legacyAgentRuntimeText = readText(legacyAgentRuntimePath);
+  if (codexAgentRuntimeText !== legacyAgentRuntimeText) {
+    fail("Agent Runtime Contract references must match between .codex and ddalggak directories.");
+  }
+  const missingAgentRuntimeAnchors = requiredAgentRuntimeContractAnchors.filter(
+    (anchor) => !codexAgentRuntimeText.includes(anchor),
+  );
+  if (missingAgentRuntimeAnchors.length > 0) {
+    fail(
+      `Agent Runtime Contract anchors missing:\n${missingAgentRuntimeAnchors
+        .map((anchor) => `  - ${anchor}`)
+        .join("\n")}`,
+    );
   }
 }
 
