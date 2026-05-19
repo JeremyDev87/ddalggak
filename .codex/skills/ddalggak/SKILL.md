@@ -72,6 +72,8 @@ The state file is the source of truth for lane IDs, worktree paths, branch names
 Apply these rules to every subcommand without weakening the routing or code-modification invariants above.
 
 - **Base freshness first**: sessions that validate, review, ship, or clean must start with `git fetch --prune` and an ahead/behind check for the current branch or base branch. If the session validates directly on the base branch and the checkout is clean, run `git pull --ff-only` before trusting local state.
+- **URL beats cwd**: when the user provides a GitHub repo URL, issue URL, or PR URL, treat that URL's owner, repo, and number as the source of truth. Do not infer the target from the current working directory until `git remote get-url origin` or explicit repo metadata proves the checkout points at the same repository. If the cwd remote does not match the URL repo, stop branch, issue, and PR mutation in the current checkout and clone or switch to a matching checkout before continuing.
+- **GitHub URL handling criteria**: for an issue URL, parse owner/repo/issue number before reading body and comments; for a PR URL, parse owner/repo/PR number before reading diff, checks, review state, or linked issues; for a repo URL, parse owner/repo before listing issues, branches, labels, or PRs. Apply this target resolution rule to `start`, `review`, `status`, `ship`, and `clean` before any validation or mutation.
 - **Issue comments are source-of-truth candidates**: read issue body and comments together. If the latest explicit comment conflicts with the body, prefer the comment and record the conflict in the brief or review packet.
 - **No implicit dependencies**: do not give workers vague choices such as "add a library or parse text". Before any new import or package is used, prove it already exists in the repository. If uncertain, require the standard library or an existing repository pattern.
 - **No force-push fix loop by default**: fixes after review use a new commit and ordinary push. Amend plus force push is allowed only after explicit user approval and after branch-protection or safety constraints are checked.
@@ -219,7 +221,8 @@ Use lane states such as `planned`, `briefed`, `implemented`, `validated`, `revie
 Use for implementation from one or more GitHub issues.
 
 0. Prerequisite discovery and base freshness.
-   - Run `gh repo view --json nameWithOwner,url,defaultBranchRef`.
+   - If the invocation includes a GitHub repo, issue, or PR URL, parse its owner/repo/number first and compare it with the cwd remote before reading or mutating issues, PRs, branches, or worktrees.
+   - Run `gh repo view --json nameWithOwner,url,defaultBranchRef` only after the target repo is resolved or when no GitHub URL was provided.
    - Run `git fetch --prune`, `git status -sb`, `git branch --show-current`, and `git worktree list --porcelain`.
    - If an upstream exists, run `git rev-list --left-right --count @{upstream}...HEAD`.
    - If operating directly on a clean base branch, run `git pull --ff-only` before planning.
@@ -302,6 +305,7 @@ git -C <repo-root> worktree add <repo-root>/.worktrees/<branch-name> -b <branch-
 Use for independent PR or local-lane review. Treat review as an AI code quality gate, not a praise pass or summary. The gatekeeper must block bugs, security issues, and long-term maintainability risks. Prefer smaller scope, existing repository patterns, deletable code, explicit ownership, and clear data flow. Treat unnecessary complexity and self-created complexity as defects, including forced modularization, premature abstraction, one-off abstraction, duplicate paths, silent fallback, avoidable local state, client-side boundary patches, and increased type escape. Human readability and deletability outrank SOLID or named pattern application when they conflict.
 
 1. Determine target PRs from arguments or open PR discovery.
+   - If a PR URL is provided, parse its owner/repo/PR number and prove the cwd remote matches before running `gh pr view`, `gh pr diff`, or checkout-like validation.
 2. For each PR, collect a review packet before spawning review:
    - `gh pr view <num> --json title,body,files,commits,baseRefName,headRefName,reviews,statusCheckRollup`
    - `gh pr diff <num>`
@@ -362,6 +366,7 @@ FIX_BRIEF packets must include: `기능은 유지하되 diff를 줄이고, 중�
 
 Read `.ddalggak/session-state.json` if present, then inspect:
 
+- any provided GitHub URL first: parse owner/repo/number, verify the cwd remote matches, and stop rather than reporting or mutating the wrong repo if it does not
 - `git fetch --prune`
 - `git status --short`
 - `git status -sb`
@@ -411,7 +416,7 @@ Convert a plan into GitHub issues. Preserve file ownership, hard blockers, issue
 Use only for changes that already exist in the current lane.
 
 1. Confirm changed files are in scope.
-2. Re-read related issue body and comments when an issue number is known.
+2. Re-read related issue body and comments when an issue number is known; if the issue came from a URL, parse owner/repo/number and verify the cwd remote matches before staging, committing, pushing, or creating a PR.
 3. Run `git fetch --prune`, check current branch, and check upstream ahead/behind if an upstream exists.
 4. If validating directly on a clean base branch, run `git pull --ff-only` first.
 5. Check for ignored, local-only, or repo-external files with `git status --ignored --short` and `git check-ignore -v <path>` when relevant; do not stage ignored/local-only paths for PR.
@@ -430,7 +435,7 @@ Do not create new source changes as part of `ship`.
 
 ## `clean` - Post-Merge Cleanup
 
-Verify the PR is actually merged before cleanup. Start with `git fetch --prune`, inspect dirty state, and require merge evidence before deleting local branches or worktrees. Then close or update linked issues, delete local branches or worktrees only when safe, and remove temporary brief files if they are in the cleanup scope. Stop on uncommitted work.
+Verify the PR is actually merged before cleanup. If the cleanup target is a PR URL, parse owner/repo/PR number and verify the cwd remote matches before deleting local branches, worktrees, or issue state. Start with `git fetch --prune`, inspect dirty state, and require merge evidence before deleting local branches or worktrees. Then close or update linked issues, delete local branches or worktrees only when safe, and remove temporary brief files if they are in the cleanup scope. Stop on uncommitted work.
 
 ## `retro` - Retrospective
 
