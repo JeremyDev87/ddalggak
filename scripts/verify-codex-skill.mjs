@@ -145,6 +145,10 @@ const requiredSkillAnchors = [
   "class-level risks",
   "transient incidents in memory",
   "Issue-PRs by default",
+  "do not replace independent issue PRs",
+  "one issue PR per independent issue",
+  "Issue PRs are required for independent issues",
+  "rescue the missing issue PR creation",
   "Issue-PR Strategy with Conflict Fallback",
   "Parallelization Decision",
   "Must not touch",
@@ -236,6 +240,9 @@ const requiredLegacySkillAnchors = [
   "class-level failure",
   "transient incident",
   "Issue-PRs by default",
+  "ISSUE_PR_READY",
+  "PR URL/evidence",
+  "독립 이슈는 commit/push/issue PR/PR URL/evidence까지",
   "Issue-PR Strategy with Conflict Fallback",
   "Parallelization Decision",
   "Must not touch",
@@ -931,6 +938,19 @@ assertForbiddenTermsAbsent({
     "`pr_review_approved`",
     "merge-order context",
     "one PR per lane unless",
+    "do not create stacked PRs, branch matrices, or lane-specific PRs",
+    "Lane-specific/per-issue PRs are required",
+    "without creating lane PRs",
+  ],
+});
+
+assertForbiddenTermsAbsent({
+  label: "ddalggak legacy skill unconditional lane-specific PR prohibition",
+  text: legacySkillText,
+  terms: [
+    "Worker는 lane-specific PR을 만들지 않는다.",
+    "content=\"BRIEF.md(.worktrees/<branch>/BRIEF.md)를 읽고 지시된 대로 구현해. 완료 후 한 줄: LANE_READY: Phase Y W<번호> <patch-or-commit> <validation>\"",
+    "모든 워커가 `LANE_READY:` 출력 나오면 lane 초안 수집 완료",
   ],
 });
 

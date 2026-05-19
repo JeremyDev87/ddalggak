@@ -77,11 +77,11 @@ Apply these rules to every subcommand without weakening the routing or code-modi
 - **No force-push fix loop by default**: fixes after review use a new commit and ordinary push. Amend plus force push is allowed only after explicit user approval and after branch-protection or safety constraints are checked.
 - **Reviewer isolation**: reviewers do not switch branches inside an implementation worktree. Prefer `gh pr diff`, `gh pr view --json files`, and isolated temporary checkouts when build or test reproduction is needed.
 - **Commit-lane order context**: when lanes in the same PR depend on commit order or compare against different baselines, review packets must name predecessor commits or contracts, comparison targets, and whether base mismatch is expected.
-- **Completion is not test pass**: a lane is incomplete until tests, lane commit or patch, integration handoff, and requested review signals are verified. Idle notifications are not completion evidence. Publish completion happens on the per-issue PR, not per lane.
+- **Completion is not test pass**: tests are intermediate evidence only. An independent issue lane is incomplete until commit, push, issue PR URL, validation evidence, and requested review signals are verified. A hard-conflict fallback lane is incomplete until patch or local commit, validation evidence, integration handoff, and fallback PR publish evidence are verified. Idle notifications are not completion evidence.
 - **PR quality defaults**: branch names must describe purpose and must not include dates or timestamps. Commit messages and PR descriptions must include What and Why, and PR descriptions must also include Validation and Risk.
-- **Issue-PRs by default**: for 박정욱/default ddalggak workflows, do not create stacked PRs, branch matrices, or lane-specific PRs. When work can be parallelized, use one base branch and one PR per independent issue; use a single PR with issue-separated commits only when conflicts make separate PRs unsafe. Only use stacked PRs when the user explicitly asks for them.
+- **Issue-PRs by default**: for 박정욱/default ddalggak workflows, do not replace independent issue PRs with stacked PRs, branch matrices, or lane-only PRs. When work can be parallelized, use one base branch and one PR per independent issue; use a single PR with issue-separated commits only when conflicts make separate PRs unsafe. Only use stacked PRs when the user explicitly asks for them.
 - **Conflict-fallback planning**: every parallel plan must name owned files, must-not-touch files, why each issue can have its own PR, lane-specific evidence/validation, and conflict gates. Shared files, shared contracts, or runtime flips make affected issues serial commits in one fallback PR, not the default for independent issues.
-- **Exact handoff rescue**: if a worker repeatedly idles after implementation without lane evidence, send exact validation, patch/export, or integration-handoff commands verified by the conductor instead of a generic reminder. Do not rescue by creating lane-specific PRs unless the user explicitly requested stacked PRs.
+- **Exact handoff rescue**: if a worker repeatedly idles after implementation without lane evidence, send exact validation, patch/export, or integration-handoff commands verified by the conductor instead of a generic reminder. For independent issue lanes, rescue the missing issue PR creation and PR URL evidence; reserve integration handoff without PR creation for hard-conflict fallback lanes or explicitly requested stacked PRs.
 - **Gitignored and local-only handling**: for ignored, local-only, permission-cache, or repo-external paths, include `git check-ignore -v <path>` in the brief when applicable. Do not force such files into PR workflow; use direct local modification signals and manual issue handling when the path cannot be represented in git.
 - **Medium fix restraint**: Medium findings are non-blocking by default. If a Medium or Low fix depends on an unmerged PR output or shared contract transition, prefer TODO or follow-up issue over speculative code changes.
 - **Markdown surgery discipline**: when editing Markdown or skill files, preserve existing behavior, update headings and numbering immediately, keep fenced blocks valid, and re-check the diff for accidental block deletion.
@@ -197,7 +197,7 @@ Use lane states such as `planned`, `briefed`, `implemented`, `validated`, `revie
 
 - Inspect whether work can be split into independent lanes before choosing sequential execution.
 - Parallel lanes must not share write surfaces, generated artifacts, branch mutation, or unpublished code dependencies.
-- Default PR shape is one base branch and one PR per independent issue. Lane-specific/per-issue PRs are required for independent issues; only conflicting issues use one fallback integration PR with separated issue commits.
+- Default PR shape is one base branch and one issue PR per independent issue. Issue PRs are required for independent issues; only conflicting issues use one fallback integration PR with separated issue commits.
 - In one shared checkout, serialize branch mutation, push, and PR creation.
 - In isolated worktrees, implementation, validation, and issue PR creation may proceed per independent lane. Only hard-conflict lane outputs are integrated into a fallback single PR as separate commits.
 - Final issue PR readiness gates and whole-repo verification are serialized unless the user explicitly chooses otherwise.
@@ -239,9 +239,9 @@ Use for implementation from one or more GitHub issues.
    - Emit a lane matrix with `Lane`, `Issue/scope`, `Boundary`, `Owned files`, `Independent because`, `Must not touch`, `Evidence / validation`, `Commit message`, and `PR shape`.
    - Add a `Parallelization Decision` section: `Parallel issue PRs` have disjoint owned files and no shared runtime flip; `Conflict fallback serial commits` share files/contracts and must be integrated as ordered commits in one PR; `Blocked lanes` depend on open PRs, missing credentials, unclear acceptance criteria, or repo-external state.
    - Conflict-fallback commit groups must name the exact blocking file, contract, ignored/local-only path, repo-external path, or unpublished dependency.
-6. Prepare isolated worktrees or patch lanes without creating lane PRs.
+6. Prepare isolated worktrees and choose the correct publish handoff.
    - Branch names must be purpose-centered, such as `docs/pr-quality-and-label-filtering` or `fix/issue-42-pr-quality`, and must not contain dates, timestamps, or generated time suffixes.
-   - Worker branches/worktrees may produce implementation patches or local commits, but the conductor/integrator applies approved lane outputs to the integration branch as separate commits and opens only one draft PR by default.
+   - Independent issue workers complete commit, push, issue PR creation, PR URL, and validation evidence on their own issue branch. Only hard-conflict fallback workers produce patches or local commits for the conductor/integrator to apply to one fallback integration branch.
    - Keep `.worktrees/` local by writing to `.git/info/exclude`, not to the tracked ignore file:
 
 ```bash
@@ -278,7 +278,7 @@ git -C <repo-root> worktree add <repo-root>/.worktrees/<branch-name> -b <branch-
    - issue-lane metadata: owned files, must-not-touch files, independence reason, lane-specific evidence, and the exact commit message;
    - commit format, draft PR per issue format, and stop conditions;
    - commit and draft PR body requirements: What, Why, Validation, Risk, the lane matrix, and issue references when applicable;
-   - completion rule: test pass is insufficient; lane patch/commit, validation, and integration handoff are required when publish is requested.
+   - completion rule: test pass is insufficient; independent issue lanes require commit, push, issue PR URL, and validation evidence, while hard-conflict fallback lanes require patch/commit, validation, and integration handoff.
 9. Use `spawn_agent` for each approved lane and record agent IDs in `.ddalggak/session-state.json`.
 10. Integrate lane outputs into the issue PR branch.
    - Use `wait_agent` to collect lane updates, independent issue workers open their own PRs by default; conflicting lanes hand off patches/commits for the fallback PR.
