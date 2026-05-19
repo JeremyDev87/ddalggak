@@ -150,6 +150,14 @@ const requiredSkillAnchors = [
   "Must not touch",
   "one PR",
   "separate commits",
+  "Component methodology gate",
+  "main component only assembles",
+  "ComponentName.parts.tsx",
+  "ComponentName.utils.ts",
+  "satisfies Record<...>",
+  "public visual-contract classes",
+  "no silent fallback",
+  "empty companion files",
 ];
 const requiredLegacySkillAnchors = [
   "Rendered evidence gate",
@@ -233,6 +241,14 @@ const requiredLegacySkillAnchors = [
   "Must not touch",
   "PR count: one PR per issue by default",
   "serial commit",
+  "Component methodology gate",
+  "main component only assembles",
+  "ComponentName.parts.tsx",
+  "ComponentName.utils.ts",
+  "satisfies Record<...>",
+  "public visual-contract classes",
+  "no silent fallback",
+  "empty companion files",
 ];
 
 const requiredRouterGateFamilies = [
@@ -261,6 +277,10 @@ const requiredRouterReferenceAnchors = [
   "references/regression-library.md",
   "repeated Medium/High pattern",
   "one-off incidents without a generalized detection signal",
+  "component methodology gate",
+  "main component only assembles",
+  "satisfies Record<...>",
+  "no silent fallback",
 ];
 const requiredEvidenceReferenceAnchors = [
   "Evidence Contract",
@@ -318,6 +338,14 @@ const requiredFrontendDesignReferenceAnchors = [
   "Blocking examples",
   "generic AI/template layout",
   "one-off wrapper",
+  "Component methodology gate",
+  "main component only assembles",
+  "ComponentName.parts.tsx",
+  "ComponentName.utils.ts",
+  "satisfies Record<...>",
+  "public visual-contract classes",
+  "no silent fallback",
+  "do not require empty companion files",
 ];
 const requiredVercelAgentSkillsReferenceAnchors = [
   "Vercel Agent Skills Quality Gates",

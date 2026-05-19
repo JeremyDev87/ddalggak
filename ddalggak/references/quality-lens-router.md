@@ -1,6 +1,6 @@
 # Quality Lens Router
 
-Use this reference when `/ddalggak plan`, `start`, or `review` must decide which quality gates apply to a request, issue, PR, or diff.
+Use this reference when `ddalggak plan`, `start`, or `review` must decide which quality gates apply to a request, issue, PR, or diff.
 
 The router is intentionally a small predicate table, not a rule engine. It prevents gate over-application by recording both applied and skipped gates with reasons. Domain gate is a lens, not a mandate: a routed gate adds focused questions and required references only for the surfaces it actually touches, and it must not overwrite explicit user scope or repository/product convention.
 
@@ -53,7 +53,7 @@ Use these stable names so future issue-specific gates can plug into the same con
 | `frontend-design` | UI, frontend, design, page, component, layout, polish, responsive, screenshot, or frontend primitives are in scope. | Backend/API-only, test-only, or narrow non-visual bugfixes. |
 | `vercel-agent-skills` | React, Next.js, component API, animation, Vercel deploy/env/token, React Native, or mobile performance is in scope. | No React/frontend/deploy/mobile surface is touched. |
 | `react-next-boundary-performance` | React/Next server-client boundary, data fetching, hydration, caching, bundle, or performance claims are in scope. | Non-React work or documentation-only work with no runtime claim. |
-| `composition-api` | Component API, variants, slots, compound components, render props, context, or wrapper abstractions are proposed; require behavior/type tests or concrete usage evidence. | Local one-off rendering with no reusable API change. |
+| `composition-api` | Component API, variants, slots, compound components, render props, context, wrapper abstractions, or component methodology gate concerns are proposed; require behavior/type tests or concrete usage evidence. For UI/component work, route the worker and review packet to the `frontend-design` component methodology gate covering main component only assembles, `ComponentName.parts.tsx`, `ComponentName.utils.ts`, `satisfies Record<...>`, public visual-contract tests, and no silent fallback. | Local one-off rendering with no reusable API change. |
 | `motion-meaning` | View transitions, page transitions, shared element motion, enter/exit animation, or list reorder animation is proposed; pair with `frontend-design` and `web-design-a11y-evidence` unless the change is purely internal plumbing. | No animation or only existing motion is preserved. |
 | `web-design-a11y-evidence` | UI review, accessibility, keyboard/focus, contrast, responsive behavior, or screenshot/viewport acceptance is relevant. | Non-rendered backend work. |
 | `deploy-token-safety` | Vercel deploy, preview URL, production deploy, env vars, project linking, or token CLI usage is in scope. | No deploy or environment mutation occurs. |

@@ -75,8 +75,9 @@ user-invocable: true
 18. **Evidence Contract**: `plan`, `start`, `review`는 완료·PR readiness·APPROVE·deploy/performance/UI/security/data/API 동작을 주장하기 전에 `references/evidence-contract.md`를 읽고 `Evidence Contract` 섹션을 포함한다. required evidence, 적용된 UI/deploy/performance/bugfix/security/data/API template, `not-applicable: <reason>`, blocking evidence gaps를 기록한다. 필수 증거가 없으면 PR ready/APPROVE/merge-ready 결론을 남기지 않고 High/blocking으로 분류한다.
 19. **Simplicity / Deletability Gate**: `plan`, `start`, `review`는 `references/simplicity-deletability-gate.md`를 읽고 새 abstraction/helper/provider/wrapper/component/module/fallback/pattern이 필요한지 검증한다. 기본 방향은 **small direct change first**이며, 새 추상화는 "why is this abstraction necessary?"에 답하고 실제 reuse 또는 boundary clarification을 증명해야 한다. SOLID는 유용하지만 human readability/deletability보다 우선하지 않는다.
 20. **Frontend Design Gate**: `plan`, `start`, `review`는 UI/frontend/design/page/component/layout/polish/responsive/dashboard/card/CTA/typography/animation/screenshot, `.tsx`/`.jsx`/CSS/Tailwind/design token/Storybook/route/page/component/shared frontend primitive, Bokbuk/orbit-dashboard 같은 product context가 걸리면 `references/frontend-design-gate.md`를 읽는다. backend/API-only, test-only, narrow functional bugfix는 skip 또는 lightweight로 기록한다. product-specific constraints outrank novelty이며, one-off UI 변경을 위한 forced abstraction은 막는다.
-21. **Vercel Agent Skills Gate**: `plan`, `start`, `review`는 React/Next component/page/data-fetching/performance, component library/API/refactor/composition, view transitions/page/shared element/list reorder/enter-exit animation, UI/a11y/UX/screenshot/viewport acceptance, Vercel deploy/preview URL/production deploy/env vars/project linking/token CLI, React Native/Expo/mobile performance/native/platform API가 걸리면 `references/vercel-agent-skills-gates.md`를 읽는다. backend-only 작업은 frontend/deploy/mobile surface에 영향이 없으면 skip 또는 lightweight로 기록한다. product/repo constraints, Simplicity/Deletability, Frontend Design Gate가 generic upstream pattern보다 우선한다.
-22. **Continuous Regression Library**: `review`는 반복되는 Medium/High AI code-quality pattern이 보이거나 기존 회귀 class와 닮은 finding이 있으면 `references/regression-library.md`를 읽는다. `plan`과 `start`는 알려진 반복 리스크가 있을 때만 regression-library reference를 유용한 범위에서 언급한다. transient failures, PR numbers, commit SHAs, single-session completion logs, incident records는 memory에 넣지 않는다. durable pattern은 detection signal, blocking review rule, minimal fixture/evidence idea를 갖춘 class-level failure로 일반화한 뒤 skill/reference 또는 follow-up issue로 승격한다.
+21. **Component methodology gate**: `frontend-design` 또는 `composition-api`가 UI/component 작업에 적용되면 외부 repo worker brief/review lens로만 사용하고, ddalggak 자체를 React/UI 앱처럼 리팩터링하라는 규칙으로 쓰지 않는다. main component only assembles, large conditional UI fragments → `ComponentName.parts.tsx`, calculation/format/parse → `ComponentName.utils.ts`, variant/size/style maps use `satisfies Record<...>`, tests prioritize user behavior and public visual-contract classes, no silent fallback을 확인한다. 권장 구조는 `ComponentName/ComponentName.tsx`, `ComponentName.types.ts`, `ComponentName.parts.tsx`, `ComponentName.utils.ts`, `ComponentName.spec.tsx`, `ComponentName.stories.tsx`, `index.ts`이지만 실제 역할/크기/검증 필요가 있을 때만 만들고 empty companion files는 강제하지 않는다.
+22. **Vercel Agent Skills Gate**: `plan`, `start`, `review`는 React/Next component/page/data-fetching/performance, component library/API/refactor/composition, view transitions/page/shared element/list reorder/enter-exit animation, UI/a11y/UX/screenshot/viewport acceptance, Vercel deploy/preview URL/production deploy/env vars/project linking/token CLI, React Native/Expo/mobile performance/native/platform API가 걸리면 `references/vercel-agent-skills-gates.md`를 읽는다. backend-only 작업은 frontend/deploy/mobile surface에 영향이 없으면 skip 또는 lightweight로 기록한다. product/repo constraints, Simplicity/Deletability, Frontend Design Gate가 generic upstream pattern보다 우선한다.
+23. **Continuous Regression Library**: `review`는 반복되는 Medium/High AI code-quality pattern이 보이거나 기존 회귀 class와 닮은 finding이 있으면 `references/regression-library.md`를 읽는다. `plan`과 `start`는 알려진 반복 리스크가 있을 때만 regression-library reference를 유용한 범위에서 언급한다. transient failures, PR numbers, commit SHAs, single-session completion logs, incident records는 memory에 넣지 않는다. durable pattern은 detection signal, blocking review rule, minimal fixture/evidence idea를 갖춘 class-level failure로 일반화한 뒤 skill/reference 또는 follow-up issue로 승격한다.
 
 ## 서브커맨드 분기
 
@@ -181,6 +182,8 @@ Gate priority/conflict order는 정확히 1 explicit user request, 2 repo/produc
 UI/frontend/design/page/component/layout/polish/responsive/dashboard/card/CTA/typography/animation/screenshot 작업, `.tsx`/`.jsx`/CSS/Tailwind/design token/Storybook/route/page/component/shared frontend primitive 변경, 또는 Bokbuk/orbit-dashboard 같은 product context가 있으면 worker BRIEF에 `references/frontend-design-gate.md` 기준 Frontend Design Gate를 포함한다. backend/API-only, test-only, narrow functional bugfix는 skip 또는 lightweight로 기록한다.
 
 UI worker는 코딩 전 aesthetic direction, main visual idea, typography/color/layout/motion choices, preserved product constraints, generic AI UI patterns avoided를 복명복창해야 한다. BRIEF에는 screenshot/viewport/manual evidence 조건(경로, desktop/mobile viewport, Storybook/browser/manual 확인, `not-applicable: <reason>`)을 넣고, small direct change first와 one-off UI 변경을 위한 forced abstraction 금지를 유지한다.
+
+UI/component worker BRIEF에는 component methodology gate를 넣는다: main component only assembles; large conditional UI fragments → `ComponentName.parts.tsx`; calculation/format/parse → `ComponentName.utils.ts`; variant/size/style maps use `satisfies Record<...>`; tests prioritize user behavior and public visual-contract classes; no silent fallback. 권장 role split은 `ComponentName/ComponentName.tsx`, `ComponentName.types.ts`, `ComponentName.parts.tsx`, `ComponentName.utils.ts`, `ComponentName.spec.tsx`, `ComponentName.stories.tsx`, `index.ts`이지만 실제 역할/크기/검증 필요가 있는 파일만 만들고 empty companion files를 강제하지 않는다.
 
 ### Vercel Agent Skills Gate
 
@@ -598,7 +601,7 @@ echo "FIX_BRIEF*.md" >> .worktrees/<branch>/.gitignore
 
 ## 구체 요구사항
 (함수 시그니처, 알고리즘, 테스트 케이스 최소 3개: happy path + edge case + error case)
-- 구현 품질 기본값: repo 스타일이 허용하면 arrow function 우선, 단일 책임(SRP) 유지, side effect와 pure function 분리, TDD 또는 Unit Test로 핵심 동작 고정, 파일 naming과 companion test/story/helper convention 준수. 컴포넌트/함수 companion 파일이 필요하면 repo convention을 우선하되 `ABC.styles.tsx`, `ABC.constants.tsx`, `ABC.types.tsx`, `ABC.parts.tsx`처럼 대표 이름과 역할 suffix가 드러나는 형태를 사용한다.
+- 구현 품질 기본값: repo 스타일이 허용하면 arrow function 우선, 단일 책임(SRP) 유지, side effect와 pure function 분리, TDD 또는 Unit Test로 핵심 동작 고정, 파일 naming과 companion test/story/helper convention 준수. 컴포넌트/함수 companion 파일이 필요하면 repo convention을 우선하되 `ABC.styles.tsx`, `ABC.constants.tsx`, `ABC.types.tsx`, `ABC.parts.tsx`처럼 대표 이름과 역할 suffix가 드러나는 형태를 사용한다. UI/component 작업에서는 main component only assembles, large conditional UI fragments → `ComponentName.parts.tsx`, calculation/format/parse → `ComponentName.utils.ts`, variant/size/style maps use `satisfies Record<...>`, tests prioritize user behavior and public visual-contract classes, no silent fallback을 확인하고, empty companion files를 만들지 않는다.
 
 ## 테스트 우선 계약
 - 가능하면 실패 테스트 또는 기대 동작을 먼저 작성한다.
@@ -709,6 +712,8 @@ Gate priority/conflict order는 정확히 1 explicit user request, 2 repo/produc
 
 UI PR의 REVIEW_BRIEF에는 `references/frontend-design-gate.md` 기준 Frontend Design Review Gate를 포함한다. 리뷰어는 design intent와 product fit, typography/hierarchy/spacing, palette, layout/grid/alignment/density/responsive behavior, useful performant motion, empty/loading/error states, keyboard/contrast/semantics/reduced motion/focus states, minimal/reviewable code, screenshot/viewport/Storybook/browser/manual evidence를 확인한다.
 
+Component PR이면 component methodology gate도 확인한다: main component only assembles, `ComponentName.parts.tsx`로 큰 조건부 UI fragment 분리, `ComponentName.utils.ts`로 calculation/format/parse 분리, variant/size/style maps use `satisfies Record<...>`, tests prioritize user behavior and public visual-contract classes, no silent fallback, empty companion files 금지.
+
 Blocking examples: polish claim without design direction/evidence, generic AI/template layout/colors/fonts, one-off UI wrapper/provider/design-system layer, breaking product grid/rhythm/responsive constraints, missing screenshot/manual verification for visual acceptance criteria. Subjective taste alone is not a blocker; product-specific constraints outrank novelty.
 
 ### Vercel Agent Skills Review Gate
@@ -788,6 +793,7 @@ PR 목록 확정 후 Step 1로 진행.
 - Simplicity / Deletability Gate: one-off abstraction default High, human readability/deletability, "why is this abstraction necessary?", SOLID does not outrank readability
 - Continuous Regression Library: repeated Medium/High patterns checked against `references/regression-library.md`; **Regression Library Candidate** suggested when a durable generalized class is missing
 - Frontend Design Review Gate (UI PR일 때): design intent/product fit, typography/hierarchy/spacing, palette, layout/grid/alignment/density/responsive behavior, useful performant motion, empty/loading/error states, keyboard/contrast/semantics/reduced motion/focus states, minimal/reviewable code, screenshot/viewport/Storybook/browser/manual evidence, generic AI/template/evidence blockers
+- Component methodology gate (UI/component PR일 때): main component only assembles, `ComponentName.parts.tsx`, `ComponentName.utils.ts`, `satisfies Record<...>`, user behavior와 public visual-contract classes 중심 테스트, no silent fallback, empty companion files 금지
 - Vercel Agent Skills Gate (해당 PR일 때): React/Next correctness, performance evidence, component API quality, animation meaning, UI/a11y evidence, Vercel deploy safety, React Native/Expo constraints; backend-only skip/lightweight 사유
 - 이슈 코멘트 보완 사항: (같은 조회 결과에서, body에 없고 코멘트에만 있는 요구사항·설계 결정·범위 변경 발췌. 최신 코멘트가 body와 충돌하면 코멘트를 우선한다. 코멘트가 없거나 body와 동일하면 "없음")
 
@@ -840,6 +846,12 @@ PR 목록 확정 후 Step 1로 진행.
   - motion/interactions가 useful performant motion이고 empty/loading/error states가 다듬어졌는가?
   - keyboard/contrast/semantics/reduced motion/focus states가 확인됐는가?
   - generic AI/template layout/colors/fonts, evidence 없는 polish claim, one-off wrapper/provider/design-system layer, forced abstraction, screenshot/manual verification 누락이 있으면 blocking candidate로 본다.
+- Component methodology gate
+  - UI/component PR에서 main component only assembles가 지켜지고, 큰 조건부 UI fragment만 `ComponentName.parts.tsx`로 분리됐는가?
+  - calculation/format/parse 로직은 `ComponentName.utils.ts`로 분리할 만큼 non-trivial할 때만 분리됐는가?
+  - variant/size/style maps use `satisfies Record<...>`로 누락을 드러내고, unknown variant/size/state에 no silent fallback을 지켰는가?
+  - tests prioritize user behavior and public visual-contract classes이며 private implementation detail class를 과도하게 고정하지 않는가?
+  - `ComponentName/ComponentName.tsx`, `ComponentName.types.ts`, `ComponentName.parts.tsx`, `ComponentName.utils.ts`, `ComponentName.spec.tsx`, `ComponentName.stories.tsx`, `index.ts` 구조는 실제 역할/크기/검증 필요가 있을 때만 만들고 empty companion files를 피했는가?
 - Vercel Agent Skills Gate
   - React/Next correctness: server/client boundary, data fetching ownership, hydration risk, bundle growth를 확인했는가?
   - Performance evidence: claimed improvement가 measurement 또는 validation으로 뒷받침되는가?
