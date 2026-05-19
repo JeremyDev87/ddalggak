@@ -62,7 +62,7 @@ user-invocable: true
 5. **Reviewer isolation**: reviewer는 구현자 conversation과 worktree checkout 상태에 오염되지 않아야 한다. 기본은 `gh pr view`/`gh pr diff`; 로컬 실행이 필요하면 별도 review checkout을 만든다.
 6. **Issue-PRs by default**: 동시에 진행 가능한 독립 이슈는 이슈 하나당 PR 하나가 기본이다. 같은 파일/contract/미게시 의존성이 없는 한 단일 통합 PR로 묶지 않는다.
 7. **Conflict fallback evidence**: 각 lane은 `Owned files`, `Must not touch`, `Independent because`, `Evidence / validation`, `Commit message`를 가져야 한다. 이 항목을 증명하지 못하거나 hard conflict가 확인되면 병렬 issue PR이 아니라 단일 conflict-fallback PR의 serial commit 또는 blocked로 분류한다.
-8. **Completion is not test pass**: test pass는 중간 증거일 뿐이다. lane 완료는 lane patch/commit, validation evidence, integration handoff까지 검증된 상태다. publish 완료는 독립 이슈 PR에서 판단한다. hard conflict fallback은 단일 integration PR에서 판단한다.
+8. **Completion is not test pass**: test pass는 중간 증거일 뿐이다. 독립 이슈 lane 완료는 commit/push/issue PR/PR URL/validation evidence까지 검증된 상태다. hard conflict fallback lane 완료는 patch/local commit/validation evidence/integration handoff까지 검증된 상태이며, fallback publish 완료는 단일 integration PR에서 판단한다.
 9. **PR 품질 기본값**: 브랜치 이름은 목적 중심이어야 하며 날짜·타임스탬프를 넣지 않는다. commit/PR 본문에는 What/Why가 필수이고 PR에는 Validation/Risk도 포함한다.
 10. **Exact handoff rescue**: worker가 구현 후 evidence/handoff 없이 idle이면 "BRIEF를 다시 읽으라"가 아니라 Conductor가 확인한 validation, patch export, integration handoff 명령을 정확히 제공한다. 독립 이슈라면 누락된 issue PR 생성까지 rescue하고, 이슈 간 conflict fallback으로 묶은 경우에만 lane-specific PR 생성으로 rescue하지 않는다.
 11. **Gitignored/local-only handling**: `.claude/settings.local.json`, permission cache, repo 밖 파일, ignored 파일은 `git check-ignore -v <path>`로 확인한다. PR workflow가 불가능하면 직접 수정 + `MODIFIED:` 신호 + 수동 이슈 처리로 분리한다.
@@ -611,9 +611,10 @@ echo "FIX_BRIEF*.md" >> .worktrees/<branch>/.gitignore
 1. lint pass (scope 명시)
 2. test pass
 3. regression 없음 (전체 테스트)
-4. lane patch 또는 local commit 준비 + validation evidence 정리
-5. `LANE_READY: Phase Y W<번호> <patch-or-commit> <validation>` 한 줄 출력. Worker는 lane-specific PR을 만들지 않는다.
-6. 최종 출력에 `Evidence provided`, `Evidence not applicable`, `Blocking evidence gaps` 포함. required evidence가 비어 있으면 PR ready/approval ready를 주장하지 말고 blocking gap으로 보고
+4. validation evidence 정리
+5. 독립 이슈 lane이면 commit → push → issue PR 생성까지 완료하고 `ISSUE_PR_READY: #<issue> <PR URL> <commit> <validation>` 한 줄 출력. 이 경우 PR body에 What/Why/Validation/Risk와 `Closes #N` 또는 `Refs #N`를 포함한다.
+6. hard conflict fallback lane이면 lane-specific PR을 만들지 않고 fallback integration용 patch/local commit을 준비한 뒤 `LANE_READY: Phase Y W<번호> <patch-or-commit> <validation>` 한 줄 출력.
+7. 최종 출력에 `Evidence provided`, `Evidence not applicable`, `Blocking evidence gaps` 포함. required evidence가 비어 있으면 PR ready/approval ready를 주장하지 말고 blocking gap으로 보고
 
 ## 병행 워커 참고 (수정 금지)
 
@@ -621,7 +622,7 @@ echo "FIX_BRIEF*.md" >> .worktrees/<branch>/.gitignore
 - 기존 시그니처 호환성 유지
 - 테스트 fixture는 가짜 데이터
 - BRIEF 범위 밖은 건드리지 마
-- 테스트 pass만으로 완료 아님 — 독립 이슈는 commit/push/issue PR/evidence까지, conflict lane은 patch/commit/validation/integration handoff까지 완료해야 함. Fallback integration PR 생성은 integrator 단계에서만 수행
+- 테스트 pass만으로 완료 아님 — 독립 이슈는 commit/push/issue PR/PR URL/evidence까지, conflict lane은 patch/commit/validation/integration handoff까지 완료해야 함. Fallback integration PR 생성은 integrator 단계에서만 수행
 - 새 외부 의존성/import 금지. 필요하면 package manifest 또는 repo 검색으로 기존 의존성 존재를 먼저 증명
 - 모든 git/file 명령은 worktree 절대 경로 또는 `git -C <worktree>` 사용
 - ignored/local-only 파일이면 `git check-ignore -v <path>` 확인 후 PR에 포함하지 말 것
@@ -629,7 +630,7 @@ echo "FIX_BRIEF*.md" >> .worktrees/<branch>/.gitignore
 ## Conductor Recovery Anchor
 - conductor-state 경로: `.ddalggak/conductor-state.md`
 - 이 BRIEF의 위치: Phase Y / Worker N
-- 완료 시그널 예상: `LANE_READY: Phase Y WN <patch-or-commit> <validation>`
+- 완료 시그널 예상: 독립 이슈 lane은 `ISSUE_PR_READY: #<issue> <PR URL> <commit> <validation>`, conflict fallback lane은 `LANE_READY: Phase Y WN <patch-or-commit> <validation>`
 
 시작해.
 ```
@@ -639,7 +640,7 @@ echo "FIX_BRIEF*.md" >> .worktrees/<branch>/.gitignore
 Step 2A-2에서 teammate에 이미 BRIEF 경로를 포함했으면 별도 전송 불필요.
 추가 지시가 필요한 경우:
 ```
-SendMessage(to="worker-<N>", content="BRIEF.md(.worktrees/<branch>/BRIEF.md)를 읽고 지시된 대로 구현해. 완료 후 한 줄: LANE_READY: Phase Y W<번호> <patch-or-commit> <validation>")
+SendMessage(to="worker-<N>", content="BRIEF.md(.worktrees/<branch>/BRIEF.md)를 읽고 지시된 대로 구현해. 독립 이슈 lane이면 완료 후 한 줄: ISSUE_PR_READY: #<issue> <PR URL> <commit> <validation>. conflict fallback lane이면 완료 후 한 줄: LANE_READY: Phase Y W<번호> <patch-or-commit> <validation>.")
 ```
 
 ### Step 4. 대기 및 상태 수집
@@ -648,16 +649,16 @@ SendMessage(to="worker-<N>", content="BRIEF.md(.worktrees/<branch>/BRIEF.md)를 
 
 **완료 확인**:
 - `TaskGet <task-id>`로 각 teammate 완료 여부 확인
-- 완료된 `TaskOutput`에서 `LANE_READY:` 라인과 validation evidence 추출
-- **실패 복구**: ScheduleWakeup 3회(~13분) 후에도 `LANE_READY:` 없으면:
+- 완료된 `TaskOutput`에서 독립 이슈 lane은 `ISSUE_PR_READY:` 라인과 PR URL/validation evidence를, conflict fallback lane은 `LANE_READY:` 라인과 validation evidence를 추출
+- **실패 복구**: ScheduleWakeup 3회(~13분) 후에도 예상 완료 신호(`ISSUE_PR_READY:` 또는 `LANE_READY:`)가 없으면:
   1. `TaskOutput`으로 teammate 출력 확인 후 원인 진단
   2. "워커 N 응답 없음 — 수동 개입 필요" 보고 후 사용자 대기
 
-모든 워커가 `LANE_READY:` 출력 나오면 lane 초안 수집 완료. Integrator가 approved lane 결과를 integration branch에 별도 commit으로 반영한 뒤 독립 이슈별 draft PR을 생성한다. hard conflict로 묶인 lane은 conflict-fallback PR 하나만 생성한다.
+모든 독립 이슈 워커가 `ISSUE_PR_READY:`를 출력하고, hard conflict fallback 워커가 `LANE_READY:`를 출력하면 lane 수집 완료. Integrator는 독립 이슈 PR URL/evidence를 수집하고, hard conflict로 묶인 lane만 fallback integration branch에 issue-separated commit으로 반영한 뒤 conflict-fallback PR 하나를 생성한다.
 
 ### Step 5. Progressive Review Start
 
-모든 worker 완료를 기다리지 않는다. 각 branch에서 `LANE_READY:` 또는 idle 알림이 오면 즉시 완료 여부를 사실로 검증한다.
+모든 worker 완료를 기다리지 않는다. 각 branch에서 `ISSUE_PR_READY:`, `LANE_READY:` 또는 idle 알림이 오면 즉시 완료 여부를 사실로 검증한다.
 
 ```bash
 git -C <worktree> log --oneline -3
@@ -2309,8 +2310,8 @@ Phase N / Cross-Review Iter M / Merge Cleanup
 | 이슈 | 브랜치 | worktree 경로 | Teammate | Integration commit | 상태 |
 
 ## 대기 중인 시그널
-- [ ] worker-1: LANE_READY: Phase Y W1 <patch-or-commit> <validation>
-- [x] worker-2: LANE_READY: Phase Y W2 <patch-or-commit> <validation>
+- [ ] worker-1 (독립 이슈): ISSUE_PR_READY: #<issue> <PR URL> <commit> <validation>
+- [ ] worker-2 (conflict fallback): LANE_READY: Phase Y W2 <patch-or-commit> <validation>
 
 ## Cross-Review 상태 (해당 시)
 | PR | 리뷰어 Teammate | Iteration | 마지막 verdict |
@@ -2549,7 +2550,7 @@ Case B인 경우에만 AskUserQuestion으로 확인:
 - **Stale repo 오진**: fetch/ahead-behind 없이 "이미 반영됨", "테스트 실패", "충돌"로 판단하지 않는다.
 - **외부 의존성 환각**: package manifest 또는 repo 검색 증거 없이 새 import를 지시하지 않는다.
 - **Force-push fix loop**: fix iteration은 새 커밋 + 일반 push가 기본이다. amend/force-push는 승인된 예외다.
-- **Worker 완료 신호 오판**: test pass, idle 알림, commit 존재만으로 완료가 아니다. lane patch/commit, validation evidence, integration handoff를 확인하고 publish는 독립 이슈 PR 또는 conflict-fallback PR에서 확인한다.
+- **Worker 완료 신호 오판**: test pass, idle 알림, commit 존재만으로 완료가 아니다. 독립 이슈는 `ISSUE_PR_READY`의 commit/push/issue PR/PR URL/validation evidence를 확인하고, conflict fallback은 `LANE_READY`의 patch/local commit/validation/integration handoff를 확인한다. publish는 독립 이슈 PR 또는 conflict-fallback PR에서 확인한다.
 - **gitignored/local-only 파일 PR 포함**: `git check-ignore -v`로 ignored 여부를 확인하고 PR workflow와 직접 수정 workflow를 분리한다.
 - **문서/Skill 패치 회귀**: markdown 블록 교체 후 기존 라우팅, 코드 수정 권한 invariant, heading 번호, fenced code block 균형을 즉시 재확인한다.
 
@@ -2572,7 +2573,8 @@ start/review/status/ship/check/clean 종료 전 해당되는 항목을 확인한
 - 파일: `BRIEF.md`, `REVIEW_BRIEF_PR<num>.md`, `FIX_BRIEF_PR<num>_1.md`, `FIX_BRIEF_PR<num>_2.md`, ...
 - Teammate: 구현자 `worker-<N>`, 리뷰어 `reviewer-pr<num>` (PR 번호 사용, worker-N 재사용 금지)
 - 완료 시그널:
-  - 구현: `LANE_READY: Phase Y W<번호> <patch-or-commit> <validation>`
+  - 독립 이슈 구현: `ISSUE_PR_READY: #<issue> <PR URL> <commit> <validation>`
+  - conflict fallback 구현: `LANE_READY: Phase Y W<번호> <patch-or-commit> <validation>`
   - 리뷰: `REVIEW DONE PR#<num>: <verdict> critical=N high=N medium=N low=N`
   - 수정: `FIX DONE PR#<num> iter<N>: high_fixed=<N> medium_fixed=<N> low_fixed=<N>`
   - Rebase: `REBASE DONE PR#<dep> on-top-of-<base>-iter<N>`
