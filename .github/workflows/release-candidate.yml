@@ -1,0 +1,198 @@
+name: Release Candidate Verification
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - package.json
+  workflow_dispatch:
+    inputs:
+      target_sha:
+        description: Exact commit SHA to verify as the release candidate
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-candidate-${{ github.event_name == 'workflow_dispatch' && inputs.target_sha || github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  verify_release_candidate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Validate manual target SHA
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        shell: bash
+        env:
+          INPUT_TARGET_SHA: ${{ inputs.target_sha }}
+        run: |
+          if [[ ! "$INPUT_TARGET_SHA" =~ ^[0-9a-fA-F]{40}$ ]]; then
+            echo "target_sha must be a 40-character hexadecimal commit SHA."
+            exit 1
+          fi
+
+      - name: Resolve target SHA
+        id: target
+        shell: bash
+        env:
+          INPUT_TARGET_SHA: ${{ inputs.target_sha }}
+        run: |
+          target_sha="$GITHUB_SHA"
+          if [ -n "$INPUT_TARGET_SHA" ]; then
+            target_sha="$INPUT_TARGET_SHA"
+          fi
+
+          echo "target_sha=$target_sha" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout repository at target SHA
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ steps.target.outputs.target_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Verify checkout SHA
+        shell: bash
+        run: |
+          actual_sha=$(git rev-parse HEAD)
+          expected_sha="${{ steps.target.outputs.target_sha }}"
+
+          if [ "$actual_sha" != "$expected_sha" ]; then
+            echo "Checkout SHA mismatch: expected $expected_sha, got $actual_sha."
+            exit 1
+          fi
+
+      - name: Resolve candidate metadata
+        id: candidate
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          target_sha="${{ steps.target.outputs.target_sha }}"
+          before_sha="$EVENT_BEFORE_SHA"
+
+          if [ -z "$before_sha" ] || [[ "$before_sha" =~ ^0+$ ]]; then
+            before_sha=$(git rev-parse "$target_sha^" 2>/dev/null || true)
+          fi
+
+          if [ -z "$before_sha" ]; then
+            echo "Unable to resolve the commit before $target_sha for version-change detection."
+            exit 1
+          fi
+
+          if ! git cat-file -e "$before_sha:package.json" 2>/dev/null; then
+            echo "package.json does not exist at before SHA $before_sha."
+            exit 1
+          fi
+
+          base_version=$(git show "$before_sha:package.json" | node -e "let input=''; process.stdin.on('data', chunk => input += chunk); process.stdin.on('end', () => { const pkg = JSON.parse(input); console.log(pkg.version); });")
+          candidate_version=$(node -p "require('./package.json').version")
+          tag="v$candidate_version"
+          version_changed=false
+
+          if [ "$base_version" != "$candidate_version" ]; then
+            version_changed=true
+          fi
+
+          {
+            echo "target_sha=$target_sha"
+            echo "before_sha=$before_sha"
+            echo "base_version=$base_version"
+            echo "version=$candidate_version"
+            echo "tag=$tag"
+            echo "version_changed=$version_changed"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Skip summary
+        if: ${{ steps.candidate.outputs.version_changed != 'true' }}
+        run: |
+          {
+            echo "## Release candidate verification skipped"
+            echo ""
+            echo "- verified SHA: ${{ steps.candidate.outputs.target_sha }}"
+            echo "- base version: ${{ steps.candidate.outputs.base_version }}"
+            echo "- version: ${{ steps.candidate.outputs.version }}"
+            echo "- reason: package.json changed without a version bump"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Check release tag availability
+        if: ${{ steps.candidate.outputs.version_changed == 'true' }}
+        shell: bash
+        run: |
+          set +e
+          git ls-remote --exit-code --tags origin "refs/tags/${{ steps.candidate.outputs.tag }}" >/dev/null 2>&1
+          status=$?
+          set -e
+
+          if [ "$status" -eq 0 ]; then
+            echo "Release tag ${{ steps.candidate.outputs.tag }} already exists."
+            exit 1
+          fi
+
+          if [ "$status" -eq 2 ]; then
+            echo "Release tag ${{ steps.candidate.outputs.tag }} is available."
+            exit 0
+          fi
+
+          echo "Failed to check release tag availability for ${{ steps.candidate.outputs.tag }}."
+          exit "$status"
+
+      - name: Verify package
+        if: ${{ steps.candidate.outputs.version_changed == 'true' }}
+        run: npm run verify
+
+      - name: Pack release candidate
+        if: ${{ steps.candidate.outputs.version_changed == 'true' }}
+        id: pack
+        shell: bash
+        run: |
+          pack_json=$(npm pack --json)
+          tarball=$(printf '%s' "$pack_json" | node -e "let input=''; process.stdin.on('data', chunk => input += chunk); process.stdin.on('end', () => { const parsed = JSON.parse(input); console.log(parsed[0].filename); });")
+          tarball_path="$PWD/$tarball"
+
+          if [ ! -f "$tarball_path" ]; then
+            echo "Packed tarball was not created: $tarball_path"
+            exit 1
+          fi
+
+          {
+            echo "tarball=$tarball"
+            echo "tarball_path=$tarball_path"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Smoke install packed package
+        if: ${{ steps.candidate.outputs.version_changed == 'true' }}
+        shell: bash
+        run: |
+          smoke_dir=$(mktemp -d)
+          tarball_path="${{ steps.pack.outputs.tarball_path }}"
+
+          pushd "$smoke_dir" >/dev/null
+          npm init -y
+          npm install "$tarball_path"
+          npx ddalggak --help
+          npx ddalggak plan --show-doc
+          popd >/dev/null
+
+      - name: Verified summary
+        if: ${{ steps.candidate.outputs.version_changed == 'true' }}
+        run: |
+          {
+            echo "## Release candidate verified"
+            echo ""
+            echo "- verified SHA: ${{ steps.candidate.outputs.target_sha }}"
+            echo "- version: ${{ steps.candidate.outputs.version }}"
+            echo "- next tag: ${{ steps.candidate.outputs.tag }}"
+            echo "- tarball: ${{ steps.pack.outputs.tarball }}"
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -16,6 +16,7 @@ const requiredArtifactPaths = [
   "scripts/test-release-helpers.mjs",
   "scripts/test-release-drafter.mjs",
   "scripts/test-manual-release-bump.mjs",
+  "scripts/test-release-candidate.mjs",
   "scripts/lib/release.mjs",
   "scripts/release-plan.mjs",
   "scripts/bump-release-version.mjs",
@@ -96,6 +97,7 @@ try {
   runStep("release helper tests", npmCommand, ["run", "test:release-helpers"]);
   runStep("release drafter tests", npmCommand, ["run", "test:release-drafter"]);
   runStep("manual release bump tests", npmCommand, ["run", "test:manual-release-bump"]);
+  runStep("release candidate tests", npmCommand, ["run", "test:release-candidate"]);
   verifyArtifactContents();
   console.log("\n[verify-package] passed");
 } catch (error) {
