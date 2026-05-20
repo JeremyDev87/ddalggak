@@ -121,20 +121,37 @@ Common subcommand options:
 
 Install path priority is `--target <path>`, then `$CLAUDE_HOME`, then `~/.claude`.
 
+## Release Helper Scripts
+
+Maintainers can use the release helper scripts to prepare future npm release workflows without publishing anything from local development:
+
+```bash
+node scripts/release-plan.mjs v0.1.1
+node scripts/release-plan.mjs v0.2.0-alpha.1
+node scripts/bump-release-version.mjs v0.1.1
+```
+
+`release-plan.mjs` accepts strict `v`-prefixed semver tags only and emits GitHub Actions-style `key=value` lines for `tag`, `version`, `isPrerelease`, `npmDistTag`, and `githubReleaseType`. Stable tags use the `latest` npm dist-tag; prerelease tags use `next`.
+
+`bump-release-version.mjs` updates only `package.json` and rejects non-upgrade targets. The npm lookup/publish classifier scripts are intended for CI workflows to distinguish idempotent 404/already-published states from unknown failures.
+
+These helpers do not create tags, GitHub releases, or npm publications.
+
 ## Maintainer Verification
 
-Before changing the CLI bridge, Codex skill source, or package artifact boundaries, maintainers should run the relevant local checks:
+Before changing the CLI bridge, Codex skill source, release helpers, or package artifact boundaries, maintainers should run the relevant local checks:
 
 ```bash
 npm run verify
 ```
 
-`npm run verify` runs the CLI smoke suite, Codex skill verifier, ddalggak readiness eval fixtures, and npm package artifact inspection. For focused diagnostics, maintainers can still run each underlying check directly:
+`npm run verify` runs the CLI smoke suite, Codex skill verifier, ddalggak readiness eval fixtures, release helper tests, and npm package artifact inspection. For focused diagnostics, maintainers can still run each underlying check directly:
 
 ```bash
 npm test
 npm run verify:codex-skill
 npm run eval:ddalggak-readiness
+npm run test:release-helpers
 env npm_config_cache=/tmp/ddalggak-npm-cache npm pack --dry-run --ignore-scripts --loglevel=silent
 ```
 
