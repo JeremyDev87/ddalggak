@@ -1,4 +1,6 @@
+import { spawnSync } from "node:child_process";
 import { readdirSync, readFileSync, statSync } from "node:fs";
+import os from "node:os";
 import path from "node:path";
 
 const rootDir = process.cwd();
@@ -37,6 +39,98 @@ const packagePath = path.join(rootDir, "package.json");
 const readmePath = path.join(rootDir, "README.md");
 const cliPath = path.join(rootDir, "bin", "ddalggak.js");
 const dispatchPath = path.join(rootDir, "bin", "lib", "dispatch.mjs");
+const skillBudgets = [
+  {
+    label: ".codex/skills/ddalggak/SKILL.md",
+    filePath: skillPath,
+    maxLines: 450,
+    maxChars: 35_000,
+  },
+  {
+    label: "ddalggak/SKILL.md",
+    filePath: legacySkillPath,
+    maxLines: 700,
+    maxChars: 45_000,
+  },
+];
+const requiredDisclosureAssetsBySubcommand = {
+  start: {
+    references: ["start-workflow.md"],
+    templates: ["worker-brief.md"],
+  },
+  review: {
+    references: ["cross-review-loop.md"],
+    templates: ["review-brief.md", "fix-brief.md"],
+  },
+  status: {
+    references: ["status.md"],
+    templates: [],
+  },
+  plan: {
+    references: ["issue-ready-plan.md"],
+    templates: [],
+  },
+  issue: {
+    references: ["plan-to-issues.md"],
+    templates: ["issue-body.md", "epic-body.md"],
+  },
+  clean: {
+    references: ["merge-cleanup.md"],
+    templates: [],
+  },
+  ship: {
+    references: ["ship.md"],
+    templates: [],
+  },
+  retro: {
+    references: ["retrospective.md", "retrospective-workflow.md"],
+    templates: [],
+  },
+  prompt: {
+    references: ["prompt-optimizer.md"],
+    templates: [],
+  },
+  check: {
+    references: ["local-diff-check.md"],
+    templates: [],
+  },
+};
+const skillPayloadRoots = [
+  ".codex/skills/ddalggak",
+  "ddalggak",
+];
+const requiredPackageFiles = [
+  ".codex/skills/ddalggak/SKILL.md",
+  ".codex/skills/ddalggak/agents/openai.yaml",
+  "ddalggak/SKILL.md",
+  "bin/ddalggak.js",
+  "bin/lib/dispatch.mjs",
+  "bin/lib/setup.mjs",
+  "README.md",
+  "LICENSE",
+];
+const forbiddenHotPathTemplateSentinels = [
+  {
+    pattern: /## 부모 이슈\r?\n#<parent-number>/,
+    description: "full issue body template",
+  },
+  {
+    pattern: /Plan → Issue Body 필드 매핑 체크리스트/,
+    description: "plan-to-issue checklist detail",
+  },
+  {
+    pattern: /Goal, Authorized files, Forbidden files\/actions/,
+    description: "worker BRIEF contract body",
+  },
+  {
+    pattern: /## 생성된 Issue 목록/,
+    description: "generated issue list template",
+  },
+  {
+    pattern: /LANE_READY: Phase Y W<번호>/,
+    description: "legacy lane-ready worker output template",
+  },
+];
 const requiredSubcommands = [
   "start",
   "review",
@@ -603,6 +697,127 @@ function countOccurrences(text, term) {
   return count;
 }
 
+function countLinesAndChars(text) {
+  const normalized = text.replace(/\r\n/g, "\n");
+  return {
+    lines: normalized.length === 0 ? 0 : normalized.replace(/\n$/, "").split("\n").length,
+    chars: text.length,
+  };
+}
+
+function assertSkillBudget({ label, filePath, maxLines, maxChars }) {
+  if (!statSync(filePath, { throwIfNoEntry: false })?.isFile()) {
+    fail(`${label} must exist before budget verification.`);
+    return;
+  }
+
+  const { lines, chars } = countLinesAndChars(readText(filePath));
+  if (lines > maxLines || chars > maxChars) {
+    fail(
+      `${label} exceeds progressive-disclosure budget: ${lines}/${maxLines} lines, ${chars}/${maxChars} chars. Move low-frequency detail to references/ or templates/.`,
+    );
+  }
+}
+
+function requiredDisclosureAssetPaths() {
+  const assets = new Set();
+  const mappedSubcommands = Object.keys(requiredDisclosureAssetsBySubcommand);
+  for (const subcommand of requiredSubcommands) {
+    if (!mappedSubcommands.includes(subcommand)) {
+      fail(`requiredDisclosureAssetsBySubcommand is missing required subcommand '${subcommand}'.`);
+    }
+  }
+  for (const [subcommand, groups] of Object.entries(requiredDisclosureAssetsBySubcommand)) {
+    if (!requiredSubcommands.includes(subcommand)) {
+      fail(`requiredDisclosureAssetsBySubcommand contains unknown subcommand '${subcommand}'.`);
+    }
+    for (const reference of groups.references) {
+      for (const root of skillPayloadRoots) {
+        assets.add(`${root}/references/${reference}`);
+      }
+    }
+    for (const template of groups.templates) {
+      for (const root of skillPayloadRoots) {
+        assets.add(`${root}/templates/${template}`);
+      }
+    }
+  }
+  return [...assets].sort();
+}
+
+function assertRequiredDisclosureAssetsExist() {
+  for (const assetPath of requiredDisclosureAssetPaths()) {
+    const absolutePath = path.join(rootDir, assetPath);
+    if (!statSync(absolutePath, { throwIfNoEntry: false })?.isFile()) {
+      fail(`required progressive-disclosure asset missing: ${assetPath}`);
+    }
+  }
+}
+
+function assertForbiddenHotPathTemplateSentinels({ label, text }) {
+  for (const sentinel of forbiddenHotPathTemplateSentinels) {
+    if (sentinel.pattern.test(text)) {
+      fail(`${label} must not inline ${sentinel.description}; keep detail in references/ or templates/.`);
+    }
+  }
+}
+
+function parsePackJson(stdout) {
+  try {
+    return JSON.parse(stdout);
+  } catch {
+    const startIndex = stdout.indexOf("[");
+    const endIndex = stdout.lastIndexOf("]");
+    if (startIndex === -1 || endIndex === -1 || endIndex < startIndex) {
+      throw new Error("could not locate JSON array in npm pack stdout");
+    }
+    return JSON.parse(stdout.slice(startIndex, endIndex + 1));
+  }
+}
+
+function assertPackageArtifactIncludes() {
+  const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
+  const result = spawnSync(
+    npmCommand,
+    ["pack", "--dry-run", "--json", "--ignore-scripts"],
+    {
+      cwd: rootDir,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+      env: {
+        ...process.env,
+        npm_config_cache: process.env.npm_config_cache || path.join(os.tmpdir(), "ddalggak-npm-cache"),
+      },
+    },
+  );
+  if (result.status !== 0) {
+    fail(`npm pack --dry-run --json --ignore-scripts failed:\nstdout:\n${result.stdout}\nstderr:\n${result.stderr}`);
+    return;
+  }
+
+  let packEntries;
+  try {
+    packEntries = parsePackJson(result.stdout);
+  } catch (error) {
+    fail(`npm pack --dry-run --json output was not valid JSON: ${error.message}`);
+    return;
+  }
+  if (!Array.isArray(packEntries) || !Array.isArray(packEntries[0]?.files)) {
+    fail("npm pack --dry-run --json output did not include a files array.");
+    return;
+  }
+  const packedFiles = new Set(packEntries[0].files.map((file) => file.path));
+  const expectedFiles = [...new Set([...requiredPackageFiles, ...requiredDisclosureAssetPaths()])].sort();
+  const missingFiles = expectedFiles.filter((filePath) => !packedFiles.has(filePath));
+  if (missingFiles.length > 0) {
+    fail(
+      `npm pack artifact missing required files:\n${missingFiles
+        .map((filePath) => `  - ${filePath}`)
+        .join("\n")}`,
+    );
+  }
+}
+
 function assertForbiddenTermsAbsent({ label, text, terms }) {
   for (const term of terms) {
     if (text.includes(term)) {
@@ -660,6 +875,12 @@ function verifySkillFile(filePath, { label, requiredAnchors }) {
   }
 }
 
+for (const budget of skillBudgets) {
+  assertSkillBudget(budget);
+}
+assertRequiredDisclosureAssetsExist();
+assertPackageArtifactIncludes();
+
 verifySkillFile(skillPath, {
   label: ".codex/skills/ddalggak/SKILL.md",
   requiredAnchors: requiredSkillAnchors,
@@ -668,6 +889,15 @@ verifySkillFile(skillPath, {
 verifySkillFile(legacySkillPath, {
   label: "ddalggak/SKILL.md",
   requiredAnchors: requiredLegacySkillAnchors,
+});
+
+assertForbiddenHotPathTemplateSentinels({
+  label: ".codex/skills/ddalggak/SKILL.md",
+  text: readText(skillPath),
+});
+assertForbiddenHotPathTemplateSentinels({
+  label: "ddalggak/SKILL.md",
+  text: readText(legacySkillPath),
 });
 
 for (const referencePath of routerReferencePaths) {
