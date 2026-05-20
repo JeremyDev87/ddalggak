@@ -1,0 +1,12 @@
+# Cross-Review Loop Reference
+
+Use this when `review` needs full adversarial review details beyond the hot path.
+
+## Required flow
+1. Re-read PR metadata, diff, files, commits, checks, linked issues, and comments from GitHub.
+2. Do not let implementation context pollute review. Review from `gh pr view`/`gh pr diff` first; use an isolated temporary checkout only when local reproduction is necessary.
+3. Treat CI/check failures as Critical unless proven unrelated.
+4. Compare the diff against the Task Scope Contract and Evidence Contract. Out-of-scope diff is a scope-expansion failure.
+5. Findings must include severity, confidence, evidence, impact, suggested fix, file/line when available, and test/repro idea.
+6. Critical/High or required evidence gaps block APPROVE and ready state.
+7. If formal approval is inappropriate, post a top-level approval-comment policy body with head SHA, review scope, validation evidence, blocking finding count, and conclusion.

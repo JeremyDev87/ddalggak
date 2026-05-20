@@ -51,7 +51,11 @@ user-invocable: true
 - URL beats cwd: GitHub URL 처리 기준은 owner/repo/number 파싱 후 cwd remote 검증이다. cwd remote가 URL repo와 다르면 mutation을 멈춘다.
 - Issue-PRs by default: 독립 이슈는 기본적으로 issue PR 하나를 만든다. hard conflict만 single PR + serial commit fallback이 가능하다.
 - Manual merge only: 주인님 PR은 merge/auto-merge 금지. green + APPROVE도 ready for manual merge 보고까지만 허용한다.
+- approval-comment policy: formal approval이 부적절하면 current head SHA, review scope, validation evidence, blocking finding count, conclusion을 포함한 top-level PR comment를 사용한다.
+- Runtime contract language: Task Scope Contract, Context Assembly Manifest, Resume Snapshot, Control-flow ownership으로 conductor/reviewer-owned 실행 경계를 명시한다.
+- Small focused workers, explicit orchestration: worker 책임과 context를 작게 유지하고 conductor가 branch/PR/review/fix gate를 소유한다.
 - Task Scope Contract: tool capability boundary와 task scope contract를 분리한다. out-of-scope diff는 scope-expansion failure다.
+- Diff Footprint / Scope Expansion Review: review packet은 changed files, side effects, config/credential/migration/destructive action, 외부 API write, production data touch를 task scope contract와 대조한다.
 - Context Assembly Manifest, Resume Snapshot, Control-flow ownership은 conductor/reviewer-owned 경계다.
 - Quality Lens Router Output은 Applicable gate families, Skipped gates, Required references, Repo/product conventions, backend-only skip을 기록한다. Domain gate is a lens, not a mandate.
 - Evidence Contract는 references/evidence-contract.md 기준이며 Blocking evidence gaps가 있으면 PR ready/APPROVE 금지다.
@@ -92,204 +96,203 @@ Wiki-derived 지식은 바로 hot path에 붙이지 말고 `references/wiki-grow
 
 ## Start Workflow
 
-`start`는 이슈 기반 구현만 수행한다. 먼저 repo URL/issue URL을 해석하고 `git fetch --prune`, branch, ahead/behind, worktree 상태를 확인한다. issue body와 comments를 모두 읽고, Quality Lens Router Output, Evidence Contract, Simplicity / Deletability Gate, Frontend Design Gate, Vercel Agent Skills Gate, Task Scope Contract를 brief에 넣는다. Default PR shape: one PR per issue; conflict fallback only when issue conflicts require it. Issue-PR Strategy with Conflict Fallback, Parallelization Decision, Integration commit, PR CREATE — 독립 이슈는 기본 생성, small direct change first, aesthetic direction, screenshot/viewport/manual evidence, server/client boundary, token source without printing secrets, preview-first, references/regression-library.md, 유용한 범위, class-level risk를 필요한 만큼 명시한다.
+Full procedure: `references/start-workflow.md`; reusable prompt: `templates/worker-brief.md`.
 
-## Interface Contract Draft
+This `start` show-doc surface intentionally keeps the executable contract compact while the detailed BRIEF/template flow lives in references/templates. Required anchors remain visible for CLI dispatch and verifier parity.
 
-Low-context worker handoff는 Goal, Authorized files, Forbidden files/actions, Allowed side effects, Escalation-required actions, Validation commands, Completion evidence, Evidence provided, Evidence not applicable, Blocking evidence gaps를 포함한다.
+### Quality Lens Router Output
+- Applicable gate families: derive from issue body/comments and changed files.
+- Skipped gates: record backend-only skip or other non-applicable domains.
+- Required references: `references/quality-lens-router.md`, `references/evidence-contract.md`, `references/simplicity-deletability-gate.md`; add `references/frontend-design-gate.md`, `references/vercel-agent-skills-gates.md`, or `references/regression-library.md` only when applicable and 유용한 범위에서 class-level risk가 있다.
+
+### Evidence Contract
+- Required evidence: issue acceptance criteria, validation commands, PR URL/evidence, and any UI/API/security evidence that applies.
+- Blocking evidence gaps: no required evidence means no PR ready/APPROVE.
+
+### Simplicity / Deletability Gate
+- Default: small direct change first.
+- Any helper/module/provider/wrapper/fallback must answer why is this abstraction necessary? and prove boundary/reuse value.
+
+### Frontend Design Gate
+- For UI/frontend work only: aesthetic direction, screenshot/viewport/manual evidence, generic AI UI avoided, one-off abstraction avoided.
+
+### Vercel Agent Skills Gate
+- For React/Vercel/mobile/motion work only: server/client boundary, token source without printing secrets, preview-first, component API quality, animation meaning.
+
+### Issue-PR Strategy with Conflict Fallback
+- Default PR shape: one PR per issue; conflict fallback only when issue conflicts require it.
+- Parallelization Decision must classify independent issue PRs, conflict fallback serial commits, and blocked lanes.
+- Integration commit evidence is required for fallback lanes.
+- PR CREATE — 독립 이슈는 기본 생성; hard-conflict fallback만 lane patch/commit handoff를 사용한다.
+
+### Completion
+- 독립 이슈는 commit/push/issue PR/PR URL/evidence까지 확인한다.
+- Required completion signal: `ISSUE_PR_READY` for independent issue PRs or `LANE_READY` only for hard-conflict fallback.
+
+---
 
 ## Cross-Review Loop
 
-`review`는 AI code quality gate다. PR diff/files/checks, issue contract, Quality Lens Router Output, Evidence Contract, Diff Footprint / Scope Expansion Review, Counterargument Pass, Simplicity / Deletability Gate, Frontend Design Review Gate, Vercel Agent Skills Gate, Continuous Regression Library를 사용한다. one-off abstraction, human readability, generic AI/template, screenshot/manual verification, Vercel deploy safety, component API quality, animation meaning, React Native/Expo, Regression Library Candidate, references/regression-library.md를 확인한다.
+Full procedure: `references/cross-review-loop.md`; reusable prompt: `templates/review-brief.md`.
+
+Review is an adversarial AI code quality gate, not a praise pass. Re-read PR state, diff, files, checks, linked issue, and current head SHA before judgment.
+
+### Quality Lens Router Output
+- Applicable gate families, Skipped gates, Required references, Lightweight or limited gates, Repo/product conventions.
+
+### Evidence Contract
+- Compare PR body and validation evidence to required evidence. Blocking evidence gaps prevent APPROVE.
+
+### Simplicity / Deletability Gate
+- one-off abstraction, forced modularization, silent fallback, type escape, and human readability risks are review findings; human readability/deletability outranks SOLID.
+
+### Frontend Design Review Gate
+- For UI work, verify product fit, typography, hierarchy, responsive behavior, generic AI/template avoidance, screenshot/manual verification, and no one-off wrapper/provider.
+
+### Vercel Agent Skills Gate
+- For applicable work, check Vercel deploy safety, component API quality, animation meaning, React Native/Expo constraints, and file/line/screenshot/viewport evidence.
+
+### Continuous Regression Library
+- Read `references/regression-library.md` when repeated Medium/High patterns appear and propose a Regression Library Candidate for missing generalized classes.
+
+### Approval-comment policy
+- If formal approval is inappropriate, post a top-level PR comment with head SHA, review scope, validation evidence, blocking finding count, and APPROVE or CHANGES_REQUESTED conclusion.
+
+---
 
 ## Status
 
-`status`는 `.ddalggak/session-state.json`, git status, branch, upstream ahead/behind, worktree, open PR/issue 상태를 read-only로 보고한다.
+Full procedure: `references/status.md`.
+
+Read-only snapshot: fetch/prune, status, branch/upstream, worktrees, open PRs, linked issues, checks, blockers, session state, and next action. No source edits.
+
+---
 
 ## Issue-Ready Plan
 
-`plan`은 구현 가능한 계획만 만든다. 포함: Source of Truth, Non-Goals, Context Recovery Anchors, Assumptions/Unknowns, Work Inventory, Forbidden files, Inspect-only files, Issue-PR Strategy with Conflict Fallback, PR count: one PR per issue by default, Default PR shape: one PR per issue; conflict fallback only when issue conflicts require it, Parallelization Decision, Must not touch, Evidence / validation, Commit message, Quality Lens Router Output, Evidence Contract, Counterargument Pass, Simplicity / Deletability Gate, why is this abstraction necessary?, Frontend Design Brief, Vercel Agent Skills Gate, Applicable upstream skill families, React/Next.js performance risks, Explicit anti-goals, Backend-only skip/lightweight reason, references/regression-library.md, 유용한 범위, Regression Library Candidate.
+Full procedure: `references/issue-ready-plan.md`.
+
+### Goal / Context
+Plan must identify Goal, Source Of Truth, Non-Goals / Constraints, Context Recovery Anchors, Assumptions And Unknowns.
+
+### Quality Lens Router Output
+- Applicable gate families:
+- Skipped gates:
+- Required references:
+- Lightweight or limited gates:
+- Repo/product conventions that outrank generic rules:
+
+### Evidence Contract
+- Required evidence:
+- Evidence templates applied:
+- Evidence not applicable (`not-applicable: <reason>`):
+- Blocking evidence gaps:
+
+### Counterargument Pass
+- 약한 가정 / weak assumptions:
+- 기존 repo convention conflicts:
+- readiness를 반증할 evidence:
+- 더 작은 직접 변경 대안 / smaller or more direct change:
+
+### Simplicity / Deletability Gate
+- why is this abstraction necessary?
+- Small direct change first; human readability/deletability outranks SOLID.
+
+### Frontend Design Brief
+- Product/user context, Aesthetic direction, Explicit anti-goals, screenshot evidence when applicable.
+
+### Vercel Agent Skills Gate
+- Applicable upstream skill families
+- React/Next.js performance risks
+- Explicit anti-goals
+- Backend-only skip/lightweight reason
+
+### Continuous Regression Library
+- Mention `references/regression-library.md` only where useful / 유용한 범위.
+- If needed, propose Regression Library Candidate.
+
+### Issue-PR Strategy with Conflict Fallback
+- PR count: one PR per issue by default.
+- Default PR shape: one PR per issue; conflict fallback only when issue conflicts require it.
+- Parallelization Decision:
+- Must not touch:
+- Evidence / validation:
+- Commit message:
+
+---
 
 ## Plan to Issues
 
-`issue`는 계획을 GitHub issue로 변환한다. 각 child issue는 Owned files, Must not touch, Parallelization note, Commit lane suggestion, Validation/evidence, Dependencies / blocked by를 포함한다. 이슈 생성/수정은 사용자의 명시 요청이 있을 때만 수행하며, title/body는 raw UTF-8로 만들고 literal Unicode escape(`\uXXXX`)가 live title/body에 남지 않았는지 `gh issue view --json title,body,url`로 확인한다.
+Full procedure: `references/plan-to-issues.md`; reusable prompts: `templates/issue-body.md`, `templates/epic-body.md`.
+
+Each generated issue body must preserve Owned files, Must not touch, Parallelization note, Commit lane suggestion, Validation/evidence, and Dependencies / blocked by. Use raw UTF-8 GitHub title/body payloads and verify no literal Unicode escapes persisted.
+
+---
 
 ## Merge Cleanup
 
-`clean`은 PR merge evidence를 live GitHub에서 확인한 뒤 local branch/worktree/session-state cleanup만 수행한다. dirty state면 중단한다.
+Full procedure: `references/merge-cleanup.md`.
+
+Verify merge evidence first, then clean only matching branches/worktrees/artifacts. Never delete dirty or ambiguous worktrees. Never merge or enable auto-merge.
+
+---
 
 ## Ship
 
-`ship`은 이미 존재하는 변경만 commit/push/draft PR로 게시한다. issue body/comments 재확인, scope 확인, validation, local adversarial review, intended files만 stage, What/Why commit, draft PR body의 What/Why/Validation/Risk/Issues를 포함한다. merge/auto-merge 금지.
+Full procedure: `references/ship.md`.
+
+Validate current changes, preserve What/Why in Korean commit and PR body, open draft PR, and never merge. Use `Closes #N` only for full completion; otherwise `Refs #N`.
+
+---
 
 ## Local Diff Check
 
-`check`는 read-only diff review다. base freshness, git status, diff stat/diff, ignored/local-only/generated/repo-external path, findings만 보고한다.
+Full procedure: `references/local-diff-check.md`.
+
+Read-only local diff review. No GitHub comments and no source edits. Report Critical/High/Medium/Low with concrete suggestions.
+
+---
 
 ## Retrospective
 
-`retro`는 merge 이후 회고와 reusable lesson 후보를 분리한다. references/retrospective-workflow.md를 사용한다.
+Full procedure: `references/retrospective.md`.
+
+Separate durable reusable knowledge from incident records. PR numbers, commit SHAs, and single-session completion logs are not durable reusable knowledge unless generalized into harness-engineering/*, principles/*, frontend/*, or llm-wiki/* patterns.
+
+---
 
 ## Prompt Optimizer
 
-`prompt`는 brief/review/fix artifact만 개선한다. skill behavior 변경은 normal repo edit으로 분리한다.
+Full procedure: `references/prompt-optimizer.md`.
+
+Audit prompts for single goal, Why, validation, restatement, and question path. Do not edit SKILL.md or source code from this subcommand.
+
+---
 
 ## Conductor State File
 
-`.ddalggak/session-state.json`은 phase, base branch, issue, branch, worktree, PR URL/evidence, validation, review verdict, blocker, next command를 담는다.
+Template: `templates/conductor-state.md`. Store phase, issue/PR/branch/worktree, validation evidence, blocking gaps, waiting-on state, and next gate before idle waits or compact boundaries.
+
+## Context 관리 — Compact 실행 포인트
+
+Full procedure: `references/context-compact.md`. Save state before compact or long waits.
+
+## Wake/Resume 프로토콜
+
+Full procedure: `references/wake-resume.md`. Resume from state, then re-read live GitHub/local state before acting.
 
 ## 공통 규칙
 
-Markdown surgery discipline: frontmatter, routing, code permission, fenced block, heading, numbering을 보존한다. 새 dependency는 증명 전 금지. ignored/local-only/repo-external 파일은 PR에 넣지 않는다.
+Full procedure: `references/common-rules.md`. Korean by default, no AI trailer, no secrets, no auto-merge, no unsafe force push, exact validation evidence.
 
 ## 실패 모드 예방
 
-Stale repo, issue comment 누락, dependency hallucination, unsafe force-push, test pass와 completion 혼동, review isolation 위반, forced modularization, silent fallback, analytics privacy 누락을 차단한다.
+Full procedure: `references/failure-prevention.md`. Prevent stale repo judgments, external dependency hallucination, ignored/local-only PR inclusion, missing handoff evidence, duplicate PRs, and Markdown surgery regressions.
 
 ## Verification Checklist
 
-- Base freshness, branch, ahead/behind 확인.
-- issue body/comments 확인.
-- allowed/forbidden/inspect-only/Must not touch 파일 명시.
-- Quality Lens Router Output, Evidence Contract, Simplicity / Deletability Gate 적용/스킵 사유 기록.
-- validation evidence와 PR URL/evidence 확인.
-- Critical/High 리뷰 finding 0개.
-- Markdown frontmatter, headings, routing, code permissions, fenced blocks 유지.
+Full procedure: `references/verification-checklist.md`. Verify base freshness, issue body+comments, file tracking/local-only status, validation evidence, reviewer isolation, and Markdown fence integrity.
 
 ## 명명 규칙
 
-Branch names describe purpose and do not include generated date/time suffixes. Commit/PR descriptions include What, Why, Validation, Risk, and issue reference.
-
-## Stop Conditions
-
-다음 경우 중단하고 보고한다: route된 subcommand 권한 밖 source edit 필요, allowed file 밖 변경 필요, hard blocker가 허용되지 않은 topology를 강제함, validation이 checkout을 예기치 않게 mutation함, release/publish automation에 명시 확인이 없음, session state와 live git/GitHub 상태가 모순됨, base freshness 확인 실패, issue가 fundamentally thin함, ignored/local-only/repo-external path를 PR workflow로 안전 표현할 수 없음.
-
-## Reference Contract Summary
-
-아래 항목은 detailed procedure를 references/templates/scripts로 옮기더라도 hot path에서 잃으면 안 되는 운영 계약이다. 단순 keyword dump가 아니라 route, evidence, review, privacy, retrospective 판단에 쓰이는 compact contract로 유지한다:
-
-- URL beats cwd
-- GitHub URL 처리 기준
-- owner/repo/number
-- cwd remote가 URL repo와 다르면
-- Task Scope Contract
-- Context Assembly Manifest
-- Resume Snapshot
-- Control-flow ownership
-- Runtime contract language
-- Small focused workers, explicit orchestration
-- tool capability boundary
-- task scope contract
-- out-of-scope diff
-- scope-expansion failure
-- Diff Footprint / Scope Expansion Review
-- Rendered evidence gate
-- route evidence
-- viewport evidence
-- rendered DOM evidence
-- screenshot evidence
-- fallback evidence
-- contract graph evidence
-- Transitive rendered fallback audit
-- list/detail surface
-- shared card/media primitive
-- Analytics/privacy allowlist·denylist
-- raw search terms
-- prompt titles/bodies
-- full query strings
-- raw UTF-8
-- literal Unicode escape
-- json.dumps(..., ensure_ascii=False)
-- gh api --input
-- gh issue view --json title,body,url
-- harness-engineering/*
-- principles/*
-- frontend/*
-- llm-wiki/*
-- PR numbers
-- commit SHAs
-- single-session completion logs
-- incident records
-- durable reusable knowledge
-- Self-created complexity is a defect
-- forced modularization
-- client-side patch
-- mock-only tests
-- Quality Lens Router
-- Quality Lens Router Output
-- Applicable gate families
-- Skipped gates
-- Required references
-- Domain gate is a lens, not a mandate
-- backend-only skip
-- Repo/product conventions
-- frontend-design
-- backend-only
-- Evidence Contract
-- references/evidence-contract.md
-- Blocking evidence gaps
-- PR ready/APPROVE
-- Counterargument Pass
-- 약한 가정
-- readiness를 반증할 evidence
-- 더 작은 직접 변경 대안
-- Simplicity / Deletability Gate
-- references/simplicity-deletability-gate.md
-- Frontend Design Gate
-- references/frontend-design-gate.md
-- Frontend Design Brief
-- Frontend Design Review Gate
-- Vercel Agent Skills Gate
-- references/vercel-agent-skills-gates.md
-- react-best-practices
-- composition-patterns
-- react-view-transitions
-- web-design-guidelines
-- deploy-to-vercel
-- vercel-cli-with-tokens
-- react-native-skills
-- server/client boundary
-- unnecessary client component avoidance
-- hydration/bundle regression avoidance
-- token source without printing secrets
-- preview-first
-- Vercel deploy safety
-- component API quality
-- animation meaning
-- React Native/Expo constraints
-- small direct change first
-- why is this abstraction necessary?
-- one-off abstraction
-- human readability/deletability
-- SOLID
-- Continuous Regression Library
-- references/regression-library.md
-- Regression Library Candidate
-- class-level failure
-- transient incident
-- Manual merge only
-- auto-merge
-- ready for manual merge
-- approval-comment policy
-- top-level PR comment
-- head SHA
-- review scope
-- validation evidence
-- blocking finding count
-- Issue-PRs by default
-- ISSUE_PR_READY
-- PR URL/evidence
-- 독립 이슈는 commit/push/issue PR/PR URL/evidence까지
-- Issue-PR Strategy with Conflict Fallback
-- Parallelization Decision
-- Must not touch
-- PR count: one PR per issue by default
-- serial commit
-- Component methodology gate
-- main component only assembles
-- ComponentName.parts.tsx
-- ComponentName.utils.ts
-- satisfies Record<...>
-- public visual-contract classes
-- no silent fallback
-- empty companion files
+Full procedure: `references/naming-rules.md`. Branches are purpose-centered; completion signals distinguish ISSUE_PR_READY, LANE_READY, REVIEW DONE, FIX DONE, and REBASE DONE.

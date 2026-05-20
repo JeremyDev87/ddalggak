@@ -19,6 +19,22 @@ The hot path is frontmatter, overview, routing invariant, code modification inva
 
 Size budget for this file after #94: target <= 450 lines and <= 35,000 chars. #95 may lower the budget after moving more long-form procedure to references/templates. Any detailed BRIEF, REVIEW, FIX, issue-body, or retrospective template that grows beyond a compact contract should move out of this file.
 
+
+## Reference And Template Map
+
+The hot path stays compact. Load these files only when the routed subcommand needs low-frequency detail:
+
+| Area | References | Templates |
+| --- | --- | --- |
+| start | `references/start-workflow.md` | `templates/worker-brief.md`, `templates/conductor-state.md` |
+| review | `references/cross-review-loop.md` | `templates/review-brief.md`, `templates/fix-brief.md` |
+| plan | `references/issue-ready-plan.md` | - |
+| issue | `references/plan-to-issues.md` | `templates/issue-body.md`, `templates/epic-body.md` |
+| ship | `references/ship.md` | - |
+| clean/status/check/retro/prompt | matching `references/*.md` | as needed |
+
+Progressive disclosure rule: do not paste long BRIEF, REVIEW, FIX, issue, or conductor-state templates back into this always-loaded `SKILL.md`. Keep detailed procedure in `references/` and reusable body shapes in `templates/`.
+
 ## Routing Invariant
 
 Parse only the first whitespace-separated word from the invocation arguments.
