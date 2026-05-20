@@ -291,6 +291,33 @@ const cases = [
     },
   },
   {
+    name: "all subcommands expose non-empty --show-doc sections",
+    run() {
+      const expectedHeadings = {
+        start: "## Start Workflow",
+        review: "## Cross-Review Loop",
+        status: "## Status",
+        plan: "## Issue-Ready Plan",
+        issue: "## Plan to Issues",
+        clean: "## Merge Cleanup",
+        ship: "## Ship",
+        retro: "## Retrospective",
+        prompt: "## Prompt Optimizer",
+        check: "## Local Diff Check",
+      };
+
+      for (const [subcommand, heading] of Object.entries(expectedHeadings)) {
+        const result = runCli([subcommand, "--show-doc"]);
+        assertExit(result, 0);
+        assertIncludes(result.stdout, heading, `${subcommand} stdout`);
+        assert(
+          result.stdout.trim().split("\n").length >= 3,
+          `expected ${subcommand} --show-doc to expose a non-empty section`
+        );
+      }
+    },
+  },
+  {
     name: "status fallback works without PATH",
     run() {
       const result = runCli(["status"], {
