@@ -1,0 +1,159 @@
+import { readFileSync } from "node:fs";
+
+function read(path) {
+  return readFileSync(path, "utf8");
+}
+
+function assert(condition, message) {
+  if (!condition) {
+    throw new Error(message);
+  }
+}
+
+function assertIncludes(text, expected, message) {
+  assert(text.includes(expected), `${message}: expected to include ${JSON.stringify(expected)}`);
+}
+
+function assertMatches(text, pattern, message) {
+  assert(pattern.test(text), `${message}: expected to match ${pattern}`);
+}
+
+const tests = [
+  {
+    name: "release candidate workflow has push and manual exact-SHA triggers",
+    run() {
+      const workflow = read(".github/workflows/release-candidate.yml");
+      for (const expected of [
+        "name: Release Candidate Verification",
+        "push:",
+        "paths:",
+        "- package.json",
+        "workflow_dispatch:",
+        "target_sha:",
+        "required: true",
+        "type: string",
+        "contents: read",
+        "actions/checkout@v5",
+        "persist-credentials: false",
+        "actions/setup-node@v6",
+        "node-version: 24",
+        "INPUT_TARGET_SHA: ${{ inputs.target_sha }}",
+      ]) {
+        assertIncludes(workflow, expected, `workflow trigger/SHA contract ${expected}`);
+      }
+    },
+  },
+  {
+    name: "manual dispatch validates and checks out the exact target SHA",
+    run() {
+      const workflow = read(".github/workflows/release-candidate.yml");
+      assertMatches(
+        workflow,
+        /Validate manual target SHA[\s\S]*?INPUT_TARGET_SHA: \$\{\{ inputs\.target_sha \}\}[\s\S]*?\^\[0-9a-fA-F\]\{40\}\$/,
+        "manual SHA input must be env-scoped and 40-hex validated"
+      );
+      assertMatches(
+        workflow,
+        /Resolve target SHA[\s\S]*?target_sha="\$GITHUB_SHA"[\s\S]*?if \[ -n "\$INPUT_TARGET_SHA" \]; then[\s\S]*?target_sha="\$INPUT_TARGET_SHA"/,
+        "metadata step should prefer manual target_sha over event SHA"
+      );
+      assertMatches(
+        workflow,
+        /Verify checkout SHA[\s\S]*?actual_sha=\$\(git rev-parse HEAD\)[\s\S]*?expected_sha="\$\{\{ steps\.target\.outputs\.target_sha \}\}"[\s\S]*?\[ "\$actual_sha" != "\$expected_sha" \]/,
+        "workflow must fail if checkout HEAD differs from target SHA"
+      );
+      assert(
+        !workflow.includes("${{ inputs.target_sha }}") || workflow.includes("INPUT_TARGET_SHA: ${{ inputs.target_sha }}"),
+        "workflow must not interpolate raw target_sha directly into shell commands"
+      );
+    },
+  },
+  {
+    name: "package.json version change detection skips unchanged package edits with summary",
+    run() {
+      const workflow = read(".github/workflows/release-candidate.yml");
+      for (const expected of [
+        "base_version=$(git show \"$before_sha:package.json\"",
+        "candidate_version=$(node -p \"require('./package.json').version\")",
+        "version_changed=false",
+        "version_changed=true",
+        "Release candidate verification skipped",
+        "package.json changed without a version bump",
+        "if: ${{ steps.candidate.outputs.version_changed == 'true' }}",
+      ]) {
+        assertIncludes(workflow, expected, `version change/skip contract ${expected}`);
+      }
+    },
+  },
+  {
+    name: "existing release tag fails before package smoke verification",
+    run() {
+      const workflow = read(".github/workflows/release-candidate.yml");
+      const tagCheck = workflow.indexOf("Check release tag availability");
+      const smoke = workflow.indexOf("Smoke install packed package");
+      assert(tagCheck !== -1, "workflow should check whether the release tag already exists");
+      assert(smoke !== -1, "workflow should smoke install the packed package");
+      assert(tagCheck < smoke, "tag existence check should happen before smoke install");
+      assertMatches(
+        workflow,
+        /git ls-remote --exit-code --tags origin "refs\/tags\/\$\{\{ steps\.candidate\.outputs\.tag \}\}"[\s\S]*?status=\$\?[\s\S]*?\[ "\$status" -eq 0 \][\s\S]*?already exists[\s\S]*?\[ "\$status" -eq 2 \][\s\S]*?is available[\s\S]*?Failed to check release tag availability/,
+        "tag check must fail closed on remote/auth/network errors while allowing only ls-remote exit 2 as available"
+      );
+    },
+  },
+  {
+    name: "candidate verification packs, smoke-installs, and exercises CLI help",
+    run() {
+      const workflow = read(".github/workflows/release-candidate.yml");
+      for (const expected of [
+        "npm run verify",
+        "npm pack --json",
+        "npm init -y",
+        "npm install \"$tarball_path\"",
+        "npx ddalggak --help",
+        "npx ddalggak plan --show-doc",
+      ]) {
+        assertIncludes(workflow, expected, `pack/smoke contract ${expected}`);
+      }
+    },
+  },
+  {
+    name: "summary records verified SHA, version, next tag, and tarball",
+    run() {
+      const workflow = read(".github/workflows/release-candidate.yml");
+      for (const expected of [
+        "Release candidate verified",
+        "verified SHA",
+        "version",
+        "next tag",
+        "tarball",
+        "${{ steps.candidate.outputs.target_sha }}",
+        "${{ steps.candidate.outputs.version }}",
+        "${{ steps.candidate.outputs.tag }}",
+      ]) {
+        assertIncludes(workflow, expected, `summary contract ${expected}`);
+      }
+    },
+  },
+];
+
+let passed = 0;
+const failures = [];
+
+for (const test of tests) {
+  try {
+    test.run();
+    passed += 1;
+    console.log(`[PASS] ${test.name}`);
+  } catch (error) {
+    failures.push({ name: test.name, error });
+    console.error(`[FAIL] ${test.name}`);
+    console.error(error && error.stack ? error.stack : String(error));
+  }
+}
+
+console.log(`\nSummary: ${passed}/${tests.length} release candidate cases passed.`);
+
+if (failures.length > 0) {
+  process.exitCode = 1;
+}

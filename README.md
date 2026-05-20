@@ -166,6 +166,17 @@ Dry-runs apply the bump in the ephemeral Actions checkout, verify that only `pac
 
 Non-dry-run executions create or reuse a deterministic draft PR branch for the same `tag` and `base_ref`, label the PR with `skip-changelog` and `release`, and describe the required order: candidate verification, tag creation, then publish approval. The workflow does not create tags, finalize GitHub releases, or publish to npm.
 
+## Release Candidate Verification
+
+The `Release Candidate Verification` workflow verifies a version bump merge commit before any final release tag is created:
+
+- push trigger: runs on `master` when `package.json` changes
+- manual trigger: requires an exact 40-character `target_sha`
+
+The workflow checks out the exact SHA, confirms `HEAD` matches the requested commit, compares the previous `package.json` version with the candidate version, and writes a skip summary when `package.json` changed without a version bump.
+
+For real release candidates, it fails if `v<package.version>` already exists, runs `npm run verify`, packs the package with `npm pack --json`, installs the packed tarball in a temporary project, and exercises `npx ddalggak --help` plus `npx ddalggak plan --show-doc`. The summary records the verified SHA, version, next tag, and packed tarball name. This workflow only verifies the candidate; it does not create tags, finalize GitHub releases, or publish to npm.
+
 ## Maintainer Verification
 
 Before changing the CLI bridge, Codex skill source, release helpers, or package artifact boundaries, maintainers should run the relevant local checks:
@@ -174,7 +185,7 @@ Before changing the CLI bridge, Codex skill source, release helpers, or package 
 npm run verify
 ```
 
-`npm run verify` runs the CLI smoke suite, Codex skill verifier, ddalggak readiness eval fixtures, release helper tests, release drafter tests, manual release bump tests, and npm package artifact inspection. For focused diagnostics, maintainers can still run each underlying check directly:
+`npm run verify` runs the CLI smoke suite, Codex skill verifier, ddalggak readiness eval fixtures, release helper tests, release drafter tests, manual release bump tests, release candidate tests, and npm package artifact inspection. For focused diagnostics, maintainers can still run each underlying check directly:
 
 ```bash
 npm test
@@ -183,6 +194,7 @@ npm run eval:ddalggak-readiness
 npm run test:release-helpers
 npm run test:release-drafter
 npm run test:manual-release-bump
+npm run test:release-candidate
 env npm_config_cache=/tmp/ddalggak-npm-cache npm pack --dry-run --ignore-scripts --loglevel=silent
 ```
 
