@@ -137,6 +137,23 @@ node scripts/bump-release-version.mjs v0.1.1
 
 These helpers do not create tags, GitHub releases, or npm publications.
 
+## Release Drafter
+
+Merged PRs on `master` refresh a draft GitHub release through Release Drafter. The draft tag and name are derived from the current package version:
+
+- tag: `draft-v<package.version>`
+- name: `Draft v<package.version>`
+
+Manual dry-runs can inspect another ref without updating the draft:
+
+```bash
+# GitHub Actions → Release Drafter → Run workflow
+# target_ref: your branch or SHA
+# dry_run: true
+```
+
+Non-dry-run manual draft updates are intentionally guarded to `master` only. Release Drafter only updates draft release notes; it does not create final release tags and does not publish to npm.
+
 ## Maintainer Verification
 
 Before changing the CLI bridge, Codex skill source, release helpers, or package artifact boundaries, maintainers should run the relevant local checks:
@@ -145,13 +162,14 @@ Before changing the CLI bridge, Codex skill source, release helpers, or package 
 npm run verify
 ```
 
-`npm run verify` runs the CLI smoke suite, Codex skill verifier, ddalggak readiness eval fixtures, release helper tests, and npm package artifact inspection. For focused diagnostics, maintainers can still run each underlying check directly:
+`npm run verify` runs the CLI smoke suite, Codex skill verifier, ddalggak readiness eval fixtures, release helper tests, release drafter tests, and npm package artifact inspection. For focused diagnostics, maintainers can still run each underlying check directly:
 
 ```bash
 npm test
 npm run verify:codex-skill
 npm run eval:ddalggak-readiness
 npm run test:release-helpers
+npm run test:release-drafter
 env npm_config_cache=/tmp/ddalggak-npm-cache npm pack --dry-run --ignore-scripts --loglevel=silent
 ```
 

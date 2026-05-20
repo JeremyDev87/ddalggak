@@ -11,6 +11,7 @@
     "verify:codex-skill": "node scripts/verify-codex-skill.mjs",
     "eval:ddalggak-readiness": "node scripts/eval-ddalggak-readiness.mjs",
     "test:release-helpers": "node scripts/test-release-helpers.mjs",
+    "test:release-drafter": "node scripts/test-release-drafter.mjs",
     "prepublishOnly": "npm run verify",
     "verify": "node scripts/verify-package.mjs"
   },

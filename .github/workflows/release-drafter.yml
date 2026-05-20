@@ -1,0 +1,88 @@
+name: Release Drafter
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+    inputs:
+      target_ref:
+        description: Branch or ref to inspect when refreshing the draft manually
+        required: false
+        default: master
+        type: string
+      dry_run:
+        description: Run without updating the draft release
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update_release_draft:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Guard live draft updates to master
+        if: ${{ github.event_name == 'workflow_dispatch' && !inputs.dry_run && inputs.target_ref != 'master' }}
+        run: |
+          echo "Non-dry-run manual draft updates must target master."
+          exit 1
+
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.target_ref || github.ref_name }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Resolve release draft metadata
+        id: meta
+        shell: bash
+        run: |
+          version=$(node -p "require('./package.json').version")
+          tag="v$version"
+
+          node ./scripts/release-plan.mjs "$tag" >> "$GITHUB_OUTPUT"
+
+          draft_tag="draft-${tag}"
+
+          {
+            echo "draftTag=$draft_tag"
+            echo "draftName=Draft $tag"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Dry-run release draft summary
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
+        run: |
+          {
+            echo "## Release Drafter dry-run"
+            echo ""
+            echo "- target_ref: ${{ inputs.target_ref }}"
+            echo "- draft tag: ${{ steps.meta.outputs.draftTag }}"
+            echo "- draft name: ${{ steps.meta.outputs.draftName }}"
+            echo "- version: ${{ steps.meta.outputs.version }}"
+            echo "- prerelease: ${{ steps.meta.outputs.isPrerelease }}"
+            echo ""
+            echo "No draft release was created or updated."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Update release draft
+        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.dry_run) }}
+        uses: release-drafter/release-drafter@6db134d15f3909ccc9eefd369f02bd1e9cffdf97 # v6
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          config-name: release-drafter.yml
+          commitish: ${{ github.event_name == 'workflow_dispatch' && inputs.target_ref || github.ref_name }}
+          tag: ${{ steps.meta.outputs.draftTag }}
+          name: ${{ steps.meta.outputs.draftName }}
+          version: ${{ steps.meta.outputs.version }}
+          prerelease: ${{ steps.meta.outputs.isPrerelease }}

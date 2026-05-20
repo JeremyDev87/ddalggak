@@ -1,0 +1,36 @@
+exclude-labels:
+  - "skip-changelog"
+
+categories:
+  - title: "Features"
+    labels:
+      - "feat"
+      - "enhancement"
+  - title: "Bug Fixes"
+    labels:
+      - "bug"
+      - "fix"
+  - title: "Documentation"
+    labels:
+      - "documentation"
+      - "docs"
+  - title: "Tests"
+    labels:
+      - "test"
+  - title: "CI / Release"
+    labels:
+      - "ci"
+      - "release"
+  - title: "Maintenance"
+    labels:
+      - "chore"
+      - "maintenance"
+change-template: "- $TITLE @$AUTHOR (#$NUMBER)"
+template: |
+  ## Changes
+  $CHANGES
+
+  ## Notes
+  - This draft is updated automatically from the current `package.json` version on `master`.
+  - Draft updates do not create npm publications, tags, or final GitHub releases.
+  - Actual tag and publish steps continue to use guarded release workflows and `scripts/release-plan.mjs`.
