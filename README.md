@@ -58,6 +58,17 @@ The Quality Lens Router chooses applicable gate families from request text, issu
 - Review should cite CI status as evidence, then focus on behavior intent, scope, code quality, architecture/domain boundaries, maintainability, and deletability.
 - For no-argument `start`, `status:unlocked` issues are preferred candidates. If none exist, ddalggak falls back to open issues without mutating labels; `status:locked` issues are excluded without changing the label. Labels are selection hints, not workflow-outcome triggers.
 
+## Progressive Disclosure Budget
+
+The always-loaded skill body should remain a thin router. Keep `SKILL.md` focused on routing invariants, code-modification permissions, global guardrails, subcommand dispatch, required reference maps, stop conditions, and verification checklists. Move long procedures to `references/`, reusable prompt/body shapes to `templates/`, and mechanical regression checks to `scripts/` or future `fixtures/` / `evals/`.
+
+Maintainer target after the #94 thin-router pass:
+
+- `.codex/skills/ddalggak/SKILL.md`: <= 450 lines and <= 35k chars.
+- `ddalggak/SKILL.md`: <= 700 lines and <= 45k chars.
+
+These are budget targets, not permission to delete guardrails. Routing, source-edit permissions, manual merge policy, issue-PR topology, Evidence Contract, Simplicity / Deletability, and URL target resolution must remain discoverable from the hot path.
+
 ## Claude Code Legacy
 
 The legacy CLI bridge builds `/ddalggak <subcommand>` slash commands for Claude Code. From a source checkout, run the CLI directly with Node.js:
