@@ -1,10 +1,10 @@
 # ddalggak
 
-[![npm version](https://img.shields.io/npm/v/@jeremyfellaz/ddalggak)](https://www.npmjs.com/package/@jeremyfellaz/ddalggak)
-[![license](https://img.shields.io/npm/l/@jeremyfellaz/ddalggak)](./LICENSE)
-[![npm downloads](https://img.shields.io/npm/dm/@jeremyfellaz/ddalggak)](https://www.npmjs.com/package/@jeremyfellaz/ddalggak)
+[![license](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 
 ddalggak is a workflow skill for turning GitHub issues into planned, parallel, reviewed, and recoverable implementation work. This repository contains both the Codex App skill source and a legacy Claude Code CLI bridge.
+
+> npm release status: this package is being prepared for publication, but this README does not claim a live npm package until registry visibility is proven by the release follow-up audit.
 
 ## Codex App
 
@@ -124,6 +124,12 @@ Install path priority is `--target <path>`, then `$CLAUDE_HOME`, then `~/.claude
 ## Maintainer Verification
 
 Before changing the CLI bridge, Codex skill source, or package artifact boundaries, maintainers should run the relevant local checks:
+
+```bash
+npm run verify
+```
+
+`npm run verify` runs the CLI smoke suite, Codex skill verifier, ddalggak readiness eval fixtures, and npm package artifact inspection. For focused diagnostics, maintainers can still run each underlying check directly:
 
 ```bash
 npm test

@@ -1,7 +1,7 @@
 {
   "name": "@jeremyfellaz/ddalggak",
   "version": "0.1.0",
-  "description": "ddalggak workflow skill for Claude Code",
+  "description": "Codex and Claude Code workflow skill for planned, reviewed, recoverable GitHub issue implementation",
   "type": "module",
   "bin": {
     "ddalggak": "./bin/ddalggak.js"
@@ -10,7 +10,8 @@
     "test": "node scripts/smoke.mjs",
     "verify:codex-skill": "node scripts/verify-codex-skill.mjs",
     "eval:ddalggak-readiness": "node scripts/eval-ddalggak-readiness.mjs",
-    "prepublishOnly": "node scripts/smoke.mjs"
+    "prepublishOnly": "npm run verify",
+    "verify": "node scripts/verify-package.mjs"
   },
   "publishConfig": {
     "access": "public"
@@ -26,7 +27,13 @@
   ],
   "license": "MIT",
   "keywords": [
+    "ai-agents",
     "claude-code",
+    "codex",
+    "code-review",
+    "developer-tools",
+    "github-issues",
+    "workflow-automation",
     "workflow",
     "skill"
   ],
@@ -36,5 +43,9 @@
   },
   "engines": {
     "node": ">=18"
+  },
+  "homepage": "https://github.com/JeremyDev87/ddalggak#readme",
+  "bugs": {
+    "url": "https://github.com/JeremyDev87/ddalggak/issues"
   }
 }
