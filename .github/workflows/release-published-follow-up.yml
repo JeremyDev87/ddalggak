@@ -1,0 +1,85 @@
+name: Release Published Follow-up Audit
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to audit, for example v0.2.0
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-published-follow-up-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.event.release.tag_name }}
+  cancel-in-progress: false
+
+jobs:
+  audit_release_publication:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Resolve audit tag
+        id: target
+        shell: bash
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          tag="$RELEASE_TAG"
+          if [ -n "$INPUT_TAG" ]; then
+            tag="$INPUT_TAG"
+          fi
+
+          if [[ ! "$tag" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "tag must be a v-prefixed semver tag."
+            exit 1
+          fi
+
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ steps.target.outputs.tag }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      - name: Verify GitHub release exists
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.target.outputs.tag }}
+        run: |
+          tag="$TAG"
+          gh release view "$tag" --json tagName,name,isDraft,isPrerelease,publishedAt,url > github-release.json
+          node -e "const fs = require('node:fs'); const release = JSON.parse(fs.readFileSync('github-release.json', 'utf8')); if (release.tagName !== process.env.TAG) { console.error('GitHub release tag mismatch: ' + release.tagName); process.exit(1); } if (release.isDraft) { console.error('GitHub release is still draft.'); process.exit(1); } console.log('GitHub release verified: ' + release.url);"
+
+      - name: Verify npm registry metadata
+        shell: bash
+        env:
+          VERSION: ${{ steps.target.outputs.version }}
+        run: |
+          version="$VERSION"
+          npm view "@jeremyfellaz/ddalggak@$version" --json > npm-metadata.json
+          node -e "const fs = require('node:fs'); const metadata = JSON.parse(fs.readFileSync('npm-metadata.json', 'utf8')); if (metadata.name !== '@jeremyfellaz/ddalggak') { console.error('metadata.name mismatch: ' + metadata.name); process.exit(1); } if (metadata.version !== process.env.VERSION) { console.error('metadata.version mismatch: ' + metadata.version); process.exit(1); } if (!metadata.bin || metadata.bin.ddalggak !== './bin/ddalggak.js') { console.error('metadata.bin.ddalggak mismatch'); process.exit(1); } if (metadata.license !== 'MIT') { console.error('metadata.license mismatch: ' + metadata.license); process.exit(1); } if (!metadata.repository || !metadata.repository.url || !metadata.repository.url.includes('JeremyDev87/ddalggak')) { console.error('metadata.repository.url mismatch'); process.exit(1); } console.log('npm registry metadata verified');"
+
+      - name: Audit summary
+        run: |
+          {
+            echo "## Release published follow-up audit passed"
+            echo ""
+            echo "- tag: ${{ steps.target.outputs.tag }}"
+            echo "- version: ${{ steps.target.outputs.version }}"
+            echo "- checked: GitHub release and npm registry metadata"
+          } >> "$GITHUB_STEP_SUMMARY"

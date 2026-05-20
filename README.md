@@ -177,6 +177,18 @@ The workflow checks out the exact SHA, confirms `HEAD` matches the requested com
 
 For real release candidates, it fails if `v<package.version>` already exists, runs `npm run verify`, packs the package with `npm pack --json`, installs the packed tarball in a temporary project, and exercises `npx ddalggak --help` plus `npx ddalggak plan --show-doc`. The summary records the verified SHA, version, next tag, and packed tarball name. This workflow only verifies the candidate; it does not create tags, finalize GitHub releases, or publish to npm.
 
+## Release Publish
+
+The `Release Publish` workflow publishes an existing release tag after protected `release` environment approval. It runs for pushed `v*.*.*` tags or a manual dispatch that names an existing `v`-prefixed semver tag.
+
+Before publish, the workflow checks out the tagged ref, verifies that `package.json` version matches the tag, runs `npm run verify`, packs the artifact with `npm pack --json`, installs the packed tarball in a temporary project, and exercises `npx ddalggak --help` plus `npx ddalggak plan --show-doc`. After protected approval, it checks out the verified commit SHA and publishes that same verified tarball artifact instead of re-resolving the tag name.
+
+Publishing prioritizes npm trusted publishing with provenance. A `NPM_TOKEN` fallback is supported for registries or repository settings where trusted publishing is not ready yet, but trusted publishing should remain the primary path. Stable releases publish with the `latest` dist-tag, prereleases publish with the `next` dist-tag, and already-published exact versions are treated as a successful skip for safe reruns.
+
+## Release Published Follow-up Audit
+
+The `Release Published Follow-up Audit` workflow runs after a GitHub release is published, or manually for an existing tag. It verifies the GitHub release and npm registry metadata, including package name, version, `bin.ddalggak`, license, and repository URL.
+
 ## Maintainer Verification
 
 Before changing the CLI bridge, Codex skill source, release helpers, or package artifact boundaries, maintainers should run the relevant local checks:
@@ -185,7 +197,7 @@ Before changing the CLI bridge, Codex skill source, release helpers, or package 
 npm run verify
 ```
 
-`npm run verify` runs the CLI smoke suite, Codex skill verifier, ddalggak readiness eval fixtures, release helper tests, release drafter tests, manual release bump tests, release candidate tests, and npm package artifact inspection. For focused diagnostics, maintainers can still run each underlying check directly:
+`npm run verify` runs the CLI smoke suite, Codex skill verifier, ddalggak readiness eval fixtures, release helper tests, release drafter tests, manual release bump tests, release candidate tests, release publish tests, and npm package artifact inspection. For focused diagnostics, maintainers can still run each underlying check directly:
 
 ```bash
 npm test
@@ -195,6 +207,7 @@ npm run test:release-helpers
 npm run test:release-drafter
 npm run test:manual-release-bump
 npm run test:release-candidate
+npm run test:release-publish
 env npm_config_cache=/tmp/ddalggak-npm-cache npm pack --dry-run --ignore-scripts --loglevel=silent
 ```
 

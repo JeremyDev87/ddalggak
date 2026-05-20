@@ -1,0 +1,263 @@
+name: Release Publish
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to publish, for example v0.2.0 or v0.2.0-alpha.1
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-publish-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  verify_tagged_ref:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.release.outputs.tag }}
+      version: ${{ steps.release.outputs.version }}
+      npm_dist_tag: ${{ steps.release.outputs.npmDistTag }}
+      tarball: ${{ steps.pack.outputs.tarball }}
+      sha: ${{ steps.verified_ref.outputs.sha }}
+
+    steps:
+      - name: Resolve release tag
+        id: target
+        shell: bash
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          tag="$GITHUB_REF_NAME"
+          if [ -n "$INPUT_TAG" ]; then
+            tag="$INPUT_TAG"
+          fi
+
+          if [[ ! "$tag" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "tag must be an existing v-prefixed semver tag."
+            exit 1
+          fi
+
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout tagged ref
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ steps.target.outputs.tag }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Resolve release metadata
+        id: release
+        shell: bash
+        run: |
+          node ./scripts/release-plan.mjs "${{ steps.target.outputs.tag }}" >> "$GITHUB_OUTPUT"
+
+      - name: Verify tagged ref and package version
+        id: verified_ref
+        shell: bash
+        run: |
+          expected_ref="refs/tags/${{ steps.release.outputs.tag }}"
+          actual_ref=$(git describe --tags --exact-match HEAD)
+          package_version=$(node -p "require('./package.json').version")
+
+          if [ "$actual_ref" != "${{ steps.release.outputs.tag }}" ]; then
+            echo "Tagged ref mismatch: expected $expected_ref, got $actual_ref."
+            exit 1
+          fi
+
+          if [ "$package_version" != "${{ steps.release.outputs.version }}" ]; then
+            echo "package.json version $package_version does not match tag ${{ steps.release.outputs.tag }}."
+            exit 1
+          fi
+
+          verified_sha=$(git rev-parse HEAD)
+          echo "sha=$verified_sha" >> "$GITHUB_OUTPUT"
+
+      - name: Verify package
+        run: npm run verify
+
+      - name: Pack release artifact
+        id: pack
+        shell: bash
+        run: |
+          pack_json=$(npm pack --json)
+          tarball=$(printf '%s' "$pack_json" | node -e "let input=''; process.stdin.on('data', chunk => input += chunk); process.stdin.on('end', () => { const parsed = JSON.parse(input); console.log(parsed[0].filename); });")
+          tarball_path="$PWD/$tarball"
+
+          if [ ! -f "$tarball_path" ]; then
+            echo "Packed tarball was not created: $tarball_path"
+            exit 1
+          fi
+
+          {
+            echo "tarball=$tarball"
+            echo "tarball_path=$tarball_path"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Smoke install packed package
+        shell: bash
+        run: |
+          smoke_dir=$(mktemp -d)
+          tarball_path="${{ steps.pack.outputs.tarball_path }}"
+
+          pushd "$smoke_dir" >/dev/null
+          npm init -y
+          npm install "$tarball_path"
+          npx ddalggak --help
+          npx ddalggak plan --show-doc
+          popd >/dev/null
+
+      - name: Upload verified release tarball
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-tarball-${{ steps.release.outputs.version }}
+          path: ${{ steps.pack.outputs.tarball }}
+          if-no-files-found: error
+
+  publish_to_npm:
+    needs: verify_tagged_ref
+    runs-on: ubuntu-latest
+    environment:
+      name: release
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      HAS_NPM_TOKEN: ${{ secrets.NPM_TOKEN != '' }}
+
+    steps:
+      - name: Checkout verified release SHA
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.verify_tagged_ref.outputs.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      - name: Re-verify approved checkout SHA and package version
+        shell: bash
+        run: |
+          expected_sha="${{ needs.verify_tagged_ref.outputs.sha }}"
+          actual_sha=$(git rev-parse HEAD)
+          package_version=$(node -p "require('./package.json').version")
+
+          if [ "$actual_sha" != "$expected_sha" ]; then
+            echo "Checkout SHA mismatch after approval: expected $expected_sha, got $actual_sha."
+            exit 1
+          fi
+
+          if [ "$package_version" != "${{ needs.verify_tagged_ref.outputs.version }}" ]; then
+            echo "package.json version $package_version does not match verified version ${{ needs.verify_tagged_ref.outputs.version }}."
+            exit 1
+          fi
+
+      - name: Download verified release tarball
+        uses: actions/download-artifact@v5
+        with:
+          name: release-tarball-${{ needs.verify_tagged_ref.outputs.version }}
+          path: release-artifact
+
+      - name: Resolve verified tarball path
+        id: tarball
+        shell: bash
+        run: |
+          tarball_path=$(find release-artifact -maxdepth 1 -type f -name '*.tgz' -print -quit)
+          if [ -z "$tarball_path" ] || [ ! -f "$tarball_path" ]; then
+            echo "Verified release tarball artifact was not downloaded."
+            exit 1
+          fi
+          echo "tarball_path=$tarball_path" >> "$GITHUB_OUTPUT"
+
+      - name: Publish package with trusted publishing
+        id: trusted_publish
+        continue-on-error: true
+        shell: bash
+        run: |
+          tarball_path="${{ steps.tarball.outputs.tarball_path }}"
+          set +e
+          npm publish "$tarball_path" --provenance --access public --tag "${{ needs.verify_tagged_ref.outputs.npm_dist_tag }}" > publish.out 2> publish.err
+          status=$?
+          set -e
+
+          if [ "$status" -eq 0 ]; then
+            echo "published=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          classification=$(node --input-type=module -e "import { classifyNpmPublishError } from './scripts/lib/release.mjs'; import { readFileSync } from 'node:fs'; console.log(classifyNpmPublishError(readFileSync('publish.err', 'utf8')));")
+          if [ "$classification" = "already-published" ]; then
+            echo "Package ${{ needs.verify_tagged_ref.outputs.version }} already published; treating rerun as successful skip."
+            echo "published=false" >> "$GITHUB_OUTPUT"
+            echo "skipped=already-published" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          cat publish.err
+          exit "$status"
+
+      - name: Fail when trusted publishing failed without fallback token
+        if: ${{ steps.trusted_publish.outcome == 'failure' && env.HAS_NPM_TOKEN != 'true' }}
+        run: |
+          echo "Trusted publishing failed and NPM_TOKEN fallback is not configured."
+          exit 1
+
+      - name: Publish package with NPM_TOKEN fallback
+        if: ${{ steps.trusted_publish.outcome == 'failure' && env.HAS_NPM_TOKEN == 'true' }}
+        shell: bash
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          tarball_path="${{ steps.tarball.outputs.tarball_path }}"
+          set +e
+          npm publish "$tarball_path" --access public --tag "${{ needs.verify_tagged_ref.outputs.npm_dist_tag }}" > publish.out 2> publish.err
+          status=$?
+          set -e
+
+          if [ "$status" -eq 0 ]; then
+            exit 0
+          fi
+
+          classification=$(node --input-type=module -e "import { classifyNpmPublishError } from './scripts/lib/release.mjs'; import { readFileSync } from 'node:fs'; console.log(classifyNpmPublishError(readFileSync('publish.err', 'utf8')));")
+          if [ "$classification" = "already-published" ]; then
+            echo "Package ${{ needs.verify_tagged_ref.outputs.version }} already published; treating rerun as successful skip."
+            exit 0
+          fi
+
+          cat publish.err
+          exit "$status"
+
+      - name: Publish summary
+        run: |
+          {
+            if [ "${{ steps.trusted_publish.outputs.skipped }}" = "already-published" ]; then
+              echo "## Release publish skipped"
+              echo ""
+              echo "- reason: already-published exact version"
+            else
+              echo "## Release publish completed"
+            fi
+            echo ""
+            echo "- tag: ${{ needs.verify_tagged_ref.outputs.tag }}"
+            echo "- verified SHA: ${{ needs.verify_tagged_ref.outputs.sha }}"
+            echo "- version: ${{ needs.verify_tagged_ref.outputs.version }}"
+            echo "- npm dist-tag: ${{ needs.verify_tagged_ref.outputs.npm_dist_tag }}"
+            echo "- tarball: ${{ needs.verify_tagged_ref.outputs.tarball }}"
+          } >> "$GITHUB_STEP_SUMMARY"
