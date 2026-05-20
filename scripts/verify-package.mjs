@@ -14,6 +14,7 @@ const requiredArtifactPaths = [
   "scripts/verify-codex-skill.mjs",
   "scripts/eval-ddalggak-readiness.mjs",
   "scripts/test-release-helpers.mjs",
+  "scripts/test-release-drafter.mjs",
   "scripts/lib/release.mjs",
   "scripts/release-plan.mjs",
   "scripts/bump-release-version.mjs",
@@ -92,6 +93,7 @@ try {
   runStep("codex skill verifier", npmCommand, ["run", "verify:codex-skill"]);
   runStep("ddalggak readiness eval", npmCommand, ["run", "eval:ddalggak-readiness"]);
   runStep("release helper tests", npmCommand, ["run", "test:release-helpers"]);
+  runStep("release drafter tests", npmCommand, ["run", "test:release-drafter"]);
   verifyArtifactContents();
   console.log("\n[verify-package] passed");
 } catch (error) {
