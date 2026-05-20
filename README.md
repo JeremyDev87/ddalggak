@@ -154,6 +154,18 @@ Manual dry-runs can inspect another ref without updating the draft:
 
 Non-dry-run manual draft updates are intentionally guarded to `master` only. Release Drafter only updates draft release notes; it does not create final release tags and does not publish to npm.
 
+## Manual Release Bump
+
+Maintainers can run the `Manual Release Bump` workflow to prepare a version bump PR without mutating `master` directly:
+
+- `tag`: target release tag or version, such as `v0.2.0` or `0.2.0-alpha.1`
+- `base_ref`: defaults to `master`
+- `dry_run`: defaults to `false`
+
+Dry-runs apply the bump in the ephemeral Actions checkout, verify that only `package.json` changed, run `npm run verify`, and write a summary without pushing a branch or opening a PR.
+
+Non-dry-run executions create or reuse a deterministic draft PR branch for the same `tag` and `base_ref`, label the PR with `skip-changelog` and `release`, and describe the required order: candidate verification, tag creation, then publish approval. The workflow does not create tags, finalize GitHub releases, or publish to npm.
+
 ## Maintainer Verification
 
 Before changing the CLI bridge, Codex skill source, release helpers, or package artifact boundaries, maintainers should run the relevant local checks:
@@ -162,7 +174,7 @@ Before changing the CLI bridge, Codex skill source, release helpers, or package 
 npm run verify
 ```
 
-`npm run verify` runs the CLI smoke suite, Codex skill verifier, ddalggak readiness eval fixtures, release helper tests, release drafter tests, and npm package artifact inspection. For focused diagnostics, maintainers can still run each underlying check directly:
+`npm run verify` runs the CLI smoke suite, Codex skill verifier, ddalggak readiness eval fixtures, release helper tests, release drafter tests, manual release bump tests, and npm package artifact inspection. For focused diagnostics, maintainers can still run each underlying check directly:
 
 ```bash
 npm test
@@ -170,6 +182,7 @@ npm run verify:codex-skill
 npm run eval:ddalggak-readiness
 npm run test:release-helpers
 npm run test:release-drafter
+npm run test:manual-release-bump
 env npm_config_cache=/tmp/ddalggak-npm-cache npm pack --dry-run --ignore-scripts --loglevel=silent
 ```
 

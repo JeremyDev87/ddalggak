@@ -1,0 +1,325 @@
+name: Manual Release Bump
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Target release tag or version, for example v0.2.0 or 0.2.0-alpha.1
+        required: true
+        type: string
+      base_ref:
+        description: Base branch or ref for the bump PR
+        required: false
+        default: master
+        type: string
+      dry_run:
+        description: Validate the bump without pushing a branch or opening a PR
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: manual-release-bump-${{ inputs.base_ref }}-${{ startsWith(inputs.tag, 'v') && inputs.tag || format('v{0}', inputs.tag) }}
+  cancel-in-progress: false
+
+jobs:
+  bump_release_version:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.base_ref }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Validate workflow inputs
+        shell: bash
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+          INPUT_BASE_REF: ${{ inputs.base_ref }}
+        run: |
+          if [[ -z "$INPUT_TAG" ]]; then
+            echo "tag input is required."
+            exit 1
+          fi
+
+          if [[ "$INPUT_TAG" == -* ]] || [[ "$INPUT_TAG" == *$'\n'* ]] || [[ "$INPUT_TAG" == *$'\r'* ]]; then
+            echo "tag must be a single non-option value."
+            exit 1
+          fi
+
+          if [[ "$INPUT_BASE_REF" == -* ]] || [[ "$INPUT_BASE_REF" == *$'\n'* ]] || [[ "$INPUT_BASE_REF" == *$'\r'* ]] || [[ "$INPUT_BASE_REF" == *..* ]] || [[ "$INPUT_BASE_REF" == *@\{* ]] || [[ "$INPUT_BASE_REF" == *\\* ]]; then
+            echo "base_ref contains unsupported ref syntax."
+            exit 1
+          fi
+
+          if [[ ! "$INPUT_BASE_REF" =~ ^[A-Za-z0-9._/-]+$ ]]; then
+            echo "base_ref may contain only letters, numbers, '.', '_', '/', and '-'."
+            exit 1
+          fi
+
+      - name: Resolve bump metadata
+        id: meta
+        shell: bash
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+          INPUT_BASE_REF: ${{ inputs.base_ref }}
+        run: |
+          tag="$INPUT_TAG"
+          if [[ "$tag" != v* ]]; then
+            tag="v$tag"
+          fi
+
+          node ./scripts/release-plan.mjs "$tag" >> "$GITHUB_OUTPUT"
+
+          current_version=$(node -p "require('./package.json').version")
+          node --input-type=module -e "import { assertReleaseUpgrade } from './scripts/lib/release.mjs'; assertReleaseUpgrade(process.argv[1], process.argv[2]);" "$current_version" "${tag#v}"
+          branch=$(node --input-type=module -e "import { createManualBumpBranchName } from './scripts/lib/release.mjs'; console.log(createManualBumpBranchName(process.argv[1], process.argv[2]));" "$tag" "$INPUT_BASE_REF")
+
+          {
+            echo "currentVersion=$current_version"
+            echo "branch=$branch"
+            echo "title=chore: ${tag#v} 수동 release bump"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Apply version bump
+        run: node ./scripts/bump-release-version.mjs "${{ steps.meta.outputs.tag }}"
+
+      - name: Verify changed files before package verification
+        shell: bash
+        run: |
+          mapfile -t changed_files < <(git diff --name-only)
+          missing_files=()
+          unexpected_files=()
+
+          for required_file in package.json; do
+            found=false
+            for changed_file in "${changed_files[@]}"; do
+              if [ "$changed_file" = "$required_file" ]; then
+                found=true
+                break
+              fi
+            done
+            if [ "$found" != "true" ]; then
+              missing_files+=("$required_file")
+            fi
+          done
+
+          for changed_file in "${changed_files[@]}"; do
+            case "$changed_file" in
+              package.json) ;;
+              *) unexpected_files+=("$changed_file") ;;
+            esac
+          done
+
+          if [ "${#missing_files[@]}" -gt 0 ] || [ "${#unexpected_files[@]}" -gt 0 ]; then
+            echo "Unexpected changed files before verification:"
+            printf 'Changed files:\n'
+            printf '%s\n' "${changed_files[@]}"
+            printf 'Missing required files:\n'
+            printf '%s\n' "${missing_files[@]}"
+            printf 'Unexpected files:\n'
+            printf '%s\n' "${unexpected_files[@]}"
+            exit 1
+          fi
+
+      - name: Verify package
+        run: npm run verify
+
+      - name: Verify changed files after package verification
+        shell: bash
+        run: |
+          mapfile -t changed_files < <(git diff --name-only)
+          missing_files=()
+          unexpected_files=()
+
+          for required_file in package.json; do
+            found=false
+            for changed_file in "${changed_files[@]}"; do
+              if [ "$changed_file" = "$required_file" ]; then
+                found=true
+                break
+              fi
+            done
+            if [ "$found" != "true" ]; then
+              missing_files+=("$required_file")
+            fi
+          done
+
+          for changed_file in "${changed_files[@]}"; do
+            case "$changed_file" in
+              package.json) ;;
+              *) unexpected_files+=("$changed_file") ;;
+            esac
+          done
+
+          if [ "${#missing_files[@]}" -gt 0 ] || [ "${#unexpected_files[@]}" -gt 0 ]; then
+            echo "Unexpected changed files after package verification:"
+            printf 'Changed files:\n'
+            printf '%s\n' "${changed_files[@]}"
+            printf 'Missing required files:\n'
+            printf '%s\n' "${missing_files[@]}"
+            printf 'Unexpected files:\n'
+            printf '%s\n' "${unexpected_files[@]}"
+            exit 1
+          fi
+
+      - name: Dry-run summary
+        if: ${{ inputs.dry_run }}
+        run: |
+          {
+            echo "## Manual release bump dry-run"
+            echo ""
+            echo "- base_ref: ${{ inputs.base_ref }}"
+            echo "- tag: ${{ steps.meta.outputs.tag }}"
+            echo "- current version: ${{ steps.meta.outputs.currentVersion }}"
+            echo "- target version: ${{ steps.meta.outputs.version }}"
+            echo "- planned branch: ${{ steps.meta.outputs.branch }}"
+            echo ""
+            echo "No branch was pushed and no pull request was created."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Configure git author
+        if: ${{ !inputs.dry_run }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Resolve existing open PR
+        if: ${{ !inputs.dry_run }}
+        id: existing_pr
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INPUT_BASE_REF: ${{ inputs.base_ref }}
+          EXPECTED_VERSION: ${{ steps.meta.outputs.version }}
+        run: |
+          pr_json=$(gh pr list \
+            --head "${{ steps.meta.outputs.branch }}" \
+            --state open \
+            --json number,url,baseRefName,labels,headRefOid)
+
+          pr_number=$(printf '%s' "$pr_json" | jq -r '.[0].number // empty')
+          pr_url=$(printf '%s' "$pr_json" | jq -r '.[0].url // empty')
+          pr_base=$(printf '%s' "$pr_json" | jq -r '.[0].baseRefName // empty')
+          has_skip_changelog=$(printf '%s' "$pr_json" | jq -r 'if (.[0].labels // []) | map(.name) | index("skip-changelog") then "true" else "false" end')
+          has_release=$(printf '%s' "$pr_json" | jq -r 'if (.[0].labels // []) | map(.name) | index("release") then "true" else "false" end')
+
+          if [ -n "$pr_number" ] && [ "$pr_base" != "$INPUT_BASE_REF" ]; then
+            echo "Existing PR $pr_url targets base '$pr_base', expected '$INPUT_BASE_REF'."
+            exit 1
+          fi
+
+          if [ -n "$pr_number" ]; then
+            git fetch origin \
+              "refs/heads/$INPUT_BASE_REF:refs/remotes/origin/$INPUT_BASE_REF" \
+              "refs/heads/${{ steps.meta.outputs.branch }}:refs/remotes/origin/${{ steps.meta.outputs.branch }}"
+
+            pr_diff_files=$(git diff --name-only \
+              "refs/remotes/origin/$INPUT_BASE_REF...refs/remotes/origin/${{ steps.meta.outputs.branch }}")
+
+            if [ "$pr_diff_files" != "package.json" ]; then
+              echo "Existing PR $pr_url is not a package.json-only bump."
+              printf '%s\n' "$pr_diff_files"
+              exit 1
+            fi
+
+            package_json_file=$(mktemp)
+            git show "refs/remotes/origin/${{ steps.meta.outputs.branch }}:package.json" > "$package_json_file"
+            node -e "const fs=require('node:fs'); const pkg=JSON.parse(fs.readFileSync(process.argv[1], 'utf8')); if (pkg.version !== process.env.EXPECTED_VERSION) { console.error('Existing PR package.json version ' + pkg.version + ' does not match ' + process.env.EXPECTED_VERSION); process.exit(1); }" "$package_json_file"
+            rm -f "$package_json_file"
+          fi
+
+          if [ -n "$pr_number" ] && { [ "$has_skip_changelog" != "true" ] || [ "$has_release" != "true" ]; }; then
+            gh pr edit "$pr_number" --add-label skip-changelog --add-label release
+          fi
+
+          {
+            echo "number=$pr_number"
+            echo "url=$pr_url"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Prepare bump branch
+        if: ${{ !inputs.dry_run && steps.existing_pr.outputs.number == '' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh auth setup-git
+          lease_args=()
+
+          if git ls-remote --exit-code --heads origin "${{ steps.meta.outputs.branch }}" >/dev/null 2>&1; then
+            echo "Remote branch ${{ steps.meta.outputs.branch }} already exists; refreshing it with the verified bump commit."
+            git fetch origin "refs/heads/${{ steps.meta.outputs.branch }}:refs/remotes/origin/${{ steps.meta.outputs.branch }}"
+            lease_args+=(--force-with-lease="refs/heads/${{ steps.meta.outputs.branch }}:$(git rev-parse "refs/remotes/origin/${{ steps.meta.outputs.branch }}")")
+          fi
+
+          git switch -C "${{ steps.meta.outputs.branch }}"
+          git add package.json
+          git commit -m "${{ steps.meta.outputs.title }}"
+          git push "${lease_args[@]}" -u origin "${{ steps.meta.outputs.branch }}"
+
+      - name: Create or reuse draft PR
+        if: ${{ !inputs.dry_run }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INPUT_BASE_REF: ${{ inputs.base_ref }}
+        run: |
+          cat > pr-body.md <<'EOF'
+          ## 배경
+
+          manual release bump workflow로 `${{ steps.meta.outputs.currentVersion }}`에서 `${{ steps.meta.outputs.version }}`으로 package version을 승격합니다.
+
+          ## 변경 사항
+
+          - `package.json` version을 `${{ steps.meta.outputs.version }}`으로 올립니다.
+
+          ## 검증
+
+          - `node ./scripts/release-plan.mjs ${{ steps.meta.outputs.tag }}`
+          - `node ./scripts/bump-release-version.mjs ${{ steps.meta.outputs.tag }}`
+          - `npm run verify`
+
+          ## Release 순서
+
+          1. candidate verification: 이 PR merge 후 release candidate verification workflow로 merge commit을 검증합니다.
+          2. tag creation: candidate 검증이 green인 같은 commit에만 release tag를 생성합니다.
+          3. publish approval: tag와 candidate 결과를 확인한 뒤 별도 publish approval을 받아 npm publish를 진행합니다.
+
+          ## 범위
+
+          - 이 PR은 version bump PR입니다.
+          - 이 PR 자체는 tag creation, GitHub release finalization, npm publish를 수행하지 않습니다.
+          EOF
+
+          if [ -n "${{ steps.existing_pr.outputs.url }}" ]; then
+            gh pr edit "${{ steps.existing_pr.outputs.number }}" \
+              --title "${{ steps.meta.outputs.title }}" \
+              --body-file pr-body.md \
+              --add-label skip-changelog \
+              --add-label release
+            echo "Reusing existing PR: ${{ steps.existing_pr.outputs.url }}"
+            exit 0
+          fi
+
+          gh pr create \
+            --draft \
+            --base "$INPUT_BASE_REF" \
+            --head "${{ steps.meta.outputs.branch }}" \
+            --title "${{ steps.meta.outputs.title }}" \
+            --body-file pr-body.md \
+            --label skip-changelog \
+            --label release

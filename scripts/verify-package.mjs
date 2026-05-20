@@ -15,6 +15,7 @@ const requiredArtifactPaths = [
   "scripts/eval-ddalggak-readiness.mjs",
   "scripts/test-release-helpers.mjs",
   "scripts/test-release-drafter.mjs",
+  "scripts/test-manual-release-bump.mjs",
   "scripts/lib/release.mjs",
   "scripts/release-plan.mjs",
   "scripts/bump-release-version.mjs",
@@ -94,6 +95,7 @@ try {
   runStep("ddalggak readiness eval", npmCommand, ["run", "eval:ddalggak-readiness"]);
   runStep("release helper tests", npmCommand, ["run", "test:release-helpers"]);
   runStep("release drafter tests", npmCommand, ["run", "test:release-drafter"]);
+  runStep("manual release bump tests", npmCommand, ["run", "test:manual-release-bump"]);
   verifyArtifactContents();
   console.log("\n[verify-package] passed");
 } catch (error) {
