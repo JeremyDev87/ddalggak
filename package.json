@@ -14,6 +14,7 @@
     "test:release-drafter": "node scripts/test-release-drafter.mjs",
     "test:manual-release-bump": "node scripts/test-manual-release-bump.mjs",
     "test:release-candidate": "node scripts/test-release-candidate.mjs",
+    "test:release-publish": "node scripts/test-release-publish.mjs",
     "prepublishOnly": "npm run verify",
     "verify": "node scripts/verify-package.mjs"
   },
