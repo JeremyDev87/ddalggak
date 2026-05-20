@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      target_sha:
+        description: "Exact 40-character commit SHA to verify"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event_name }}-${{ github.event_name == 'workflow_dispatch' && inputs.target_sha || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Verify package / Node ${{ matrix.node-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [18, 20, 22, 24]
+
+    steps:
+      - name: Validate manual target SHA
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        run: |
+          if [[ ! "${{ inputs.target_sha }}" =~ ^[0-9a-fA-F]{40}$ ]]; then
+            echo "target_sha must be a 40-character commit SHA" >&2
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.target_sha || github.sha }}
+          persist-credentials: false
+
+      - name: Confirm manual checkout SHA
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        run: |
+          actual_sha="$(git rev-parse HEAD)"
+          if [[ "$actual_sha" != "${{ inputs.target_sha }}" ]]; then
+            echo "checked out $actual_sha, expected ${{ inputs.target_sha }}" >&2
+            exit 1
+          fi
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Show tool versions
+        run: |
+          node --version
+          npm --version
+
+      - name: Verify package
+        run: npm run verify

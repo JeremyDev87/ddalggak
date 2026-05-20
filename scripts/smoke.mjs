@@ -14,6 +14,7 @@ import path from "node:path";
 const rootDir = process.cwd();
 const cliPath = path.join(rootDir, "bin", "ddalggak.js");
 const pkg = JSON.parse(readFileSync(path.join(rootDir, "package.json"), "utf8"));
+const readme = readFileSync(path.join(rootDir, "README.md"), "utf8");
 const tempRoots = [];
 
 function makeTempHome() {
@@ -326,6 +327,35 @@ const cases = [
       assertExit(result, 0);
       assertIncludes(`${result.stdout}${result.stderr}`, "not found", "output");
       assertIncludes(result.stdout, "/ddalggak status", "stdout");
+    },
+  },
+  {
+    name: "package verification contract is release-safe",
+    run() {
+      assert(
+        pkg.scripts?.verify === "node scripts/verify-package.mjs",
+        `expected package verify script to run scripts/verify-package.mjs, got ${JSON.stringify(
+          pkg.scripts?.verify
+        )}`
+      );
+      assert(
+        pkg.scripts?.prepublishOnly === "npm run verify",
+        `expected prepublishOnly to delegate to npm run verify, got ${JSON.stringify(
+          pkg.scripts?.prepublishOnly
+        )}`
+      );
+      assert(
+        pkg.files?.includes("scripts/"),
+        "expected scripts/ to be included in package artifact boundary"
+      );
+      assert(
+        !readme.includes("https://www.npmjs.com/package/@jeremyfellaz/ddalggak"),
+        "README must not link to an unpublished npm package as if it is live"
+      );
+      assert(
+        !readme.includes("img.shields.io/npm/"),
+        "README must not show npm badges before first publish proves registry visibility"
+      );
     },
   },
 ];
