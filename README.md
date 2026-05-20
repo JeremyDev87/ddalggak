@@ -128,10 +128,11 @@ Before changing the CLI bridge, Codex skill source, or package artifact boundari
 ```bash
 npm test
 npm run verify:codex-skill
+npm run eval:ddalggak-readiness
 env npm_config_cache=/tmp/ddalggak-npm-cache npm pack --dry-run --ignore-scripts --loglevel=silent
 ```
 
-Use `npm test` for CLI setup and dispatch behavior, including setup safety/idempotency, dispatch quoting edge cases, and every subcommand `--show-doc` surface. Use `npm run verify:codex-skill` for Codex skill source, metadata, Quality Lens Router anchors, subcommand routing changes, progressive-disclosure budgets, required reference/template maps, legacy/Codex payload parity, detail-template regression guards, and npm package artifact inclusion. Use the pack dry-run as an explicit maintainer-facing package artifact inspection as well.
+Use `npm test` for CLI setup and dispatch behavior, including setup safety/idempotency, dispatch quoting edge cases, and every subcommand `--show-doc` surface. Use `npm run verify:codex-skill` for Codex skill source, metadata, Quality Lens Router anchors, subcommand routing changes, progressive-disclosure budgets, required reference/template maps, legacy/Codex payload parity, detail-template regression guards, and npm package artifact inclusion. Use `npm run eval:ddalggak-readiness` for mock JSON replay checks covering no-work mutation suppression, duplicate PR/comment suppression, evidence-gap readiness blocking, URL-beats-cwd mutation blocking, and hard-conflict fallback classification. Use the pack dry-run as an explicit maintainer-facing package artifact inspection as well.
 
 ## Platform Support
 

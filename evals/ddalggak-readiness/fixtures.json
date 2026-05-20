@@ -1,0 +1,143 @@
+{
+  "version": 1,
+  "description": "Dry-run ddalggak idempotency/readiness fixtures. These scenarios are mock JSON only and must not perform GitHub mutations.",
+  "scenarios": [
+    {
+      "name": "no-open-issue-does-not-mutate",
+      "invariant": "no-work-no-mutation",
+      "state": {
+        "cwdRepo": "JeremyDev87/ddalggak",
+        "targetRepo": "JeremyDev87/ddalggak",
+        "openIssues": [],
+        "openPullRequests": [],
+        "requestedCommand": "start"
+      },
+      "expect": {
+        "decision": "no_work",
+        "allowedMutations": []
+      }
+    },
+    {
+      "name": "existing-issue-pr-suppresses-duplicate-pr",
+      "invariant": "duplicate-pr-suppression",
+      "state": {
+        "cwdRepo": "JeremyDev87/ddalggak",
+        "targetRepo": "JeremyDev87/ddalggak",
+        "targetUrl": "https://github.com/JeremyDev87/ddalggak/issues/97",
+        "openIssues": [{ "number": 97, "title": "Add eval fixture harness" }],
+        "openPullRequests": [
+          {
+            "number": 102,
+            "state": "OPEN",
+            "closingIssues": [97],
+            "headRefName": "test/issue-97-idempotency-readiness-evals"
+          }
+        ],
+        "requestedCommand": "start"
+      },
+      "expect": {
+        "decision": "duplicate_suppressed",
+        "allowedMutations": []
+      }
+    },
+    {
+      "name": "prior-parsed-comment-suppresses-duplicate-comment",
+      "invariant": "duplicate-comment-suppression",
+      "state": {
+        "cwdRepo": "JeremyDev87/ddalggak",
+        "targetRepo": "JeremyDev87/ddalggak",
+        "targetUrl": "https://github.com/JeremyDev87/ddalggak/issues/97",
+        "openIssues": [{ "number": 97, "title": "Add eval fixture harness" }],
+        "openPullRequests": [],
+        "priorComments": [
+          { "issue": 97, "marker": "ddalggak:parsed", "body": "Parsed already" }
+        ],
+        "requestedCommand": "start"
+      },
+      "expect": {
+        "decision": "duplicate_suppressed",
+        "allowedMutations": []
+      }
+    },
+    {
+      "name": "missing-required-evidence-blocks-ready-and-approve",
+      "invariant": "evidence-gap-blocks-readiness",
+      "state": {
+        "cwdRepo": "JeremyDev87/ddalggak",
+        "targetRepo": "JeremyDev87/ddalggak",
+        "targetUrl": "https://github.com/JeremyDev87/ddalggak/pull/103",
+        "pullRequest": {
+          "number": 103,
+          "checks": [{ "name": "local", "conclusion": "success" }],
+          "requiredEvidence": ["npm test", "npm run verify:codex-skill", "visual evidence"],
+          "providedEvidence": ["npm test", "npm run verify:codex-skill"]
+        },
+        "requestedCommand": "review"
+      },
+      "expect": {
+        "decision": "evidence_gap_blocked",
+        "readyAllowed": false,
+        "approveAllowed": false,
+        "forbiddenMutations": ["approve_pr", "mark_ready"]
+      }
+    },
+    {
+      "name": "url-repo-mismatch-stops-mutation",
+      "invariant": "url-beats-cwd",
+      "state": {
+        "cwdRepo": "JeremyDev87/other-repo",
+        "targetRepo": "JeremyDev87/ddalggak",
+        "targetUrl": "https://github.com/JeremyDev87/ddalggak/issues/97",
+        "openIssues": [{ "number": 97, "title": "Add eval fixture harness" }],
+        "requestedCommand": "start"
+      },
+      "expect": {
+        "decision": "repo_mismatch_blocked",
+        "allowedMutations": []
+      }
+    },
+    {
+      "name": "target-url-repo-must-match-target-repo",
+      "invariant": "url-repo-source-of-truth",
+      "state": {
+        "cwdRepo": "JeremyDev87/ddalggak",
+        "targetRepo": "JeremyDev87/ddalggak",
+        "targetUrl": "https://github.com/JeremyDev87/other-repo/issues/97",
+        "openIssues": [{ "number": 97, "title": "Add eval fixture harness" }],
+        "requestedCommand": "start"
+      },
+      "expect": {
+        "decision": "repo_mismatch_blocked",
+        "allowedMutations": []
+      }
+    },
+    {
+      "name": "hard-conflict-classifies-as-blocked-fallback-not-independent-pr",
+      "invariant": "hard-conflict-fallback",
+      "state": {
+        "cwdRepo": "JeremyDev87/ddalggak",
+        "targetRepo": "JeremyDev87/ddalggak",
+        "targetUrl": "https://github.com/JeremyDev87/ddalggak/issues/97",
+        "openIssues": [
+          {
+            "number": 97,
+            "title": "Add eval fixture harness",
+            "conflict": {
+              "hard": true,
+              "sharedFiles": ["scripts/verify-codex-skill.mjs"],
+              "reason": "Verifier integration conflicts with an active verifier PR"
+            }
+          }
+        ],
+        "requestedCommand": "start"
+      },
+      "expect": {
+        "decision": "hard_conflict_blocked",
+        "prStrategy": "blocked_or_single_pr_conflict_fallback",
+        "readyAllowed": false,
+        "approveAllowed": false,
+        "forbiddenMutations": ["create_pr", "approve_pr", "mark_ready"]
+      }
+    }
+  ]
+}
