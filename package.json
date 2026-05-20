@@ -10,6 +10,7 @@
     "test": "node scripts/smoke.mjs",
     "verify:codex-skill": "node scripts/verify-codex-skill.mjs",
     "eval:ddalggak-readiness": "node scripts/eval-ddalggak-readiness.mjs",
+    "test:release-helpers": "node scripts/test-release-helpers.mjs",
     "prepublishOnly": "npm run verify",
     "verify": "node scripts/verify-package.mjs"
   },
