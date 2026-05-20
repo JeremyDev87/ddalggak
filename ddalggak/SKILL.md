@@ -1486,6 +1486,8 @@ React/Next, component API/composition, view transition/motion, UI/a11y/UX/screen
 
 사용자가 확인하기 전 `gh issue create`나 `gh issue edit`을 실행하지 않는다. 단, 현재 요청이 명시적으로 "지금 등록"을 요청하면 실행한다.
 
+제목/본문은 raw UTF-8로 생성한다. `\\uD558`, `\\ud558` 같은 literal Unicode escape가 포함된 title/body는 생성 전에 중단하고 decode한다. Python/JSON payload는 `json.dumps(..., ensure_ascii=False)`로 UTF-8 파일에 쓰고 `gh api --input`을 사용한다. 생성 후 `gh issue view --json title,body,url`로 live title/body에 literal `\\uXXXX`가 없는지 확인한다.
+
 ### Phase 1: 계획 수집
 
 계획이 없으면 계획 문서 경로나 텍스트를 요청한다.
@@ -1655,6 +1657,12 @@ parent epic이 필요하면 순서:
 1. parent epic 먼저 생성 (placeholder sub-issue 체크리스트)
 2. 각 sub-issue를 실제 parent 번호로 생성
 3. parent epic body를 실제 sub-issue 번호로 업데이트
+
+제목/본문 인코딩 invariant:
+- GitHub issue title/body는 raw UTF-8로 전달한다. `\\uD558`, `\\ud558` 같은 literal Unicode escape가 포함된 제목/본문은 생성 전에 중단하고 원문 한글로 decode하거나 다시 작성한다.
+- Python/JSON으로 payload를 만들 때는 `json.dumps(payload, ensure_ascii=False)`로 UTF-8 JSON 파일을 쓰고 `gh api --input <payload.json>`를 사용한다. JSON 문자열이나 `repr()` 결과를 `--title` 인자로 그대로 넘기지 않는다.
+- Markdown body는 `--body-file`을 선호한다. 제목은 shell-quoted 문자열이라도 생성 직전 `grep -E '\\u[0-9a-fA-F]{4}'`에 걸리면 실패로 취급한다.
+- 생성 후 반드시 `gh issue view <number> --json title,body,url`로 재조회하고 live title/body에 literal `\\uXXXX`가 없음을 확인한다. 한글이 깨졌으면 완료 보고하지 말고 즉시 `gh issue edit`으로 raw UTF-8 제목/본문을 수정한다.
 
 ```bash
 gh issue create --title "[Epic] ..." --body-file /tmp/epic-body.md

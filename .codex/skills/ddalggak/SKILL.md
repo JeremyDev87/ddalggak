@@ -412,6 +412,8 @@ Do not create issues or edit source files unless the user separately asks outsid
 
 Convert a plan into GitHub issues. Preserve file ownership, hard blockers, issue-PR conflict-fallback strategy, prerequisites, validation, result criteria, and review checklists. Every generated implementation issue must include `Owned files`, `Must not touch`, `Parallelization note`, `Commit lane suggestion`, `Validation/evidence`, and `Dependencies / blocked by`. Parent tracker issues should not be assigned implementation write surfaces; they should contain a child lane table that marks which children can run in parallel, which must be serial commits, and which are blocked. Do not edit repository files.
 
+Issue titles and bodies must be submitted as raw UTF-8, not JSON-escaped text. Before any `gh issue create` or `gh issue edit`, reject or decode titles/bodies containing literal Unicode escapes such as `\\uD558` / `\\ud558`; do not persist those escape sequences to GitHub. Prefer `--body-file` for Markdown bodies, and for non-ASCII titles prefer a UTF-8 REST payload written with `json.dumps(..., ensure_ascii=False)` via `gh api --input`. After creation, re-read `gh issue view --json title,body,url` and verify the live title contains Korean characters, not literal `\\uXXXX` sequences.
+
 ## `ship` - Publish Current Lane
 
 Use only for changes that already exist in the current lane.
