@@ -109,6 +109,16 @@ export function assertReleaseUpgrade(currentVersion, nextVersion) {
   }
 }
 
+export function createManualBumpBranchName(tag, baseRef = "master") {
+  const plan = resolveReleasePlan(tag);
+  const sanitizedBase = baseRef
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "base";
+
+  return `release/bump-${sanitizedBase}-v${plan.version}`;
+}
+
 export function updatePackageManifestVersion(manifest, version) {
   return {
     ...manifest,

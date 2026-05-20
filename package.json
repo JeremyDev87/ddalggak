@@ -12,6 +12,7 @@
     "eval:ddalggak-readiness": "node scripts/eval-ddalggak-readiness.mjs",
     "test:release-helpers": "node scripts/test-release-helpers.mjs",
     "test:release-drafter": "node scripts/test-release-drafter.mjs",
+    "test:manual-release-bump": "node scripts/test-manual-release-bump.mjs",
     "prepublishOnly": "npm run verify",
     "verify": "node scripts/verify-package.mjs"
   },
