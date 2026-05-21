@@ -138,6 +138,32 @@
         "approveAllowed": false,
         "forbiddenMutations": ["create_pr", "approve_pr", "mark_ready"]
       }
+    },
+    {
+      "name": "lightweight-router-reference-map-ready",
+      "invariant": "hot-path-router-reference-map",
+      "state": {
+        "cwdRepo": "JeremyDev87/ddalggak",
+        "targetRepo": "JeremyDev87/ddalggak",
+        "targetUrl": "https://github.com/JeremyDev87/ddalggak/issues/118",
+        "openIssues": [
+          {
+            "number": 118,
+            "title": "SKILL 경량화 목표와 hot-path 예산을 측정 가능한 audit로 고정",
+            "scope": "verifier-only hot-path budget audit",
+            "ownedFiles": ["scripts/verify-codex-skill.mjs", "evals/ddalggak-readiness/fixtures.json"],
+            "mustNotTouch": ["ddalggak/SKILL.md", ".codex/skills/ddalggak/SKILL.md"]
+          }
+        ],
+        "openPullRequests": [],
+        "requestedCommand": "start"
+      },
+      "expect": {
+        "decision": "ready_for_issue_pr",
+        "prStrategy": "independent_issue_pr",
+        "readyAllowed": true,
+        "approveAllowed": true
+      }
     }
   ]
 }
