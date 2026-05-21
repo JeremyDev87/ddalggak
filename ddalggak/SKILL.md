@@ -50,8 +50,8 @@ user-invocable: true
 
 - URL beats cwd: GitHub URL 처리 기준은 owner/repo/number 파싱 후 cwd remote 검증이다. cwd remote가 URL repo와 다르면 mutation을 멈춘다.
 - Issue-PRs by default: 독립 이슈는 기본적으로 issue PR 하나를 만든다. hard conflict만 single PR + serial commit fallback이 가능하다.
-- Manual merge only: 주인님 PR은 merge/auto-merge 금지. green + APPROVE도 ready for manual merge 보고까지만 허용한다.
-- approval-comment policy: formal approval이 부적절하면 current head SHA, review scope, validation evidence, blocking finding count, conclusion을 포함한 top-level PR comment를 사용한다.
+- Manual merge only: 주인님 PR은 merge/auto-merge 금지. green + APPROVE도 ready for manual merge 보고까지만 허용한다. 상태 보고에서는 CI/check, formal review/branch protection, merge blocker, human action을 분리한다.
+- approval-comment policy: formal approval이 부적절하면 current head SHA, review scope, validation evidence, blocking finding count, conclusion을 포함한 top-level PR comment를 사용한다. Top-level APPROVE comment는 review evidence일 뿐 GitHub `reviewDecision`/branch protection approval과 다르므로 `reviewDecision`과 `mergeStateStatus`를 별도로 보고한다.
 - Runtime contract language: Task Scope Contract, Context Assembly Manifest, Resume Snapshot, Control-flow ownership으로 conductor/reviewer-owned 실행 경계를 명시한다.
 - Small focused workers, explicit orchestration: worker 책임과 context를 작게 유지하고 conductor가 branch/PR/review/fix gate를 소유한다.
 - Task Scope Contract: tool capability boundary와 task scope contract를 분리한다. out-of-scope diff는 scope-expansion failure다.
@@ -59,7 +59,7 @@ user-invocable: true
 - Context Assembly Manifest, Resume Snapshot, Control-flow ownership은 conductor/reviewer-owned 경계다.
 - Quality Lens Router Output은 Applicable gate families, Skipped gates, Required references, Repo/product conventions, backend-only skip을 기록한다. Domain gate is a lens, not a mandate.
 - Evidence Contract는 references/evidence-contract.md 기준이며 Blocking evidence gaps가 있으면 PR ready/APPROVE 금지다.
-- Counterargument Pass는 약한 가정, readiness를 반증할 evidence, 더 작은 직접 변경 대안을 먼저 찾는다.
+- Counterargument Pass는 약한 가정, readiness를 반증할 evidence, 더 작은 직접 변경 대안을 먼저 찾는다. unmerged prerequisite PR/issue, overlapping verifier surface, 같은 contract를 바꿀 수 있는 open automation PR은 missing readiness / ordering input으로 대기시키며 Dobby rejection으로 오분류하지 않는다.
 - Simplicity / Deletability Gate는 references/simplicity-deletability-gate.md 기준이다. small direct change first, why is this abstraction necessary?, one-off abstraction, human readability/deletability, SOLID 우선순위를 명시한다.
 - Frontend Design Gate와 Vercel Agent Skills Gate는 조건부다. frontend-design, backend-only, references/frontend-design-gate.md, Frontend Design Brief, Frontend Design Review Gate, references/vercel-agent-skills-gates.md, react-best-practices, composition-patterns, react-view-transitions, web-design-guidelines, deploy-to-vercel, vercel-cli-with-tokens, react-native-skills, server/client boundary, unnecessary client component avoidance, hydration/bundle regression avoidance, token source without printing secrets, preview-first, Vercel deploy safety, component API quality, animation meaning, React Native/Expo constraints를 해당 작업에만 적용한다.
 - Component methodology gate: main component only assembles, ComponentName.parts.tsx, ComponentName.utils.ts, satisfies Record<...>, public visual-contract classes, no silent fallback, empty companion files 금지.
