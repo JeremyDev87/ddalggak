@@ -189,6 +189,29 @@ Publishing prioritizes npm trusted publishing with provenance. A `NPM_TOKEN` fal
 
 The `Release Published Follow-up Audit` workflow runs after a GitHub release is published, or manually for an existing tag. It verifies the GitHub release and npm registry metadata, including package name, version, `bin.ddalggak`, license, and repository URL.
 
+## External Release Setup Checklist
+
+Before the first npm publication, maintainers must complete the external settings that cannot be proven from this repository alone:
+
+- npm organization/scope: confirm that the publishing account has permission to publish public packages under `@jeremyfellaz` and that the package name in `package.json` remains `@jeremyfellaz/ddalggak`.
+- npm authentication: prefer npm Trusted Publishing for the GitHub Actions `Release Publish` workflow. If Trusted Publishing is not available for the package yet, configure a repository or environment secret named `NPM_TOKEN` as the documented fallback. Never paste token values into issues, PRs, workflow logs, or release notes.
+- GitHub environment: create or verify a protected environment named `release` and require maintainer approval before the `publish_to_npm` job can proceed.
+- Repository labels used by release automation and changelog grouping: `release`, `skip-changelog`, `enhancement`, `bug`, `documentation`, `docs`, `test`, `ci`, `chore`, `maintenance`, `feat`, and `fix`.
+- Truthfulness gate: until the follow-up audit verifies npm registry metadata for the published version, do not change this README or the GitHub About homepage to claim that the npm package URL is live.
+
+## First Publish Runbook
+
+Use this order for the first real publication. The agent must not merge PRs, create final tags, approve protected environments, or publish on behalf of maintainers.
+
+1. Confirm the external setup checklist above, including `@jeremyfellaz` publish permission, npm auth path, and protected `release` environment approval.
+2. Run the `Manual Release Bump` workflow for the intended `vX.Y.Z` tag. Review the generated draft PR and merge it manually only after it is correct.
+3. Let `Release Candidate Verification` run on the merged `package.json` version change, or dispatch it manually with the exact target SHA. Confirm that it verifies the SHA, tag availability, package verification, package packing, and smoke install.
+4. Create the final Git tag only after candidate verification identifies the exact release SHA and the maintainer has decided to release that SHA.
+5. Let `Release Publish` run from the tag, or dispatch it with the existing tag. Approve the protected `release` environment only after verifying the `verify_tagged_ref` job logs/outputs, uploaded tarball name, tag, SHA, and package version.
+6. Confirm publish completion from the workflow summary. If Trusted Publishing fails and `NPM_TOKEN` fallback is configured, ensure the fallback path still publishes the same verified tarball artifact.
+7. Run or wait for `Release Published Follow-up Audit`. Treat the release as externally verified only after the audit confirms the GitHub release and npm registry metadata.
+8. Only after the follow-up audit passes, update user-facing metadata such as the GitHub About homepage or README install guidance to point at the live npm package URL.
+
 ## Maintainer Verification
 
 Before changing the CLI bridge, Codex skill source, release helpers, or package artifact boundaries, maintainers should run the relevant local checks:
