@@ -83,6 +83,11 @@ function hasHardConflict(state) {
   return array(state.openIssues).some((issue) => issue.conflict?.hard === true);
 }
 
+function missingOutputSections(state, requiredSections) {
+  const outputSections = new Set(array(state.outputSections));
+  return array(requiredSections).filter((section) => !outputSections.has(section));
+}
+
 function result({ decision, prStrategy, readyAllowed, approveAllowed, allowedMutations, reasons }) {
   return { decision, prStrategy, readyAllowed, approveAllowed, allowedMutations: [...allowedMutations], reasons };
 }
@@ -191,6 +196,13 @@ function compareScenario(scenario, actual) {
     }
   }
 
+  if (Object.hasOwn(expected, "requiredOutputSections")) {
+    const missingSections = missingOutputSections(scenario.state || {}, expected.requiredOutputSections);
+    if (missingSections.length > 0) {
+      failures.push(`requiredOutputSections missing from state.outputSections: ${JSON.stringify(missingSections)}`);
+    }
+  }
+
   return failures;
 }
 
@@ -240,6 +252,17 @@ function validateFixture(fixture) {
     }
     validateMutationList(scenarioName, scenario.expect, "allowedMutations", failures);
     validateMutationList(scenarioName, scenario.expect, "forbiddenMutations", failures);
+    if (Object.hasOwn(scenario.expect, "requiredOutputSections")) {
+      if (!Array.isArray(scenario.expect.requiredOutputSections)) {
+        failures.push(`${scenarioName}: expect.requiredOutputSections must be an array`);
+      }
+      if (!Array.isArray(scenario.state.outputSections)) {
+        failures.push(`${scenarioName}: state.outputSections must be an array when requiredOutputSections is set`);
+      }
+      if (!["plan", "review"].includes(scenario.state.requestedCommand)) {
+        failures.push(`${scenarioName}: requiredOutputSections applies only to plan/review scenarios`);
+      }
+    }
   }
   return failures;
 }

@@ -58,6 +58,7 @@ user-invocable: true
 - Diff Footprint / Scope Expansion Review: review packet은 changed files, side effects, config/credential/migration/destructive action, 외부 API write, production data touch를 task scope contract와 대조한다.
 - Context Assembly Manifest, Resume Snapshot, Control-flow ownership은 conductor/reviewer-owned 경계다.
 - Quality Lens Router Output은 Applicable gate families, Skipped gates, Required references, Repo/product conventions, backend-only skip을 기록한다. Domain gate is a lens, not a mandate.
+- Wiki Context First for plan/review: `plan`과 `review`는 최종 판단 전에 `references/wiki-context-preflight.md`를 실행하고, getwiki/LLM Wiki에서 reusable prior knowledge, repo/product conventions, past failure patterns, known decisions를 검색한다. Wiki-derived claim은 source path를 남기고, retrieval 실패나 관련 문서 부재는 명시적 evidence gap으로 기록한 뒤 live evidence로 계속한다.
 - Evidence Contract는 references/evidence-contract.md 기준이며 Blocking evidence gaps가 있으면 PR ready/APPROVE 금지다.
 - Counterargument Pass는 약한 가정, readiness를 반증할 evidence, 더 작은 직접 변경 대안을 먼저 찾는다.
 - Simplicity / Deletability Gate는 references/simplicity-deletability-gate.md 기준이다. small direct change first, why is this abstraction necessary?, one-off abstraction, human readability/deletability, SOLID 우선순위를 명시한다.
@@ -80,9 +81,9 @@ Wiki-derived 지식은 바로 hot path에 붙이지 말고 `references/wiki-grow
 | subcommand | show-doc heading | 목적 | 상세 reference rule |
 |---|---|---|---|
 | `start` | Start Workflow | 구현 시작 | Quality Lens Router, Evidence Contract, Simplicity / Deletability Gate, Agent Runtime Contract, conditional frontend/vercel/regression references |
-| `review` | Cross-Review Loop | 독립 리뷰 | Evidence Contract, Simplicity / Deletability Gate, regression-library, optional frontend/vercel gates |
+| `review` | Cross-Review Loop | 독립 리뷰 | Wiki Context Preflight, Evidence Contract, Simplicity / Deletability Gate, regression-library, optional frontend/vercel gates |
 | `status` | Status | 상태 점검 | live git/GitHub + .ddalggak/session-state.json |
-| `plan` | Issue-Ready Plan | 구현 계획 | Quality Lens Router, Evidence Contract, Simplicity / Deletability Gate; conditional design/deploy/regression references |
+| `plan` | Issue-Ready Plan | 구현 계획 | Wiki Context Preflight, Quality Lens Router, Evidence Contract, Simplicity / Deletability Gate; conditional design/deploy/regression references |
 | `issue` | Plan to Issues | 이슈 생성 | plan body fields only |
 | `clean` | Merge Cleanup | merge 후 정리 | live PR merge evidence |
 | `ship` | Ship | 커밋/푸시/초안 PR | issue context + validation + local review |
@@ -92,7 +93,7 @@ Wiki-derived 지식은 바로 hot path에 붙이지 말고 `references/wiki-grow
 
 ## Required Reference Map
 
-`plan`, `start`, `review`는 Quality Lens Router Output으로 적용 gate와 skipped gate를 먼저 기록한다. Evidence Contract와 Simplicity / Deletability Gate는 readiness 또는 code-shape 판단이 있으면 필수다. Frontend/Vercel/Regression references는 조건부로만 읽고 backend-only skip reason을 남긴다.
+`plan`, `start`, `review`는 Quality Lens Router Output으로 적용 gate와 skipped gate를 먼저 기록한다. `plan`과 `review`는 `references/wiki-context-preflight.md`를 먼저 읽고 Wiki Context Manifest를 남긴다. Evidence Contract와 Simplicity / Deletability Gate는 readiness 또는 code-shape 판단이 있으면 필수다. Frontend/Vercel/Regression references는 조건부로만 읽고 backend-only skip reason을 남긴다.
 
 ## Start Workflow
 
@@ -137,6 +138,10 @@ Full procedure: `references/cross-review-loop.md`; reusable prompt: `templates/r
 
 Review is an adversarial AI code quality gate, not a praise pass. Re-read PR state, diff, files, checks, linked issue, and current head SHA before judgment.
 
+### Wiki Review Context Preflight
+- Run `references/wiki-context-preflight.md` using the PR title/body, linked issue, changed files, public API/UX surfaces, validation evidence, and recurring failure patterns.
+- Review output must distinguish live PR/repo evidence, wiki-strengthened rationale, non-wiki inference, and wiki search failures or gaps.
+
 ### Quality Lens Router Output
 - Applicable gate families, Skipped gates, Required references, Lightweight or limited gates, Repo/product conventions.
 
@@ -174,6 +179,9 @@ Full procedure: `references/issue-ready-plan.md`.
 
 ### Goal / Context
 Plan must identify Goal, Source Of Truth, Non-Goals / Constraints, Context Recovery Anchors, Assumptions And Unknowns.
+
+### Wiki Context Manifest
+- Include: Queries attempted, Wiki sources read, Relevant wiki facts, Constraints / prior decisions, Unknowns not found in wiki, Non-wiki inference.
 
 ### Quality Lens Router Output
 - Applicable gate families:

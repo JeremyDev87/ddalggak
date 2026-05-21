@@ -164,6 +164,72 @@
         "readyAllowed": true,
         "approveAllowed": true
       }
+    },
+    {
+      "name": "plan-output-requires-wiki-context-manifest",
+      "invariant": "wiki-context-manifest-contract",
+      "state": {
+        "cwdRepo": "JeremyDev87/ddalggak",
+        "targetRepo": "JeremyDev87/ddalggak",
+        "targetUrl": "https://github.com/JeremyDev87/ddalggak/issues/120",
+        "openIssues": [{ "number": 120, "title": "Improve plan context retrieval" }],
+        "requestedCommand": "plan",
+        "outputSections": [
+          "Goal / Context",
+          "Wiki Context Manifest",
+          "Queries attempted",
+          "Wiki sources read",
+          "Unknowns not found in wiki",
+          "Non-wiki inference",
+          "Quality Lens Router Output",
+          "Evidence Contract"
+        ]
+      },
+      "expect": {
+        "decision": "ready_for_issue_pr",
+        "requiredOutputSections": [
+          "Wiki Context Manifest",
+          "Queries attempted",
+          "Wiki sources read",
+          "Unknowns not found in wiki",
+          "Non-wiki inference"
+        ]
+      }
+    },
+    {
+      "name": "review-output-requires-wiki-source-distinction",
+      "invariant": "wiki-review-source-distinction-contract",
+      "state": {
+        "cwdRepo": "JeremyDev87/ddalggak",
+        "targetRepo": "JeremyDev87/ddalggak",
+        "targetUrl": "https://github.com/JeremyDev87/ddalggak/pull/121",
+        "pullRequest": {
+          "number": 121,
+          "checks": [{ "name": "local", "conclusion": "success" }],
+          "requiredEvidence": ["npm test"],
+          "providedEvidence": ["npm test"]
+        },
+        "requestedCommand": "review",
+        "outputSections": [
+          "Wiki Context Manifest",
+          "Queries attempted",
+          "Wiki sources read",
+          "Findings backed by live PR/repo evidence",
+          "Findings strengthened by wiki sources",
+          "Wiki search failures or gaps",
+          "Non-wiki inference"
+        ]
+      },
+      "expect": {
+        "decision": "ready_for_issue_pr",
+        "requiredOutputSections": [
+          "Wiki Context Manifest",
+          "Findings backed by live PR/repo evidence",
+          "Findings strengthened by wiki sources",
+          "Wiki search failures or gaps",
+          "Non-wiki inference"
+        ]
+      }
     }
   ]
 }
