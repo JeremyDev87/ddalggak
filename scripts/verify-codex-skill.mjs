@@ -45,14 +45,21 @@ const skillBudgets = [
     filePath: skillPath,
     maxLines: 450,
     maxChars: 35_000,
+    principleHeadings: ["Global Guardrails"],
+    maxPrincipleBullets: 25,
+    maxInlineSubcommandAnchors: 25,
   },
   {
     label: "ddalggak/SKILL.md",
     filePath: legacySkillPath,
     maxLines: 700,
     maxChars: 45_000,
+    principleHeadings: ["핵심 원칙", "myWiki-derived 운영 Guardrails"],
+    maxPrincipleBullets: 30,
+    maxInlineSubcommandAnchors: 110,
   },
 ];
+const skillBudgetMetrics = [];
 const requiredDisclosureAssetsBySubcommand = {
   start: {
     references: ["start-workflow.md"],
@@ -129,6 +136,14 @@ const forbiddenHotPathTemplateSentinels = [
   {
     pattern: /LANE_READY: Phase Y W<번호>/,
     description: "legacy lane-ready worker output template",
+  },
+  {
+    pattern: /## Full Procedure\r?\n(?:.|\n){0,200}git fetch --prune/,
+    description: "low-frequency full procedure command block",
+  },
+  {
+    pattern: /## Reviewer Prompt\r?\n(?:.|\n){0,200}Critical\/High/,
+    description: "low-frequency review prompt body",
   },
 ];
 const requiredSubcommands = [
@@ -705,16 +720,112 @@ function countLinesAndChars(text) {
   };
 }
 
-function assertSkillBudget({ label, filePath, maxLines, maxChars }) {
+function sectionByHeading(text, heading) {
+  const lines = text.split("\n");
+  const target = `## ${heading}`;
+  const startIdx = lines.findIndex((line) => line.trim() === target);
+  if (startIdx === -1) {
+    return "";
+  }
+
+  let endIdx = lines.length;
+  for (let index = startIdx + 1; index < lines.length; index += 1) {
+    if (lines[index].startsWith("## ")) {
+      endIdx = index;
+      break;
+    }
+  }
+  return lines.slice(startIdx, endIdx).join("\n");
+}
+
+function countPrincipleBullets(text, headings) {
+  return headings
+    .map((heading) => sectionByHeading(text, heading))
+    .join("\n")
+    .split("\n")
+    .filter((line) => /^\s*-\s+/.test(line)).length;
+}
+
+function subcommandSections(text) {
+  const lines = text.split("\n");
+  const sections = [];
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+    if (!line.startsWith("## ")) {
+      continue;
+    }
+    const matchingSubcommand = requiredSubcommands.find((subcommand) => {
+      const legacyHeading = requiredLegacyHeadings[subcommand];
+      return line.trim() === `## ${legacyHeading}` || line.startsWith(`## \`${subcommand}\``);
+    });
+    if (!matchingSubcommand) {
+      continue;
+    }
+
+    let endIdx = lines.length;
+    for (let cursor = index + 1; cursor < lines.length; cursor += 1) {
+      if (lines[cursor].startsWith("## ")) {
+        endIdx = cursor;
+        break;
+      }
+    }
+    sections.push(lines.slice(index, endIdx).join("\n"));
+  }
+  return sections;
+}
+
+function countInlineSubcommandAnchors(text) {
+  return subcommandSections(text)
+    .join("\n")
+    .split("\n")
+    .filter((line) => {
+      const trimmed = line.trim();
+      return trimmed && !trimmed.startsWith("## ");
+    }).length;
+}
+
+function assertSkillBudget({
+  label,
+  filePath,
+  maxLines,
+  maxChars,
+  principleHeadings = [],
+  maxPrincipleBullets,
+  maxInlineSubcommandAnchors,
+}) {
   if (!statSync(filePath, { throwIfNoEntry: false })?.isFile()) {
     fail(`${label} must exist before budget verification.`);
     return;
   }
 
-  const { lines, chars } = countLinesAndChars(readText(filePath));
+  const text = readText(filePath);
+  const { lines, chars } = countLinesAndChars(text);
+  const principleBullets = countPrincipleBullets(text, principleHeadings);
+  const inlineSubcommandAnchors = countInlineSubcommandAnchors(text);
+  skillBudgetMetrics.push({
+    label,
+    lines,
+    maxLines,
+    chars,
+    maxChars,
+    principleBullets,
+    maxPrincipleBullets,
+    inlineSubcommandAnchors,
+    maxInlineSubcommandAnchors,
+  });
   if (lines > maxLines || chars > maxChars) {
     fail(
       `${label} exceeds progressive-disclosure budget: ${lines}/${maxLines} lines, ${chars}/${maxChars} chars. Move low-frequency detail to references/ or templates/.`,
+    );
+  }
+  if (maxPrincipleBullets !== undefined && principleBullets > maxPrincipleBullets) {
+    fail(
+      `${label} has too many hot-path principle bullets: ${principleBullets}/${maxPrincipleBullets}. Keep only non-negotiable invariants here and move explanatory guardrails to references/.`,
+    );
+  }
+  if (maxInlineSubcommandAnchors !== undefined && inlineSubcommandAnchors > maxInlineSubcommandAnchors) {
+    fail(
+      `${label} has too many inline subcommand detail anchors: ${inlineSubcommandAnchors}/${maxInlineSubcommandAnchors}. Keep show-doc sections as execution-contract indexes and move low-frequency procedure to references/.`,
     );
   }
 }
@@ -1345,4 +1456,9 @@ if (failures.length > 0) {
   process.exit(1);
 }
 
+for (const metric of skillBudgetMetrics) {
+  console.log(
+    `[verify:codex-skill] budget ${metric.label}: lines ${metric.lines}/${metric.maxLines}, chars ${metric.chars}/${metric.maxChars}, principle bullets ${metric.principleBullets}/${metric.maxPrincipleBullets}, inline subcommand anchors ${metric.inlineSubcommandAnchors}/${metric.maxInlineSubcommandAnchors}`,
+  );
+}
 console.log("[verify:codex-skill] passed");
