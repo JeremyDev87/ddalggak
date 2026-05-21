@@ -10,3 +10,24 @@ Use this when `review` needs full adversarial review details beyond the hot path
 5. Findings must include severity, confidence, evidence, impact, suggested fix, file/line when available, and test/repro idea.
 6. Critical/High or required evidence gaps block APPROVE and ready state.
 7. If formal approval is inappropriate, post a top-level approval-comment policy body with head SHA, review scope, validation evidence, blocking finding count, and conclusion.
+
+
+## Wiki Review Context Preflight
+
+Before judging the PR, run `references/wiki-context-preflight.md` using:
+
+- PR title/body
+- linked issue
+- changed files
+- public API or UX surfaces
+- validation evidence
+- recurring failure patterns
+
+Review output must distinguish:
+
+- Findings backed by live PR/repo evidence
+- Findings strengthened by wiki sources
+- Non-wiki inference
+- Wiki search failures or gaps
+
+Wiki context is a review lens, not an oracle. Blocking findings still require live diff/repo evidence.

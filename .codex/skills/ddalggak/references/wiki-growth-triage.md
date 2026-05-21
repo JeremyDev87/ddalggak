@@ -6,6 +6,17 @@ Use this reference when new wiki-derived knowledge, retrospectives, or research 
 
 Before adding a new rule, ask: **what is the smallest durable surface that prevents the recurring failure without making unrelated issue work heavier?**
 
+
+## Memory Candidate Deduplication via getwiki
+
+Before saving durable memory or proposing a memory update from ddalggak work:
+
+1. Search the LLM Wiki for the same principle, convention, or workflow.
+2. If it already exists in wiki, cite it instead of duplicating memory.
+3. Save to memory only if it is compact, durable, user-specific, and likely to reduce repeated steering.
+4. Prefer wiki/setwiki for rich procedural knowledge; memory is only for compact preferences and stable facts.
+5. Never save PR numbers, commit SHAs, completion logs, or single-session artifacts as memory.
+
 Classify the knowledge into exactly one primary lane. Add secondary lanes only when there is concrete evidence that one surface is insufficient.
 
 ## Classification lanes

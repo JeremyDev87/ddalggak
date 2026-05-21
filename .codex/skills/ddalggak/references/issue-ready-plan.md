@@ -14,3 +14,22 @@ Use this when `plan` needs full planning detail beyond the hot path.
 - Conflict Matrix.
 - Issue-PR Strategy with Conflict Fallback including PR count: one PR per issue by default; Default PR shape: one PR per issue; conflict fallback only when issue conflicts require it; Parallelization Decision; Must not touch; Evidence / validation; Commit message.
 - Plan-to-Issues Readiness.
+
+
+## Wiki Context Preflight
+
+Before writing the plan, run `references/wiki-context-preflight.md`.
+
+The plan must include:
+
+```markdown
+### Wiki Context Manifest
+- Queries attempted:
+- Wiki sources read:
+- Relevant wiki facts:
+- Constraints / prior decisions:
+- Unknowns not found in wiki:
+- Non-wiki inference:
+```
+
+Use wiki-derived constraints to shape the plan before Quality Lens Router Output, Evidence Contract, and Counterargument Pass. If no relevant wiki source is found, state that explicitly and continue from the issue/repo evidence.
