@@ -17,6 +17,8 @@ const SUBCOMMANDS = [
   "retro",
   "prompt",
   "check",
+  "getwiki",
+  "setwiki",
 ];
 
 const HELP_TEXT = `ddalggak - workflow skill for Codex App and Claude Code legacy
@@ -41,9 +43,12 @@ Subcommands:
   retro                Write a workflow retrospective
   prompt               Improve lane or review briefs
   check                Run a local diff check
+  getwiki              Delegate read-only wiki retrieval to /getwiki
+  setwiki              Delegate approval-gated wiki write workflow to /setwiki
 
 Claude Code legacy:
   Non-setup subcommands dispatch to claude CLI as /ddalggak <subcommand>.
+  getwiki/setwiki delegate directly to /getwiki and /setwiki.
   Use --print to print the slash command without spawning claude CLI.
 
 Options:
@@ -53,6 +58,8 @@ Options:
 Examples:
   ddalggak setup
   ddalggak plan --print "Split issue 22 into reviewable PR units"
+  ddalggak getwiki --print "workflow routing"
+  ddalggak setwiki --print "review this lesson"
   ddalggak status
 
 More info: https://github.com/JeremyDev87/ddalggak

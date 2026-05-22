@@ -9,9 +9,9 @@ Ddalggak is a thin-router skill for one repeated cycle: GitHub Issue -> plan -> 
 
 ## Subcommands
 
-Supported subcommands are: `start|review|status|plan|issue|clean|ship|retro|prompt|check`.
+Supported subcommands are: `start|review|status|plan|issue|clean|ship|retro|prompt|check|getwiki|setwiki`.
 
-Standard cycle: `prompt` -> `plan` -> `start` -> `ship` -> `review` -> `retro`. `status`, `issue`, `clean`, and `check` are supporting commands.
+Standard cycle: `prompt` -> `plan` -> `start` -> `ship` -> `review` -> `retro`. `status`, `issue`, `clean`, `check`, `getwiki`, and `setwiki` are supporting commands.
 
 ## Hot-Path Target Architecture
 
@@ -63,6 +63,8 @@ Only `start` and `review` may authorize repository source file edits. All other 
 | `ship` | no | commit, push, and draft PR for existing changes only |
 | `clean` | no | local branch and worktree cleanup only after merge verification |
 | `retro` | no | retrospective notes and memory update request artifacts only |
+| `getwiki` | no | delegate to dedicated `/getwiki` read-only retrieval |
+| `setwiki` | no | delegate to dedicated `/setwiki` approval-gated write workflow |
 
 If a non-writing subcommand would need a source edit to continue, report the need and stop.
 
@@ -101,6 +103,8 @@ Use Codex App native orchestration names in briefs and state records: `spawn_age
 | `retro` | Retrospective | references/retrospective-workflow.md |
 | `prompt` | Prompt optimizer | prompt/brief artifacts only; source-edit requests stop as meta |
 | `check` | Local diff check | references/local-diff-check.md |
+| `getwiki` | Wiki context retrieval bridge | references/wiki-bridge.md; read-only retrieval |
+| `setwiki` | Wiki write workflow bridge | references/wiki-bridge.md; explicit approval-gated write |
 
 ## Shared Workflow Rules
 
@@ -157,6 +161,14 @@ Audit or improve brief artifacts only. If the request changes skill behavior or 
 ## `check` - Local Diff Check
 
 Run a read-only local diff review. Capture base freshness, status, diff stat, ignored/local-only/generated paths, and findings. Use references/local-diff-check.md for details.
+
+## GetWiki Bridge
+
+Full procedure: `references/wiki-bridge.md`. Delegate to dedicated `/getwiki` for read-only retrieval. Preserve source paths or retrieval gaps; do not mutate wiki files.
+
+## SetWiki Bridge
+
+Full procedure: `references/wiki-bridge.md`. Delegate to dedicated `/setwiki` for approval-gated write workflow. Require explicit approval before wiki mutation; do not inline iCloud/QMD mechanics.
 
 ## Review Gate Contract
 

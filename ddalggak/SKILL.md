@@ -1,7 +1,7 @@
 ---
 name: ddalggak
-description: "Use when 박정욱 invokes `/ddalggak` for the GitHub issue → plan → implementation → ship → review workflow, including plan, issue, start, ship, review, status, clean, retro, prompt, and check subcommands."
-argument-hint: "[start|review|status|plan|issue|clean|ship|retro|prompt|check] — no arg = start from GitHub issue"
+description: "Use when 박정욱 invokes `/ddalggak` for the GitHub issue → plan → implementation → ship → review workflow, including plan, issue, start, ship, review, status, clean, retro, prompt, check, getwiki, and setwiki subcommands."
+argument-hint: "[start|review|status|plan|issue|clean|ship|retro|prompt|check|getwiki|setwiki] — no arg = start from GitHub issue"
 user-invocable: true
 ---
 
@@ -11,7 +11,7 @@ user-invocable: true
 
 ## 표준 워크플로우와 코드 수정 권한 (전역 invariant)
 
-표준 사이클: `prompt` → `plan` → `start` → `ship` → `review` → `retro`. `status`, `issue`, `clean`, `check`는 보조 명령이다.
+표준 사이클: `prompt` → `plan` → `start` → `ship` → `review` → `retro`. `status`, `issue`, `clean`, `check`, `getwiki`, `setwiki`는 보조 명령이다.
 
 소스 코드(repo 내 파일, SKILL.md 포함)를 수정할 권한이 있는 서브커맨드는 `start`와 `review` 뿐이다. 다른 모든 서브커맨드는 자기 산출물 또는 GitHub 산출물만 작성한다.
 
@@ -27,6 +27,8 @@ user-invocable: true
 | `clean` | ❌ | merge 확인 후 local cleanup |
 | `retro` | ❌ | 회고 산출물 |
 | `check` | ❌ | read-only local review |
+| `getwiki` | ❌ | dedicated `/getwiki` read-only retrieval로 위임 |
+| `setwiki` | ❌ | dedicated `/setwiki` approval-gated write workflow로 위임 |
 
 ## Hot-Path Target Architecture
 
@@ -76,6 +78,8 @@ user-invocable: true
 | `check` | Local Diff Check | read-only diff review | references/local-diff-check.md |
 | `retro` | Retrospective | 회고 | references/retrospective-workflow.md |
 | `prompt` | Prompt Optimizer | brief 개선 | source edit 금지 |
+| `getwiki` | GetWiki Bridge | wiki context 조회 위임 | references/wiki-bridge.md, read-only retrieval |
+| `setwiki` | SetWiki Bridge | wiki write workflow 위임 | references/wiki-bridge.md, explicit approval-gated write |
 
 ## Required Reference Map
 
@@ -170,6 +174,22 @@ Separate durable reusable knowledge from incident records. Use `references/wiki-
 Full procedure: `references/prompt-optimizer.md`.
 
 Audit prompts for single goal, Why, validation, restatement, and question path. Do not edit SKILL.md or source code from this subcommand.
+
+---
+
+## GetWiki Bridge
+
+Full procedure: `references/wiki-bridge.md`.
+
+Delegate to dedicated `/getwiki` for read-only retrieval. Preserve source paths or retrieval gaps; do not mutate wiki files.
+
+---
+
+## SetWiki Bridge
+
+Full procedure: `references/wiki-bridge.md`.
+
+Delegate to dedicated `/setwiki` for approval-gated write workflow. Require explicit approval before wiki mutation; do not inline iCloud/QMD mechanics.
 
 ---
 
