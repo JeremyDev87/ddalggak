@@ -81,6 +81,7 @@ Use Codex App native orchestration names in briefs and state records: `spawn_age
 - **Runtime contract language**: `references/agent-runtime-contract.md` owns Task Scope Contract, Context Assembly Manifest, Resume Snapshot, Control-flow ownership, tool capability boundary, task scope contract, out-of-scope diff, and scope-expansion failure.
 - **Quality Lens Router**: `references/quality-lens-router.md` owns Applicable gate families, Skipped gates, Required references, lightweight/limited gates, backend-only skip, and Repo/product conventions. Domain gate is a lens, not a mandate.
 - **Wiki Context First**: `plan` and `review` must run `references/wiki-context-preflight.md`; cite wiki paths for wiki-derived claims or record retrieval gaps.
+- **Wiki Bridge**: `getwiki` is read-only retrieval; `setwiki` is approval-gated write. ddalggak owns only the admission/approval boundary in `references/wiki-bridge.md` and delegates iCloud/QMD/wiki mechanics to the canonical wiki workflow.
 - **Evidence Contract**: `references/evidence-contract.md` is mandatory before completion, readiness, approval, deploy, performance, UI, security, data, or API claims. Blocking evidence gaps block No evidence, no readiness or approval.
 - **Simplicity / Deletability Gate**: `references/simplicity-deletability-gate.md` is mandatory for code-shape decisions. Start with small direct change first and ask why any proposed abstraction is necessary.
 - **Core Invariants Reference**: `references/core-invariants.md` owns long-form guardrail rationale for Counterargument Pass, privacy, knowledge extraction, rendered evidence, component methodology gate, raw UTF-8, Self-created complexity is a defect, and no silent fallback.
@@ -93,7 +94,7 @@ Use Codex App native orchestration names in briefs and state records: `spawn_age
 | `start` | Issue implementation | references/quality-lens-router.md, references/evidence-contract.md, references/simplicity-deletability-gate.md, references/agent-runtime-contract.md, references/core-invariants.md; conditional frontend/vercel/regression references |
 | `review` | Independent review/fix loop | references/wiki-context-preflight.md, references/evidence-contract.md, references/simplicity-deletability-gate.md, references/core-invariants.md, references/regression-library.md; conditional frontend/vercel references |
 | `status` | State snapshot | state file + git/GitHub live state; no extra reference by default |
-| `plan` | Issue-ready plan | references/wiki-context-preflight.md, references/quality-lens-router.md, references/evidence-contract.md, references/simplicity-deletability-gate.md, references/core-invariants.md; conditional design/deploy/regression references |
+| `plan` | Issue-ready plan | references/wiki-context-preflight.md, references/wiki-bridge.md, references/quality-lens-router.md, references/evidence-contract.md, references/simplicity-deletability-gate.md, references/core-invariants.md; conditional design/deploy/regression references |
 | `issue` | Plan to GitHub issues | the plan body; preserve ownership/dependency/evidence fields |
 | `clean` | Post-merge cleanup | GitHub PR merge evidence and live git state |
 | `ship` | Publish current lane | issue body/comments, local diff, validation evidence, draft PR contract |
@@ -127,7 +128,7 @@ Read `.ddalggak/session-state.json` if present, then inspect live git/GitHub sta
 
 ## `plan` - Issue-Ready Plan
 
-Full procedure: `references/issue-ready-plan.md`; wiki preflight: `references/wiki-context-preflight.md`.
+Full procedure: `references/issue-ready-plan.md`; wiki preflight: `references/wiki-context-preflight.md`; wiki bridge: `references/wiki-bridge.md`.
 
 Execution contract index: source of truth, non-goals, context anchors, assumptions/unknowns, work inventory, ownership, forbidden/inspect-only files, Quality Lens Router Output, Evidence Contract, Counterargument Pass, Simplicity / Deletability Gate, one issue PR by default, conflict fallback only with proof, Parallelization Decision, Must not touch, evidence/validation, and commit message.
 
@@ -147,7 +148,7 @@ Verify live PR merge evidence first, fetch, inspect dirty state, then clean only
 
 ## `retro` - Retrospective
 
-After merge, summarize the cycle and extract reusable lessons without storing transient PR numbers or commit SHAs as memory. Use references/retrospective-workflow.md for low-frequency details.
+After merge, summarize the cycle and extract reusable lessons without storing transient PR numbers or commit SHAs as memory. Use `references/wiki-bridge.md` for setwiki admission: default review-only, explicit approval before wiki write. Use references/retrospective-workflow.md for low-frequency details.
 
 ## `prompt` - Prompt Optimizer
 

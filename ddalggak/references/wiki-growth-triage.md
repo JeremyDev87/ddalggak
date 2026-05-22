@@ -15,7 +15,8 @@ Before saving durable memory or proposing a memory update from ddalggak work:
 2. If it already exists in wiki, cite it instead of duplicating memory.
 3. Save to memory only if it is compact, durable, user-specific, and likely to reduce repeated steering.
 4. Prefer wiki/setwiki for rich procedural knowledge; memory is only for compact preferences and stable facts.
-5. Never save PR numbers, commit SHAs, completion logs, or single-session artifacts as memory.
+5. Use `wiki-bridge.md` before crossing from ddalggak into wiki retrieval or write workflows: `getwiki` stays read-only, and `setwiki` requires explicit approval before write.
+6. Never save PR numbers, commit SHAs, completion logs, or single-session artifacts as memory.
 
 Classify the knowledge into exactly one primary lane. Add secondary lanes only when there is concrete evidence that one surface is insufficient.
 

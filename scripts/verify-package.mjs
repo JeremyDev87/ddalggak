@@ -26,7 +26,9 @@ const requiredArtifactPaths = [
   "scripts/classify-npm-publish-error.mjs",
   "evals/ddalggak-readiness/fixtures.json",
   "ddalggak/SKILL.md",
+  "ddalggak/references/wiki-bridge.md",
   ".codex/skills/ddalggak/SKILL.md",
+  ".codex/skills/ddalggak/references/wiki-bridge.md",
 ];
 
 function runStep(name, command, args, options = {}) {

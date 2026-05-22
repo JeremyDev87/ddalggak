@@ -39,6 +39,10 @@ const coreInvariantReferencePaths = [
   path.join(skillDir, "references", "core-invariants.md"),
   path.join(rootDir, "ddalggak", "references", "core-invariants.md"),
 ];
+const wikiBridgeReferencePaths = [
+  path.join(skillDir, "references", "wiki-bridge.md"),
+  path.join(rootDir, "ddalggak", "references", "wiki-bridge.md"),
+];
 const packagePath = path.join(rootDir, "package.json");
 const readmePath = path.join(rootDir, "README.md");
 const cliPath = path.join(rootDir, "bin", "ddalggak.js");
@@ -78,7 +82,7 @@ const requiredDisclosureAssetsBySubcommand = {
     templates: [],
   },
   plan: {
-    references: ["issue-ready-plan.md", "core-invariants.md"],
+    references: ["issue-ready-plan.md", "core-invariants.md", "wiki-bridge.md"],
     templates: [],
   },
   issue: {
@@ -113,9 +117,11 @@ const skillPayloadRoots = [
 const requiredPackageFiles = [
   ".codex/skills/ddalggak/SKILL.md",
   ".codex/skills/ddalggak/references/core-invariants.md",
+  ".codex/skills/ddalggak/references/wiki-bridge.md",
   ".codex/skills/ddalggak/agents/openai.yaml",
   "ddalggak/SKILL.md",
   "ddalggak/references/core-invariants.md",
+  "ddalggak/references/wiki-bridge.md",
   "bin/ddalggak.js",
   "bin/lib/dispatch.mjs",
   "bin/lib/setup.mjs",
@@ -229,6 +235,12 @@ const requiredSkillHotPathAnchors = [
   "Domain gate is a lens, not a mandate",
   "Wiki Context First",
   "references/wiki-context-preflight.md",
+  "Wiki Bridge",
+  "references/wiki-bridge.md",
+  "getwiki",
+  "read-only retrieval",
+  "setwiki",
+  "approval-gated write",
   "Evidence Contract",
   "references/evidence-contract.md",
   "Blocking evidence gaps",
@@ -263,6 +275,12 @@ const requiredLegacySkillHotPathAnchors = [
   "Domain gate is a lens, not a mandate",
   "Wiki Context First",
   "references/wiki-context-preflight.md",
+  "Wiki Bridge",
+  "references/wiki-bridge.md",
+  "getwiki",
+  "read-only retrieval",
+  "setwiki",
+  "approval-gated write",
   "Evidence Contract",
   "references/evidence-contract.md",
   "Blocking evidence gaps",
@@ -528,6 +546,26 @@ const requiredCoreInvariantReferenceAnchors = [
   "no silent fallback",
   "raw UTF-8",
   "ensure_ascii=False",
+];
+const requiredWikiBridgeReferenceAnchors = [
+  "Wiki Bridge Contract",
+  "admission and approval boundary",
+  "getwiki bridge",
+  "read-only retrieval",
+  "Wiki Context Manifest",
+  "setwiki bridge",
+  "approval-gated write",
+  "explicit user approval",
+  "pjw-icloud-llm-wiki",
+  "Forbidden surfaces",
+  "Do not modify source skill files for the `getwiki` wrapper",
+  "Do not modify source skill files for the `setwiki` wrapper",
+  "Do not mutate the user's iCloud wiki tree",
+  "Do not mutate wiki `raw/` sources",
+  "Do not inline iCloud/QMD/setwiki implementation details into `SKILL.md`",
+  "Do not change CLI routing (`bin/**`) merely to add wiki bridge behavior",
+  "wiki-growth-triage.md",
+  "The smallest durable surface wins",
 ];
 const requiredReadmeQualityAnchors = [
   "## Quality Defaults",
@@ -1143,6 +1181,28 @@ if (codexCoreInvariantExists && legacyCoreInvariantExists) {
   });
 }
 
+const [codexWikiBridgePath, legacyWikiBridgePath] = wikiBridgeReferencePaths;
+const codexWikiBridgeExists = statSync(codexWikiBridgePath, { throwIfNoEntry: false })?.isFile();
+const legacyWikiBridgeExists = statSync(legacyWikiBridgePath, { throwIfNoEntry: false })?.isFile();
+if (!codexWikiBridgeExists) {
+  fail(`${path.relative(rootDir, codexWikiBridgePath)} must exist for Wiki Bridge parity.`);
+}
+if (!legacyWikiBridgeExists) {
+  fail(`${path.relative(rootDir, legacyWikiBridgePath)} must exist for Wiki Bridge parity.`);
+}
+if (codexWikiBridgeExists && legacyWikiBridgeExists) {
+  const codexWikiBridgeText = readText(codexWikiBridgePath);
+  const legacyWikiBridgeText = readText(legacyWikiBridgePath);
+  if (codexWikiBridgeText !== legacyWikiBridgeText) {
+    fail("Wiki Bridge references must match between .codex and ddalggak directories.");
+  }
+  assertReferenceAnchors({
+    label: "Wiki Bridge anchors missing",
+    text: codexWikiBridgeText,
+    anchors: requiredWikiBridgeReferenceAnchors,
+  });
+}
+
 const readmeText = readText(readmePath);
 const missingReadmeQualityAnchors = requiredReadmeQualityAnchors.filter(
   (anchor) => !readmeText.includes(anchor),
@@ -1202,7 +1262,8 @@ for (const [subcommand, heading] of Object.entries(requiredLegacyHeadings)) {
 
 const compactShowDocContracts = {
   plan: [
-    "Full procedure: `references/issue-ready-plan.md`; wiki preflight: `references/wiki-context-preflight.md`.",
+    "Full procedure: `references/issue-ready-plan.md`; wiki preflight: `references/wiki-context-preflight.md`; wiki bridge: `references/wiki-bridge.md`.",
+    "references/wiki-bridge.md",
     "Execution contract index:",
     "Quality Lens Router Output",
     "Evidence Contract",
@@ -1271,7 +1332,8 @@ const codexSkillText = statSync(skillPath, { throwIfNoEntry: false })?.isFile()
   : "";
 const codexCompactSubcommandContracts = {
   plan: [
-    "Full procedure: `references/issue-ready-plan.md`; wiki preflight: `references/wiki-context-preflight.md`.",
+    "Full procedure: `references/issue-ready-plan.md`; wiki preflight: `references/wiki-context-preflight.md`; wiki bridge: `references/wiki-bridge.md`.",
+    "references/wiki-bridge.md",
     "Execution contract index:",
     "Quality Lens Router Output",
     "Evidence Contract",
