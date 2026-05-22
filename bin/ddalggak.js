@@ -45,6 +45,7 @@ Subcommands:
   check                Run a local diff check
   getwiki              Delegate read-only wiki retrieval to /getwiki
   setwiki              Delegate approval-gated wiki write workflow to /setwiki
+  profile hermes       Propose a Hermes-style Claude global profile patch (dry-run only)
 
 Claude Code legacy:
   Non-setup subcommands dispatch to claude CLI as /ddalggak <subcommand>.
@@ -60,6 +61,7 @@ Examples:
   ddalggak plan --print "Split issue 22 into reviewable PR units"
   ddalggak getwiki --print "workflow routing"
   ddalggak setwiki --print "review this lesson"
+  ddalggak profile hermes --dry-run
   ddalggak status
 
 More info: https://github.com/JeremyDev87/ddalggak
@@ -183,6 +185,15 @@ async function main() {
       "ddalggak status --local: implementation not installed yet.\n(./bin/lib/status.mjs is missing - this CLI is in active development.)"
     );
     const code = await mod.run(removeFirstLocalStatusFlag(rest));
+    return typeof code === "number" ? code : 0;
+  }
+
+  if (first === "profile") {
+    const mod = await loadLib(
+      "./lib/profile.mjs",
+      "ddalggak profile: implementation not installed yet.\n(./bin/lib/profile.mjs is missing - this CLI is in active development.)"
+    );
+    const code = await mod.run(rest);
     return typeof code === "number" ? code : 0;
   }
 

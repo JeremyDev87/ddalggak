@@ -29,6 +29,7 @@
     "bin/",
     "scripts/",
     "evals/",
+    "templates/",
     "core/",
     "README.md",
     "LICENSE"

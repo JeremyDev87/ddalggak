@@ -158,6 +158,60 @@ const cases = [
     },
   },
   {
+    name: "profile hermes --dry-run proposes patch without writing CLAUDE.md",
+    run() {
+      const claudeHome = makeTempHome();
+      const result = runCli(["profile", "hermes", "--dry-run"], {
+        env: { CLAUDE_HOME: claudeHome },
+      });
+      assertExit(result, 0);
+      assertIncludes(result.stdout, "ddalggak profile hermes dry-run", "stdout");
+      assertIncludes(result.stdout, "Korean with 극존칭", "stdout");
+      assertIncludes(result.stdout, "GitHub issue body, labels, and comments", "stdout");
+      assertIncludes(result.stdout, "issue → plan → start → ship → review", "stdout");
+      assertIncludes(result.stdout, "getwiki", "stdout");
+      assertIncludes(result.stdout, "setwiki", "stdout");
+      assertIncludes(result.stdout, "Never merge", "stdout");
+      assert(
+        !existsSync(path.join(claudeHome, "CLAUDE.md")),
+        "expected profile dry-run not to create CLAUDE.md"
+      );
+      assert(
+        !existsSync(path.join(claudeHome, "settings.json")),
+        "expected profile dry-run not to create settings.json"
+      );
+    },
+  },
+  {
+    name: "profile hermes --print-claude-md-patch reads existing profile but does not modify it",
+    run() {
+      const claudeHome = makeTempHome();
+      const claudeMd = path.join(claudeHome, "CLAUDE.md");
+      const before = "# Existing Claude profile\n\nKeep this line.\n";
+      writeFileSync(claudeMd, before, "utf8");
+
+      const result = runCli(["profile", "hermes", "--print-claude-md-patch"], {
+        env: { CLAUDE_HOME: claudeHome },
+      });
+      assertExit(result, 0);
+      assert(result.stdout.startsWith(`--- ${claudeMd}\n+++ ${claudeMd}\n`), "expected unified diff for existing CLAUDE.md");
+      assertIncludes(result.stdout, "+- Before `plan` and before `review`, run or delegate `getwiki`", "stdout");
+      assertIncludes(result.stdout, "+- Treat `setwiki` as approval-gated", "stdout");
+      assert(
+        readFileSync(claudeMd, "utf8") === before,
+        "expected print patch not to modify existing CLAUDE.md"
+      );
+    },
+  },
+  {
+    name: "profile hermes rejects --apply",
+    run() {
+      const result = runCli(["profile", "hermes", "--apply"]);
+      assertExit(result, 2);
+      assertIncludes(result.stderr, "--apply is intentionally not supported", "stderr");
+    },
+  },
+  {
     name: "setup rejects missing --target value",
     run() {
       const result = runCli(["setup", "--target"]);
