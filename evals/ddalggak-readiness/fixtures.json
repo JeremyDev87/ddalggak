@@ -69,7 +69,11 @@
         "pullRequest": {
           "number": 103,
           "checks": [{ "name": "local", "conclusion": "success" }],
-          "requiredEvidence": ["npm test", "npm run verify:codex-skill", "visual evidence"],
+          "requiredEvidence": [
+            "npm test",
+            "npm run verify:codex-skill",
+            "visual evidence"
+          ],
           "providedEvidence": ["npm test", "npm run verify:codex-skill"]
         },
         "requestedCommand": "review"
@@ -151,8 +155,14 @@
             "number": 118,
             "title": "SKILL 경량화 목표와 hot-path 예산을 측정 가능한 audit로 고정",
             "scope": "verifier-only hot-path budget audit",
-            "ownedFiles": ["scripts/verify-codex-skill.mjs", "evals/ddalggak-readiness/fixtures.json"],
-            "mustNotTouch": ["ddalggak/SKILL.md", ".codex/skills/ddalggak/SKILL.md"]
+            "ownedFiles": [
+              "scripts/verify-codex-skill.mjs",
+              "evals/ddalggak-readiness/fixtures.json"
+            ],
+            "mustNotTouch": [
+              "ddalggak/SKILL.md",
+              ".codex/skills/ddalggak/SKILL.md"
+            ]
           }
         ],
         "openPullRequests": [],
@@ -172,7 +182,9 @@
         "cwdRepo": "JeremyDev87/ddalggak",
         "targetRepo": "JeremyDev87/ddalggak",
         "targetUrl": "https://github.com/JeremyDev87/ddalggak/issues/120",
-        "openIssues": [{ "number": 120, "title": "Improve plan context retrieval" }],
+        "openIssues": [
+          { "number": 120, "title": "Improve plan context retrieval" }
+        ],
         "requestedCommand": "plan",
         "outputSections": [
           "Goal / Context",
@@ -194,6 +206,123 @@
           "Unknowns not found in wiki",
           "Non-wiki inference"
         ]
+      }
+    },
+    {
+      "name": "installed-skill-stale-blocks-parity-claim",
+      "invariant": "installed-parity-claim-requires-ok-status",
+      "state": {
+        "cwdRepo": "JeremyDev87/ddalggak",
+        "targetRepo": "JeremyDev87/ddalggak",
+        "targetUrl": "https://github.com/JeremyDev87/ddalggak/issues/133",
+        "requestedCommand": "status",
+        "installedSkill": {
+          "sourceStatus": "ok",
+          "codexStatus": "ok",
+          "installedStatus": "stale"
+        }
+      },
+      "expect": {
+        "decision": "parity_claim_blocked",
+        "readyAllowed": false,
+        "approveAllowed": false,
+        "allowedMutations": []
+      }
+    },
+    {
+      "name": "getwiki-is-read-only",
+      "invariant": "getwiki-read-only-boundary",
+      "state": {
+        "cwdRepo": "JeremyDev87/ddalggak",
+        "targetRepo": "JeremyDev87/ddalggak",
+        "requestedCommand": "getwiki",
+        "wikiOperation": {
+          "mode": "read",
+          "attemptedMutation": false
+        }
+      },
+      "expect": {
+        "decision": "wiki_readonly_delegate",
+        "allowedMutations": []
+      }
+    },
+    {
+      "name": "setwiki-requires-approval",
+      "invariant": "setwiki-approval-gate",
+      "state": {
+        "cwdRepo": "JeremyDev87/ddalggak",
+        "targetRepo": "JeremyDev87/ddalggak",
+        "requestedCommand": "setwiki",
+        "wikiOperation": {
+          "mode": "write",
+          "approved": false
+        }
+      },
+      "expect": {
+        "decision": "wiki_write_approval_required",
+        "readyAllowed": false,
+        "approveAllowed": false,
+        "forbiddenMutations": ["write_wiki"]
+      }
+    },
+    {
+      "name": "profile-dry-run-does-not-mutate-claude-md",
+      "invariant": "profile-dry-run-no-claude-md-mutation",
+      "state": {
+        "cwdRepo": "JeremyDev87/ddalggak",
+        "targetRepo": "JeremyDev87/ddalggak",
+        "requestedCommand": "status",
+        "claudeProfileProposal": {
+          "dryRun": true,
+          "targetPath": "~/.claude/CLAUDE.md",
+          "attemptedMutation": false
+        }
+      },
+      "expect": {
+        "decision": "profile_dry_run_only",
+        "forbiddenMutations": ["edit_claude_profile"]
+      }
+    },
+    {
+      "name": "projection-drift-fails-verify",
+      "invariant": "projection-drift-fails-verify",
+      "state": {
+        "cwdRepo": "JeremyDev87/ddalggak",
+        "targetRepo": "JeremyDev87/ddalggak",
+        "requestedCommand": "review",
+        "projectionCheck": {
+          "status": "drift",
+          "changedGeneratedBlocks": [
+            "ddalggak/SKILL.md#generated-runtime-contract"
+          ]
+        }
+      },
+      "expect": {
+        "decision": "projection_drift_blocked",
+        "readyAllowed": false,
+        "approveAllowed": false,
+        "forbiddenMutations": ["approve_pr", "mark_ready"]
+      }
+    },
+    {
+      "name": "plan-command-does-not-edit-source",
+      "invariant": "plan-command-source-edit-forbidden",
+      "state": {
+        "cwdRepo": "JeremyDev87/ddalggak",
+        "targetRepo": "JeremyDev87/ddalggak",
+        "requestedCommand": "plan",
+        "attemptedSourceEdit": true,
+        "outputSections": [
+          "Wiki Context Manifest",
+          "Quality Lens Router Output",
+          "Evidence Contract"
+        ]
+      },
+      "expect": {
+        "decision": "source_edit_blocked",
+        "readyAllowed": false,
+        "approveAllowed": false,
+        "forbiddenMutations": ["edit_source"]
       }
     },
     {
