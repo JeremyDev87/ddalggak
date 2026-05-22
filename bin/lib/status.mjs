@@ -58,9 +58,11 @@ function readPackageVersion() {
 }
 
 function resolveClaudeHome() {
-  return resolve(process.env.CLAUDE_HOME && process.env.CLAUDE_HOME.length > 0
-    ? process.env.CLAUDE_HOME
-    : join(homedir(), ".claude"));
+  return resolve(
+    process.env.CLAUDE_HOME && process.env.CLAUDE_HOME.length > 0
+      ? process.env.CLAUDE_HOME
+      : join(homedir(), ".claude"),
+  );
 }
 
 async function pathExists(path) {
@@ -123,10 +125,38 @@ async function payloadChecksum(root, expectedFiles = null) {
 
 async function readInstalledVersion(installedRoot) {
   try {
-    return (await readFile(join(installedRoot, ".installed-version"), "utf8")).trim() || null;
+    return (
+      (
+        await readFile(join(installedRoot, ".installed-version"), "utf8")
+      ).trim() || null
+    );
   } catch (error) {
     if (error && error.code === "ENOENT") return null;
     throw error;
+  }
+}
+
+async function readInstalledManifest(installedRoot) {
+  try {
+    const manifest = JSON.parse(
+      await readFile(join(installedRoot, ".installed-manifest.json"), "utf8"),
+    );
+    if (
+      !manifest ||
+      typeof manifest !== "object" ||
+      !Array.isArray(manifest.files)
+    ) {
+      return { manifest: null, parseError: "unexpected manifest shape" };
+    }
+    return { manifest, parseError: null };
+  } catch (error) {
+    if (error && error.code === "ENOENT") {
+      return { manifest: null, parseError: null };
+    }
+    return {
+      manifest: null,
+      parseError: error && error.message ? error.message : String(error),
+    };
   }
 }
 
@@ -135,7 +165,7 @@ function requiredReferencePaths(sourceFiles) {
     (file) =>
       file === "SKILL.md" ||
       file.startsWith("references/") ||
-      file.startsWith("templates/")
+      file.startsWith("templates/"),
   );
 }
 
@@ -148,15 +178,60 @@ async function missingPaths(root, requiredPaths) {
 }
 
 function extraInstalledPaths(installedFiles, sourceFiles) {
-  const allowedExtra = new Set([".installed-version"]);
+  const allowedExtra = new Set([
+    ".installed-version",
+    ".installed-manifest.json",
+  ]);
   const sourceSet = new Set(sourceFiles);
-  return installedFiles.filter((file) => !sourceSet.has(file) && !allowedExtra.has(file));
+  return installedFiles.filter(
+    (file) => !sourceSet.has(file) && !allowedExtra.has(file),
+  );
 }
 
-function determineState({ installedExists, packageVersion, installedVersion, sourceChecksum, installedChecksum, missingRequiredPaths, extraInstalledPaths }) {
+async function installedManifestChecksumMismatches(installedManifest, installedRoot) {
+  if (!installedManifest) return [];
+  const mismatches = [];
+  for (const entry of installedManifest.files) {
+    if (!entry || typeof entry.path !== "string") {
+      mismatches.push("(invalid manifest file entry)");
+      continue;
+    }
+    let actualSha256;
+    try {
+      actualSha256 = createHash("sha256")
+        .update(await readFile(join(installedRoot, entry.path)))
+        .digest("hex");
+    } catch (error) {
+      actualSha256 = "MISSING";
+    }
+    if (actualSha256 !== entry.sha256) {
+      mismatches.push(entry.path);
+    }
+  }
+  return mismatches;
+}
+
+function determineState({
+  installedExists,
+  packageVersion,
+  installedVersion,
+  sourceChecksum,
+  installedChecksum,
+  missingRequiredPaths,
+  extraInstalledPaths,
+  installedManifestParseError,
+  installedManifestChecksumMismatches,
+}) {
   if (!installedExists) return "not-installed";
+  if (installedManifestParseError) return "stale";
   if (installedVersion !== packageVersion) return "stale";
-  if (!installedChecksum || !sourceChecksum || installedChecksum.sha256 !== sourceChecksum.sha256) return "stale";
+  if (installedManifestChecksumMismatches.length > 0) return "stale";
+  if (
+    !installedChecksum ||
+    !sourceChecksum ||
+    installedChecksum.sha256 !== sourceChecksum.sha256
+  )
+    return "stale";
   if (missingRequiredPaths.length > 0) return "stale";
   if (extraInstalledPaths.length > 0) return "stale";
   return "ok";
@@ -170,13 +245,34 @@ export async function collectStatus() {
   const sourceChecksum = await payloadChecksum(SOURCE_PAYLOAD_ROOT);
   const sourceFiles = sourceChecksum ? sourceChecksum.files : [];
   const codexChecksum = await payloadChecksum(CODEX_PAYLOAD_ROOT, sourceFiles);
-  const installedFiles = installedExists ? await listFiles(installedClaudeSkillPath) : [];
-  const extraPaths = installedExists ? extraInstalledPaths(installedFiles, sourceFiles) : [];
-  const installedChecksum = installedExists ? await payloadChecksum(installedClaudeSkillPath, sourceFiles) : null;
+  const installedFiles = installedExists
+    ? await listFiles(installedClaudeSkillPath)
+    : [];
+  const installedManifestResult = installedExists
+    ? await readInstalledManifest(installedClaudeSkillPath)
+    : { manifest: null, parseError: null };
+  const installedManifest = installedManifestResult.manifest;
+  const extraPaths = installedExists
+    ? extraInstalledPaths(installedFiles, sourceFiles)
+    : [];
+  const installedChecksum = installedExists
+    ? await payloadChecksum(installedClaudeSkillPath, sourceFiles)
+    : null;
   const missingRequiredPaths = installedExists
-    ? await missingPaths(installedClaudeSkillPath, requiredReferencePaths(sourceFiles))
+    ? await missingPaths(
+        installedClaudeSkillPath,
+        requiredReferencePaths(sourceFiles),
+      )
     : requiredReferencePaths(sourceFiles);
-  const installedVersion = installedExists ? await readInstalledVersion(installedClaudeSkillPath) : null;
+  const installedVersion =
+    installedManifest?.packageVersion ||
+    (installedExists
+      ? await readInstalledVersion(installedClaudeSkillPath)
+      : null);
+  const manifestChecksumMismatches = await installedManifestChecksumMismatches(
+    installedManifest,
+    installedClaudeSkillPath,
+  );
   const state = determineState({
     installedExists,
     packageVersion,
@@ -185,6 +281,8 @@ export async function collectStatus() {
     installedChecksum,
     missingRequiredPaths,
     extraInstalledPaths: extraPaths,
+    installedManifestParseError: installedManifestResult.parseError,
+    installedManifestChecksumMismatches: manifestChecksumMismatches,
   });
 
   return {
@@ -195,6 +293,16 @@ export async function collectStatus() {
     codexPayloadRoot: CODEX_PAYLOAD_ROOT,
     installedClaudeSkillPath,
     installedVersion,
+    installedManifest: installedManifest
+      ? {
+          packageVersion: installedManifest.packageVersion || null,
+          installedAt: installedManifest.installedAt || null,
+          sourceRoot: installedManifest.sourceRoot || null,
+          fileCount: installedManifest.files.length,
+        }
+      : null,
+    installedManifestParseError: installedManifestResult.parseError,
+    installedManifestChecksumMismatches: manifestChecksumMismatches,
     sourceChecksum: sourceChecksum ? sourceChecksum.sha256 : null,
     codexChecksum: codexChecksum ? codexChecksum.sha256 : null,
     installedChecksum: installedChecksum ? installedChecksum.sha256 : null,
@@ -212,6 +320,22 @@ function printHuman(status) {
   out(`Codex payload root: ${status.codexPayloadRoot}`);
   out(`installed Claude skill path: ${status.installedClaudeSkillPath}`);
   out(`installed version: ${status.installedVersion || "(none)"}`);
+  if (status.installedManifest) {
+    out(
+      `installed manifest: ${status.installedManifest.fileCount} files from ${status.installedManifest.sourceRoot || "(unknown source)"}`,
+    );
+  } else if (status.installedManifestParseError) {
+    out(`installed manifest: invalid (${status.installedManifestParseError})`);
+  } else {
+    out("installed manifest: (none)");
+  }
+  if (status.installedManifestChecksumMismatches.length > 0) {
+    out("installed manifest checksum mismatches:");
+    for (const relPath of status.installedManifestChecksumMismatches)
+      out(`  - ${relPath}`);
+  } else {
+    out("installed manifest checksum mismatches: none");
+  }
   out(`source checksum: ${status.sourceChecksum || "(missing)"}`);
   out(`installed checksum: ${status.installedChecksum || "(missing)"}`);
   if (status.missingRequiredPaths.length > 0) {

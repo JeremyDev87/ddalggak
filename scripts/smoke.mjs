@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import {
   existsSync,
   mkdirSync,
@@ -13,7 +14,9 @@ import path from "node:path";
 
 const rootDir = process.cwd();
 const cliPath = path.join(rootDir, "bin", "ddalggak.js");
-const pkg = JSON.parse(readFileSync(path.join(rootDir, "package.json"), "utf8"));
+const pkg = JSON.parse(
+  readFileSync(path.join(rootDir, "package.json"), "utf8"),
+);
 const readme = readFileSync(path.join(rootDir, "README.md"), "utf8");
 const tempRoots = [];
 
@@ -60,21 +63,21 @@ function assert(condition, message) {
 function assertExit(result, expected) {
   assert(
     result.status === expected,
-    `expected exit ${expected}, got ${result.status}\nstdout:\n${result.stdout}\nstderr:\n${result.stderr}`
+    `expected exit ${expected}, got ${result.status}\nstdout:\n${result.stdout}\nstderr:\n${result.stderr}`,
   );
 }
 
 function assertStdout(result, expected) {
   assert(
     result.stdout === expected,
-    `expected stdout ${JSON.stringify(expected)}, got ${JSON.stringify(result.stdout)}`
+    `expected stdout ${JSON.stringify(expected)}, got ${JSON.stringify(result.stdout)}`,
   );
 }
 
 function assertIncludes(value, needle, streamName) {
   assert(
     value.includes(needle),
-    `expected ${streamName} to include ${JSON.stringify(needle)}, got ${JSON.stringify(value)}`
+    `expected ${streamName} to include ${JSON.stringify(needle)}, got ${JSON.stringify(value)}`,
   );
 }
 
@@ -82,7 +85,9 @@ function parseJsonStdout(result) {
   try {
     return JSON.parse(result.stdout);
   } catch (error) {
-    throw new Error(`expected JSON stdout, got:\n${result.stdout}\nstderr:\n${result.stderr}`);
+    throw new Error(
+      `expected JSON stdout, got:\n${result.stdout}\nstderr:\n${result.stderr}`,
+    );
   }
 }
 
@@ -94,11 +99,28 @@ function skillDirFor(claudeHome) {
   return path.join(claudeHome, "skills", "ddalggak");
 }
 
+function sha256File(filePath) {
+  return createHash("sha256").update(readFileSync(filePath)).digest("hex");
+}
+
+function readInstalledManifest(claudeHome) {
+  return JSON.parse(
+    readFileSync(
+      path.join(skillDirFor(claudeHome), ".installed-manifest.json"),
+      "utf8",
+    ),
+  );
+}
+
 function writeExistingInstall(claudeHome, version = "0.0.0") {
   const skillDir = skillDirFor(claudeHome);
   mkdirSync(skillDir, { recursive: true });
   writeFileSync(path.join(skillDir, "SKILL.md"), "old skill\n", "utf8");
-  writeFileSync(path.join(skillDir, ".installed-version"), `${version}\n`, "utf8");
+  writeFileSync(
+    path.join(skillDir, ".installed-version"),
+    `${version}\n`,
+    "utf8",
+  );
   return skillDir;
 }
 
@@ -153,7 +175,7 @@ const cases = [
       assertExit(result, 0);
       assert(
         readdirSync(claudeHome).length === 0,
-        `expected dry-run home to stay empty, found ${readdirSync(claudeHome).join(", ")}`
+        `expected dry-run home to stay empty, found ${readdirSync(claudeHome).join(", ")}`,
       );
     },
   },
@@ -165,20 +187,32 @@ const cases = [
         env: { CLAUDE_HOME: claudeHome },
       });
       assertExit(result, 0);
-      assertIncludes(result.stdout, "ddalggak profile hermes dry-run", "stdout");
+      assertIncludes(
+        result.stdout,
+        "ddalggak profile hermes dry-run",
+        "stdout",
+      );
       assertIncludes(result.stdout, "Korean with 극존칭", "stdout");
-      assertIncludes(result.stdout, "GitHub issue body, labels, and comments", "stdout");
-      assertIncludes(result.stdout, "issue → plan → start → ship → review", "stdout");
+      assertIncludes(
+        result.stdout,
+        "GitHub issue body, labels, and comments",
+        "stdout",
+      );
+      assertIncludes(
+        result.stdout,
+        "issue → plan → start → ship → review",
+        "stdout",
+      );
       assertIncludes(result.stdout, "getwiki", "stdout");
       assertIncludes(result.stdout, "setwiki", "stdout");
       assertIncludes(result.stdout, "Never merge", "stdout");
       assert(
         !existsSync(path.join(claudeHome, "CLAUDE.md")),
-        "expected profile dry-run not to create CLAUDE.md"
+        "expected profile dry-run not to create CLAUDE.md",
       );
       assert(
         !existsSync(path.join(claudeHome, "settings.json")),
-        "expected profile dry-run not to create settings.json"
+        "expected profile dry-run not to create settings.json",
       );
     },
   },
@@ -194,12 +228,23 @@ const cases = [
         env: { CLAUDE_HOME: claudeHome },
       });
       assertExit(result, 0);
-      assert(result.stdout.startsWith(`--- ${claudeMd}\n+++ ${claudeMd}\n`), "expected unified diff for existing CLAUDE.md");
-      assertIncludes(result.stdout, "+- Before `plan` and before `review`, run or delegate `getwiki`", "stdout");
-      assertIncludes(result.stdout, "+- Treat `setwiki` as approval-gated", "stdout");
+      assert(
+        result.stdout.startsWith(`--- ${claudeMd}\n+++ ${claudeMd}\n`),
+        "expected unified diff for existing CLAUDE.md",
+      );
+      assertIncludes(
+        result.stdout,
+        "+- Before `plan` and before `review`, run or delegate `getwiki`",
+        "stdout",
+      );
+      assertIncludes(
+        result.stdout,
+        "+- Treat `setwiki` as approval-gated",
+        "stdout",
+      );
       assert(
         readFileSync(claudeMd, "utf8") === before,
-        "expected print patch not to modify existing CLAUDE.md"
+        "expected print patch not to modify existing CLAUDE.md",
       );
     },
   },
@@ -208,7 +253,11 @@ const cases = [
     run() {
       const result = runCli(["profile", "hermes", "--apply"]);
       assertExit(result, 2);
-      assertIncludes(result.stderr, "--apply is intentionally not supported", "stderr");
+      assertIncludes(
+        result.stderr,
+        "--apply is intentionally not supported",
+        "stderr",
+      );
     },
   },
   {
@@ -216,7 +265,11 @@ const cases = [
     run() {
       const result = runCli(["setup", "--target"]);
       assertExit(result, 2);
-      assertIncludes(result.stderr, "--target requires a path argument", "stderr");
+      assertIncludes(
+        result.stderr,
+        "--target requires a path argument",
+        "stderr",
+      );
     },
   },
   {
@@ -238,11 +291,37 @@ const cases = [
       assertExit(result, 0);
       assert(
         existsSync(path.join(skillDir, "SKILL.md")),
-        "expected setup to create skills/ddalggak/SKILL.md"
+        "expected setup to create skills/ddalggak/SKILL.md",
       );
       assert(
         existsSync(path.join(skillDir, ".installed-version")),
-        "expected setup to create skills/ddalggak/.installed-version"
+        "expected setup to create skills/ddalggak/.installed-version",
+      );
+      assert(
+        existsSync(path.join(skillDir, ".installed-manifest.json")),
+        "expected setup to create skills/ddalggak/.installed-manifest.json",
+      );
+      const manifest = readInstalledManifest(claudeHome);
+      assert(
+        manifest.packageVersion === pkg.version,
+        "expected manifest packageVersion to match package.json",
+      );
+      assert(
+        typeof manifest.installedAt === "string" &&
+          manifest.installedAt.length > 0,
+        "expected manifest installedAt",
+      );
+      assert(
+        manifest.sourceRoot === path.join(rootDir, "ddalggak"),
+        `expected sourceRoot to record source payload root, got ${manifest.sourceRoot}`,
+      );
+      const skillEntry = manifest.files.find(
+        (file) => file.path === "SKILL.md",
+      );
+      assert(skillEntry, "expected manifest to include SKILL.md");
+      assert(
+        skillEntry.sha256 === sha256File(path.join(skillDir, "SKILL.md")),
+        "expected manifest SKILL.md sha256 to match installed file",
       );
     },
   },
@@ -274,14 +353,16 @@ const cases = [
       assertIncludes(result.stdout, "Backed up existing install", "stdout");
       assert(
         listNames(path.join(claudeHome, "skills")).some((name) =>
-          name.startsWith("ddalggak.bak.")
+          name.startsWith("ddalggak.bak."),
         ),
-        "expected stale install backup next to skills/ddalggak"
+        "expected stale install backup next to skills/ddalggak",
       );
       assert(
-        readFileSync(path.join(skillDirFor(claudeHome), ".installed-version"), "utf8") ===
-          `${pkg.version}\n`,
-        "expected fresh install version after backup"
+        readFileSync(
+          path.join(skillDirFor(claudeHome), ".installed-version"),
+          "utf8",
+        ) === `${pkg.version}\n`,
+        "expected fresh install version after backup",
       );
     },
   },
@@ -296,14 +377,16 @@ const cases = [
       assertExit(result, 0);
       assert(
         !listNames(path.join(claudeHome, "skills")).some((name) =>
-          name.startsWith("ddalggak.bak.")
+          name.startsWith("ddalggak.bak."),
         ),
-        "expected --no-backup not to create backup directories"
+        "expected --no-backup not to create backup directories",
       );
       assert(
-        readFileSync(path.join(skillDirFor(claudeHome), ".installed-version"), "utf8") ===
-          `${pkg.version}\n`,
-        "expected fresh install version after --no-backup replace"
+        readFileSync(
+          path.join(skillDirFor(claudeHome), ".installed-version"),
+          "utf8",
+        ) === `${pkg.version}\n`,
+        "expected fresh install version after --no-backup replace",
       );
     },
   },
@@ -316,12 +399,16 @@ const cases = [
       });
       assertExit(result, 0);
       const status = parseJsonStdout(result);
-      assert(status.state === "not-installed", `expected not-installed, got ${status.state}`);
+      assert(
+        status.state === "not-installed",
+        `expected not-installed, got ${status.state}`,
+      );
       assert(status.ok === false, "expected not-installed status to be non-ok");
       assert(status.installedVersion === null, "expected no installed version");
       assert(
-        status.installedClaudeSkillPath === path.join(claudeHome, "skills", "ddalggak"),
-        `expected installed path under CLAUDE_HOME, got ${status.installedClaudeSkillPath}`
+        status.installedClaudeSkillPath ===
+          path.join(claudeHome, "skills", "ddalggak"),
+        `expected installed path under CLAUDE_HOME, got ${status.installedClaudeSkillPath}`,
       );
     },
   },
@@ -338,10 +425,29 @@ const cases = [
       const status = parseJsonStdout(result);
       assert(status.state === "ok", `expected ok, got ${status.state}`);
       assert(status.ok === true, "expected ok status");
-      assert(status.installedVersion === pkg.version, "expected installed package version");
+      assert(
+        status.installedVersion === pkg.version,
+        "expected installed package version",
+      );
+      assert(
+        status.installedManifest !== null,
+        "expected status to expose installed manifest metadata",
+      );
+      assert(
+        status.installedManifest.packageVersion === pkg.version,
+        "expected manifest packageVersion in status",
+      );
+      assert(
+        status.installedManifest.sourceRoot === path.join(rootDir, "ddalggak"),
+        "expected manifest sourceRoot in status",
+      );
+      assert(
+        status.installedManifest.fileCount > 0,
+        "expected manifest file count in status",
+      );
       assert(
         status.sourceChecksum === status.installedChecksum,
-        "expected source and installed checksum to match after setup"
+        "expected source and installed checksum to match after setup",
       );
     },
   },
@@ -351,7 +457,11 @@ const cases = [
       const claudeHome = makeTempHome();
       const install = runCli(["setup"], { env: { CLAUDE_HOME: claudeHome } });
       assertExit(install, 0);
-      writeFileSync(path.join(skillDirFor(claudeHome), "SKILL.md"), "mutated skill\n", "utf8");
+      writeFileSync(
+        path.join(skillDirFor(claudeHome), "SKILL.md"),
+        "mutated skill\n",
+        "utf8",
+      );
       const result = runCli(["status", "--local", "--json"], {
         env: { CLAUDE_HOME: claudeHome },
       });
@@ -360,7 +470,7 @@ const cases = [
       assert(status.state === "stale", `expected stale, got ${status.state}`);
       assert(
         status.sourceChecksum !== status.installedChecksum,
-        "expected source and installed checksum to differ after mutation"
+        "expected source and installed checksum to differ after mutation",
       );
     },
   },
@@ -370,7 +480,9 @@ const cases = [
       const claudeHome = makeTempHome();
       const install = runCli(["setup"], { env: { CLAUDE_HOME: claudeHome } });
       assertExit(install, 0);
-      rmSync(path.join(skillDirFor(claudeHome), "references", "status.md"), { force: true });
+      rmSync(path.join(skillDirFor(claudeHome), "references", "status.md"), {
+        force: true,
+      });
       const result = runCli(["status", "--local", "--json"], {
         env: { CLAUDE_HOME: claudeHome },
       });
@@ -379,7 +491,7 @@ const cases = [
       assert(status.state === "stale", `expected stale, got ${status.state}`);
       assert(
         status.missingRequiredPaths.includes("references/status.md"),
-        `expected missing status reference, got ${status.missingRequiredPaths.join(", ")}`
+        `expected missing status reference, got ${status.missingRequiredPaths.join(", ")}`,
       );
     },
   },
@@ -392,7 +504,7 @@ const cases = [
       writeFileSync(
         path.join(skillDirFor(claudeHome), "references", "obsolete.md"),
         "obsolete\n",
-        "utf8"
+        "utf8",
       );
       const result = runCli(["status", "--local", "--json"], {
         env: { CLAUDE_HOME: claudeHome },
@@ -402,7 +514,87 @@ const cases = [
       assert(status.state === "stale", `expected stale, got ${status.state}`);
       assert(
         status.extraInstalledPaths.includes("references/obsolete.md"),
-        `expected obsolete extra path, got ${status.extraInstalledPaths.join(", ")}`
+        `expected obsolete extra path, got ${status.extraInstalledPaths.join(", ")}`,
+      );
+    },
+  },
+  {
+    name: "setup backfills missing manifest on same-version installs",
+    run() {
+      const claudeHome = makeTempHome();
+      const first = runCli(["setup"], {
+        env: { CLAUDE_HOME: claudeHome },
+      });
+      assertExit(first, 0);
+      rmSync(path.join(skillDirFor(claudeHome), ".installed-manifest.json"), {
+        force: true,
+      });
+
+      const second = runCli(["setup"], {
+        env: { CLAUDE_HOME: claudeHome },
+      });
+      assertExit(second, 0);
+      assertIncludes(
+        second.stdout,
+        "Wrote missing installed manifest",
+        "stdout",
+      );
+      assert(
+        existsSync(
+          path.join(skillDirFor(claudeHome), ".installed-manifest.json"),
+        ),
+        "expected setup to backfill missing .installed-manifest.json",
+      );
+    },
+  },
+  {
+    name: "status --local reports malformed installed manifest as stale",
+    run() {
+      const claudeHome = makeTempHome();
+      const install = runCli(["setup"], { env: { CLAUDE_HOME: claudeHome } });
+      assertExit(install, 0);
+      writeFileSync(
+        path.join(skillDirFor(claudeHome), ".installed-manifest.json"),
+        "{not json\n",
+        "utf8",
+      );
+      const result = runCli(["status", "--local", "--json"], {
+        env: { CLAUDE_HOME: claudeHome },
+      });
+      assertExit(result, 0);
+      const status = parseJsonStdout(result);
+      assert(status.state === "stale", `expected stale, got ${status.state}`);
+      assert(
+        status.installedManifestParseError,
+        "expected installed manifest parse error evidence",
+      );
+    },
+  },
+  {
+    name: "status --local detects installed manifest checksum mismatch",
+    run() {
+      const claudeHome = makeTempHome();
+      const install = runCli(["setup"], { env: { CLAUDE_HOME: claudeHome } });
+      assertExit(install, 0);
+      const manifestPath = path.join(
+        skillDirFor(claudeHome),
+        ".installed-manifest.json",
+      );
+      const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+      const skillEntry = manifest.files.find((file) => file.path === "SKILL.md");
+      assert(skillEntry, "expected manifest to include SKILL.md");
+      skillEntry.sha256 = "0".repeat(64);
+      writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + "\n", "utf8");
+
+      const result = runCli(["status", "--local", "--json"], {
+        env: { CLAUDE_HOME: claudeHome },
+      });
+      assertExit(result, 0);
+      const status = parseJsonStdout(result);
+      assert(status.state === "stale", `expected stale, got ${status.state}`);
+      assert(
+        status.installedManifestChecksumMismatches.includes("SKILL.md"),
+        `expected SKILL.md manifest checksum mismatch, got ${status.installedManifestChecksumMismatches.join(", ")}`,
       );
     },
   },
@@ -455,14 +647,20 @@ const cases = [
       assertExit(result, 0);
       assertStdout(
         result,
-        '/ddalggak plan simple "two words" "quote\\"here" "path\\\\with\\\\slashes" "line\\nbreak" "$HOME" "`cmd`"\n'
+        '/ddalggak plan simple "two words" "quote\\"here" "path\\\\with\\\\slashes" "line\\nbreak" "$HOME" "`cmd`"\n',
       );
     },
   },
   {
     name: "dispatch -- stops local flag parsing",
     run() {
-      const result = runCli(["plan", "--print", "--", "--show-doc", "two words"]);
+      const result = runCli([
+        "plan",
+        "--print",
+        "--",
+        "--show-doc",
+        "two words",
+      ]);
       assertExit(result, 0);
       assertStdout(result, '/ddalggak plan --show-doc "two words"\n');
     },
@@ -473,7 +671,11 @@ const cases = [
       const result = runCli(["review", "--show-doc"]);
       assertExit(result, 0);
       assertIncludes(result.stdout, "## Cross-Review Loop", "stdout");
-      assertIncludes(result.stdout, "Full procedure: `references/cross-review-loop.md`", "stdout");
+      assertIncludes(
+        result.stdout,
+        "Full procedure: `references/cross-review-loop.md`",
+        "stdout",
+      );
       assertIncludes(result.stdout, "Execution contract index:", "stdout");
     },
   },
@@ -483,12 +685,18 @@ const cases = [
       const expectedContracts = {
         start: {
           heading: "## Start Workflow",
-          references: ["references/start-workflow.md", "templates/worker-brief.md"],
+          references: [
+            "references/start-workflow.md",
+            "templates/worker-brief.md",
+          ],
           maxLines: 20,
         },
         review: {
           heading: "## Cross-Review Loop",
-          references: ["references/cross-review-loop.md", "templates/review-brief.md"],
+          references: [
+            "references/cross-review-loop.md",
+            "templates/review-brief.md",
+          ],
           maxLines: 20,
         },
         status: {
@@ -498,12 +706,18 @@ const cases = [
         },
         plan: {
           heading: "## Issue-Ready Plan",
-          references: ["references/issue-ready-plan.md", "references/wiki-context-preflight.md"],
+          references: [
+            "references/issue-ready-plan.md",
+            "references/wiki-context-preflight.md",
+          ],
           maxLines: 20,
         },
         issue: {
           heading: "## Plan to Issues",
-          references: ["references/plan-to-issues.md", "templates/issue-body.md"],
+          references: [
+            "references/plan-to-issues.md",
+            "templates/issue-body.md",
+          ],
           maxLines: 12,
         },
         clean: {
@@ -547,15 +761,22 @@ const cases = [
         const result = runCli([subcommand, "--show-doc"]);
         assertExit(result, 0);
         assertIncludes(result.stdout, contract.heading, `${subcommand} stdout`);
-        assertIncludes(result.stdout, "Full procedure:", `${subcommand} stdout`);
+        assertIncludes(
+          result.stdout,
+          "Full procedure:",
+          `${subcommand} stdout`,
+        );
         for (const reference of contract.references) {
           assertIncludes(result.stdout, reference, `${subcommand} stdout`);
         }
         const lineCount = result.stdout.trim().split("\n").length;
-        assert(lineCount >= 3, `expected ${subcommand} --show-doc to expose a non-empty section`);
+        assert(
+          lineCount >= 3,
+          `expected ${subcommand} --show-doc to expose a non-empty section`,
+        );
         assert(
           lineCount <= contract.maxLines,
-          `expected ${subcommand} --show-doc to stay compact (${lineCount}/${contract.maxLines} lines)`
+          `expected ${subcommand} --show-doc to stay compact (${lineCount}/${contract.maxLines} lines)`,
         );
       }
     },
@@ -577,26 +798,28 @@ const cases = [
       assert(
         pkg.scripts?.verify === "node scripts/verify-package.mjs",
         `expected package verify script to run scripts/verify-package.mjs, got ${JSON.stringify(
-          pkg.scripts?.verify
-        )}`
+          pkg.scripts?.verify,
+        )}`,
       );
       assert(
         pkg.scripts?.prepublishOnly === "npm run verify",
         `expected prepublishOnly to delegate to npm run verify, got ${JSON.stringify(
-          pkg.scripts?.prepublishOnly
-        )}`
+          pkg.scripts?.prepublishOnly,
+        )}`,
       );
       assert(
         pkg.files?.includes("scripts/"),
-        "expected scripts/ to be included in package artifact boundary"
+        "expected scripts/ to be included in package artifact boundary",
       );
       assert(
-        !readme.includes("https://www.npmjs.com/package/@jeremyfellaz/ddalggak"),
-        "README must not link to an unpublished npm package as if it is live"
+        !readme.includes(
+          "https://www.npmjs.com/package/@jeremyfellaz/ddalggak",
+        ),
+        "README must not link to an unpublished npm package as if it is live",
       );
       assert(
         !readme.includes("img.shields.io/npm/"),
-        "README must not show npm badges before first publish proves registry visibility"
+        "README must not show npm badges before first publish proves registry visibility",
       );
     },
   },

@@ -15,6 +15,7 @@ const requiredArtifactPaths = [
   "scripts/project-runtime-assets.mjs",
   "scripts/smoke.mjs",
   "scripts/verify-codex-skill.mjs",
+  "scripts/verify-package.mjs",
   "scripts/verify-projections.mjs",
   "scripts/test-verify-codex-skill-reference-aware.mjs",
   "scripts/eval-ddalggak-readiness.mjs",
@@ -35,8 +36,16 @@ const requiredArtifactPaths = [
   ".codex/skills/ddalggak/SKILL.md",
   ".codex/skills/ddalggak/references/wiki-bridge.md",
   "core/projections.yaml",
-  "core/commands/start.yaml",
+  "core/commands/check.yaml",
+  "core/commands/clean.yaml",
+  "core/commands/issue.yaml",
+  "core/commands/plan.yaml",
+  "core/commands/prompt.yaml",
+  "core/commands/retro.yaml",
   "core/commands/review.yaml",
+  "core/commands/ship.yaml",
+  "core/commands/start.yaml",
+  "core/commands/status.yaml",
   "core/runtimes/claude.yaml",
   "core/runtimes/codex.yaml",
   "core/runtimes/hermes.yaml",
@@ -57,7 +66,9 @@ function runStep(name, command, args, options = {}) {
   if (result.status !== 0) {
     const stdout = result.stdout ? `\nstdout:\n${result.stdout}` : "";
     const stderr = result.stderr ? `\nstderr:\n${result.stderr}` : "";
-    throw new Error(`${name} failed with exit ${result.status}${stdout}${stderr}`);
+    throw new Error(
+      `${name} failed with exit ${result.status}${stdout}${stderr}`,
+    );
   }
 
   return result;
@@ -66,12 +77,18 @@ function runStep(name, command, args, options = {}) {
 function parsePackJson(stdout) {
   try {
     const parsed = JSON.parse(stdout);
-    if (!Array.isArray(parsed) || parsed.length === 0 || !Array.isArray(parsed[0].files)) {
+    if (
+      !Array.isArray(parsed) ||
+      parsed.length === 0 ||
+      !Array.isArray(parsed[0].files)
+    ) {
       throw new Error("unexpected npm pack --json shape");
     }
     return parsed[0];
   } catch (error) {
-    throw new Error(`failed to parse npm pack --json output: ${error.message}\noutput:\n${stdout}`);
+    throw new Error(
+      `failed to parse npm pack --json output: ${error.message}\noutput:\n${stdout}`,
+    );
   }
 }
 
@@ -85,20 +102,22 @@ function verifyArtifactContents() {
       {
         capture: true,
         env: { npm_config_cache: cacheDir },
-      }
+      },
     );
     const pack = parsePackJson(result.stdout);
     const included = new Set(pack.files.map((file) => file.path));
-    const missing = requiredArtifactPaths.filter((requiredPath) => !included.has(requiredPath));
+    const missing = requiredArtifactPaths.filter(
+      (requiredPath) => !included.has(requiredPath),
+    );
 
     if (missing.length > 0) {
       throw new Error(
-        `npm artifact is missing required paths:\n${missing.map((item) => `- ${item}`).join("\n")}`
+        `npm artifact is missing required paths:\n${missing.map((item) => `- ${item}`).join("\n")}`,
       );
     }
 
     console.log(
-      `[verify-package] artifact ok: ${pack.files.length} files, ${requiredArtifactPaths.length} required paths present`
+      `[verify-package] artifact ok: ${pack.files.length} files, ${requiredArtifactPaths.length} required paths present`,
     );
   } finally {
     rmSync(cacheDir, { recursive: true, force: true });
@@ -109,12 +128,24 @@ try {
   runStep("npm test", npmCommand, ["test"]);
   runStep("codex skill verifier", npmCommand, ["run", "verify:codex-skill"]);
   runStep("projection verifier", npmCommand, ["run", "verify:projections"]);
-  runStep("reference-aware skill anchor tests", npmCommand, ["run", "test:reference-aware-skill-anchors"]);
-  runStep("ddalggak readiness eval", npmCommand, ["run", "eval:ddalggak-readiness"]);
+  runStep("reference-aware skill anchor tests", npmCommand, [
+    "run",
+    "test:reference-aware-skill-anchors",
+  ]);
+  runStep("ddalggak readiness eval", npmCommand, [
+    "run",
+    "eval:ddalggak-readiness",
+  ]);
   runStep("release helper tests", npmCommand, ["run", "test:release-helpers"]);
   runStep("release drafter tests", npmCommand, ["run", "test:release-drafter"]);
-  runStep("manual release bump tests", npmCommand, ["run", "test:manual-release-bump"]);
-  runStep("release candidate tests", npmCommand, ["run", "test:release-candidate"]);
+  runStep("manual release bump tests", npmCommand, [
+    "run",
+    "test:manual-release-bump",
+  ]);
+  runStep("release candidate tests", npmCommand, [
+    "run",
+    "test:release-candidate",
+  ]);
   runStep("release publish tests", npmCommand, ["run", "test:release-publish"]);
   verifyArtifactContents();
   console.log("\n[verify-package] passed");

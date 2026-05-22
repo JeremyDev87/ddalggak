@@ -11,7 +11,10 @@ function assert(condition, message) {
 }
 
 function assertIncludes(text, expected, message) {
-  assert(text.includes(expected), `${message}: expected to include ${JSON.stringify(expected)}`);
+  assert(
+    text.includes(expected),
+    `${message}: expected to include ${JSON.stringify(expected)}`,
+  );
 }
 
 function assertMatches(text, pattern, message) {
@@ -27,7 +30,7 @@ const tests = [
         "name: Release Publish",
         "push:",
         "tags:",
-        "- 'v*.*.*'",
+        '- "v*.*.*"',
         "workflow_dispatch:",
         "tag:",
         "required: true",
@@ -38,11 +41,15 @@ const tests = [
         "actions/setup-node@v6",
         "node-version: 24",
       ]) {
-        assertIncludes(workflow, expected, `release trigger contract ${expected}`);
+        assertIncludes(
+          workflow,
+          expected,
+          `release trigger contract ${expected}`,
+        );
       }
       assert(
         !workflow.includes('tag="${{ inputs.tag }}"'),
-        "release workflow must not interpolate raw workflow_dispatch tag directly in shell"
+        "release workflow must not interpolate raw workflow_dispatch tag directly in shell",
       );
     },
   },
@@ -56,18 +63,24 @@ const tests = [
       assert(publish !== -1, "publish job should exist");
       assert(verify < publish, "verify job should run before publish job");
       for (const expected of [
-        "expected_ref=\"refs/tags/${{ steps.release.outputs.tag }}\"",
+        'expected_ref="refs/tags/${{ steps.release.outputs.tag }}"',
         "actual_ref=$(git describe --tags --exact-match HEAD)",
         "package_version=$(node -p \"require('./package.json').version\")",
-        "node ./scripts/release-plan.mjs \"${{ steps.target.outputs.tag }}\" >> \"$GITHUB_OUTPUT\"",
+        'node ./scripts/release-plan.mjs "${{ steps.target.outputs.tag }}" >> "$GITHUB_OUTPUT"',
         "npm run verify",
         "npm pack --json",
         "npm init -y",
-        "npm install \"$tarball_path\"",
+        'npm install "$tarball_path"',
         "npx ddalggak --help",
         "npx ddalggak plan --show-doc",
+        "npx ddalggak setup --dry-run",
+        "npx ddalggak status --local --json",
       ]) {
-        assertIncludes(workflow, expected, `tagged ref verification contract ${expected}`);
+        assertIncludes(
+          workflow,
+          expected,
+          `tagged ref verification contract ${expected}`,
+        );
       }
     },
   },
@@ -78,17 +91,21 @@ const tests = [
       for (const expected of [
         "sha: ${{ steps.verified_ref.outputs.sha }}",
         "verified_sha=$(git rev-parse HEAD)",
-        "echo \"sha=$verified_sha\" >> \"$GITHUB_OUTPUT\"",
+        'echo "sha=$verified_sha" >> "$GITHUB_OUTPUT"',
         "actions/upload-artifact@v4",
         "name: release-tarball-${{ steps.release.outputs.version }}",
         "path: ${{ steps.pack.outputs.tarball }}",
         "ref: ${{ needs.verify_tagged_ref.outputs.sha }}",
-        "expected_sha=\"${{ needs.verify_tagged_ref.outputs.sha }}\"",
+        'expected_sha="${{ needs.verify_tagged_ref.outputs.sha }}"',
         "actions/download-artifact@v5",
         "name: release-tarball-${{ needs.verify_tagged_ref.outputs.version }}",
-        "npm publish \"$tarball_path\" --provenance --access public --tag \"${{ needs.verify_tagged_ref.outputs.npm_dist_tag }}\"",
+        'npm publish "$tarball_path" --provenance --access public --tag "${{ needs.verify_tagged_ref.outputs.npm_dist_tag }}"',
       ]) {
-        assertIncludes(workflow, expected, `verified SHA/tarball publish contract ${expected}`);
+        assertIncludes(
+          workflow,
+          expected,
+          `verified SHA/tarball publish contract ${expected}`,
+        );
       }
     },
   },
@@ -99,17 +116,22 @@ const tests = [
       assertMatches(
         workflow,
         /publish_to_npm:[\s\S]*?needs: verify_tagged_ref[\s\S]*?environment:\s*\n\s+name: release[\s\S]*?permissions:[\s\S]*?contents: read[\s\S]*?id-token: write/,
-        "publish job must need verification, require release environment, and request id-token for trusted publishing"
+        "publish job must need verification, require release environment, and request id-token for trusted publishing",
       );
-      const trusted = workflow.indexOf("Publish package with trusted publishing");
+      const trusted = workflow.indexOf(
+        "Publish package with trusted publishing",
+      );
       const token = workflow.indexOf("Publish package with NPM_TOKEN fallback");
       assert(trusted !== -1, "trusted publishing step should exist");
       assert(token !== -1, "NPM_TOKEN fallback step should exist");
-      assert(trusted < token, "trusted publishing should be attempted before NPM_TOKEN fallback");
+      assert(
+        trusted < token,
+        "trusted publishing should be attempted before NPM_TOKEN fallback",
+      );
       for (const expected of [
-        "npm publish \"$tarball_path\" --provenance --access public --tag \"${{ needs.verify_tagged_ref.outputs.npm_dist_tag }}\"",
+        'npm publish "$tarball_path" --provenance --access public --tag "${{ needs.verify_tagged_ref.outputs.npm_dist_tag }}"',
         "NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}",
-        "npm publish \"$tarball_path\" --access public --tag \"${{ needs.verify_tagged_ref.outputs.npm_dist_tag }}\"",
+        'npm publish "$tarball_path" --access public --tag "${{ needs.verify_tagged_ref.outputs.npm_dist_tag }}"',
       ]) {
         assertIncludes(workflow, expected, `publish auth contract ${expected}`);
       }
@@ -127,14 +149,20 @@ const tests = [
         "Release publish skipped",
         "Release publish completed",
       ]) {
-        assertIncludes(workflow, expected, `publish idempotency/dist-tag contract ${expected}`);
+        assertIncludes(
+          workflow,
+          expected,
+          `publish idempotency/dist-tag contract ${expected}`,
+        );
       }
     },
   },
   {
     name: "follow-up audit checks GitHub release and npm registry metadata",
     run() {
-      const workflow = read(".github/workflows/release-published-follow-up.yml");
+      const workflow = read(
+        ".github/workflows/release-published-follow-up.yml",
+      );
       for (const expected of [
         "name: Release Published Follow-up Audit",
         "release:",
@@ -143,8 +171,8 @@ const tests = [
         "tag:",
         "permissions:",
         "contents: read",
-        "gh release view \"$tag\"",
-        "npm view \"@jeremyfellaz/ddalggak@$version\" --json",
+        'gh release view "$tag"',
+        'npm view "@jeremyfellaz/ddalggak@$version" --json',
         "metadata.name",
         "metadata.version",
         "metadata.bin.ddalggak",
@@ -152,7 +180,11 @@ const tests = [
         "metadata.repository.url",
         "npm registry metadata verified",
       ]) {
-        assertIncludes(workflow, expected, `follow-up audit contract ${expected}`);
+        assertIncludes(
+          workflow,
+          expected,
+          `follow-up audit contract ${expected}`,
+        );
       }
     },
   },
@@ -171,7 +203,11 @@ const tests = [
         "## Release Published Follow-up Audit",
         "GitHub release and npm registry metadata",
       ]) {
-        assertIncludes(readme, expected, `README release publish/audit contract ${expected}`);
+        assertIncludes(
+          readme,
+          expected,
+          `README release publish/audit contract ${expected}`,
+        );
       }
     },
   },
@@ -192,7 +228,9 @@ for (const test of tests) {
   }
 }
 
-console.log(`\nSummary: ${passed}/${tests.length} release publish cases passed.`);
+console.log(
+  `\nSummary: ${passed}/${tests.length} release publish cases passed.`,
+);
 
 if (failures.length > 0) {
   process.exitCode = 1;
