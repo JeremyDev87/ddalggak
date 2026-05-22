@@ -17,11 +17,20 @@
 //   - Zero external dependencies; ESM; Node standard library only.
 
 import { readFileSync } from "node:fs";
-import { cp, rename, rm, stat, mkdir, writeFile, readFile } from "node:fs/promises";
+import { createHash, randomBytes } from "node:crypto";
+import {
+  cp,
+  rename,
+  rm,
+  stat,
+  mkdir,
+  writeFile,
+  readFile,
+  readdir,
+} from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, join, resolve, relative, isAbsolute } from "node:path";
 import { homedir } from "node:os";
-import { randomBytes } from "node:crypto";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PKG_ROOT = resolve(__dirname, "..", "..");
@@ -146,9 +155,7 @@ function safetyCheck(claudeHomeInput, claudeHomeResolved, dstResolved) {
 
   // 3) If the original input contained ".." segments and resolution traversed
   //    into a system-root child, reject. This covers CLAUDE_HOME=/tmp/evil/../etc.
-  const hasDotDot = claudeHomeInput
-    .split(/[\\/]/)
-    .some((seg) => seg === "..");
+  const hasDotDot = claudeHomeInput.split(/[\\/]/).some((seg) => seg === "..");
   if (hasDotDot) {
     // Check the resolved path and every ancestor up to root for system-root match.
     let probe = claudeHomeResolved;
@@ -211,6 +218,42 @@ async function readInstalledVersion(dstDir) {
     if (e && e.code === "ENOENT") return null;
     throw e;
   }
+}
+
+async function listPayloadFiles(root) {
+  const files = [];
+  async function visit(dir) {
+    const entries = await readdir(dir, { withFileTypes: true });
+    entries.sort((a, b) => a.name.localeCompare(b.name));
+    for (const entry of entries) {
+      const abs = join(dir, entry.name);
+      if (entry.isDirectory()) {
+        await visit(abs);
+      } else if (entry.isFile()) {
+        files.push(relative(root, abs).replaceAll("\\", "/"));
+      }
+    }
+  }
+  await visit(root);
+  return files;
+}
+
+async function buildInstalledManifest({ sourceRoot, installedRoot, version }) {
+  const sourceFiles = await listPayloadFiles(sourceRoot);
+  const files = [];
+  for (const relPath of sourceFiles) {
+    const bytes = await readFile(join(installedRoot, relPath));
+    files.push({
+      path: relPath,
+      sha256: createHash("sha256").update(bytes).digest("hex"),
+    });
+  }
+  return {
+    packageVersion: version,
+    installedAt: new Date().toISOString(),
+    sourceRoot,
+    files,
+  };
 }
 
 // --- main flow ------------------------------------------------------------
@@ -281,6 +324,7 @@ export async function run(args) {
     }
     out(`Would copy ${SRC_DIR} → ${dstDir}`);
     out(`Would write .installed-version with ${version}`);
+    out("Would write .installed-manifest.json with file sha256 inventory");
     return 0;
   }
 
@@ -290,6 +334,21 @@ export async function run(args) {
     const installed = dstExists ? await readInstalledVersion(dstDir) : null;
 
     if (dstExists && !opts.force && installed === version) {
+      if (!(await pathExists(join(dstDir, ".installed-manifest.json")))) {
+        const installedManifest = await buildInstalledManifest({
+          sourceRoot: SRC_DIR,
+          installedRoot: dstDir,
+          version,
+        });
+        await writeFile(
+          join(dstDir, ".installed-manifest.json"),
+          `${JSON.stringify(installedManifest, null, 2)}\n`,
+          "utf8",
+        );
+        out(
+          `Wrote missing installed manifest → ${join(dstDir, ".installed-manifest.json")}`,
+        );
+      }
       out(`Already up to date (v${version}) at ${dstDir}`);
       return 0;
     }
@@ -308,16 +367,24 @@ export async function run(args) {
     await mkdir(resolve(dstDir, ".."), { recursive: true });
 
     await cp(SRC_DIR, dstDir, { recursive: true, force: true });
+    await writeFile(join(dstDir, ".installed-version"), version + "\n", "utf8");
+    const installedManifest = await buildInstalledManifest({
+      sourceRoot: SRC_DIR,
+      installedRoot: dstDir,
+      version,
+    });
     await writeFile(
-      join(dstDir, ".installed-version"),
-      version + "\n",
-      "utf8"
+      join(dstDir, ".installed-manifest.json"),
+      `${JSON.stringify(installedManifest, null, 2)}\n`,
+      "utf8",
     );
 
     out(`✓ Installed ddalggak v${version} → ${dstDir}`);
     out("");
     out("Next step:");
-    out("  Claude Code에서 /ddalggak 또는 npx @jeremyfellaz/ddalggak <subcommand>를 사용하세요.");
+    out(
+      "  Claude Code에서 /ddalggak 또는 npx @jeremyfellaz/ddalggak <subcommand>를 사용하세요.",
+    );
     return 0;
   } catch (e) {
     err(`install failed: ${e && e.message ? e.message : e}`);
