@@ -85,9 +85,21 @@ node bin/ddalggak.js plan --print "Split issue 22 into reviewable PR units"
 node bin/ddalggak.js start 22
 node bin/ddalggak.js status
 node bin/ddalggak.js status --local --json
+node bin/ddalggak.js profile hermes --dry-run
 ```
 
 When the `claude` CLI is not on `PATH`, or when the current terminal is non-interactive, the CLI prints the slash command to paste into Claude Code instead of spawning Claude Code.
+
+### Hermes-style Profile Proposal
+
+`ddalggak profile hermes` proposes a global Claude Code profile change as a dry-run only. It reads the existing `$CLAUDE_HOME/CLAUDE.md` or `~/.claude/CLAUDE.md` when present, then prints a unified diff proposal. It never writes `CLAUDE.md`, never writes `settings.json`, and intentionally has no `--apply` mode.
+
+```bash
+node bin/ddalggak.js profile hermes --dry-run
+node bin/ddalggak.js profile hermes --print-claude-md-patch
+```
+
+The proposed profile adds Korean honorific/truth-first defaults, GitHub issue body/labels/comments checks, the ddalggak issue → plan → start → ship → review cycle, `getwiki` before plan/review, approval-gated `setwiki`, and a never-merge / never-auto-merge policy.
 
 ### Legacy Setup
 
@@ -112,6 +124,12 @@ Common subcommand options:
 
 - `--print`: print only the `/ddalggak <subcommand> ...` slash command.
 - `--show-doc`: print the matching `SKILL.md` section for the subcommand.
+
+`profile hermes` options:
+
+- `--dry-run`: print a proposed patch without changing files. This is the default.
+- `--print-claude-md-patch`: print only the proposed `CLAUDE.md` unified diff.
+- `--apply`: not supported; apply profile changes manually after review if desired.
 
 `status --local` options:
 
