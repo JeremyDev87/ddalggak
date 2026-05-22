@@ -51,7 +51,7 @@ const skillBudgets = [
     maxChars: 35_000,
     principleHeadings: ["Global Guardrails"],
     maxPrincipleBullets: 25,
-    maxInlineSubcommandAnchors: 25,
+    maxInlineSubcommandAnchors: 20,
   },
   {
     label: "ddalggak/SKILL.md",
@@ -60,7 +60,7 @@ const skillBudgets = [
     maxChars: 45_000,
     principleHeadings: ["핵심 원칙", "myWiki-derived 운영 Guardrails"],
     maxPrincipleBullets: 30,
-    maxInlineSubcommandAnchors: 110,
+    maxInlineSubcommandAnchors: 60,
   },
 ];
 const skillBudgetMetrics = [];
@@ -150,6 +150,22 @@ const forbiddenHotPathTemplateSentinels = [
   {
     pattern: /## Reviewer Prompt\r?\n(?:.|\n){0,200}Critical\/High/,
     description: "low-frequency review prompt body",
+  },
+  {
+    pattern: /### Quality Lens Router Output\r?\n- Applicable gate families:/,
+    description: "inline show-doc quality lens detail block",
+  },
+  {
+    pattern: /### Evidence Contract\r?\n- Required evidence:/,
+    description: "inline show-doc evidence contract detail block",
+  },
+  {
+    pattern: /### Frontend Design Brief\r?\n- Product\/user context/,
+    description: "inline show-doc frontend design detail block",
+  },
+  {
+    pattern: /### Vercel Agent Skills Gate\r?\n- Applicable upstream skill families/,
+    description: "inline show-doc Vercel gate detail block",
   },
 ];
 const requiredSubcommands = [
@@ -1184,73 +1200,120 @@ for (const [subcommand, heading] of Object.entries(requiredLegacyHeadings)) {
   }
 }
 
-const requiredRouterSubcommands = ["plan", "start", "review"];
-for (const subcommand of requiredRouterSubcommands) {
+const compactShowDocContracts = {
+  plan: [
+    "Full procedure: `references/issue-ready-plan.md`; wiki preflight: `references/wiki-context-preflight.md`.",
+    "Execution contract index:",
+    "Quality Lens Router Output",
+    "Evidence Contract",
+    "Simplicity / Deletability Gate",
+    "Frontend/Vercel/Regression details only when applicable",
+    "one PR per issue by default",
+    "conflict fallback only with proof",
+    "Parallelization Decision",
+    "Must not touch",
+    "evidence",
+    "commit message",
+  ],
+  start: [
+    "Full procedure: `references/start-workflow.md`; reusable prompt: `templates/worker-brief.md`.",
+    "Execution contract index:",
+    "Quality Lens Router",
+    "Evidence Contract",
+    "Simplicity / Deletability",
+    "Core Invariants",
+    "frontend/vercel/regression only when applicable",
+    "allowed, forbidden, inspect-only, Must not touch",
+    "one issue PR by default",
+    "hard-conflict fallback only with reason",
+    "commit/push/PR/evidence/blocking gaps",
+  ],
+  review: [
+    "Full procedure: `references/cross-review-loop.md`; reusable prompt: `templates/review-brief.md`.",
+    "Execution contract index:",
+    "live PR state",
+    "diff/files/checks",
+    "linked issue",
+    "current head SHA",
+    "wiki-context preflight",
+    "Quality Lens Router",
+    "Evidence Contract",
+    "Simplicity / Deletability",
+    "Core Invariants",
+    "conditional frontend/vercel/regression gates",
+    "top-level comment with SHA",
+    "validation",
+    "conclusion",
+  ],
+};
+for (const [subcommand, anchors] of Object.entries(compactShowDocContracts)) {
   const heading = requiredLegacyHeadings[subcommand];
   const section = extractLegacySection(legacySkillText, heading);
-  if (!section.includes("Quality Lens Router Output")) {
-    fail(`ddalggak ${subcommand} --show-doc section must expose Quality Lens Router Output.`);
-  }
-  if (!section.includes("Evidence Contract")) {
-    fail(`ddalggak ${subcommand} --show-doc section must expose Evidence Contract.`);
-  }
-  if (!section.includes("Simplicity / Deletability")) {
-    fail(`ddalggak ${subcommand} --show-doc section must expose Simplicity / Deletability Gate.`);
-  }
-  if (!section.includes("Frontend Design")) {
-    fail(`ddalggak ${subcommand} --show-doc section must expose Frontend Design Gate.`);
-  }
-  if (!section.includes("Vercel Agent Skills Gate")) {
-    fail(`ddalggak ${subcommand} --show-doc section must expose Vercel Agent Skills Gate.`);
-  }
-  if (subcommand === "plan" && !section.includes("why is this abstraction necessary?")) {
-    fail("ddalggak plan --show-doc section must expose the abstraction necessity question.");
-  }
-  if (subcommand === "plan" && !section.includes("Frontend Design Brief")) {
-    fail("ddalggak plan --show-doc section must expose Frontend Design Brief.");
-  }
-  if (subcommand === "plan") {
-    for (const planCommitLaneAnchor of ["Issue-PR Strategy with Conflict Fallback", "PR count: one PR per issue by default", "Default PR shape: one PR per issue; conflict fallback only when issue conflicts require it", "Parallelization Decision", "Must not touch", "Evidence / validation", "Commit message"]) {
-      if (!section.includes(planCommitLaneAnchor)) {
-        fail(`ddalggak plan --show-doc section must expose issue-PR conflict-fallback contract (${planCommitLaneAnchor}).`);
-      }
-    }
-    for (const planAnchor of ["Applicable upstream skill families", "React/Next.js performance risks", "Explicit anti-goals", "Backend-only skip/lightweight reason"]) {
-      if (!section.includes(planAnchor)) {
-        fail(`ddalggak plan --show-doc section must expose ${planAnchor}.`);
-      }
-    }
-    for (const planRegressionAnchor of ["references/regression-library.md", "유용한 범위", "Regression Library Candidate"]) {
-      if (!section.includes(planRegressionAnchor)) {
-        fail(`ddalggak plan --show-doc section must mention regression-library reference only where useful (${planRegressionAnchor}).`);
-      }
+  for (const anchor of anchors) {
+    if (!section.includes(anchor)) {
+      fail(`ddalggak ${subcommand} --show-doc compact contract missing anchor: ${anchor}`);
     }
   }
-  if (subcommand === "start" && !section.includes("small direct change first")) {
-    fail("ddalggak start --show-doc section must expose small direct change first.");
-  }
-  if (subcommand === "start") {
-    for (const startCommitLaneAnchor of ["Issue-PR Strategy with Conflict Fallback", "Default PR shape: one PR per issue; conflict fallback only when issue conflicts require it", "Parallelization Decision", "Integration commit", "PR CREATE — 독립 이슈는 기본 생성"]) {
-      if (!section.includes(startCommitLaneAnchor)) {
-        fail(`ddalggak start --show-doc section must expose issue-PR conflict-fallback contract (${startCommitLaneAnchor}).`);
-      }
-    }
-    for (const startAnchor of ["aesthetic direction", "screenshot/viewport/manual evidence", "server/client boundary", "token source without printing secrets", "preview-first"]) {
-      if (!section.includes(startAnchor)) {
-        fail(`ddalggak start --show-doc section must expose ${startAnchor}.`);
-      }
-    }
-    for (const startRegressionAnchor of ["references/regression-library.md", "유용한 범위", "class-level risk"]) {
-      if (!section.includes(startRegressionAnchor)) {
-        fail(`ddalggak start --show-doc section must mention regression-library reference only where useful (${startRegressionAnchor}).`);
-      }
+  for (const forbiddenHeading of [
+    "### Quality Lens Router Output",
+    "### Evidence Contract",
+    "### Frontend Design Brief",
+    "### Vercel Agent Skills Gate",
+  ]) {
+    if (section.includes(forbiddenHeading)) {
+      fail(`ddalggak ${subcommand} --show-doc must keep ${forbiddenHeading} detail in references/templates, not inline.`);
     }
   }
-  if (subcommand === "review") {
-    for (const reviewAnchor of ["one-off abstraction", "human readability", "Frontend Design Review Gate", "generic AI/template", "screenshot/manual verification", "Vercel deploy safety", "component API quality", "animation meaning", "React Native/Expo", "Continuous Regression Library", "Regression Library Candidate", "references/regression-library.md"]) {
-      if (!section.includes(reviewAnchor)) {
-        fail(`ddalggak review --show-doc section must expose ${reviewAnchor}.`);
-      }
+}
+
+const codexSkillText = statSync(skillPath, { throwIfNoEntry: false })?.isFile()
+  ? readText(skillPath)
+  : "";
+const codexCompactSubcommandContracts = {
+  plan: [
+    "Full procedure: `references/issue-ready-plan.md`; wiki preflight: `references/wiki-context-preflight.md`.",
+    "Execution contract index:",
+    "Quality Lens Router Output",
+    "Evidence Contract",
+    "Simplicity / Deletability Gate",
+    "one issue PR by default",
+    "conflict fallback only with proof",
+    "Parallelization Decision",
+    "Must not touch",
+  ],
+  start: [
+    "Full procedure: `references/start-workflow.md`; reusable prompt: `templates/worker-brief.md`.",
+    "Execution contract index:",
+    "Quality Lens Router Output",
+    "Evidence Contract",
+    "Simplicity / Deletability Gate",
+    "allowed/forbidden/inspect-only/Must not touch",
+    "one issue PR by default",
+    "hard-conflict fallback only with reason",
+    "validation/PR evidence",
+  ],
+  review: [
+    "Full procedure: `references/cross-review-loop.md`; reusable prompt: `templates/review-brief.md`.",
+    "Execution contract index:",
+    "live PR/diff/files/checks/issue/head SHA",
+    "Wiki Context Preflight",
+    "Quality Lens Router Output",
+    "Evidence Contract",
+    "Simplicity / Deletability Gate",
+    "conditional frontend/Vercel/regression gates",
+    "top-level conclusion comment",
+  ],
+};
+const codexCompactHeadings = {
+  plan: "`plan` - Issue-Ready Plan",
+  start: "`start` - Issue-Based Implementation",
+  review: "`review` - Cross-Review Loop",
+};
+for (const [subcommand, anchors] of Object.entries(codexCompactSubcommandContracts)) {
+  const section = extractMarkdownSection(codexSkillText, codexCompactHeadings[subcommand]);
+  for (const anchor of anchors) {
+    if (!section.includes(anchor)) {
+      fail(`.codex/skills/ddalggak/SKILL.md ${subcommand} compact contract missing anchor: ${anchor}`);
     }
   }
 }
