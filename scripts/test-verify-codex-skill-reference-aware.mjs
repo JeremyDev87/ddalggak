@@ -73,8 +73,8 @@ withTempRepo("reference-only anchor can leave SKILL.md", (tempDir) => {
   for (const skillRelativePath of [".codex/skills/ddalggak/SKILL.md", "ddalggak/SKILL.md"]) {
     replaceInFile(
       path.join(tempDir, skillRelativePath),
-      "Domain gate is a lens, not a mandate",
-      "Domain gate is intentionally verified from references only",
+      "Counterargument Pass",
+      "Counterargument guardrail is intentionally verified from references only",
     );
   }
   assertPass("reference-only anchor can leave SKILL.md", runVerifier(tempDir));
@@ -120,6 +120,20 @@ withTempRepo("evidence reference-owned anchor must remain in references", (tempD
     "evidence reference-owned anchor must remain in references",
     runVerifier(tempDir),
     "preserve these details in the appropriate references/* file instead of re-expanding SKILL.md",
+  );
+});
+
+withTempRepo("core invariants reference must exist in both payload roots", (tempDir) => {
+  for (const referenceRelativePath of [
+    ".codex/skills/ddalggak/references/core-invariants.md",
+    "ddalggak/references/core-invariants.md",
+  ]) {
+    rmSync(path.join(tempDir, referenceRelativePath), { force: true });
+  }
+  assertFail(
+    "core invariants reference must exist in both payload roots",
+    runVerifier(tempDir),
+    "must exist for Core Invariants parity",
   );
 });
 

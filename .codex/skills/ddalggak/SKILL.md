@@ -73,36 +73,27 @@ Use Codex App native orchestration names in briefs and state records: `spawn_age
 ## Global Guardrails
 
 - **Base freshness first**: run `git fetch --prune`; know branch and ahead/behind state before validation, review, ship, or cleanup.
-- **URL beats cwd**: parse GitHub owner/repo/number from URL before mutation. GitHub URL handling criteria: issue URL, PR URL, and repo URL target resolution precedes cwd inference; if cwd remote does not match, stop and switch/clone the matching checkout.
+- **URL beats cwd**: parse GitHub owner/repo/number from issue, PR, or repo URL before mutation. If cwd remote does not match, stop and switch/clone the matching checkout.
 - **Issue comments matter**: issue body and comments are both source-of-truth candidates; latest explicit comment wins over stale body text.
-- **No implicit dependencies**: prove a dependency already exists before importing it.
-- **Manual merge only**: never merge or enable auto-merge unless explicitly asked in the current turn. Green checks plus review only mean ready for manual merge. Status reports must separate automation judgment, CI/check state, formal review/branch protection state, merge blockers, and human action.
-- **Approval-comment policy**: when formal approval is inappropriate, leave a top-level PR comment with head SHA, review scope, validation evidence, blocking findings count, and an APPROVE or CHANGES_REQUESTED conclusion. A top-level APPROVE comment is review evidence, not GitHub formal approval; report `reviewDecision` and `mergeStateStatus` separately.
-- **Issue-PRs by default**: do not replace independent issue PRs with stacked PRs or branch matrices. Use one issue PR per independent issue; only hard conflicts may use one PR with separate commits.
-- **Runtime contract language**: use Task Scope Contract, Context Assembly Manifest, Resume Snapshot, and Control-flow ownership from references/agent-runtime-contract.md.
-- **Task Scope Contract**: distinguish tool capability boundary from task scope contract. Unauthorized files, unrelated cleanup, config/credential/migration changes, destructive actions, external API writes, production data touch, branch mutation, and other out-of-scope diff are scope-expansion failure candidates.
-- **Evidence Contract**: references/evidence-contract.md is mandatory before completion, readiness, approval, deploy, performance, UI, security, data, or API claims. Missing Blocking evidence gaps block No evidence, no readiness or approval.
-- **Simplicity / Deletability Gate**: references/simplicity-deletability-gate.md is mandatory for code-shape decisions. Start with small direct change first, ask why any proposed abstraction is necessary, treat one-off abstraction skeptically, and keep human readability/deletability above SOLID or named patterns.
-- **Counterargument Pass**: before readiness claims, name weak assumptions, repo convention conflicts, evidence that would disprove readiness, and the smaller or more direct change. Treat unmerged prerequisite PRs/issues, overlapping verifier surfaces, and open automation PRs that change the same contract as missing readiness / ordering input, not Dobby rejection.
-- **Quality Lens Router**: Quality Lens Router Output records Applicable gate families, Skipped gates, Required references, lightweight/limited gates, backend-only skip, and Repo/product conventions. Domain gate is a lens, not a mandate.
-- **Wiki Context First**: `plan` and `review` must run `references/wiki-context-preflight.md` before final judgment. Search getwiki/LLM Wiki for reusable prior knowledge, repo/product conventions, past failure patterns, and known decisions. Cite wiki paths for wiki-derived claims; if retrieval fails or no relevant source exists, record the evidence gap and continue from live evidence.
-- **Frontend Design Gate**: references/frontend-design-gate.md is conditional for visual/frontend work; include Frontend Design Brief and Frontend Design Review Gate only when applicable.
-- **Vercel Agent Skills Gate**: references/vercel-agent-skills-gates.md is conditional for React/Next, composition, motion, web design/a11y, deploy/token, or mobile work. Consider react-best-practices, composition-patterns, react-view-transitions, web-design-guidelines, deploy-to-vercel, vercel-cli-with-tokens, and react-native-skills with server/client boundary, unnecessary client component avoidance, hydration/bundle regression avoidance, token source without printing secrets, preview-first, Vercel deploy safety, component API quality, animation meaning, and React Native/Expo constraints.
-- **Component methodology gate**: for component work, main component only assembles; split ComponentName.parts.tsx and ComponentName.utils.ts only when justified; use satisfies Record<...> maps where supported; test public visual-contract classes and no silent fallback; do not create empty companion files.
-- **Continuous Regression Library**: references/regression-library.md is a durable review reference for repeated Medium/High class-level risks. Suggest Regression Library Candidate only for generalized class-level failure; keep transient incidents in memory out of canonical guidance.
-- **Self-created complexity is a defect**: forced modularization, Client-side patches that bypass real boundaries, mock-only tests, and unnecessary helper/provider/wrapper layers are review risks.
-- **Evidence is first-class**: rendered evidence includes route evidence, viewport evidence, rendered DOM evidence, screenshot evidence, fallback evidence, and contract graph evidence. Use not-applicable with reasons where skipped.
-- **Analytics privacy**: exclude raw search terms, prompt titles, prompt bodies, full query strings, arbitrary text, and personal identifiers unless a privacy allowlist proves otherwise.
-- **Retrospective hygiene**: PR numbers, commit SHAs, single-session completion logs, incident records, and durable reusable knowledge are separated; reusable extraction categories include harness-engineering/*, principles/*, frontend/*, and llm-wiki/*.
+- **Manual merge only**: never merge or enable auto-merge unless explicitly asked in the current turn. Green checks plus review only mean ready for manual merge.
+- **Approval-comment policy**: top-level APPROVE comments are evidence, not GitHub formal approval; report `CI/check`, `reviewDecision`, `mergeStateStatus`, branch protection, and human action separately.
+- **Issue-PRs by default**: one issue PR per independent issue; only proven hard conflicts may use one PR with separate commits.
+- **Runtime contract language**: `references/agent-runtime-contract.md` owns Task Scope Contract, Context Assembly Manifest, Resume Snapshot, Control-flow ownership, tool capability boundary, task scope contract, out-of-scope diff, and scope-expansion failure.
+- **Quality Lens Router**: `references/quality-lens-router.md` owns Applicable gate families, Skipped gates, Required references, lightweight/limited gates, backend-only skip, and Repo/product conventions. Domain gate is a lens, not a mandate.
+- **Wiki Context First**: `plan` and `review` must run `references/wiki-context-preflight.md`; cite wiki paths for wiki-derived claims or record retrieval gaps.
+- **Evidence Contract**: `references/evidence-contract.md` is mandatory before completion, readiness, approval, deploy, performance, UI, security, data, or API claims. Blocking evidence gaps block No evidence, no readiness or approval.
+- **Simplicity / Deletability Gate**: `references/simplicity-deletability-gate.md` is mandatory for code-shape decisions. Start with small direct change first and ask why any proposed abstraction is necessary.
+- **Core Invariants Reference**: `references/core-invariants.md` owns long-form guardrail rationale for Counterargument Pass, privacy, knowledge extraction, rendered evidence, component methodology gate, raw UTF-8, Self-created complexity is a defect, and no silent fallback.
+- **Conditional gates stay conditional**: frontend design, Vercel agent skills, and regression-library references load only when applicable, with explicit backend-only or lightweight skip reasons.
 
 ## Required Reference Map
 
 | Subcommand | Purpose | Required reference rule |
 | --- | --- | --- |
-| `start` | Issue implementation | references/quality-lens-router.md, references/evidence-contract.md, references/simplicity-deletability-gate.md, references/agent-runtime-contract.md; conditional frontend/vercel/regression references |
-| `review` | Independent review/fix loop | references/wiki-context-preflight.md, references/evidence-contract.md, references/simplicity-deletability-gate.md, references/regression-library.md; conditional frontend/vercel references |
+| `start` | Issue implementation | references/quality-lens-router.md, references/evidence-contract.md, references/simplicity-deletability-gate.md, references/agent-runtime-contract.md, references/core-invariants.md; conditional frontend/vercel/regression references |
+| `review` | Independent review/fix loop | references/wiki-context-preflight.md, references/evidence-contract.md, references/simplicity-deletability-gate.md, references/core-invariants.md, references/regression-library.md; conditional frontend/vercel references |
 | `status` | State snapshot | state file + git/GitHub live state; no extra reference by default |
-| `plan` | Issue-ready plan | references/wiki-context-preflight.md, references/quality-lens-router.md, references/evidence-contract.md, references/simplicity-deletability-gate.md; conditional design/deploy/regression references |
+| `plan` | Issue-ready plan | references/wiki-context-preflight.md, references/quality-lens-router.md, references/evidence-contract.md, references/simplicity-deletability-gate.md, references/core-invariants.md; conditional design/deploy/regression references |
 | `issue` | Plan to GitHub issues | the plan body; preserve ownership/dependency/evidence fields |
 | `clean` | Post-merge cleanup | GitHub PR merge evidence and live git state |
 | `ship` | Publish current lane | issue body/comments, local diff, validation evidence, draft PR contract |
