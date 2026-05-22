@@ -11,7 +11,10 @@ function assert(condition, message) {
 }
 
 function assertIncludes(text, expected, message) {
-  assert(text.includes(expected), `${message}: expected to include ${JSON.stringify(expected)}`);
+  assert(
+    text.includes(expected),
+    `${message}: expected to include ${JSON.stringify(expected)}`,
+  );
 }
 
 function assertMatches(text, pattern, message) {
@@ -39,7 +42,11 @@ const tests = [
         "node-version: 24",
         "INPUT_TARGET_SHA: ${{ inputs.target_sha }}",
       ]) {
-        assertIncludes(workflow, expected, `workflow trigger/SHA contract ${expected}`);
+        assertIncludes(
+          workflow,
+          expected,
+          `workflow trigger/SHA contract ${expected}`,
+        );
       }
     },
   },
@@ -50,21 +57,22 @@ const tests = [
       assertMatches(
         workflow,
         /Validate manual target SHA[\s\S]*?INPUT_TARGET_SHA: \$\{\{ inputs\.target_sha \}\}[\s\S]*?\^\[0-9a-fA-F\]\{40\}\$/,
-        "manual SHA input must be env-scoped and 40-hex validated"
+        "manual SHA input must be env-scoped and 40-hex validated",
       );
       assertMatches(
         workflow,
         /Resolve target SHA[\s\S]*?target_sha="\$GITHUB_SHA"[\s\S]*?if \[ -n "\$INPUT_TARGET_SHA" \]; then[\s\S]*?target_sha="\$INPUT_TARGET_SHA"/,
-        "metadata step should prefer manual target_sha over event SHA"
+        "metadata step should prefer manual target_sha over event SHA",
       );
       assertMatches(
         workflow,
         /Verify checkout SHA[\s\S]*?actual_sha=\$\(git rev-parse HEAD\)[\s\S]*?expected_sha="\$\{\{ steps\.target\.outputs\.target_sha \}\}"[\s\S]*?\[ "\$actual_sha" != "\$expected_sha" \]/,
-        "workflow must fail if checkout HEAD differs from target SHA"
+        "workflow must fail if checkout HEAD differs from target SHA",
       );
       assert(
-        !workflow.includes("${{ inputs.target_sha }}") || workflow.includes("INPUT_TARGET_SHA: ${{ inputs.target_sha }}"),
-        "workflow must not interpolate raw target_sha directly into shell commands"
+        !workflow.includes("${{ inputs.target_sha }}") ||
+          workflow.includes("INPUT_TARGET_SHA: ${{ inputs.target_sha }}"),
+        "workflow must not interpolate raw target_sha directly into shell commands",
       );
     },
   },
@@ -73,7 +81,7 @@ const tests = [
     run() {
       const workflow = read(".github/workflows/release-candidate.yml");
       for (const expected of [
-        "base_version=$(git show \"$before_sha:package.json\"",
+        'base_version=$(git show "$before_sha:package.json"',
         "candidate_version=$(node -p \"require('./package.json').version\")",
         "version_changed=false",
         "version_changed=true",
@@ -81,7 +89,11 @@ const tests = [
         "package.json changed without a version bump",
         "if: ${{ steps.candidate.outputs.version_changed == 'true' }}",
       ]) {
-        assertIncludes(workflow, expected, `version change/skip contract ${expected}`);
+        assertIncludes(
+          workflow,
+          expected,
+          `version change/skip contract ${expected}`,
+        );
       }
     },
   },
@@ -91,13 +103,19 @@ const tests = [
       const workflow = read(".github/workflows/release-candidate.yml");
       const tagCheck = workflow.indexOf("Check release tag availability");
       const smoke = workflow.indexOf("Smoke install packed package");
-      assert(tagCheck !== -1, "workflow should check whether the release tag already exists");
+      assert(
+        tagCheck !== -1,
+        "workflow should check whether the release tag already exists",
+      );
       assert(smoke !== -1, "workflow should smoke install the packed package");
-      assert(tagCheck < smoke, "tag existence check should happen before smoke install");
+      assert(
+        tagCheck < smoke,
+        "tag existence check should happen before smoke install",
+      );
       assertMatches(
         workflow,
         /git ls-remote --exit-code --tags origin "refs\/tags\/\$\{\{ steps\.candidate\.outputs\.tag \}\}"[\s\S]*?status=\$\?[\s\S]*?\[ "\$status" -eq 0 \][\s\S]*?already exists[\s\S]*?\[ "\$status" -eq 2 \][\s\S]*?is available[\s\S]*?Failed to check release tag availability/,
-        "tag check must fail closed on remote/auth/network errors while allowing only ls-remote exit 2 as available"
+        "tag check must fail closed on remote/auth/network errors while allowing only ls-remote exit 2 as available",
       );
     },
   },
@@ -109,9 +127,11 @@ const tests = [
         "npm run verify",
         "npm pack --json",
         "npm init -y",
-        "npm install \"$tarball_path\"",
+        'npm install "$tarball_path"',
         "npx ddalggak --help",
         "npx ddalggak plan --show-doc",
+        "npx ddalggak setup --dry-run",
+        "npx ddalggak status --local --json",
       ]) {
         assertIncludes(workflow, expected, `pack/smoke contract ${expected}`);
       }
@@ -152,7 +172,9 @@ for (const test of tests) {
   }
 }
 
-console.log(`\nSummary: ${passed}/${tests.length} release candidate cases passed.`);
+console.log(
+  `\nSummary: ${passed}/${tests.length} release candidate cases passed.`,
+);
 
 if (failures.length > 0) {
   process.exitCode = 1;

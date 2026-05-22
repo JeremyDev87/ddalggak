@@ -183,6 +183,8 @@ jobs:
           npm install "$tarball_path"
           npx ddalggak --help
           npx ddalggak plan --show-doc
+          npx ddalggak setup --dry-run
+          npx ddalggak status --local --json
           popd >/dev/null
 
       - name: Verified summary
