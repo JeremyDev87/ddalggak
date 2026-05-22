@@ -1486,6 +1486,18 @@ if (statSync(skillDir, { throwIfNoEntry: false })?.isDirectory()) {
   }
 }
 
+const projectionVerifier = spawnSync(process.execPath, ["scripts/verify-projections.mjs"], {
+  cwd: rootDir,
+  encoding: "utf8",
+});
+if (projectionVerifier.status !== 0) {
+  fail(
+    `projection-aware verifier failed with exit ${projectionVerifier.status}:\n${projectionVerifier.stdout || ""}${projectionVerifier.stderr || ""}`,
+  );
+} else if (projectionVerifier.stdout) {
+  process.stdout.write(projectionVerifier.stdout);
+}
+
 if (failures.length > 0) {
   console.error("[verify:codex-skill] failed");
   for (const failure of failures) {

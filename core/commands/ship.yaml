@@ -1,0 +1,14 @@
+# Canonical ddalggak command contract. Keep this file data-only; do not paste long procedure here.
+command: ship
+show_doc_heading: "Ship"
+source_edit_allowed: false
+purpose: "Commit/push/open draft PR for existing scoped changes."
+required_references:
+  - ship.md
+
+required_templates:
+  []
+
+output_contract:
+  completion_signal: "SHIP_DONE"
+  evidence_required: true

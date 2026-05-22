@@ -1,0 +1,20 @@
+# Canonical ddalggak command contract. Keep this file data-only; do not paste long procedure here.
+command: start
+show_doc_heading: "Start Workflow"
+source_edit_allowed: true
+purpose: "Issue implementation from live issue body/comments; one issue PR by default."
+required_references:
+  - quality-lens-router.md
+  - evidence-contract.md
+  - simplicity-deletability-gate.md
+  - agent-runtime-contract.md
+  - core-invariants.md
+  - start-workflow.md
+
+required_templates:
+  - worker-brief.md
+  - conductor-state.md
+
+output_contract:
+  completion_signal: "ISSUE_PR_READY"
+  evidence_required: true

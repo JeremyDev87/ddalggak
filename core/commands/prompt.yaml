@@ -1,0 +1,14 @@
+# Canonical ddalggak command contract. Keep this file data-only; do not paste long procedure here.
+command: prompt
+show_doc_heading: "Prompt Optimizer"
+source_edit_allowed: false
+purpose: "Improve briefs/prompts without source edits."
+required_references:
+  - prompt-optimizer.md
+
+required_templates:
+  []
+
+output_contract:
+  completion_signal: "PROMPT_DONE"
+  evidence_required: true

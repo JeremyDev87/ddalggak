@@ -1,0 +1,15 @@
+# Canonical ddalggak command contract. Keep this file data-only; do not paste long procedure here.
+command: issue
+show_doc_heading: "Plan to Issues"
+source_edit_allowed: false
+purpose: "Create GitHub issues from an approved plan."
+required_references:
+  - plan-to-issues.md
+
+required_templates:
+  - issue-body.md
+  - epic-body.md
+
+output_contract:
+  completion_signal: "ISSUE_DONE"
+  evidence_required: true

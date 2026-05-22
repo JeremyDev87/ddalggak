@@ -1,0 +1,15 @@
+# Canonical ddalggak command contract. Keep this file data-only; do not paste long procedure here.
+command: retro
+show_doc_heading: "Retrospective"
+source_edit_allowed: false
+purpose: "Extract reusable lessons after merge without transient memory."
+required_references:
+  - retrospective.md
+  - retrospective-workflow.md
+
+required_templates:
+  []
+
+output_contract:
+  completion_signal: "RETRO_DONE"
+  evidence_required: true

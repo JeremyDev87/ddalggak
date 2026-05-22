@@ -9,6 +9,7 @@
   "scripts": {
     "test": "node scripts/smoke.mjs",
     "verify:codex-skill": "node scripts/verify-codex-skill.mjs",
+    "verify:projections": "node scripts/verify-projections.mjs",
     "test:reference-aware-skill-anchors": "node scripts/test-verify-codex-skill-reference-aware.mjs",
     "eval:ddalggak-readiness": "node scripts/eval-ddalggak-readiness.mjs",
     "test:release-helpers": "node scripts/test-release-helpers.mjs",
@@ -28,6 +29,7 @@
     "bin/",
     "scripts/",
     "evals/",
+    "core/",
     "README.md",
     "LICENSE"
   ],
