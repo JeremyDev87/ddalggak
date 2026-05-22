@@ -235,6 +235,7 @@ function requiredPackageFiles() {
     ".codex/skills/ddalggak/SKILL.md",
     ".codex/skills/ddalggak/agents/openai.yaml",
     "scripts/project-runtime-assets.mjs",
+    "core/verification/skill-contract-manifest.mjs",
     "ddalggak/SKILL.md",
     "bin/ddalggak.js",
     "bin/lib/dispatch.mjs",
@@ -257,7 +258,7 @@ function requiredPackageFiles() {
 
 function renderRequiredPackageFiles() {
   return [
-    "const requiredPackageFiles = [",
+    "export const requiredPackageFiles = [",
     ...requiredPackageFiles().map((file) => `  ${JSON.stringify(file)},`),
     "];",
   ].join("\n");
@@ -285,7 +286,7 @@ const projections = [
     blocks: [["show-doc-heading-map", renderDocSectionMap()]],
   },
   {
-    path: "scripts/verify-codex-skill.mjs",
+    path: "core/verification/skill-contract-manifest.mjs",
     blocks: [["package-required-asset-list", renderRequiredPackageFiles()]],
   },
 ];
