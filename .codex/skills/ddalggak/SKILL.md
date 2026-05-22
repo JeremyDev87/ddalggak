@@ -111,13 +111,15 @@ Use Codex App native orchestration names in briefs and state records: `spawn_age
 
 ## `start` - Issue-Based Implementation
 
-Use for implementation from one or more GitHub issues.
+Full procedure: `references/start-workflow.md`; reusable prompt: `templates/worker-brief.md`.
 
-Hot-path steps: establish target repo and base freshness; read issue body and comments; run Quality Lens Router Output; map allowed, forbidden, inspect-only, and Must not touch files; apply Evidence Contract and Simplicity / Deletability Gate; choose issue PR or conflict fallback; brief focused workers; verify validation evidence, Integration commit when applicable, and PR CREATE evidence. Default PR shape: one PR per issue; conflict fallback only when issue conflicts require it. Final output must include Evidence provided, Evidence not applicable, and Blocking evidence gaps.
+Execution contract index: target repo/base freshness, issue body+comments, Quality Lens Router Output, Evidence Contract, Simplicity / Deletability Gate, allowed/forbidden/inspect-only/Must not touch, one issue PR by default, hard-conflict fallback only with reason, validation/PR evidence, and blocking gaps.
 
 ## `review` - Cross-Review Loop
 
-Use for independent PR or local-lane review. Treat review as an AI code quality gate, not a praise pass. Run Wiki Context Preflight first. Review packet includes PR diff/files/checks, issue contract, Wiki Context Manifest, Quality Lens Router Output, Evidence Contract, Diff Footprint / Scope Expansion Review, Counterargument Pass, Simplicity / Deletability Gate, optional Frontend Design Review Gate and Vercel Agent Skills Gate, and Continuous Regression Library notes. Review checks one-off abstraction, human readability, generic AI/template risk, screenshot/manual verification, Vercel deploy safety, component API quality, animation meaning, React Native/Expo constraints, and Regression Library Candidate suggestions when a repeated class is uncovered.
+Full procedure: `references/cross-review-loop.md`; reusable prompt: `templates/review-brief.md`.
+
+Execution contract index: live PR/diff/files/checks/issue/head SHA, Wiki Context Preflight, Quality Lens Router Output, Evidence Contract, Simplicity / Deletability Gate, conditional frontend/Vercel/regression gates, blocker triage, and top-level conclusion comment when formal approval is inappropriate.
 
 ## `status` - Current State Snapshot
 
@@ -125,7 +127,9 @@ Read `.ddalggak/session-state.json` if present, then inspect live git/GitHub sta
 
 ## `plan` - Issue-Ready Plan
 
-Write an implementation plan that a low-context worker and reviewer can execute. Run Wiki Context Preflight first and include a Wiki Context Manifest. Include source of truth, non-goals, context anchors, assumptions, work inventory, file ownership, forbidden and inspect-only files, Issue-PR Strategy with Conflict Fallback, PR count: one PR per issue by default, Default PR shape: one PR per issue; conflict fallback only when issue conflicts require it, Parallelization Decision, Must not touch, Evidence / validation, Commit message, Quality Lens Router Output, Evidence Contract, Counterargument Pass, and Simplicity / Deletability Gate with why is this abstraction necessary?. For frontend work include Frontend Design Brief. For applicable Vercel gates include Applicable upstream skill families, React/Next.js performance risks, Explicit anti-goals, and Backend-only skip/lightweight reason. Mention references/regression-library.md only where useful and include Regression Library Candidate checks for class-level risks.
+Full procedure: `references/issue-ready-plan.md`; wiki preflight: `references/wiki-context-preflight.md`.
+
+Execution contract index: source of truth, non-goals, context anchors, assumptions/unknowns, work inventory, ownership, forbidden/inspect-only files, Quality Lens Router Output, Evidence Contract, Counterargument Pass, Simplicity / Deletability Gate, one issue PR by default, conflict fallback only with proof, Parallelization Decision, Must not touch, evidence/validation, and commit message.
 
 ## `issue` - Plan To GitHub Issues
 

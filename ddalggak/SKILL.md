@@ -84,36 +84,11 @@ user-invocable: true
 
 Full procedure: `references/start-workflow.md`; reusable prompt: `templates/worker-brief.md`.
 
-This `start` show-doc surface intentionally keeps the executable contract compact while the detailed BRIEF/template flow lives in references/templates. Required anchors remain visible for CLI dispatch and verifier parity.
-
-### Quality Lens Router Output
-- Applicable gate families: derive from issue body/comments and changed files.
-- Skipped gates: record backend-only skip or other non-applicable domains.
-- Required references: `references/quality-lens-router.md`, `references/evidence-contract.md`, `references/simplicity-deletability-gate.md`, `references/core-invariants.md`; add `references/frontend-design-gate.md`, `references/vercel-agent-skills-gates.md`, or `references/regression-library.md` only when applicable and 유용한 범위에서 class-level risk가 있다.
-
-### Evidence Contract
-- Required evidence: issue acceptance criteria, validation commands, PR URL/evidence, and any UI/API/security evidence that applies.
-- Blocking evidence gaps: no required evidence means no PR ready/APPROVE.
-
-### Simplicity / Deletability Gate
-- Default: small direct change first.
-- Any helper/module/provider/wrapper/fallback must answer why is this abstraction necessary? and prove boundary/reuse value.
-
-### Frontend Design Gate
-- For UI/frontend work only: aesthetic direction, screenshot/viewport/manual evidence, generic AI UI avoided, one-off abstraction avoided.
-
-### Vercel Agent Skills Gate
-- For React/Vercel/mobile/motion work only: server/client boundary, token source without printing secrets, preview-first, component API quality, animation meaning.
-
-### Issue-PR Strategy with Conflict Fallback
-- Default PR shape: one PR per issue; conflict fallback only when issue conflicts require it.
-- Parallelization Decision must classify independent issue PRs, conflict fallback serial commits, and blocked lanes.
-- Integration commit evidence is required for fallback lanes.
-- PR CREATE — 독립 이슈는 기본 생성; hard-conflict fallback만 lane patch/commit handoff를 사용한다.
-
-### Completion
-- 독립 이슈는 commit/push/issue PR/PR URL/evidence까지 확인한다.
-- Required completion signal: `ISSUE_PR_READY` for independent issue PRs or `LANE_READY` only for hard-conflict fallback.
+Execution contract index:
+- Source: issue body/comments, URL beats cwd, base freshness first.
+- Gates: Quality Lens Router, Evidence Contract, Simplicity / Deletability, Core Invariants; frontend/vercel/regression only when applicable.
+- Scope: allowed, forbidden, inspect-only, Must not touch, and one issue PR by default; hard-conflict fallback only with reason.
+- Output: `ISSUE_PR_READY` or `LANE_READY` with commit/push/PR/evidence/blocking gaps.
 
 ---
 
@@ -121,32 +96,11 @@ This `start` show-doc surface intentionally keeps the executable contract compac
 
 Full procedure: `references/cross-review-loop.md`; reusable prompt: `templates/review-brief.md`.
 
-Review is an adversarial AI code quality gate, not a praise pass. Re-read PR state, diff, files, checks, linked issue, and current head SHA before judgment.
-
-### Wiki Review Context Preflight
-- Run `references/wiki-context-preflight.md` using the PR title/body, linked issue, changed files, public API/UX surfaces, validation evidence, and recurring failure patterns.
-- Review output must distinguish live PR/repo evidence, wiki-strengthened rationale, non-wiki inference, and wiki search failures or gaps.
-
-### Quality Lens Router Output
-- Applicable gate families, Skipped gates, Required references, Lightweight or limited gates, Repo/product conventions.
-
-### Evidence Contract
-- Compare PR body and validation evidence to required evidence. Blocking evidence gaps prevent APPROVE.
-
-### Simplicity / Deletability Gate
-- one-off abstraction, forced modularization, silent fallback, type escape, and human readability risks are review findings; human readability/deletability outranks SOLID.
-
-### Frontend Design Review Gate
-- For UI work, verify product fit, typography, hierarchy, responsive behavior, generic AI/template avoidance, screenshot/manual verification, and no one-off wrapper/provider.
-
-### Vercel Agent Skills Gate
-- For applicable work, check Vercel deploy safety, component API quality, animation meaning, React Native/Expo constraints, and file/line/screenshot/viewport evidence.
-
-### Continuous Regression Library
-- Read `references/regression-library.md` when repeated Medium/High patterns appear and propose a Regression Library Candidate for missing generalized classes.
-
-### Approval-comment policy
-- If formal approval is inappropriate, post a top-level PR comment with head SHA, review scope, validation evidence, blocking finding count, and APPROVE or CHANGES_REQUESTED conclusion.
+Execution contract index:
+- Re-read live PR state, diff/files/checks, linked issue, current head SHA, and wiki-context preflight.
+- Apply Quality Lens Router, Evidence Contract, Simplicity / Deletability, Core Invariants, and conditional frontend/vercel/regression gates.
+- Findings must separate live evidence, wiki-strengthened rationale, non-wiki inference, and retrieval gaps.
+- If formal approval is inappropriate, use a top-level comment with SHA, scope, validation, blocker count, and conclusion.
 
 ---
 
@@ -160,57 +114,13 @@ Read-only snapshot: fetch/prune, status, branch/upstream, worktrees, open PRs, l
 
 ## Issue-Ready Plan
 
-Full procedure: `references/issue-ready-plan.md`.
+Full procedure: `references/issue-ready-plan.md`; wiki preflight: `references/wiki-context-preflight.md`.
 
-### Goal / Context
-Plan must identify Goal, Source Of Truth, Non-Goals / Constraints, Context Recovery Anchors, Assumptions And Unknowns.
-
-### Wiki Context Manifest
-- Include: Queries attempted, Wiki sources read, Relevant wiki facts, Constraints / prior decisions, Unknowns not found in wiki, Non-wiki inference.
-
-### Quality Lens Router Output
-- Applicable gate families:
-- Skipped gates:
-- Required references:
-- Lightweight or limited gates:
-- Repo/product conventions that outrank generic rules:
-
-### Evidence Contract
-- Required evidence:
-- Evidence templates applied:
-- Evidence not applicable (`not-applicable: <reason>`):
-- Blocking evidence gaps:
-
-### Counterargument Pass
-- 약한 가정 / weak assumptions:
-- 기존 repo convention conflicts:
-- readiness를 반증할 evidence:
-- 더 작은 직접 변경 대안 / smaller or more direct change:
-
-### Simplicity / Deletability Gate
-- why is this abstraction necessary?
-- Small direct change first; human readability/deletability outranks SOLID.
-
-### Frontend Design Brief
-- Product/user context, Aesthetic direction, Explicit anti-goals, screenshot evidence when applicable.
-
-### Vercel Agent Skills Gate
-- Applicable upstream skill families
-- React/Next.js performance risks
-- Explicit anti-goals
-- Backend-only skip/lightweight reason
-
-### Continuous Regression Library
-- Mention `references/regression-library.md` only where useful / 유용한 범위.
-- If needed, propose Regression Library Candidate.
-
-### Issue-PR Strategy with Conflict Fallback
-- PR count: one PR per issue by default.
-- Default PR shape: one PR per issue; conflict fallback only when issue conflicts require it.
-- Parallelization Decision:
-- Must not touch:
-- Evidence / validation:
-- Commit message:
+Execution contract index:
+- Identify Goal, Source Of Truth, Non-Goals, Context Recovery Anchors, Assumptions/Unknowns.
+- Include Wiki Context Manifest, Quality Lens Router Output, Evidence Contract, Counterargument Pass, and Simplicity / Deletability Gate.
+- Add Frontend/Vercel/Regression details only when applicable, with skip or lightweight reason otherwise.
+- Plan Issue-PR Strategy: one PR per issue by default, conflict fallback only with proof, Parallelization Decision, Must not touch, evidence, commit message.
 
 ---
 

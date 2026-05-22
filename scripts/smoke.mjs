@@ -288,32 +288,79 @@ const cases = [
       const result = runCli(["review", "--show-doc"]);
       assertExit(result, 0);
       assertIncludes(result.stdout, "## Cross-Review Loop", "stdout");
-      assertIncludes(result.stdout, "AI code quality gate", "stdout");
+      assertIncludes(result.stdout, "Full procedure: `references/cross-review-loop.md`", "stdout");
+      assertIncludes(result.stdout, "Execution contract index:", "stdout");
     },
   },
   {
-    name: "all subcommands expose non-empty --show-doc sections",
+    name: "all subcommands expose compact --show-doc reference contracts",
     run() {
-      const expectedHeadings = {
-        start: "## Start Workflow",
-        review: "## Cross-Review Loop",
-        status: "## Status",
-        plan: "## Issue-Ready Plan",
-        issue: "## Plan to Issues",
-        clean: "## Merge Cleanup",
-        ship: "## Ship",
-        retro: "## Retrospective",
-        prompt: "## Prompt Optimizer",
-        check: "## Local Diff Check",
+      const expectedContracts = {
+        start: {
+          heading: "## Start Workflow",
+          references: ["references/start-workflow.md", "templates/worker-brief.md"],
+          maxLines: 20,
+        },
+        review: {
+          heading: "## Cross-Review Loop",
+          references: ["references/cross-review-loop.md", "templates/review-brief.md"],
+          maxLines: 20,
+        },
+        status: {
+          heading: "## Status",
+          references: ["references/status.md"],
+          maxLines: 12,
+        },
+        plan: {
+          heading: "## Issue-Ready Plan",
+          references: ["references/issue-ready-plan.md", "references/wiki-context-preflight.md"],
+          maxLines: 20,
+        },
+        issue: {
+          heading: "## Plan to Issues",
+          references: ["references/plan-to-issues.md", "templates/issue-body.md"],
+          maxLines: 12,
+        },
+        clean: {
+          heading: "## Merge Cleanup",
+          references: ["references/merge-cleanup.md"],
+          maxLines: 12,
+        },
+        ship: {
+          heading: "## Ship",
+          references: ["references/ship.md"],
+          maxLines: 12,
+        },
+        retro: {
+          heading: "## Retrospective",
+          references: ["references/retrospective.md"],
+          maxLines: 12,
+        },
+        prompt: {
+          heading: "## Prompt Optimizer",
+          references: ["references/prompt-optimizer.md"],
+          maxLines: 12,
+        },
+        check: {
+          heading: "## Local Diff Check",
+          references: ["references/local-diff-check.md"],
+          maxLines: 12,
+        },
       };
 
-      for (const [subcommand, heading] of Object.entries(expectedHeadings)) {
+      for (const [subcommand, contract] of Object.entries(expectedContracts)) {
         const result = runCli([subcommand, "--show-doc"]);
         assertExit(result, 0);
-        assertIncludes(result.stdout, heading, `${subcommand} stdout`);
+        assertIncludes(result.stdout, contract.heading, `${subcommand} stdout`);
+        assertIncludes(result.stdout, "Full procedure:", `${subcommand} stdout`);
+        for (const reference of contract.references) {
+          assertIncludes(result.stdout, reference, `${subcommand} stdout`);
+        }
+        const lineCount = result.stdout.trim().split("\n").length;
+        assert(lineCount >= 3, `expected ${subcommand} --show-doc to expose a non-empty section`);
         assert(
-          result.stdout.trim().split("\n").length >= 3,
-          `expected ${subcommand} --show-doc to expose a non-empty section`
+          lineCount <= contract.maxLines,
+          `expected ${subcommand} --show-doc to stay compact (${lineCount}/${contract.maxLines} lines)`
         );
       }
     },
