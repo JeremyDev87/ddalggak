@@ -33,6 +33,7 @@ Subcommands:
   start                Run issue-based implementation lanes
   review               Run independent review and accepted-fix loops
   status               Inspect current lane, worktree, and PR state
+  status --local        Inspect local source/Codex/installed skill parity
   plan                 Create an issue-ready implementation plan
   issue                Convert a plan into GitHub issues
   clean                Clean local state after merge verification
@@ -105,6 +106,27 @@ function suggestCandidate(input) {
   return bestDist <= 1 ? best : null;
 }
 
+function hasLocalStatusFlag(args) {
+  for (const arg of args) {
+    if (arg === "--") return false;
+    if (arg === "--local") return true;
+  }
+  return false;
+}
+
+function removeFirstLocalStatusFlag(args) {
+  const result = [];
+  let removed = false;
+  for (const arg of args) {
+    if (!removed && arg === "--local") {
+      removed = true;
+      continue;
+    }
+    result.push(arg);
+  }
+  return result;
+}
+
 async function loadLib(relPath, missingHint) {
   try {
     return await import(relPath);
@@ -145,6 +167,15 @@ async function main() {
       "ddalggak setup: implementation not installed yet.\n(./bin/lib/setup.mjs is missing - this CLI is in active development.)"
     );
     const code = await mod.run(rest);
+    return typeof code === "number" ? code : 0;
+  }
+
+  if (first === "status" && hasLocalStatusFlag(rest)) {
+    const mod = await loadLib(
+      "./lib/status.mjs",
+      "ddalggak status --local: implementation not installed yet.\n(./bin/lib/status.mjs is missing - this CLI is in active development.)"
+    );
+    const code = await mod.run(removeFirstLocalStatusFlag(rest));
     return typeof code === "number" ? code : 0;
   }
 

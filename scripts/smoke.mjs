@@ -78,6 +78,14 @@ function assertIncludes(value, needle, streamName) {
   );
 }
 
+function parseJsonStdout(result) {
+  try {
+    return JSON.parse(result.stdout);
+  } catch (error) {
+    throw new Error(`expected JSON stdout, got:\n${result.stdout}\nstderr:\n${result.stderr}`);
+  }
+}
+
 function listNames(dir) {
   return readdirSync(dir).sort();
 }
@@ -243,6 +251,113 @@ const cases = [
           `${pkg.version}\n`,
         "expected fresh install version after --no-backup replace"
       );
+    },
+  },
+  {
+    name: "status --local --json reports not-installed",
+    run() {
+      const claudeHome = makeTempHome();
+      const result = runCli(["status", "--local", "--json"], {
+        env: { CLAUDE_HOME: claudeHome },
+      });
+      assertExit(result, 0);
+      const status = parseJsonStdout(result);
+      assert(status.state === "not-installed", `expected not-installed, got ${status.state}`);
+      assert(status.ok === false, "expected not-installed status to be non-ok");
+      assert(status.installedVersion === null, "expected no installed version");
+      assert(
+        status.installedClaudeSkillPath === path.join(claudeHome, "skills", "ddalggak"),
+        `expected installed path under CLAUDE_HOME, got ${status.installedClaudeSkillPath}`
+      );
+    },
+  },
+  {
+    name: "status --local --json reports ok after setup",
+    run() {
+      const claudeHome = makeTempHome();
+      const install = runCli(["setup"], { env: { CLAUDE_HOME: claudeHome } });
+      assertExit(install, 0);
+      const result = runCli(["status", "--local", "--json"], {
+        env: { CLAUDE_HOME: claudeHome },
+      });
+      assertExit(result, 0);
+      const status = parseJsonStdout(result);
+      assert(status.state === "ok", `expected ok, got ${status.state}`);
+      assert(status.ok === true, "expected ok status");
+      assert(status.installedVersion === pkg.version, "expected installed package version");
+      assert(
+        status.sourceChecksum === status.installedChecksum,
+        "expected source and installed checksum to match after setup"
+      );
+    },
+  },
+  {
+    name: "status --local detects stale checksum",
+    run() {
+      const claudeHome = makeTempHome();
+      const install = runCli(["setup"], { env: { CLAUDE_HOME: claudeHome } });
+      assertExit(install, 0);
+      writeFileSync(path.join(skillDirFor(claudeHome), "SKILL.md"), "mutated skill\n", "utf8");
+      const result = runCli(["status", "--local", "--json"], {
+        env: { CLAUDE_HOME: claudeHome },
+      });
+      assertExit(result, 0);
+      const status = parseJsonStdout(result);
+      assert(status.state === "stale", `expected stale, got ${status.state}`);
+      assert(
+        status.sourceChecksum !== status.installedChecksum,
+        "expected source and installed checksum to differ after mutation"
+      );
+    },
+  },
+  {
+    name: "status --local detects missing required reference",
+    run() {
+      const claudeHome = makeTempHome();
+      const install = runCli(["setup"], { env: { CLAUDE_HOME: claudeHome } });
+      assertExit(install, 0);
+      rmSync(path.join(skillDirFor(claudeHome), "references", "status.md"), { force: true });
+      const result = runCli(["status", "--local", "--json"], {
+        env: { CLAUDE_HOME: claudeHome },
+      });
+      assertExit(result, 0);
+      const status = parseJsonStdout(result);
+      assert(status.state === "stale", `expected stale, got ${status.state}`);
+      assert(
+        status.missingRequiredPaths.includes("references/status.md"),
+        `expected missing status reference, got ${status.missingRequiredPaths.join(", ")}`
+      );
+    },
+  },
+  {
+    name: "status --local detects extra installed payload file",
+    run() {
+      const claudeHome = makeTempHome();
+      const install = runCli(["setup"], { env: { CLAUDE_HOME: claudeHome } });
+      assertExit(install, 0);
+      writeFileSync(
+        path.join(skillDirFor(claudeHome), "references", "obsolete.md"),
+        "obsolete\n",
+        "utf8"
+      );
+      const result = runCli(["status", "--local", "--json"], {
+        env: { CLAUDE_HOME: claudeHome },
+      });
+      assertExit(result, 0);
+      const status = parseJsonStdout(result);
+      assert(status.state === "stale", `expected stale, got ${status.state}`);
+      assert(
+        status.extraInstalledPaths.includes("references/obsolete.md"),
+        `expected obsolete extra path, got ${status.extraInstalledPaths.join(", ")}`
+      );
+    },
+  },
+  {
+    name: "status -- respects dispatch flag terminator before --local",
+    run() {
+      const result = runCli(["status", "--print", "--", "--local"]);
+      assertExit(result, 0);
+      assertStdout(result, "/ddalggak status --local\n");
     },
   },
   {

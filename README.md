@@ -84,6 +84,7 @@ node bin/ddalggak.js prompt "Improve retry handling"
 node bin/ddalggak.js plan --print "Split issue 22 into reviewable PR units"
 node bin/ddalggak.js start 22
 node bin/ddalggak.js status
+node bin/ddalggak.js status --local --json
 ```
 
 When the `claude` CLI is not on `PATH`, or when the current terminal is non-interactive, the CLI prints the slash command to paste into Claude Code instead of spawning Claude Code.
@@ -111,6 +112,10 @@ Common subcommand options:
 
 - `--print`: print only the `/ddalggak <subcommand> ...` slash command.
 - `--show-doc`: print the matching `SKILL.md` section for the subcommand.
+
+`status --local` options:
+
+- `--json`: print package version, payload roots, installed path/version, source/installed checksums, missing required references/templates, extra installed payload files, and `ok` / `stale` / `not-installed` state as JSON.
 
 `setup` options:
 
@@ -234,7 +239,7 @@ npm run test:release-publish
 env npm_config_cache=/tmp/ddalggak-npm-cache npm pack --dry-run --ignore-scripts --loglevel=silent
 ```
 
-Use `npm test` for CLI setup and dispatch behavior, including setup safety/idempotency, dispatch quoting edge cases, and every subcommand `--show-doc` surface. Use `npm run verify:codex-skill` for Codex skill source, metadata, Quality Lens Router anchors, subcommand routing changes, progressive-disclosure budgets, required reference/template maps, legacy/Codex payload parity, detail-template regression guards, and npm package artifact inclusion. Use `npm run eval:ddalggak-readiness` for mock JSON replay checks covering no-work mutation suppression, duplicate PR/comment suppression, evidence-gap readiness blocking, URL-beats-cwd mutation blocking, and hard-conflict fallback classification. Use the pack dry-run as an explicit maintainer-facing package artifact inspection as well.
+Use `npm test` for CLI setup and dispatch behavior, including setup safety/idempotency, `status --local` installed-skill parity states, dispatch quoting edge cases, and every subcommand `--show-doc` surface. Use `npm run verify:codex-skill` for Codex skill source, metadata, Quality Lens Router anchors, subcommand routing changes, progressive-disclosure budgets, required reference/template maps, legacy/Codex payload parity, detail-template regression guards, and npm package artifact inclusion. Use `npm run eval:ddalggak-readiness` for mock JSON replay checks covering no-work mutation suppression, duplicate PR/comment suppression, evidence-gap readiness blocking, URL-beats-cwd mutation blocking, and hard-conflict fallback classification. Use the pack dry-run as an explicit maintainer-facing package artifact inspection as well.
 
 ## Platform Support
 
