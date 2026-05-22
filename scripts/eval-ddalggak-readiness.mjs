@@ -3,8 +3,15 @@ import path from "node:path";
 import process from "node:process";
 
 const rootDir = process.cwd();
-const defaultFixturePath = path.join(rootDir, "evals", "ddalggak-readiness", "fixtures.json");
-const fixturePath = process.argv[2] ? path.resolve(process.argv[2]) : defaultFixturePath;
+const defaultFixturePath = path.join(
+  rootDir,
+  "evals",
+  "ddalggak-readiness",
+  "fixtures.json",
+);
+const fixturePath = process.argv[2]
+  ? path.resolve(process.argv[2])
+  : defaultFixturePath;
 
 const mutationKinds = [
   "create_branch",
@@ -13,7 +20,24 @@ const mutationKinds = [
   "create_comment",
   "approve_pr",
   "mark_ready",
+  "edit_source",
+  "edit_claude_profile",
+  "write_wiki",
 ];
+
+const knownOutputSections = new Set([
+  "Wiki Context Manifest",
+  "Queries attempted",
+  "Wiki sources read",
+  "Unknowns not found in wiki",
+  "Non-wiki inference",
+  "Quality Lens Router Output",
+  "Evidence Contract",
+  "Goal / Context",
+  "Findings backed by live PR/repo evidence",
+  "Findings strengthened by wiki sources",
+  "Wiki search failures or gaps",
+]);
 
 function readJson(filePath) {
   return JSON.parse(readFileSync(filePath, "utf8"));
@@ -56,27 +80,42 @@ function sameRepo(state) {
 }
 
 function hasExistingIssuePr(state) {
-  const issueNumbers = new Set(array(state.openIssues).map((issue) => issue.number));
+  const issueNumbers = new Set(
+    array(state.openIssues).map((issue) => issue.number),
+  );
   return array(state.openPullRequests).some((pullRequest) =>
-    array(pullRequest.closingIssues).some((issueNumber) => issueNumbers.has(issueNumber))
+    array(pullRequest.closingIssues).some((issueNumber) =>
+      issueNumbers.has(issueNumber),
+    ),
   );
 }
 
 function hasPriorParsedComment(state) {
-  const issueNumbers = new Set(array(state.openIssues).map((issue) => issue.number));
+  const issueNumbers = new Set(
+    array(state.openIssues).map((issue) => issue.number),
+  );
   return array(state.priorComments).some(
-    (comment) => issueNumbers.has(comment.issue) && comment.marker === "ddalggak:parsed"
+    (comment) =>
+      issueNumbers.has(comment.issue) && comment.marker === "ddalggak:parsed",
   );
 }
 
 function missingRequiredEvidence(pullRequest) {
   const provided = new Set(array(pullRequest?.providedEvidence));
-  return array(pullRequest?.requiredEvidence).filter((item) => !provided.has(item));
+  return array(pullRequest?.requiredEvidence).filter(
+    (item) => !provided.has(item),
+  );
 }
 
 function hasSuccessfulChecks(pullRequest) {
   const checks = array(pullRequest?.checks);
-  return checks.length > 0 && checks.every((check) => check.conclusion === "success" || check.conclusion === "skipped");
+  return (
+    checks.length > 0 &&
+    checks.every(
+      (check) =>
+        check.conclusion === "success" || check.conclusion === "skipped",
+    )
+  );
 }
 
 function hasHardConflict(state) {
@@ -85,11 +124,27 @@ function hasHardConflict(state) {
 
 function missingOutputSections(state, requiredSections) {
   const outputSections = new Set(array(state.outputSections));
-  return array(requiredSections).filter((section) => !outputSections.has(section));
+  return array(requiredSections).filter(
+    (section) => !outputSections.has(section),
+  );
 }
 
-function result({ decision, prStrategy, readyAllowed, approveAllowed, allowedMutations, reasons }) {
-  return { decision, prStrategy, readyAllowed, approveAllowed, allowedMutations: [...allowedMutations], reasons };
+function result({
+  decision,
+  prStrategy,
+  readyAllowed,
+  approveAllowed,
+  allowedMutations,
+  reasons,
+}) {
+  return {
+    decision,
+    prStrategy,
+    readyAllowed,
+    approveAllowed,
+    allowedMutations: [...allowedMutations],
+    reasons,
+  };
 }
 
 function decideScenario(scenario) {
@@ -109,19 +164,184 @@ function decideScenario(scenario) {
     allowedMutations.clear();
     const urlRepo = repoFromGitHubUrl(state.targetUrl);
     reasons.push(
-      `Mutation stopped because cwdRepo=${state.cwdRepo || "<missing>"}, targetRepo=${state.targetRepo || "<missing>"}, targetUrlRepo=${urlRepo || "<none>"}; URL beats cwd.`
+      `Mutation stopped because cwdRepo=${state.cwdRepo || "<missing>"}, targetRepo=${state.targetRepo || "<missing>"}, targetUrlRepo=${urlRepo || "<none>"}; URL beats cwd.`,
     );
-    return result({ decision, prStrategy, readyAllowed, approveAllowed, allowedMutations, reasons });
+    return result({
+      decision,
+      prStrategy,
+      readyAllowed,
+      approveAllowed,
+      allowedMutations,
+      reasons,
+    });
   }
 
-  if (array(state.openIssues).length === 0 && state.requestedCommand === "start") {
+  if (
+    array(state.openIssues).length === 0 &&
+    state.requestedCommand === "start"
+  ) {
     decision = "no_work";
     prStrategy = "none";
     readyAllowed = false;
     approveAllowed = false;
     allowedMutations.clear();
-    reasons.push("No open issue exists, so start must not invent work or mutate GitHub state.");
-    return result({ decision, prStrategy, readyAllowed, approveAllowed, allowedMutations, reasons });
+    reasons.push(
+      "No open issue exists, so start must not invent work or mutate GitHub state.",
+    );
+    return result({
+      decision,
+      prStrategy,
+      readyAllowed,
+      approveAllowed,
+      allowedMutations,
+      reasons,
+    });
+  }
+
+  if (
+    state.attemptedSourceEdit &&
+    !["start", "review"].includes(state.requestedCommand)
+  ) {
+    decision = "source_edit_blocked";
+    prStrategy = "blocked";
+    readyAllowed = false;
+    approveAllowed = false;
+    allowedMutations.delete("edit_source");
+    allowedMutations.delete("approve_pr");
+    allowedMutations.delete("mark_ready");
+    reasons.push(
+      `${state.requestedCommand || "<unknown>"} must not edit repository source files.`,
+    );
+    return result({
+      decision,
+      prStrategy,
+      readyAllowed,
+      approveAllowed,
+      allowedMutations,
+      reasons,
+    });
+  }
+
+  const installedSkill = state.installedSkill;
+  if (
+    installedSkill &&
+    [
+      installedSkill.sourceStatus,
+      installedSkill.codexStatus,
+      installedSkill.installedStatus,
+    ].some((status) => status !== "ok")
+  ) {
+    decision = "parity_claim_blocked";
+    prStrategy = "blocked";
+    readyAllowed = false;
+    approveAllowed = false;
+    allowedMutations.clear();
+    reasons.push(
+      "Installed/source/Codex skill parity claim requires all status values to be ok.",
+    );
+    return result({
+      decision,
+      prStrategy,
+      readyAllowed,
+      approveAllowed,
+      allowedMutations,
+      reasons,
+    });
+  }
+
+  if (state.requestedCommand === "getwiki") {
+    if (
+      state.wikiOperation?.attemptedMutation === true ||
+      state.wikiOperation?.mode === "write"
+    ) {
+      decision = "wiki_readonly_violation";
+      readyAllowed = false;
+      approveAllowed = false;
+      allowedMutations.delete("write_wiki");
+      reasons.push(
+        "getwiki is read-only retrieval and must not mutate wiki files.",
+      );
+    } else {
+      decision = "wiki_readonly_delegate";
+      allowedMutations.clear();
+      reasons.push(
+        "getwiki delegates to the dedicated read-only wiki retrieval workflow.",
+      );
+    }
+    return result({
+      decision,
+      prStrategy,
+      readyAllowed,
+      approveAllowed,
+      allowedMutations,
+      reasons,
+    });
+  }
+
+  if (
+    state.requestedCommand === "setwiki" &&
+    state.wikiOperation?.approved !== true
+  ) {
+    decision = "wiki_write_approval_required";
+    prStrategy = "blocked";
+    readyAllowed = false;
+    approveAllowed = false;
+    allowedMutations.delete("write_wiki");
+    reasons.push(
+      "setwiki write workflow requires explicit approval before wiki mutation.",
+    );
+    return result({
+      decision,
+      prStrategy,
+      readyAllowed,
+      approveAllowed,
+      allowedMutations,
+      reasons,
+    });
+  }
+
+  if (state.claudeProfileProposal?.dryRun === true) {
+    decision = "profile_dry_run_only";
+    allowedMutations.delete("edit_claude_profile");
+    if (state.claudeProfileProposal.attemptedMutation === true) {
+      readyAllowed = false;
+      approveAllowed = false;
+      reasons.push(
+        "Claude profile dry-run proposal must not mutate ~/.claude/CLAUDE.md.",
+      );
+    } else {
+      reasons.push(
+        "Claude profile proposal is dry-run only; ~/.claude/CLAUDE.md is not mutated.",
+      );
+    }
+    return result({
+      decision,
+      prStrategy,
+      readyAllowed,
+      approveAllowed,
+      allowedMutations,
+      reasons,
+    });
+  }
+
+  if (state.projectionCheck?.status === "drift") {
+    decision = "projection_drift_blocked";
+    prStrategy = "blocked";
+    readyAllowed = false;
+    approveAllowed = false;
+    allowedMutations.delete("approve_pr");
+    allowedMutations.delete("mark_ready");
+    reasons.push(
+      `Projection drift detected in ${array(state.projectionCheck.changedGeneratedBlocks).join(", ") || "generated blocks"}.`,
+    );
+    return result({
+      decision,
+      prStrategy,
+      readyAllowed,
+      approveAllowed,
+      allowedMutations,
+      reasons,
+    });
   }
 
   if (hasExistingIssuePr(state) || hasPriorParsedComment(state)) {
@@ -130,8 +350,17 @@ function decideScenario(scenario) {
     allowedMutations.clear();
     readyAllowed = false;
     approveAllowed = false;
-    reasons.push("Existing issue PR or parsed marker found; duplicate PR/comment creation is forbidden.");
-    return result({ decision, prStrategy, readyAllowed, approveAllowed, allowedMutations, reasons });
+    reasons.push(
+      "Existing issue PR or parsed marker found; duplicate PR/comment creation is forbidden.",
+    );
+    return result({
+      decision,
+      prStrategy,
+      readyAllowed,
+      approveAllowed,
+      allowedMutations,
+      reasons,
+    });
   }
 
   if (hasHardConflict(state)) {
@@ -142,8 +371,17 @@ function decideScenario(scenario) {
     allowedMutations.delete("create_pr");
     allowedMutations.delete("approve_pr");
     allowedMutations.delete("mark_ready");
-    reasons.push("Hard conflict requires blocked/fallback classification, not a default independent PR.");
-    return result({ decision, prStrategy, readyAllowed, approveAllowed, allowedMutations, reasons });
+    reasons.push(
+      "Hard conflict requires blocked/fallback classification, not a default independent PR.",
+    );
+    return result({
+      decision,
+      prStrategy,
+      readyAllowed,
+      approveAllowed,
+      allowedMutations,
+      reasons,
+    });
   }
 
   const evidenceGaps = missingRequiredEvidence(state.pullRequest);
@@ -158,10 +396,24 @@ function decideScenario(scenario) {
     if (!hasSuccessfulChecks(state.pullRequest)) {
       reasons.push("Checks are not terminal success/skipped.");
     }
-    return result({ decision, prStrategy, readyAllowed, approveAllowed, allowedMutations, reasons });
+    return result({
+      decision,
+      prStrategy,
+      readyAllowed,
+      approveAllowed,
+      allowedMutations,
+      reasons,
+    });
   }
 
-  return result({ decision, prStrategy, readyAllowed, approveAllowed, allowedMutations, reasons });
+  return result({
+    decision,
+    prStrategy,
+    readyAllowed,
+    approveAllowed,
+    allowedMutations,
+    reasons,
+  });
 }
 
 function sorted(value) {
@@ -172,9 +424,16 @@ function compareScenario(scenario, actual) {
   const failures = [];
   const expected = scenario.expect || {};
 
-  for (const key of ["decision", "prStrategy", "readyAllowed", "approveAllowed"]) {
+  for (const key of [
+    "decision",
+    "prStrategy",
+    "readyAllowed",
+    "approveAllowed",
+  ]) {
     if (Object.hasOwn(expected, key) && actual[key] !== expected[key]) {
-      failures.push(`${key}: expected ${JSON.stringify(expected[key])}, got ${JSON.stringify(actual[key])}`);
+      failures.push(
+        `${key}: expected ${JSON.stringify(expected[key])}, got ${JSON.stringify(actual[key])}`,
+      );
     }
   }
 
@@ -183,23 +442,32 @@ function compareScenario(scenario, actual) {
     const actualMutations = sorted(actual.allowedMutations);
     if (JSON.stringify(actualMutations) !== JSON.stringify(expectedMutations)) {
       failures.push(
-        `allowedMutations: expected ${JSON.stringify(expectedMutations)}, got ${JSON.stringify(actualMutations)}`
+        `allowedMutations: expected ${JSON.stringify(expectedMutations)}, got ${JSON.stringify(actualMutations)}`,
       );
     }
   }
 
   if (Object.hasOwn(expected, "forbiddenMutations")) {
     const actualMutations = new Set(actual.allowedMutations);
-    const violations = expected.forbiddenMutations.filter((mutation) => actualMutations.has(mutation));
+    const violations = expected.forbiddenMutations.filter((mutation) =>
+      actualMutations.has(mutation),
+    );
     if (violations.length > 0) {
-      failures.push(`forbiddenMutations still allowed: ${JSON.stringify(violations)}`);
+      failures.push(
+        `forbiddenMutations still allowed: ${JSON.stringify(violations)}`,
+      );
     }
   }
 
   if (Object.hasOwn(expected, "requiredOutputSections")) {
-    const missingSections = missingOutputSections(scenario.state || {}, expected.requiredOutputSections);
+    const missingSections = missingOutputSections(
+      scenario.state || {},
+      expected.requiredOutputSections,
+    );
     if (missingSections.length > 0) {
-      failures.push(`requiredOutputSections missing from state.outputSections: ${JSON.stringify(missingSections)}`);
+      failures.push(
+        `requiredOutputSections missing from state.outputSections: ${JSON.stringify(missingSections)}`,
+      );
     }
   }
 
@@ -214,7 +482,9 @@ function validateMutationList(scenarioName, expect, key, failures) {
     }
     for (const mutation of expect[key]) {
       if (!mutationKinds.includes(mutation)) {
-        failures.push(`${scenarioName}: unknown mutation in expect.${key}: ${mutation}`);
+        failures.push(
+          `${scenarioName}: unknown mutation in expect.${key}: ${mutation}`,
+        );
       }
     }
   }
@@ -247,24 +517,146 @@ function validateFixture(fixture) {
       failures.push(`${scenarioName}: state and expect must be objects`);
       continue;
     }
-    if (scenario.state.targetUrl && repoFromGitHubUrl(scenario.state.targetUrl) === null) {
-      failures.push(`${scenarioName}: targetUrl must be a github.com owner/repo URL`);
+    if (
+      scenario.state.targetUrl &&
+      repoFromGitHubUrl(scenario.state.targetUrl) === null
+    ) {
+      failures.push(
+        `${scenarioName}: targetUrl must be a github.com owner/repo URL`,
+      );
     }
-    validateMutationList(scenarioName, scenario.expect, "allowedMutations", failures);
-    validateMutationList(scenarioName, scenario.expect, "forbiddenMutations", failures);
+    validateMutationList(
+      scenarioName,
+      scenario.expect,
+      "allowedMutations",
+      failures,
+    );
+    validateMutationList(
+      scenarioName,
+      scenario.expect,
+      "forbiddenMutations",
+      failures,
+    );
     if (Object.hasOwn(scenario.expect, "requiredOutputSections")) {
       if (!Array.isArray(scenario.expect.requiredOutputSections)) {
-        failures.push(`${scenarioName}: expect.requiredOutputSections must be an array`);
+        failures.push(
+          `${scenarioName}: expect.requiredOutputSections must be an array`,
+        );
       }
       if (!Array.isArray(scenario.state.outputSections)) {
-        failures.push(`${scenarioName}: state.outputSections must be an array when requiredOutputSections is set`);
+        failures.push(
+          `${scenarioName}: state.outputSections must be an array when requiredOutputSections is set`,
+        );
       }
       if (!["plan", "review"].includes(scenario.state.requestedCommand)) {
-        failures.push(`${scenarioName}: requiredOutputSections applies only to plan/review scenarios`);
+        failures.push(
+          `${scenarioName}: requiredOutputSections applies only to plan/review scenarios`,
+        );
+      }
+      for (const section of array(scenario.expect.requiredOutputSections)) {
+        if (!knownOutputSections.has(section)) {
+          failures.push(
+            `${scenarioName}: unknown output section in expect.requiredOutputSections: ${section}`,
+          );
+        }
+      }
+    }
+    for (const section of array(scenario.state.outputSections)) {
+      if (!knownOutputSections.has(section)) {
+        failures.push(
+          `${scenarioName}: unknown output section in state.outputSections: ${section}`,
+        );
       }
     }
   }
   return failures;
+}
+
+function runFixtureValidationSelfTest() {
+  const invalidMutation = validateFixture({
+    version: 1,
+    scenarios: [
+      {
+        name: "invalid-mutation",
+        invariant: "self-test",
+        state: {
+          cwdRepo: "JeremyDev87/ddalggak",
+          targetRepo: "JeremyDev87/ddalggak",
+        },
+        expect: { forbiddenMutations: ["teleport_pr"] },
+      },
+      {
+        name: "valid-filler-a",
+        invariant: "self-test",
+        state: {
+          cwdRepo: "JeremyDev87/ddalggak",
+          targetRepo: "JeremyDev87/ddalggak",
+        },
+        expect: { decision: "ready_for_issue_pr" },
+      },
+      {
+        name: "valid-filler-b",
+        invariant: "self-test",
+        state: {
+          cwdRepo: "JeremyDev87/ddalggak",
+          targetRepo: "JeremyDev87/ddalggak",
+        },
+        expect: { decision: "ready_for_issue_pr" },
+      },
+    ],
+  });
+  const invalidOutput = validateFixture({
+    version: 1,
+    scenarios: [
+      {
+        name: "invalid-output",
+        invariant: "self-test",
+        state: {
+          cwdRepo: "JeremyDev87/ddalggak",
+          targetRepo: "JeremyDev87/ddalggak",
+          requestedCommand: "plan",
+          outputSections: ["Imaginary Output Section"],
+        },
+        expect: { requiredOutputSections: ["Imaginary Output Section"] },
+      },
+      {
+        name: "valid-filler-a",
+        invariant: "self-test",
+        state: {
+          cwdRepo: "JeremyDev87/ddalggak",
+          targetRepo: "JeremyDev87/ddalggak",
+        },
+        expect: { decision: "ready_for_issue_pr" },
+      },
+      {
+        name: "valid-filler-b",
+        invariant: "self-test",
+        state: {
+          cwdRepo: "JeremyDev87/ddalggak",
+          targetRepo: "JeremyDev87/ddalggak",
+        },
+        expect: { decision: "ready_for_issue_pr" },
+      },
+    ],
+  });
+  if (
+    !invalidMutation.some((failure) => failure.includes("unknown mutation")) ||
+    !invalidOutput.some((failure) => failure.includes("unknown output section"))
+  ) {
+    console.error("[eval:ddalggak-readiness:self-test] failed");
+    console.error(
+      "- expected known-bad fixture validation to reject unknown mutation and output section fields",
+    );
+    process.exit(1);
+  }
+  console.log(
+    "[eval:ddalggak-readiness:self-test] passed: known-bad fixtures fail closed",
+  );
+}
+
+if (process.argv.includes("--self-test")) {
+  runFixtureValidationSelfTest();
+  process.exit(0);
 }
 
 const fixture = readJson(fixturePath);
@@ -277,12 +669,14 @@ if (failures.length === 0) {
     const scenarioFailures = compareScenario(scenario, actual);
     if (scenarioFailures.length === 0) {
       passed += 1;
-      console.log(`[PASS] ${scenario.name} (${scenario.invariant}) -> ${actual.decision}`);
+      console.log(
+        `[PASS] ${scenario.name} (${scenario.invariant}) -> ${actual.decision}`,
+      );
     } else {
       failures.push(
         `${scenario.name} (${scenario.invariant}) failed:\n${scenarioFailures
           .map((failure) => `  - ${failure}`)
-          .join("\n")}\n  reasons: ${actual.reasons.join(" | ") || "<none>"}`
+          .join("\n")}\n  reasons: ${actual.reasons.join(" | ") || "<none>"}`,
       );
     }
   }
@@ -296,4 +690,6 @@ if (failures.length > 0) {
   process.exit(1);
 }
 
-console.log(`\n[eval:ddalggak-readiness] passed ${passed}/${fixture.scenarios.length} scenarios`);
+console.log(
+  `\n[eval:ddalggak-readiness] passed ${passed}/${fixture.scenarios.length} scenarios`,
+);
