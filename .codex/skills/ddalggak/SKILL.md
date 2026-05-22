@@ -51,22 +51,42 @@ Parse only the first whitespace-separated word from the invocation arguments.
 
 Only `start` and `review` may authorize repository source file edits. All other subcommands are read-only for source code and may only produce their listed artifacts.
 
+<!-- ddalggak:generated:start code-permission-table -->
 | Subcommand | May modify source files | Allowed artifacts |
 | --- | --- | --- |
 | `start` | yes | worker agents may edit only files named in their brief |
 | `review` | yes | author agents may apply accepted review fixes only |
-| `prompt` | no | brief artifacts after explicit confirmation |
+| `status` | no | response output only |
 | `plan` | no | response output only unless the user separately asks to write a plan document |
 | `issue` | no | GitHub issues only |
-| `status` | no | response output only |
-| `check` | no | local review notes only; no repository edits |
-| `ship` | no | commit, push, and draft PR for existing changes only |
 | `clean` | no | local branch and worktree cleanup only after merge verification |
+| `ship` | no | commit, push, and draft PR for existing changes only |
 | `retro` | no | retrospective notes and memory update request artifacts only |
+| `prompt` | no | brief artifacts after explicit confirmation |
+| `check` | no | local review notes only; no repository edits |
 | `getwiki` | no | delegate to dedicated `/getwiki` read-only retrieval |
 | `setwiki` | no | delegate to dedicated `/setwiki` approval-gated write workflow |
+<!-- ddalggak:generated:end code-permission-table -->
 
 If a non-writing subcommand would need a source edit to continue, report the need and stop.
+<!-- ddalggak:generated:start subcommand-table -->
+## Subcommand Dispatch Table
+
+| Subcommand | Show-doc heading | Purpose | Required assets |
+| --- | --- | --- | --- |
+| `start` | Start Workflow | Issue implementation from live issue body/comments; one issue PR by default | refs: `references/quality-lens-router.md`, `references/evidence-contract.md`, `references/simplicity-deletability-gate.md`, `references/agent-runtime-contract.md`, `references/core-invariants.md`, `references/start-workflow.md`; templates: `templates/worker-brief.md`, `templates/conductor-state.md` |
+| `review` | Cross-Review Loop | Independent current-head review and accepted fix loop | refs: `references/wiki-context-preflight.md`, `references/evidence-contract.md`, `references/simplicity-deletability-gate.md`, `references/core-invariants.md`, `references/regression-library.md`, `references/cross-review-loop.md`; templates: `templates/review-brief.md`, `templates/fix-brief.md` |
+| `status` | Status | Read-only live git/GitHub/session state snapshot | refs: `references/status.md`; templates: - |
+| `plan` | Issue-Ready Plan | Issue-ready implementation plan from issue/wiki/code evidence | refs: `references/wiki-context-preflight.md`, `references/wiki-bridge.md`, `references/quality-lens-router.md`, `references/evidence-contract.md`, `references/simplicity-deletability-gate.md`, `references/core-invariants.md`, `references/issue-ready-plan.md`; templates: - |
+| `issue` | Plan to Issues | Create GitHub issues from an approved plan | refs: `references/plan-to-issues.md`; templates: `templates/issue-body.md`, `templates/epic-body.md` |
+| `clean` | Merge Cleanup | Post-merge local cleanup after live merge evidence | refs: `references/merge-cleanup.md`; templates: - |
+| `ship` | Ship | Commit/push/open draft PR for existing scoped changes | refs: `references/ship.md`; templates: - |
+| `retro` | Retrospective | Extract reusable lessons after merge without transient memory | refs: `references/retrospective.md`, `references/retrospective-workflow.md`; templates: - |
+| `prompt` | Prompt Optimizer | Improve briefs/prompts without source edits | refs: `references/prompt-optimizer.md`; templates: - |
+| `check` | Local Diff Check | Read-only local diff review | refs: `references/local-diff-check.md`; templates: - |
+| `getwiki` | GetWiki Bridge | Wiki context retrieval bridge | refs: `references/wiki-bridge.md`; templates: - |
+| `setwiki` | SetWiki Bridge | Wiki write workflow bridge | refs: `references/wiki-bridge.md`; templates: - |
+<!-- ddalggak:generated:end subcommand-table -->
 
 ## Codex App Primitives
 
@@ -91,20 +111,22 @@ Use Codex App native orchestration names in briefs and state records: `spawn_age
 
 ## Required Reference Map
 
-| Subcommand | Purpose | Required reference rule |
+<!-- ddalggak:generated:start required-reference-map -->
+| Subcommand | Required references | Required templates |
 | --- | --- | --- |
-| `start` | Issue implementation | references/quality-lens-router.md, references/evidence-contract.md, references/simplicity-deletability-gate.md, references/agent-runtime-contract.md, references/core-invariants.md; conditional frontend/vercel/regression references |
-| `review` | Independent review/fix loop | references/wiki-context-preflight.md, references/evidence-contract.md, references/simplicity-deletability-gate.md, references/core-invariants.md, references/regression-library.md; conditional frontend/vercel references |
-| `status` | State snapshot | state file + git/GitHub live state; no extra reference by default |
-| `plan` | Issue-ready plan | references/wiki-context-preflight.md, references/wiki-bridge.md, references/quality-lens-router.md, references/evidence-contract.md, references/simplicity-deletability-gate.md, references/core-invariants.md; conditional design/deploy/regression references |
-| `issue` | Plan to GitHub issues | the plan body; preserve ownership/dependency/evidence fields |
-| `clean` | Post-merge cleanup | GitHub PR merge evidence and live git state |
-| `ship` | Publish current lane | issue body/comments, local diff, validation evidence, draft PR contract |
-| `retro` | Retrospective | references/retrospective-workflow.md |
-| `prompt` | Prompt optimizer | prompt/brief artifacts only; source-edit requests stop as meta |
-| `check` | Local diff check | references/local-diff-check.md |
-| `getwiki` | Wiki context retrieval bridge | references/wiki-bridge.md; read-only retrieval |
-| `setwiki` | Wiki write workflow bridge | references/wiki-bridge.md; explicit approval-gated write |
+| `start` | `references/quality-lens-router.md`, `references/evidence-contract.md`, `references/simplicity-deletability-gate.md`, `references/agent-runtime-contract.md`, `references/core-invariants.md`, `references/start-workflow.md` | `templates/worker-brief.md`, `templates/conductor-state.md` |
+| `review` | `references/wiki-context-preflight.md`, `references/evidence-contract.md`, `references/simplicity-deletability-gate.md`, `references/core-invariants.md`, `references/regression-library.md`, `references/cross-review-loop.md` | `templates/review-brief.md`, `templates/fix-brief.md` |
+| `status` | `references/status.md` | - |
+| `plan` | `references/wiki-context-preflight.md`, `references/wiki-bridge.md`, `references/quality-lens-router.md`, `references/evidence-contract.md`, `references/simplicity-deletability-gate.md`, `references/core-invariants.md`, `references/issue-ready-plan.md` | - |
+| `issue` | `references/plan-to-issues.md` | `templates/issue-body.md`, `templates/epic-body.md` |
+| `clean` | `references/merge-cleanup.md` | - |
+| `ship` | `references/ship.md` | - |
+| `retro` | `references/retrospective.md`, `references/retrospective-workflow.md` | - |
+| `prompt` | `references/prompt-optimizer.md` | - |
+| `check` | `references/local-diff-check.md` | - |
+| `getwiki` | `references/wiki-bridge.md` | - |
+| `setwiki` | `references/wiki-bridge.md` | - |
+<!-- ddalggak:generated:end required-reference-map -->
 
 ## Shared Workflow Rules
 

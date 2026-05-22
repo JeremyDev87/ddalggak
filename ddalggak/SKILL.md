@@ -15,20 +15,22 @@ user-invocable: true
 
 소스 코드(repo 내 파일, SKILL.md 포함)를 수정할 권한이 있는 서브커맨드는 `start`와 `review` 뿐이다. 다른 모든 서브커맨드는 자기 산출물 또는 GitHub 산출물만 작성한다.
 
+<!-- ddalggak:generated:start code-permission-table -->
 | 서브커맨드 | 소스 코드 수정 | 작성 가능한 산출물 |
 |---|---|---|
-| `start` | ✅ | worker가 brief에 명시된 파일만 수정 |
-| `review` | ✅ | accepted Critical/High 리뷰 수정만 적용 |
-| `prompt` | ❌ | brief/review/fix 산출물 |
-| `plan` | ❌ | 응답 또는 별도 요청된 계획 문서 |
-| `issue` | ❌ | GitHub issues |
-| `status` | ❌ | 상태 보고 |
-| `ship` | ❌ | 기존 변경의 commit/push/draft PR |
-| `clean` | ❌ | merge 확인 후 local cleanup |
-| `retro` | ❌ | 회고 산출물 |
-| `check` | ❌ | read-only local review |
-| `getwiki` | ❌ | dedicated `/getwiki` read-only retrieval로 위임 |
-| `setwiki` | ❌ | dedicated `/setwiki` approval-gated write workflow로 위임 |
+| `start` | ✅ | worker agents may edit only files named in their brief |
+| `review` | ✅ | author agents may apply accepted review fixes only |
+| `status` | ❌ | response output only |
+| `plan` | ❌ | response output only unless the user separately asks to write a plan document |
+| `issue` | ❌ | GitHub issues only |
+| `clean` | ❌ | local branch and worktree cleanup only after merge verification |
+| `ship` | ❌ | commit, push, and draft PR for existing changes only |
+| `retro` | ❌ | retrospective notes and memory update request artifacts only |
+| `prompt` | ❌ | brief artifacts after explicit confirmation |
+| `check` | ❌ | local review notes only; no repository edits |
+| `getwiki` | ❌ | delegate to dedicated `/getwiki` read-only retrieval |
+| `setwiki` | ❌ | delegate to dedicated `/setwiki` approval-gated write workflow |
+<!-- ddalggak:generated:end code-permission-table -->
 
 ## Hot-Path Target Architecture
 
@@ -66,24 +68,42 @@ user-invocable: true
 
 ## 서브커맨드 분기
 
+<!-- ddalggak:generated:start subcommand-table -->
 | subcommand | show-doc heading | 목적 | 상세 reference rule |
 |---|---|---|---|
-| `start` | Start Workflow | 구현 시작 | Quality Lens Router, Evidence Contract, Simplicity / Deletability Gate, Agent Runtime Contract, conditional frontend/vercel/regression references |
-| `review` | Cross-Review Loop | 독립 리뷰 | Wiki Context Preflight, Evidence Contract, Simplicity / Deletability Gate, regression-library, optional frontend/vercel gates |
-| `status` | Status | 상태 점검 | live git/GitHub + .ddalggak/session-state.json |
-| `plan` | Issue-Ready Plan | 구현 계획 | Wiki Context Preflight, Wiki Bridge, Quality Lens Router, Evidence Contract, Simplicity / Deletability Gate; conditional design/deploy/regression references |
-| `issue` | Plan to Issues | 이슈 생성 | plan body fields only |
-| `clean` | Merge Cleanup | merge 후 정리 | live PR merge evidence |
-| `ship` | Ship | 커밋/푸시/초안 PR | issue context + validation + local review |
-| `check` | Local Diff Check | read-only diff review | references/local-diff-check.md |
-| `retro` | Retrospective | 회고 | references/retrospective-workflow.md |
-| `prompt` | Prompt Optimizer | brief 개선 | source edit 금지 |
-| `getwiki` | GetWiki Bridge | wiki context 조회 위임 | references/wiki-bridge.md, read-only retrieval |
-| `setwiki` | SetWiki Bridge | wiki write workflow 위임 | references/wiki-bridge.md, explicit approval-gated write |
+| `start` | Start Workflow | Issue implementation from live issue body/comments; one issue PR by default | refs: `references/quality-lens-router.md`, `references/evidence-contract.md`, `references/simplicity-deletability-gate.md`, `references/agent-runtime-contract.md`, `references/core-invariants.md`, `references/start-workflow.md`; templates: `templates/worker-brief.md`, `templates/conductor-state.md` |
+| `review` | Cross-Review Loop | Independent current-head review and accepted fix loop | refs: `references/wiki-context-preflight.md`, `references/evidence-contract.md`, `references/simplicity-deletability-gate.md`, `references/core-invariants.md`, `references/regression-library.md`, `references/cross-review-loop.md`; templates: `templates/review-brief.md`, `templates/fix-brief.md` |
+| `status` | Status | Read-only live git/GitHub/session state snapshot | refs: `references/status.md`; templates: - |
+| `plan` | Issue-Ready Plan | Issue-ready implementation plan from issue/wiki/code evidence | refs: `references/wiki-context-preflight.md`, `references/wiki-bridge.md`, `references/quality-lens-router.md`, `references/evidence-contract.md`, `references/simplicity-deletability-gate.md`, `references/core-invariants.md`, `references/issue-ready-plan.md`; templates: - |
+| `issue` | Plan to Issues | Create GitHub issues from an approved plan | refs: `references/plan-to-issues.md`; templates: `templates/issue-body.md`, `templates/epic-body.md` |
+| `clean` | Merge Cleanup | Post-merge local cleanup after live merge evidence | refs: `references/merge-cleanup.md`; templates: - |
+| `ship` | Ship | Commit/push/open draft PR for existing scoped changes | refs: `references/ship.md`; templates: - |
+| `retro` | Retrospective | Extract reusable lessons after merge without transient memory | refs: `references/retrospective.md`, `references/retrospective-workflow.md`; templates: - |
+| `prompt` | Prompt Optimizer | Improve briefs/prompts without source edits | refs: `references/prompt-optimizer.md`; templates: - |
+| `check` | Local Diff Check | Read-only local diff review | refs: `references/local-diff-check.md`; templates: - |
+| `getwiki` | GetWiki Bridge | Wiki context retrieval bridge | refs: `references/wiki-bridge.md`; templates: - |
+| `setwiki` | SetWiki Bridge | Wiki write workflow bridge | refs: `references/wiki-bridge.md`; templates: - |
+<!-- ddalggak:generated:end subcommand-table -->
 
 ## Required Reference Map
 
 `plan`, `start`, `review`는 Quality Lens Router Output으로 적용 gate와 skipped gate를 먼저 기록한다. `plan`과 `review`는 `references/wiki-context-preflight.md`를 먼저 읽고 Wiki Context Manifest를 남긴다. Wiki lookup/write admission은 `references/wiki-bridge.md`를 따른다. Evidence Contract, Simplicity / Deletability Gate, Core Invariants Reference는 readiness, code-shape, scope, privacy, knowledge-growth 판단이 있으면 필수다. Frontend/Vercel/Regression references는 조건부로만 읽고 backend-only skip reason을 남긴다.
+<!-- ddalggak:generated:start required-reference-map -->
+| Subcommand | Required references | Required templates |
+| --- | --- | --- |
+| `start` | `references/quality-lens-router.md`, `references/evidence-contract.md`, `references/simplicity-deletability-gate.md`, `references/agent-runtime-contract.md`, `references/core-invariants.md`, `references/start-workflow.md` | `templates/worker-brief.md`, `templates/conductor-state.md` |
+| `review` | `references/wiki-context-preflight.md`, `references/evidence-contract.md`, `references/simplicity-deletability-gate.md`, `references/core-invariants.md`, `references/regression-library.md`, `references/cross-review-loop.md` | `templates/review-brief.md`, `templates/fix-brief.md` |
+| `status` | `references/status.md` | - |
+| `plan` | `references/wiki-context-preflight.md`, `references/wiki-bridge.md`, `references/quality-lens-router.md`, `references/evidence-contract.md`, `references/simplicity-deletability-gate.md`, `references/core-invariants.md`, `references/issue-ready-plan.md` | - |
+| `issue` | `references/plan-to-issues.md` | `templates/issue-body.md`, `templates/epic-body.md` |
+| `clean` | `references/merge-cleanup.md` | - |
+| `ship` | `references/ship.md` | - |
+| `retro` | `references/retrospective.md`, `references/retrospective-workflow.md` | - |
+| `prompt` | `references/prompt-optimizer.md` | - |
+| `check` | `references/local-diff-check.md` | - |
+| `getwiki` | `references/wiki-bridge.md` | - |
+| `setwiki` | `references/wiki-bridge.md` | - |
+<!-- ddalggak:generated:end required-reference-map -->
 
 ## Start Workflow
 

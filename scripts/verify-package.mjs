@@ -11,6 +11,7 @@ const requiredArtifactPaths = [
   "LICENSE",
   "bin/ddalggak.js",
   "bin/lib/status.mjs",
+  "scripts/project-runtime-assets.mjs",
   "scripts/smoke.mjs",
   "scripts/verify-codex-skill.mjs",
   "scripts/verify-projections.mjs",

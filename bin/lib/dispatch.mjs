@@ -11,6 +11,7 @@ import { fileURLToPath } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // subcmd → SKILL.md H2 헤더 매핑 (--show-doc 용)
+// <!-- ddalggak:generated:start show-doc-heading-map -->
 const DOC_SECTION = {
   start: "Start Workflow",
   review: "Cross-Review Loop",
@@ -25,6 +26,7 @@ const DOC_SECTION = {
   getwiki: "GetWiki Bridge",
   setwiki: "SetWiki Bridge",
 };
+// <!-- ddalggak:generated:end show-doc-heading-map -->
 
 // Slash command arguments are printed as one command string for Claude Code.
 // Use JSON string literal escaping when quoting is needed so backslashes and

@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 
@@ -23,6 +24,23 @@ const requiredCommands = [
 ];
 
 const failures = [];
+
+function runGeneratedBlockCheck() {
+  const result = spawnSync(
+    process.execPath,
+    ["scripts/project-runtime-assets.mjs", "--check"],
+    {
+      cwd: rootDir,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    },
+  );
+  if (result.status !== 0) {
+    fail(
+      `generated runtime asset projection drift detected:\n${result.stdout}${result.stderr}`.trimEnd(),
+    );
+  }
+}
 
 function fail(message) {
   failures.push(message);
@@ -109,6 +127,8 @@ function assertSkillPayload(root, label, commandDoc) {
     }
   }
 }
+
+runGeneratedBlockCheck();
 
 const projectionsText = readText(projectionPath);
 if (!projectionsText.includes("source_root: ddalggak")) {
