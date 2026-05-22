@@ -182,7 +182,9 @@ const bannedTerms = [
   "CLAUDE.md",
   "teammate",
 ];
-const requiredSkillAnchors = [
+// Keep always-loaded router/core invariants in the hot-path SKILL.md arrays.
+// Detailed gate/rubric anchors belong in the reference arrays below so SKILL.md can stay compact without losing guardrails.
+const requiredSkillHotPathAnchors = [
   "URL beats cwd",
   "GitHub URL handling criteria",
   "owner/repo/number",
@@ -210,7 +212,6 @@ const requiredSkillAnchors = [
   "screenshot evidence",
   "fallback evidence",
   "contract graph evidence",
-  "not-applicable",
   "Analytics privacy",
   "raw search terms",
   "prompt titles",
@@ -230,7 +231,6 @@ const requiredSkillAnchors = [
   "Applicable gate families",
   "Skipped gates",
   "Required references",
-  "Domain gate is a lens, not a mandate",
   "backend-only skip",
   "Repo/product conventions",
   "frontend-design",
@@ -308,7 +308,7 @@ const requiredSkillAnchors = [
   "no silent fallback",
   "empty companion files",
 ];
-const requiredLegacySkillAnchors = [
+const requiredLegacySkillHotPathAnchors = [
   "URL beats cwd",
   "GitHub URL 처리 기준",
   "owner/repo/number",
@@ -356,7 +356,6 @@ const requiredLegacySkillAnchors = [
   "Applicable gate families",
   "Skipped gates",
   "Required references",
-  "Domain gate is a lens, not a mandate",
   "backend-only skip",
   "Repo/product conventions",
   "frontend-design",
@@ -965,7 +964,15 @@ function extractMarkdownSection(text, heading) {
   return lines.slice(startIdx, endIdx).join("\n");
 }
 
-function verifySkillFile(filePath, { label, requiredAnchors }) {
+function missingAnchors(text, anchors) {
+  return anchors.filter((anchor) => !text.includes(anchor));
+}
+
+function formatAnchorList(anchors) {
+  return anchors.map((anchor) => `  - ${anchor}`).join("\n");
+}
+
+function verifySkillFile(filePath, { label, hotPathAnchors }) {
   if (!statSync(filePath, { throwIfNoEntry: false })?.isFile()) {
     fail(`${label} must exist.`);
     return;
@@ -979,14 +986,21 @@ function verifySkillFile(filePath, { label, requiredAnchors }) {
     fail(`${label} frontmatter must include name: ddalggak.`);
   }
 
-  const missingAnchors = requiredAnchors.filter(
-    (anchor) => !skillText.includes(anchor),
-  );
-  if (missingAnchors.length > 0) {
+  const missingHotPathAnchors = missingAnchors(skillText, hotPathAnchors);
+  if (missingHotPathAnchors.length > 0) {
     fail(
-      `guardrail anchors missing from ${label}:\n${missingAnchors
-        .map((anchor) => `  - ${anchor}`)
-        .join("\n")}`,
+      `hot-path anchors missing from ${label}:\n${formatAnchorList(missingHotPathAnchors)}\n` +
+        "These anchors must stay in SKILL.md because they are always-loaded router/core invariants. " +
+        "Reference-only details should be preserved in references/* instead of re-expanded into SKILL.md.",
+    );
+  }
+}
+
+function assertReferenceAnchors({ label, text, anchors }) {
+  const missingReferenceAnchors = missingAnchors(text, anchors);
+  if (missingReferenceAnchors.length > 0) {
+    fail(
+      `${label} reference anchors missing; preserve these details in the appropriate references/* file instead of re-expanding SKILL.md:\n${formatAnchorList(missingReferenceAnchors)}`,
     );
   }
 }
@@ -999,12 +1013,12 @@ assertPackageArtifactIncludes();
 
 verifySkillFile(skillPath, {
   label: ".codex/skills/ddalggak/SKILL.md",
-  requiredAnchors: requiredSkillAnchors,
+  hotPathAnchors: requiredSkillHotPathAnchors,
 });
 
 verifySkillFile(legacySkillPath, {
   label: "ddalggak/SKILL.md",
-  requiredAnchors: requiredLegacySkillAnchors,
+  hotPathAnchors: requiredLegacySkillHotPathAnchors,
 });
 
 assertForbiddenHotPathTemplateSentinels({
@@ -1035,16 +1049,11 @@ for (const referencePath of routerReferencePaths) {
     );
   }
 
-  const missingReferenceAnchors = requiredRouterReferenceAnchors.filter(
-    (anchor) => !referenceText.includes(anchor),
-  );
-  if (missingReferenceAnchors.length > 0) {
-    fail(
-      `Quality Lens Router acceptance anchors missing from ${label}:\n${missingReferenceAnchors
-        .map((anchor) => `  - ${anchor}`)
-        .join("\n")}`,
-    );
-  }
+  assertReferenceAnchors({
+    label: `Quality Lens Router acceptance anchors missing from ${label}`,
+    text: referenceText,
+    anchors: requiredRouterReferenceAnchors,
+  });
 }
 
 for (const referencePath of evidenceReferencePaths) {
@@ -1055,16 +1064,11 @@ for (const referencePath of evidenceReferencePaths) {
   }
 
   const referenceText = readText(referencePath);
-  const missingEvidenceAnchors = requiredEvidenceReferenceAnchors.filter(
-    (anchor) => !referenceText.includes(anchor),
-  );
-  if (missingEvidenceAnchors.length > 0) {
-    fail(
-      `Evidence Contract anchors missing from ${label}:\n${missingEvidenceAnchors
-        .map((anchor) => `  - ${anchor}`)
-        .join("\n")}`,
-    );
-  }
+  assertReferenceAnchors({
+    label: `Evidence Contract anchors missing from ${label}`,
+    text: referenceText,
+    anchors: requiredEvidenceReferenceAnchors,
+  });
 }
 
 const [codexSimplicityPath, legacySimplicityPath] = simplicityReferencePaths;
@@ -1082,16 +1086,11 @@ if (codexSimplicityExists && legacySimplicityExists) {
   if (codexSimplicityText !== legacySimplicityText) {
     fail("Simplicity / Deletability Gate references must match between .codex and ddalggak directories.");
   }
-  const missingSimplicityAnchors = requiredSimplicityReferenceAnchors.filter(
-    (anchor) => !codexSimplicityText.includes(anchor),
-  );
-  if (missingSimplicityAnchors.length > 0) {
-    fail(
-      `Simplicity / Deletability Gate anchors missing:\n${missingSimplicityAnchors
-        .map((anchor) => `  - ${anchor}`)
-        .join("\n")}`,
-    );
-  }
+  assertReferenceAnchors({
+    label: "Simplicity / Deletability Gate anchors missing",
+    text: codexSimplicityText,
+    anchors: requiredSimplicityReferenceAnchors,
+  });
 }
 
 const [codexFrontendDesignPath, legacyFrontendDesignPath] = frontendDesignReferencePaths;
