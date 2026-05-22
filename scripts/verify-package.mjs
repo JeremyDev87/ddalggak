@@ -10,6 +10,7 @@ const requiredArtifactPaths = [
   "README.md",
   "LICENSE",
   "bin/ddalggak.js",
+  "bin/lib/status.mjs",
   "scripts/smoke.mjs",
   "scripts/verify-codex-skill.mjs",
   "scripts/test-verify-codex-skill-reference-aware.mjs",
