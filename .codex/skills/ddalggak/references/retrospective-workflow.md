@@ -66,4 +66,4 @@ Completion line:
 RETRO DONE PR#<N>: 파일=<경로> 메모리=<저장한 개수>개
 ```
 
-If wiki registration is requested or configured, register the saved file under a `retrospectives` category. Wiki registration failure should not fail the retrospective when the local file was saved successfully.
+If wiki registration is requested or configured, use the `wiki-bridge.md` setwiki bridge for a `retrospectives` category candidate. The default is review-only; do not write wiki files until explicit approval. Wiki registration failure should not fail the retrospective when the local file was saved successfully.

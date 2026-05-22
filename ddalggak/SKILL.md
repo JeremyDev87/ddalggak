@@ -56,6 +56,7 @@ user-invocable: true
 - Runtime contract language: `references/agent-runtime-contract.md`가 Task Scope Contract, Context Assembly Manifest, Resume Snapshot, Control-flow ownership을 소유한다.
 - Quality Lens Router Output: `references/quality-lens-router.md`가 Applicable gate families, Skipped gates, Required references, Repo/product conventions, backend-only skip을 소유한다. Domain gate is a lens, not a mandate.
 - Wiki Context First for plan/review: `references/wiki-context-preflight.md`를 실행하고 wiki-derived claim은 source path 또는 evidence gap을 남긴다.
+- Wiki Bridge: `getwiki`는 read-only retrieval, `setwiki`는 approval-gated write다. ddalggak은 `references/wiki-bridge.md`에서 admission/approval boundary만 소유하고 iCloud/QMD/wiki 상세 절차는 canonical wiki workflow로 위임한다.
 - Evidence Contract: `references/evidence-contract.md` 기준이며 Blocking evidence gaps가 있으면 PR ready/APPROVE 금지다.
 - Simplicity / Deletability Gate: `references/simplicity-deletability-gate.md` 기준이며 small direct change first와 why is this abstraction necessary?를 우선한다.
 - Core Invariants Reference: `references/core-invariants.md`가 Counterargument Pass, scope expansion, privacy, knowledge extraction, rendered evidence, component methodology gate, raw UTF-8 같은 장문 guardrail rationale를 소유한다.
@@ -68,7 +69,7 @@ user-invocable: true
 | `start` | Start Workflow | 구현 시작 | Quality Lens Router, Evidence Contract, Simplicity / Deletability Gate, Agent Runtime Contract, conditional frontend/vercel/regression references |
 | `review` | Cross-Review Loop | 독립 리뷰 | Wiki Context Preflight, Evidence Contract, Simplicity / Deletability Gate, regression-library, optional frontend/vercel gates |
 | `status` | Status | 상태 점검 | live git/GitHub + .ddalggak/session-state.json |
-| `plan` | Issue-Ready Plan | 구현 계획 | Wiki Context Preflight, Quality Lens Router, Evidence Contract, Simplicity / Deletability Gate; conditional design/deploy/regression references |
+| `plan` | Issue-Ready Plan | 구현 계획 | Wiki Context Preflight, Wiki Bridge, Quality Lens Router, Evidence Contract, Simplicity / Deletability Gate; conditional design/deploy/regression references |
 | `issue` | Plan to Issues | 이슈 생성 | plan body fields only |
 | `clean` | Merge Cleanup | merge 후 정리 | live PR merge evidence |
 | `ship` | Ship | 커밋/푸시/초안 PR | issue context + validation + local review |
@@ -78,7 +79,7 @@ user-invocable: true
 
 ## Required Reference Map
 
-`plan`, `start`, `review`는 Quality Lens Router Output으로 적용 gate와 skipped gate를 먼저 기록한다. `plan`과 `review`는 `references/wiki-context-preflight.md`를 먼저 읽고 Wiki Context Manifest를 남긴다. Evidence Contract, Simplicity / Deletability Gate, Core Invariants Reference는 readiness, code-shape, scope, privacy, knowledge-growth 판단이 있으면 필수다. Frontend/Vercel/Regression references는 조건부로만 읽고 backend-only skip reason을 남긴다.
+`plan`, `start`, `review`는 Quality Lens Router Output으로 적용 gate와 skipped gate를 먼저 기록한다. `plan`과 `review`는 `references/wiki-context-preflight.md`를 먼저 읽고 Wiki Context Manifest를 남긴다. Wiki lookup/write admission은 `references/wiki-bridge.md`를 따른다. Evidence Contract, Simplicity / Deletability Gate, Core Invariants Reference는 readiness, code-shape, scope, privacy, knowledge-growth 판단이 있으면 필수다. Frontend/Vercel/Regression references는 조건부로만 읽고 backend-only skip reason을 남긴다.
 
 ## Start Workflow
 
@@ -114,7 +115,7 @@ Read-only snapshot: fetch/prune, status, branch/upstream, worktrees, open PRs, l
 
 ## Issue-Ready Plan
 
-Full procedure: `references/issue-ready-plan.md`; wiki preflight: `references/wiki-context-preflight.md`.
+Full procedure: `references/issue-ready-plan.md`; wiki preflight: `references/wiki-context-preflight.md`; wiki bridge: `references/wiki-bridge.md`.
 
 Execution contract index:
 - Identify Goal, Source Of Truth, Non-Goals, Context Recovery Anchors, Assumptions/Unknowns.
@@ -160,7 +161,7 @@ Read-only local diff review. No GitHub comments and no source edits. Report Crit
 
 Full procedure: `references/retrospective.md`.
 
-Separate durable reusable knowledge from incident records. PR numbers, commit SHAs, and single-session completion logs are not durable reusable knowledge unless generalized into harness-engineering/*, principles/*, frontend/*, or llm-wiki/* patterns.
+Separate durable reusable knowledge from incident records. Use `references/wiki-bridge.md` for setwiki admission: default review-only, explicit approval before wiki write. PR numbers, commit SHAs, and single-session completion logs are not durable reusable knowledge unless generalized into harness-engineering/*, principles/*, frontend/*, or llm-wiki/* patterns.
 
 ---
 

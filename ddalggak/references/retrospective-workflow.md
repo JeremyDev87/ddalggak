@@ -116,9 +116,9 @@ cleanup이 아직 완료되지 않았으면 `/ddalggak clean`을 실행한다.
 
 ## Step 6. Wiki 등록
 
-저장된 회고 파일을 iCloud Wiki의 `retrospectives/` 카테고리에 entity page로 등록한다.
+저장된 회고 파일을 iCloud Wiki의 `retrospectives/` 카테고리에 entity page로 등록할 가치가 있으면 `wiki-bridge.md`의 setwiki bridge를 사용한다. 기본은 review-only이며, 명시 승인 전에는 wiki 파일을 쓰지 않는다.
 
-`/setwiki`를 호출하며 다음 정보를 함께 전달한다.
+`/setwiki`를 호출하거나 사용자에게 승인 요청을 남길 때 다음 정보를 함께 전달한다.
 
 - **소스**: Step 3에서 저장된 회고 파일 경로 (`~/workspace/retrospective/YYYY-MM-DD-...md`)
 - **카테고리 힌트**: `retrospectives`
