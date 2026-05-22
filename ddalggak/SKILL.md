@@ -49,32 +49,17 @@ user-invocable: true
 ## 핵심 원칙
 
 - URL beats cwd: GitHub URL 처리 기준은 owner/repo/number 파싱 후 cwd remote 검증이다. cwd remote가 URL repo와 다르면 mutation을 멈춘다.
+- Issue comments matter: issue body와 comments는 모두 source-of-truth 후보이며 최신 명시 comment가 stale body보다 우선한다.
 - Issue-PRs by default: 독립 이슈는 기본적으로 issue PR 하나를 만든다. hard conflict만 single PR + serial commit fallback이 가능하다.
-- Manual merge only: 주인님 PR은 merge/auto-merge 금지. green + APPROVE도 ready for manual merge 보고까지만 허용한다. 상태 보고에서는 CI/check, formal review/branch protection, merge blocker, human action을 분리한다.
-- approval-comment policy: formal approval이 부적절하면 current head SHA, review scope, validation evidence, blocking finding count, conclusion을 포함한 top-level PR comment를 사용한다. Top-level APPROVE comment는 review evidence일 뿐 GitHub `reviewDecision`/branch protection approval과 다르므로 `reviewDecision`과 `mergeStateStatus`를 별도로 보고한다.
-- Runtime contract language: Task Scope Contract, Context Assembly Manifest, Resume Snapshot, Control-flow ownership으로 conductor/reviewer-owned 실행 경계를 명시한다.
-- Small focused workers, explicit orchestration: worker 책임과 context를 작게 유지하고 conductor가 branch/PR/review/fix gate를 소유한다.
-- Task Scope Contract: tool capability boundary와 task scope contract를 분리한다. out-of-scope diff는 scope-expansion failure다.
-- Diff Footprint / Scope Expansion Review: review packet은 changed files, side effects, config/credential/migration/destructive action, 외부 API write, production data touch를 task scope contract와 대조한다.
-- Context Assembly Manifest, Resume Snapshot, Control-flow ownership은 conductor/reviewer-owned 경계다.
-- Quality Lens Router Output은 Applicable gate families, Skipped gates, Required references, Repo/product conventions, backend-only skip을 기록한다. Domain gate is a lens, not a mandate.
-- Wiki Context First for plan/review: `plan`과 `review`는 최종 판단 전에 `references/wiki-context-preflight.md`를 실행하고, getwiki/LLM Wiki에서 reusable prior knowledge, repo/product conventions, past failure patterns, known decisions를 검색한다. Wiki-derived claim은 source path를 남기고, retrieval 실패나 관련 문서 부재는 명시적 evidence gap으로 기록한 뒤 live evidence로 계속한다.
-- Evidence Contract는 references/evidence-contract.md 기준이며 Blocking evidence gaps가 있으면 PR ready/APPROVE 금지다.
-- Counterargument Pass는 약한 가정, readiness를 반증할 evidence, 더 작은 직접 변경 대안을 먼저 찾는다. unmerged prerequisite PR/issue, overlapping verifier surface, 같은 contract를 바꿀 수 있는 open automation PR은 missing readiness / ordering input으로 대기시키며 Dobby rejection으로 오분류하지 않는다.
-- Simplicity / Deletability Gate는 references/simplicity-deletability-gate.md 기준이다. small direct change first, why is this abstraction necessary?, one-off abstraction, human readability/deletability, SOLID 우선순위를 명시한다.
-- Frontend Design Gate와 Vercel Agent Skills Gate는 조건부다. frontend-design, backend-only, references/frontend-design-gate.md, Frontend Design Brief, Frontend Design Review Gate, references/vercel-agent-skills-gates.md, react-best-practices, composition-patterns, react-view-transitions, web-design-guidelines, deploy-to-vercel, vercel-cli-with-tokens, react-native-skills, server/client boundary, unnecessary client component avoidance, hydration/bundle regression avoidance, token source without printing secrets, preview-first, Vercel deploy safety, component API quality, animation meaning, React Native/Expo constraints를 해당 작업에만 적용한다.
-- Component methodology gate: main component only assembles, ComponentName.parts.tsx, ComponentName.utils.ts, satisfies Record<...>, public visual-contract classes, no silent fallback, empty companion files 금지.
-- Continuous Regression Library: references/regression-library.md, Regression Library Candidate, class-level failure, transient incident 분리를 지킨다.
-- Self-created complexity is a defect: forced modularization, client-side patch, mock-only tests는 High 후보가 될 수 있다.
-- Rendered evidence gate: route evidence, viewport evidence, rendered DOM evidence, screenshot evidence, fallback evidence, contract graph evidence, not-applicable 분류를 사용한다.
-- Transitive rendered fallback audit: list/detail surface, shared card/media primitive, missing media, empty DB/data, nullable field, mapper default를 본다.
-- Analytics/privacy allowlist·denylist: raw search terms, prompt titles/bodies, full query strings, arbitrary text, email/name/profile identifiers 금지 기본값.
-- GitHub issue/PR title/body는 한글을 raw UTF-8로 전달한다. literal `\uXXXX`/`\uD558`/`\ud558` escape가 있으면 생성·수정 전에 중단하고 decode하며, Python/JSON payload는 `json.dumps(..., ensure_ascii=False)` + `gh api --input`을 사용하고 live title/body를 재조회한다.
-- 지식 축적은 harness-engineering/*, principles/*, frontend/*, llm-wiki/* 같은 reusable categories로만 한다. PR numbers, commit SHAs, single-session completion logs, incident records는 durable reusable knowledge가 아니다.
-
-## myWiki-derived 운영 Guardrails
-
-Wiki-derived 지식은 바로 hot path에 붙이지 말고 `references/wiki-growth-triage.md` 기준으로 immediate guardrail, reference/template only, verifier/script candidate, GitHub issue candidate, defer/reject 중 하나로 분류한다.
+- Manual merge only: 주인님 PR은 merge/auto-merge 금지. green + APPROVE도 ready for manual merge 보고까지만 허용한다.
+- approval-comment policy: formal approval이 부적절하면 current head SHA, review scope, validation evidence, blocking finding count, conclusion을 포함한 top-level PR comment를 사용한다. Top-level APPROVE comment는 GitHub formal approval과 다르므로 `CI/check`, `formal review/branch protection`, `merge blocker`, `human action`을 분리한다.
+- Runtime contract language: `references/agent-runtime-contract.md`가 Task Scope Contract, Context Assembly Manifest, Resume Snapshot, Control-flow ownership을 소유한다.
+- Quality Lens Router Output: `references/quality-lens-router.md`가 Applicable gate families, Skipped gates, Required references, Repo/product conventions, backend-only skip을 소유한다. Domain gate is a lens, not a mandate.
+- Wiki Context First for plan/review: `references/wiki-context-preflight.md`를 실행하고 wiki-derived claim은 source path 또는 evidence gap을 남긴다.
+- Evidence Contract: `references/evidence-contract.md` 기준이며 Blocking evidence gaps가 있으면 PR ready/APPROVE 금지다.
+- Simplicity / Deletability Gate: `references/simplicity-deletability-gate.md` 기준이며 small direct change first와 why is this abstraction necessary?를 우선한다.
+- Core Invariants Reference: `references/core-invariants.md`가 Counterargument Pass, scope expansion, privacy, knowledge extraction, rendered evidence, component methodology gate, raw UTF-8 같은 장문 guardrail rationale를 소유한다.
+- Conditional gates: frontend, Vercel, regression-library는 해당 작업에만 관련 reference를 로드하고 backend-only/lightweight skip reason을 남긴다.
 
 ## 서브커맨드 분기
 
@@ -93,7 +78,7 @@ Wiki-derived 지식은 바로 hot path에 붙이지 말고 `references/wiki-grow
 
 ## Required Reference Map
 
-`plan`, `start`, `review`는 Quality Lens Router Output으로 적용 gate와 skipped gate를 먼저 기록한다. `plan`과 `review`는 `references/wiki-context-preflight.md`를 먼저 읽고 Wiki Context Manifest를 남긴다. Evidence Contract와 Simplicity / Deletability Gate는 readiness 또는 code-shape 판단이 있으면 필수다. Frontend/Vercel/Regression references는 조건부로만 읽고 backend-only skip reason을 남긴다.
+`plan`, `start`, `review`는 Quality Lens Router Output으로 적용 gate와 skipped gate를 먼저 기록한다. `plan`과 `review`는 `references/wiki-context-preflight.md`를 먼저 읽고 Wiki Context Manifest를 남긴다. Evidence Contract, Simplicity / Deletability Gate, Core Invariants Reference는 readiness, code-shape, scope, privacy, knowledge-growth 판단이 있으면 필수다. Frontend/Vercel/Regression references는 조건부로만 읽고 backend-only skip reason을 남긴다.
 
 ## Start Workflow
 
@@ -104,7 +89,7 @@ This `start` show-doc surface intentionally keeps the executable contract compac
 ### Quality Lens Router Output
 - Applicable gate families: derive from issue body/comments and changed files.
 - Skipped gates: record backend-only skip or other non-applicable domains.
-- Required references: `references/quality-lens-router.md`, `references/evidence-contract.md`, `references/simplicity-deletability-gate.md`; add `references/frontend-design-gate.md`, `references/vercel-agent-skills-gates.md`, or `references/regression-library.md` only when applicable and 유용한 범위에서 class-level risk가 있다.
+- Required references: `references/quality-lens-router.md`, `references/evidence-contract.md`, `references/simplicity-deletability-gate.md`, `references/core-invariants.md`; add `references/frontend-design-gate.md`, `references/vercel-agent-skills-gates.md`, or `references/regression-library.md` only when applicable and 유용한 범위에서 class-level risk가 있다.
 
 ### Evidence Contract
 - Required evidence: issue acceptance criteria, validation commands, PR URL/evidence, and any UI/API/security evidence that applies.
