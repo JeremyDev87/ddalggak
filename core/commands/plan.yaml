@@ -1,0 +1,20 @@
+# Canonical ddalggak command contract. Keep this file data-only; do not paste long procedure here.
+command: plan
+show_doc_heading: "Issue-Ready Plan"
+source_edit_allowed: false
+purpose: "Issue-ready implementation plan from issue/wiki/code evidence."
+required_references:
+  - wiki-context-preflight.md
+  - wiki-bridge.md
+  - quality-lens-router.md
+  - evidence-contract.md
+  - simplicity-deletability-gate.md
+  - core-invariants.md
+  - issue-ready-plan.md
+
+required_templates:
+  []
+
+output_contract:
+  completion_signal: "PLAN_DONE"
+  evidence_required: true

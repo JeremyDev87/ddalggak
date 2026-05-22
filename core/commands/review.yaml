@@ -1,0 +1,20 @@
+# Canonical ddalggak command contract. Keep this file data-only; do not paste long procedure here.
+command: review
+show_doc_heading: "Cross-Review Loop"
+source_edit_allowed: true
+purpose: "Independent current-head review and accepted fix loop."
+required_references:
+  - wiki-context-preflight.md
+  - evidence-contract.md
+  - simplicity-deletability-gate.md
+  - core-invariants.md
+  - regression-library.md
+  - cross-review-loop.md
+
+required_templates:
+  - review-brief.md
+  - fix-brief.md
+
+output_contract:
+  completion_signal: "REVIEW_DONE"
+  evidence_required: true

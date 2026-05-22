@@ -1,0 +1,20 @@
+# Canonical source-to-runtime projection ledger for ddalggak.
+source_root: ddalggak
+projection_roots:
+  codex:
+    root: .codex/skills/ddalggak
+    runtime: codex
+    generated: false
+    verifier_required: true
+  claude_legacy:
+    root: ddalggak
+    runtime: claude
+    generated: false
+    verifier_required: true
+parity_targets:
+  hermes:
+    runtime: hermes
+    generated: false
+    execution_runtime: false
+commands_glob: core/commands/*.yaml
+runtimes_glob: core/runtimes/*.yaml

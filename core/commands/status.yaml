@@ -1,0 +1,14 @@
+# Canonical ddalggak command contract. Keep this file data-only; do not paste long procedure here.
+command: status
+show_doc_heading: "Status"
+source_edit_allowed: false
+purpose: "Read-only live git/GitHub/session state snapshot."
+required_references:
+  - status.md
+
+required_templates:
+  []
+
+output_contract:
+  completion_signal: "STATUS_DONE"
+  evidence_required: true

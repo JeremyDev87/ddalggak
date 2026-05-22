@@ -1,0 +1,14 @@
+# Canonical ddalggak command contract. Keep this file data-only; do not paste long procedure here.
+command: check
+show_doc_heading: "Local Diff Check"
+source_edit_allowed: false
+purpose: "Read-only local diff review."
+required_references:
+  - local-diff-check.md
+
+required_templates:
+  []
+
+output_contract:
+  completion_signal: "CHECK_DONE"
+  evidence_required: true

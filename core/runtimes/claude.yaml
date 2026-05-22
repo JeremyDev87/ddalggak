@@ -1,0 +1,14 @@
+runtime: claude
+kind: execution_projection
+projection_roots:
+  - ddalggak
+  - .claude/skills/ddalggak
+entrypoints:
+  - "ddalggak setup"
+  - "/ddalggak <subcommand>"
+capabilities:
+  slash_commands: true
+  local_skill_install: true
+  show_doc: true
+loss_model:
+  - "Legacy Claude Code install may drift from source until setup/status verifies it."

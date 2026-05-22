@@ -1,0 +1,14 @@
+# Canonical ddalggak command contract. Keep this file data-only; do not paste long procedure here.
+command: clean
+show_doc_heading: "Merge Cleanup"
+source_edit_allowed: false
+purpose: "Post-merge local cleanup after live merge evidence."
+required_references:
+  - merge-cleanup.md
+
+required_templates:
+  []
+
+output_contract:
+  completion_signal: "CLEAN_DONE"
+  evidence_required: true

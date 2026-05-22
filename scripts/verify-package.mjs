@@ -12,6 +12,7 @@ const requiredArtifactPaths = [
   "bin/ddalggak.js",
   "scripts/smoke.mjs",
   "scripts/verify-codex-skill.mjs",
+  "scripts/verify-projections.mjs",
   "scripts/test-verify-codex-skill-reference-aware.mjs",
   "scripts/eval-ddalggak-readiness.mjs",
   "scripts/test-release-helpers.mjs",
@@ -29,6 +30,12 @@ const requiredArtifactPaths = [
   "ddalggak/references/wiki-bridge.md",
   ".codex/skills/ddalggak/SKILL.md",
   ".codex/skills/ddalggak/references/wiki-bridge.md",
+  "core/projections.yaml",
+  "core/commands/start.yaml",
+  "core/commands/review.yaml",
+  "core/runtimes/claude.yaml",
+  "core/runtimes/codex.yaml",
+  "core/runtimes/hermes.yaml",
 ];
 
 function runStep(name, command, args, options = {}) {
@@ -97,6 +104,7 @@ function verifyArtifactContents() {
 try {
   runStep("npm test", npmCommand, ["test"]);
   runStep("codex skill verifier", npmCommand, ["run", "verify:codex-skill"]);
+  runStep("projection verifier", npmCommand, ["run", "verify:projections"]);
   runStep("reference-aware skill anchor tests", npmCommand, ["run", "test:reference-aware-skill-anchors"]);
   runStep("ddalggak readiness eval", npmCommand, ["run", "eval:ddalggak-readiness"]);
   runStep("release helper tests", npmCommand, ["run", "test:release-helpers"]);

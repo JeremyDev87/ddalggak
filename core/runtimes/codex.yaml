@@ -1,0 +1,12 @@
+runtime: codex
+kind: execution_projection
+projection_roots:
+  - .codex/skills/ddalggak
+entrypoints:
+  - "ddalggak"
+capabilities:
+  skill_router: true
+  references: true
+  templates: true
+loss_model:
+  - "Codex projection is package payload; verifier must detect missing references/templates."

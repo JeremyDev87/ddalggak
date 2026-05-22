@@ -1,0 +1,12 @@
+runtime: hermes
+kind: parity_target_contract
+execution_runtime: false
+projection_roots: []
+entrypoints: []
+capabilities:
+  messenger_native_delivery: true
+  durable_memory: true
+  cron_background_workers: true
+  delegation: true
+  tool_call_verification: true
+contract_note: "Hermes is the parity target for behavior and evidence gates, not a generated ddalggak runtime projection."
