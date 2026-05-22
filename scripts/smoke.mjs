@@ -369,6 +369,22 @@ const cases = [
     },
   },
   {
+    name: "getwiki --print delegates to dedicated slash command",
+    run() {
+      const result = runCli(["getwiki", "--print", "workflow routing"]);
+      assertExit(result, 0);
+      assertStdout(result, '/getwiki "workflow routing"\n');
+    },
+  },
+  {
+    name: "setwiki --print delegates to dedicated slash command",
+    run() {
+      const result = runCli(["setwiki", "--print", "review this lesson"]);
+      assertExit(result, 0);
+      assertStdout(result, '/setwiki "review this lesson"\n');
+    },
+  },
+  {
     name: "dispatch --print quotes ambiguous args safely",
     run() {
       const result = runCli([
@@ -459,6 +475,16 @@ const cases = [
         check: {
           heading: "## Local Diff Check",
           references: ["references/local-diff-check.md"],
+          maxLines: 12,
+        },
+        getwiki: {
+          heading: "## GetWiki Bridge",
+          references: ["references/wiki-bridge.md"],
+          maxLines: 12,
+        },
+        setwiki: {
+          heading: "## SetWiki Bridge",
+          references: ["references/wiki-bridge.md"],
           maxLines: 12,
         },
       };

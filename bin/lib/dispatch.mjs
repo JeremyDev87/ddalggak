@@ -22,6 +22,8 @@ const DOC_SECTION = {
   retro: "Retrospective",
   prompt: "Prompt Optimizer",
   check: "Local Diff Check",
+  getwiki: "GetWiki Bridge",
+  setwiki: "SetWiki Bridge",
 };
 
 // Slash command arguments are printed as one command string for Claude Code.
@@ -37,10 +39,14 @@ function quoteIfNeeded(s) {
 }
 
 function buildSlashString(subcmd, parts) {
+  const slashCommand =
+    subcmd === "getwiki" || subcmd === "setwiki"
+      ? `/${subcmd}`
+      : `/ddalggak ${subcmd}`;
   if (parts.length === 0) {
-    return `/ddalggak ${subcmd}`;
+    return slashCommand;
   }
-  return `/ddalggak ${subcmd} ` + parts.map(quoteIfNeeded).join(" ");
+  return `${slashCommand} ` + parts.map(quoteIfNeeded).join(" ");
 }
 
 // claude CLI를 PATH에서 검색 (which 인라인).

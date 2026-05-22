@@ -109,6 +109,14 @@ const requiredDisclosureAssetsBySubcommand = {
     references: ["local-diff-check.md"],
     templates: [],
   },
+  getwiki: {
+    references: ["wiki-bridge.md"],
+    templates: [],
+  },
+  setwiki: {
+    references: ["wiki-bridge.md"],
+    templates: [],
+  },
 };
 const skillPayloadRoots = [
   ".codex/skills/ddalggak",
@@ -185,6 +193,8 @@ const requiredSubcommands = [
   "retro",
   "prompt",
   "check",
+  "getwiki",
+  "setwiki",
 ];
 const requiredLegacyHeadings = {
   start: "Start Workflow",
@@ -197,6 +207,8 @@ const requiredLegacyHeadings = {
   retro: "Retrospective",
   prompt: "Prompt Optimizer",
   check: "Local Diff Check",
+  getwiki: "GetWiki Bridge",
+  setwiki: "SetWiki Bridge",
 };
 const bannedTerms = [
   "TeamCreate",
