@@ -12,6 +12,7 @@ const requiredArtifactPaths = [
   "bin/ddalggak.js",
   "scripts/smoke.mjs",
   "scripts/verify-codex-skill.mjs",
+  "scripts/test-verify-codex-skill-reference-aware.mjs",
   "scripts/eval-ddalggak-readiness.mjs",
   "scripts/test-release-helpers.mjs",
   "scripts/test-release-drafter.mjs",
@@ -94,6 +95,7 @@ function verifyArtifactContents() {
 try {
   runStep("npm test", npmCommand, ["test"]);
   runStep("codex skill verifier", npmCommand, ["run", "verify:codex-skill"]);
+  runStep("reference-aware skill anchor tests", npmCommand, ["run", "test:reference-aware-skill-anchors"]);
   runStep("ddalggak readiness eval", npmCommand, ["run", "eval:ddalggak-readiness"]);
   runStep("release helper tests", npmCommand, ["run", "test:release-helpers"]);
   runStep("release drafter tests", npmCommand, ["run", "test:release-drafter"]);
