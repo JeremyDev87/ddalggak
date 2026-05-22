@@ -12,6 +12,7 @@ const requiredArtifactPaths = [
   "bin/ddalggak.js",
   "bin/lib/profile.mjs",
   "bin/lib/status.mjs",
+  "scripts/project-runtime-assets.mjs",
   "scripts/smoke.mjs",
   "scripts/verify-codex-skill.mjs",
   "scripts/verify-projections.mjs",
