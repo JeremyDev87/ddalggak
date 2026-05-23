@@ -133,7 +133,7 @@ Common subcommand options:
 
 `status --local` options:
 
-- `--json`: print package version, payload roots, installed path/version, source/installed checksums, missing required references/templates, extra installed payload files, and `ok` / `stale` / `not-installed` state as JSON.
+- `--json`: print package version, payload roots, installed path/version, source/installed checksums, missing required references/templates, extra installed payload files, and `ok` / `stale` / `not-installed` state as JSON. The JSON also includes an `evidence` section with runtime support, package manifest status (`not-installed` / `absent` / `malformed` / `stale` / `present`), payload counts/checksum match, and a short next action.
 
 `setup` options:
 

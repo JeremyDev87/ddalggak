@@ -13,6 +13,7 @@ const PKG_ROOT = resolve(__dirname, "..", "..");
 const PKG_JSON = join(PKG_ROOT, "package.json");
 const SOURCE_PAYLOAD_ROOT = join(PKG_ROOT, "ddalggak");
 const CODEX_PAYLOAD_ROOT = join(PKG_ROOT, ".codex", "skills", "ddalggak");
+const MINIMUM_NODE_MAJOR = 18;
 
 const HELP_TEXT = `ddalggak status --local — inspect local skill installation parity
 
@@ -197,9 +198,11 @@ function determineState({
   missingRequiredPaths,
   extraInstalledPaths,
   installedManifestParseError,
+  installedManifestMissing,
 }) {
   if (!installedExists) return "not-installed";
   if (installedManifestParseError) return "stale";
+  if (installedManifestMissing) return "stale";
   if (installedVersion !== packageVersion) return "stale";
   if (
     !installedChecksum ||
@@ -210,6 +213,113 @@ function determineState({
   if (missingRequiredPaths.length > 0) return "stale";
   if (extraInstalledPaths.length > 0) return "stale";
   return "ok";
+}
+
+function runtimeEvidence() {
+  const nodeMajor = Number.parseInt(process.versions.node.split(".")[0], 10);
+  const supported = Number.isFinite(nodeMajor) && nodeMajor >= MINIMUM_NODE_MAJOR;
+  return {
+    status: supported ? "ok" : "unsupported",
+    nodeVersion: process.versions.node,
+    minimumNodeVersion: `>=${MINIMUM_NODE_MAJOR}`,
+    platform: process.platform,
+    arch: process.arch,
+    action: supported
+      ? "Runtime satisfies ddalggak package requirements."
+      : `Use Node.js ${MINIMUM_NODE_MAJOR} or newer before running setup/status again.`,
+  };
+}
+
+function manifestEvidenceStatus({
+  installedExists,
+  installedManifest,
+  installedManifestParseError,
+  packageVersion,
+}) {
+  if (!installedExists) return "not-installed";
+  if (installedManifestParseError) return "malformed";
+  if (!installedManifest) return "absent";
+  if (installedManifest.packageVersion !== packageVersion) return "stale";
+  return "present";
+}
+
+function nextEvidenceAction({
+  state,
+  runtime,
+  manifestStatus,
+  missingRequiredPaths,
+  extraInstalledPaths,
+  checksumsMatch,
+}) {
+  if (runtime.status !== "ok") return runtime.action;
+  if (state === "not-installed") return "Run `ddalggak setup` to install the local Claude skill.";
+  if (manifestStatus === "malformed") return "Run `ddalggak setup` to rewrite the malformed installed manifest.";
+  if (manifestStatus === "absent") return "Run `ddalggak setup` to backfill the missing installed manifest.";
+  if (manifestStatus === "stale") return "Run `ddalggak setup` to refresh stale package manifest evidence.";
+  if (missingRequiredPaths.length > 0) return "Run `ddalggak setup` to restore missing required references/templates.";
+  if (extraInstalledPaths.length > 0) return "Remove extra installed payload files or run `ddalggak setup` to replace the skill.";
+  if (!checksumsMatch) return "Run `ddalggak setup` to sync the installed payload with the package payload.";
+  return "No action needed; runtime, package manifest, and payload evidence are current.";
+}
+
+function buildEvidence({
+  state,
+  packageVersion,
+  installedVersion,
+  installedExists,
+  installedManifest,
+  installedManifestParseError,
+  sourceChecksum,
+  installedChecksum,
+  sourceFiles,
+  installedFiles,
+  missingRequiredPaths,
+  extraInstalledPaths,
+}) {
+  const runtime = runtimeEvidence();
+  const manifestStatus = manifestEvidenceStatus({
+    installedExists,
+    installedManifest,
+    installedManifestParseError,
+    packageVersion,
+  });
+  const checksumsMatch = Boolean(
+    sourceChecksum &&
+      installedChecksum &&
+      sourceChecksum.sha256 === installedChecksum.sha256,
+  );
+  const packageEvidence = {
+    status: state,
+    packageVersion,
+    installedVersion,
+    manifest: {
+      status: manifestStatus,
+      packageVersion: installedManifest?.packageVersion || null,
+      installedAt: installedManifest?.installedAt || null,
+      fileCount: installedManifest?.files?.length || 0,
+      parseError: installedManifestParseError ? true : false,
+    },
+    payload: {
+      sourceFileCount: sourceFiles.length,
+      installedFileCount: installedFiles.length,
+      checksumsMatch,
+      missingRequiredCount: missingRequiredPaths.length,
+      extraInstalledCount: extraInstalledPaths.length,
+    },
+  };
+  const nextAction = nextEvidenceAction({
+    state,
+    runtime,
+    manifestStatus,
+    missingRequiredPaths,
+    extraInstalledPaths,
+    checksumsMatch,
+  });
+  return {
+    runtime,
+    package: packageEvidence,
+    nextAction,
+  };
 }
 
 export async function collectStatus() {
@@ -253,6 +363,21 @@ export async function collectStatus() {
     missingRequiredPaths,
     extraInstalledPaths: extraPaths,
     installedManifestParseError: installedManifestResult.parseError,
+    installedManifestMissing: installedExists && !installedManifest && !installedManifestResult.parseError,
+  });
+  const evidence = buildEvidence({
+    state,
+    packageVersion,
+    installedVersion,
+    installedExists,
+    installedManifest,
+    installedManifestParseError: installedManifestResult.parseError,
+    sourceChecksum,
+    installedChecksum,
+    sourceFiles,
+    installedFiles,
+    missingRequiredPaths,
+    extraInstalledPaths: extraPaths,
   });
 
   return {
@@ -279,6 +404,7 @@ export async function collectStatus() {
     installedFileCount: installedFiles.length,
     missingRequiredPaths,
     extraInstalledPaths: extraPaths,
+    evidence,
   };
 }
 
@@ -312,6 +438,15 @@ function printHuman(status) {
   } else {
     out("extra installed payload files: none");
   }
+  out("evidence:");
+  out(
+    `  runtime: ${status.evidence.runtime.status} (node ${status.evidence.runtime.nodeVersion}, requires ${status.evidence.runtime.minimumNodeVersion})`,
+  );
+  out(`  package manifest: ${status.evidence.package.manifest.status}`);
+  out(
+    `  package payload: ${status.evidence.package.payload.checksumsMatch ? "matched" : "needs sync"}`,
+  );
+  out(`  next: ${status.evidence.nextAction}`);
 }
 
 export async function run(args) {
