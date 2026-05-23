@@ -5,6 +5,8 @@ import path from "node:path";
 
 import {
   requiredDisclosureAssetsBySubcommand,
+  requiredIssueTemplateFields,
+  requiredEpicTemplateFields,
   skillPayloadRoots,
   requiredPackageFiles,
   forbiddenHotPathTemplateSentinels,
@@ -331,6 +333,27 @@ function assertForbiddenHotPathTemplateSentinels({ label, text }) {
   }
 }
 
+function assertTemplateRequiredFields({ label, relativePath, fields }) {
+  const absolutePath = path.join(rootDir, relativePath);
+  if (!statSync(absolutePath, { throwIfNoEntry: false })?.isFile()) {
+    fail(`${label} template missing: ${relativePath}`);
+    return;
+  }
+
+  const text = readText(absolutePath);
+  const missingFields = fields.filter((field) => !text.includes(field));
+  if (missingFields.length > 0) {
+    fail(
+      `${label} template required fields missing from ${relativePath}:
+${formatAnchorList(missingFields)}`,
+    );
+  }
+
+  if (/\u[0-9a-fA-F]{4}/.test(text)) {
+    fail(`${label} template must keep raw UTF-8 guidance; literal Unicode escape found in ${relativePath}.`);
+  }
+}
+
 function parsePackJson(stdout) {
   try {
     return JSON.parse(stdout);
@@ -464,6 +487,19 @@ for (const budget of skillBudgets) {
 }
 assertRequiredDisclosureAssetsExist();
 assertPackageArtifactIncludes();
+
+for (const root of skillPayloadRoots) {
+  assertTemplateRequiredFields({
+    label: root,
+    relativePath: `${root}/templates/issue-body.md`,
+    fields: requiredIssueTemplateFields,
+  });
+  assertTemplateRequiredFields({
+    label: root,
+    relativePath: `${root}/templates/epic-body.md`,
+    fields: requiredEpicTemplateFields,
+  });
+}
 
 verifySkillFile(skillPath, {
   label: ".codex/skills/ddalggak/SKILL.md",

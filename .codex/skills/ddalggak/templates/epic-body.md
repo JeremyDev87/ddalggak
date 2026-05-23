@@ -4,11 +4,17 @@
 
 ## 목표
 
+## Wiki Context Manifest
+- Queries attempted:
+- Wiki sources read:
+- Relevant wiki facts:
+- Unknowns / evidence gaps:
+
 ## 실행 순서
 
 ## Sub-issues
-| Lane | Issue | Parallelization note | Commit lane suggestion | Owned files | Must not touch | Dependencies / blocked by |
-|---|---|---|---|---|---|---|
+| Lane | Issue | Parallelization note | Commit lane suggestion | Owned files | Must not touch | Validation/evidence | Dependencies / blocked by |
+|---|---|---|---|---|---|---|---|
 
 ## 완료 기준
 

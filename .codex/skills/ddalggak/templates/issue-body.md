@@ -8,6 +8,12 @@
 
 ## 원본 근거 / 컨텍스트 복구
 
+## Wiki Context Manifest
+- Queries attempted:
+- Wiki sources read:
+- Relevant wiki facts:
+- Unknowns / evidence gaps:
+
 ## 파일 소유권
 | 파일 | 변경 | 근거 | 신뢰도 |
 |---|---|---|---|
