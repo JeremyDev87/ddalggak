@@ -2,7 +2,7 @@
 command: prompt
 show_doc_heading: "Prompt Optimizer"
 source_edit_allowed: false
-purpose: "Improve briefs/prompts without source edits."
+purpose: "Compile safer prompt briefs without source edits."
 required_references:
   - prompt-optimizer.md
 

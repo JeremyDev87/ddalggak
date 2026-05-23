@@ -82,7 +82,7 @@ If a non-writing subcommand would need a source edit to continue, report the nee
 | `clean` | Merge Cleanup | Post-merge local cleanup after live merge evidence | refs: `references/merge-cleanup.md`; templates: - |
 | `ship` | Ship | Commit/push/open draft PR for existing scoped changes | refs: `references/ship.md`; templates: - |
 | `retro` | Retrospective | Extract reusable lessons after merge without transient memory | refs: `references/retrospective.md`, `references/retrospective-workflow.md`; templates: - |
-| `prompt` | Prompt Optimizer | Improve briefs/prompts without source edits | refs: `references/prompt-optimizer.md`; templates: - |
+| `prompt` | Prompt Optimizer | Compile safer prompt briefs without source edits | refs: `references/prompt-optimizer.md`; templates: - |
 | `check` | Local Diff Check | Read-only local diff review | refs: `references/local-diff-check.md`; templates: - |
 | `getwiki` | GetWiki Bridge | Wiki context retrieval bridge | refs: `references/wiki-bridge.md`; templates: - |
 | `setwiki` | SetWiki Bridge | Wiki write workflow bridge | refs: `references/wiki-bridge.md`; templates: - |
@@ -178,7 +178,11 @@ After merge, summarize the cycle and extract reusable lessons without storing tr
 
 ## `prompt` - Prompt Optimizer
 
-Audit or improve brief artifacts only. If the request changes skill behavior or repository source, stop and require a normal repo edit outside this subcommand.
+Prompt Safety / Brief Compiler compact index: Prompt Audit, `prompt grill-me`, Unsafe Prompt Gate.
+
+Judgement labels: `READY_FOR_BRIEF | NEEDS_CLARIFICATION | BLOCKED_UNSAFE | DISCOVERY_ONLY`.
+
+Preserve `source_edit_allowed: false`; compile brief/review/fix artifacts only, and end with `PROMPT_DONE`.
 
 ## `check` - Local Diff Check
 

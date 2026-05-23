@@ -79,7 +79,7 @@ user-invocable: true
 | `clean` | Merge Cleanup | Post-merge local cleanup after live merge evidence | refs: `references/merge-cleanup.md`; templates: - |
 | `ship` | Ship | Commit/push/open draft PR for existing scoped changes | refs: `references/ship.md`; templates: - |
 | `retro` | Retrospective | Extract reusable lessons after merge without transient memory | refs: `references/retrospective.md`, `references/retrospective-workflow.md`; templates: - |
-| `prompt` | Prompt Optimizer | Improve briefs/prompts without source edits | refs: `references/prompt-optimizer.md`; templates: - |
+| `prompt` | Prompt Optimizer | Compile safer prompt briefs without source edits | refs: `references/prompt-optimizer.md`; templates: - |
 | `check` | Local Diff Check | Read-only local diff review | refs: `references/local-diff-check.md`; templates: - |
 | `getwiki` | GetWiki Bridge | Wiki context retrieval bridge | refs: `references/wiki-bridge.md`; templates: - |
 | `setwiki` | SetWiki Bridge | Wiki write workflow bridge | refs: `references/wiki-bridge.md`; templates: - |
@@ -193,7 +193,11 @@ Separate durable reusable knowledge from incident records. Use `references/wiki-
 
 Full procedure: `references/prompt-optimizer.md`.
 
-Audit prompts for single goal, Why, validation, restatement, and question path. Do not edit SKILL.md or source code from this subcommand.
+Prompt Safety / Brief Compiler compact index: Prompt Audit, `prompt grill-me`, Unsafe Prompt Gate.
+
+Judgement labels: `READY_FOR_BRIEF | NEEDS_CLARIFICATION | BLOCKED_UNSAFE | DISCOVERY_ONLY`.
+
+Preserve `source_edit_allowed: false`; compile brief/review/fix artifacts only, and end with `PROMPT_DONE`.
 
 ---
 
