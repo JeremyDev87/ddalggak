@@ -560,6 +560,23 @@ export const requiredCoreInvariantReferenceAnchors = [
   "raw UTF-8",
   "ensure_ascii=False",
 ];
+export const requiredPromptSafetyReferenceAnchors = [
+  "Prompt Safety / Brief Compiler",
+  "Prompt Audit",
+  "Goal clarity",
+  "Source of truth",
+  "Scope boundary",
+  "Validation path",
+  "Question need",
+  "Risk level",
+  "prompt grill-me",
+  "Unsafe Prompt Gate",
+  "READY_FOR_BRIEF",
+  "NEEDS_CLARIFICATION",
+  "BLOCKED_UNSAFE",
+  "DISCOVERY_ONLY",
+  "PROMPT_DONE",
+];
 export const requiredWikiBridgeReferenceAnchors = [
   "Wiki Bridge Contract",
   "admission and approval boundary",

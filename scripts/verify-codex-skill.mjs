@@ -26,6 +26,7 @@ import {
   requiredRegressionLibraryFields,
   requiredAgentRuntimeContractAnchors,
   requiredCoreInvariantReferenceAnchors,
+  requiredPromptSafetyReferenceAnchors,
   requiredWikiBridgeReferenceAnchors,
   requiredReadmeQualityAnchors,
 } from "../core/verification/skill-contract-manifest.mjs";
@@ -64,6 +65,10 @@ const agentRuntimeContractReferencePaths = [
 const coreInvariantReferencePaths = [
   path.join(skillDir, "references", "core-invariants.md"),
   path.join(rootDir, "ddalggak", "references", "core-invariants.md"),
+];
+const promptOptimizerReferencePaths = [
+  path.join(skillDir, "references", "prompt-optimizer.md"),
+  path.join(rootDir, "ddalggak", "references", "prompt-optimizer.md"),
 ];
 const wikiBridgeReferencePaths = [
   path.join(skillDir, "references", "wiki-bridge.md"),
@@ -727,6 +732,21 @@ if (codexCoreInvariantExists && legacyCoreInvariantExists) {
     label: "Core Invariants anchors missing",
     text: codexCoreInvariantText,
     anchors: requiredCoreInvariantReferenceAnchors,
+  });
+}
+
+for (const referencePath of promptOptimizerReferencePaths) {
+  const label = path.relative(rootDir, referencePath);
+  if (!statSync(referencePath, { throwIfNoEntry: false })?.isFile()) {
+    fail(`${label} must exist for Prompt Safety / Brief Compiler parity.`);
+    continue;
+  }
+
+  const referenceText = readText(referencePath);
+  assertReferenceAnchors({
+    label: `Prompt Safety / Brief Compiler anchors missing from ${label}`,
+    text: referenceText,
+    anchors: requiredPromptSafetyReferenceAnchors,
   });
 }
 
