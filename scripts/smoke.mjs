@@ -825,7 +825,18 @@ const cases = [
         prompt: {
           heading: "## Prompt Optimizer",
           fullProcedure: "references/prompt-optimizer.md",
-          assets: [],
+          assets: [
+            "Prompt Safety / Brief Compiler",
+            "Prompt Audit",
+            "prompt grill-me",
+            "Unsafe Prompt Gate",
+            "READY_FOR_BRIEF",
+            "NEEDS_CLARIFICATION",
+            "BLOCKED_UNSAFE",
+            "DISCOVERY_ONLY",
+            "PROMPT_DONE",
+            "source_edit_allowed: false",
+          ],
           maxLines: 12,
         },
         check: {
