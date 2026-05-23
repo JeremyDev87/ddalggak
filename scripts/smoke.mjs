@@ -406,6 +406,19 @@ const cases = [
       assert(status.ok === false, "expected not-installed status to be non-ok");
       assert(status.installedVersion === null, "expected no installed version");
       assert(
+        status.evidence.runtime.status === "ok",
+        "expected runtime evidence to report ok",
+      );
+      assert(
+        status.evidence.package.manifest.status === "not-installed",
+        "expected manifest evidence to distinguish not-installed",
+      );
+      assertIncludes(
+        status.evidence.nextAction,
+        "ddalggak setup",
+        "status evidence nextAction",
+      );
+      assert(
         status.installedClaudeSkillPath ===
           path.join(claudeHome, "skills", "ddalggak"),
         `expected installed path under CLAUDE_HOME, got ${status.installedClaudeSkillPath}`,
@@ -449,6 +462,33 @@ const cases = [
         status.sourceChecksum === status.installedChecksum,
         "expected source and installed checksum to match after setup",
       );
+      assert(
+        status.evidence.package.manifest.status === "present",
+        "expected present installed manifest evidence after setup",
+      );
+      assert(
+        status.evidence.package.payload.checksumsMatch === true,
+        "expected matching package payload evidence after setup",
+      );
+      assertIncludes(
+        status.evidence.nextAction,
+        "No action needed",
+        "status evidence nextAction",
+      );
+    },
+  },
+  {
+    name: "status --local human reports runtime/package evidence next action",
+    run() {
+      const claudeHome = makeTempHome();
+      const result = runCli(["status", "--local"], {
+        env: { CLAUDE_HOME: claudeHome },
+      });
+      assertExit(result, 0);
+      assertIncludes(result.stdout, "evidence:\n", "stdout");
+      assertIncludes(result.stdout, "  runtime: ok", "stdout");
+      assertIncludes(result.stdout, "  package manifest: not-installed", "stdout");
+      assertIncludes(result.stdout, "  next: Run `ddalggak setup`", "stdout");
     },
   },
   {
@@ -471,6 +511,10 @@ const cases = [
       assert(
         status.sourceChecksum !== status.installedChecksum,
         "expected source and installed checksum to differ after mutation",
+      );
+      assert(
+        status.evidence.package.payload.checksumsMatch === false,
+        "expected package payload evidence to show checksum drift",
       );
     },
   },
@@ -548,6 +592,60 @@ const cases = [
     },
   },
   {
+    name: "status --local --json distinguishes absent installed manifest evidence",
+    run() {
+      const claudeHome = makeTempHome();
+      const install = runCli(["setup"], { env: { CLAUDE_HOME: claudeHome } });
+      assertExit(install, 0);
+      rmSync(path.join(skillDirFor(claudeHome), ".installed-manifest.json"), {
+        force: true,
+      });
+
+      const result = runCli(["status", "--local", "--json"], {
+        env: { CLAUDE_HOME: claudeHome },
+      });
+      assertExit(result, 0);
+      const status = parseJsonStdout(result);
+      assert(status.state === "stale", `expected stale, got ${status.state}`);
+      assert(status.ok === false, "expected absent manifest status to be non-ok");
+      assert(
+        status.evidence.package.manifest.status === "absent",
+        `expected absent manifest evidence, got ${status.evidence.package.manifest.status}`,
+      );
+      assertIncludes(
+        status.evidence.nextAction,
+        "backfill the missing installed manifest",
+        "status evidence nextAction",
+      );
+    },
+  },
+  {
+    name: "status --local --json distinguishes stale installed manifest evidence",
+    run() {
+      const claudeHome = makeTempHome();
+      const install = runCli(["setup"], { env: { CLAUDE_HOME: claudeHome } });
+      assertExit(install, 0);
+      const manifestPath = path.join(
+        skillDirFor(claudeHome),
+        ".installed-manifest.json",
+      );
+      const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+      manifest.packageVersion = "0.0.0-stale";
+      writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+
+      const result = runCli(["status", "--local", "--json"], {
+        env: { CLAUDE_HOME: claudeHome },
+      });
+      assertExit(result, 0);
+      const status = parseJsonStdout(result);
+      assert(status.state === "stale", `expected stale, got ${status.state}`);
+      assert(
+        status.evidence.package.manifest.status === "stale",
+        `expected stale manifest evidence, got ${status.evidence.package.manifest.status}`,
+      );
+    },
+  },
+  {
     name: "status --local reports malformed installed manifest as stale",
     run() {
       const claudeHome = makeTempHome();
@@ -567,6 +665,10 @@ const cases = [
       assert(
         status.installedManifestParseError,
         "expected installed manifest parse error evidence",
+      );
+      assert(
+        status.evidence.package.manifest.status === "malformed",
+        "expected malformed installed manifest evidence",
       );
     },
   },
