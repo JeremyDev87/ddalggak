@@ -81,6 +81,13 @@ function assertIncludes(value, needle, streamName) {
   );
 }
 
+function assertShowDocIncludes(subcommand, output, asset) {
+  assert(
+    output.includes(asset),
+    `missing ${subcommand} --show-doc disclosure asset: ${asset}`,
+  );
+}
+
 function parseJsonStdout(result) {
   try {
     return JSON.parse(result.stdout);
@@ -754,94 +761,104 @@ const cases = [
     },
   },
   {
-    name: "all subcommands expose compact --show-doc reference contracts",
+    name: "all subcommands expose compact --show-doc disclosure matrix",
     run() {
-      const expectedContracts = {
+      const expectedDisclosures = {
         start: {
           heading: "## Start Workflow",
-          references: [
-            "references/start-workflow.md",
+          fullProcedure: "references/start-workflow.md",
+          assets: [
             "templates/worker-brief.md",
           ],
           maxLines: 20,
         },
         review: {
           heading: "## Cross-Review Loop",
-          references: [
-            "references/cross-review-loop.md",
+          fullProcedure: "references/cross-review-loop.md",
+          assets: [
             "templates/review-brief.md",
           ],
           maxLines: 20,
         },
         status: {
           heading: "## Status",
-          references: ["references/status.md"],
+          fullProcedure: "references/status.md",
+          assets: [],
           maxLines: 12,
         },
         plan: {
           heading: "## Issue-Ready Plan",
-          references: [
-            "references/issue-ready-plan.md",
+          fullProcedure: "references/issue-ready-plan.md",
+          assets: [
             "references/wiki-context-preflight.md",
+            "references/wiki-bridge.md",
           ],
           maxLines: 20,
         },
         issue: {
           heading: "## Plan to Issues",
-          references: [
-            "references/plan-to-issues.md",
+          fullProcedure: "references/plan-to-issues.md",
+          assets: [
             "templates/issue-body.md",
+            "templates/epic-body.md",
           ],
           maxLines: 12,
         },
         clean: {
           heading: "## Merge Cleanup",
-          references: ["references/merge-cleanup.md"],
+          fullProcedure: "references/merge-cleanup.md",
+          assets: [],
           maxLines: 12,
         },
         ship: {
           heading: "## Ship",
-          references: ["references/ship.md"],
+          fullProcedure: "references/ship.md",
+          assets: [],
           maxLines: 12,
         },
         retro: {
           heading: "## Retrospective",
-          references: ["references/retrospective.md"],
+          fullProcedure: "references/retrospective.md",
+          assets: ["references/wiki-bridge.md"],
           maxLines: 12,
         },
         prompt: {
           heading: "## Prompt Optimizer",
-          references: ["references/prompt-optimizer.md"],
+          fullProcedure: "references/prompt-optimizer.md",
+          assets: [],
           maxLines: 12,
         },
         check: {
           heading: "## Local Diff Check",
-          references: ["references/local-diff-check.md"],
+          fullProcedure: "references/local-diff-check.md",
+          assets: [],
           maxLines: 12,
         },
         getwiki: {
           heading: "## GetWiki Bridge",
-          references: ["references/wiki-bridge.md"],
+          fullProcedure: "references/wiki-bridge.md",
+          assets: [],
           maxLines: 12,
         },
         setwiki: {
           heading: "## SetWiki Bridge",
-          references: ["references/wiki-bridge.md"],
+          fullProcedure: "references/wiki-bridge.md",
+          assets: [],
           maxLines: 12,
         },
       };
 
-      for (const [subcommand, contract] of Object.entries(expectedContracts)) {
+      for (const [subcommand, contract] of Object.entries(expectedDisclosures)) {
         const result = runCli([subcommand, "--show-doc"]);
         assertExit(result, 0);
-        assertIncludes(result.stdout, contract.heading, `${subcommand} stdout`);
-        assertIncludes(
+        assertShowDocIncludes(subcommand, result.stdout, contract.heading);
+        assertShowDocIncludes(
+          subcommand,
           result.stdout,
-          "Full procedure:",
-          `${subcommand} stdout`,
+          `Full procedure: \`${contract.fullProcedure}\``,
         );
-        for (const reference of contract.references) {
-          assertIncludes(result.stdout, reference, `${subcommand} stdout`);
+        for (const asset of contract.assets) {
+          assertShowDocIncludes(subcommand, result.stdout, asset);
         }
         const lineCount = result.stdout.trim().split("\n").length;
         assert(
