@@ -129,6 +129,10 @@ function missingOutputSections(state, requiredSections) {
   );
 }
 
+function expectedRequiredOutputSections(scenario) {
+  return array(scenario.expect?.requiredOutputSections);
+}
+
 function result({
   decision,
   prStrategy,
@@ -211,6 +215,30 @@ function decideScenario(scenario) {
     allowedMutations.delete("mark_ready");
     reasons.push(
       `${state.requestedCommand || "<unknown>"} must not edit repository source files.`,
+    );
+    return result({
+      decision,
+      prStrategy,
+      readyAllowed,
+      approveAllowed,
+      allowedMutations,
+      reasons,
+    });
+  }
+
+  const outputSectionGaps = missingOutputSections(
+    state,
+    expectedRequiredOutputSections(scenario),
+  );
+  if (outputSectionGaps.length > 0) {
+    decision = "output_contract_blocked";
+    prStrategy = "blocked";
+    readyAllowed = false;
+    approveAllowed = false;
+    allowedMutations.delete("approve_pr");
+    allowedMutations.delete("mark_ready");
+    reasons.push(
+      `${state.requestedCommand || "<unknown>"} output is missing required sections: ${outputSectionGaps.join(", ")}.`,
     );
     return result({
       decision,
@@ -464,10 +492,27 @@ function compareScenario(scenario, actual) {
       scenario.state || {},
       expected.requiredOutputSections,
     );
-    if (missingSections.length > 0) {
+    if (
+      missingSections.length > 0 &&
+      actual.decision !== "output_contract_blocked"
+    ) {
       failures.push(
         `requiredOutputSections missing from state.outputSections: ${JSON.stringify(missingSections)}`,
       );
+    }
+  }
+
+  if (actual.decision !== "ready_for_issue_pr" && actual.reasons.length === 0) {
+    failures.push("blocked/non-ready decision must include an explicit reason");
+  }
+
+  if (Object.hasOwn(expected, "reasonIncludes")) {
+    for (const expectedReason of expected.reasonIncludes) {
+      if (!actual.reasons.some((reason) => reason.includes(expectedReason))) {
+        failures.push(
+          `reasonIncludes: expected an actual reason containing ${JSON.stringify(expectedReason)}, got ${JSON.stringify(actual.reasons)}`,
+        );
+      }
     }
   }
 
@@ -557,6 +602,18 @@ function validateFixture(fixture) {
         if (!knownOutputSections.has(section)) {
           failures.push(
             `${scenarioName}: unknown output section in expect.requiredOutputSections: ${section}`,
+          );
+        }
+      }
+    }
+    if (Object.hasOwn(scenario.expect, "reasonIncludes")) {
+      if (!Array.isArray(scenario.expect.reasonIncludes)) {
+        failures.push(`${scenarioName}: expect.reasonIncludes must be an array`);
+      }
+      for (const expectedReason of array(scenario.expect.reasonIncludes)) {
+        if (typeof expectedReason !== "string" || expectedReason.length === 0) {
+          failures.push(
+            `${scenarioName}: expect.reasonIncludes entries must be non-empty strings`,
           );
         }
       }

@@ -37,7 +37,8 @@
       },
       "expect": {
         "decision": "duplicate_suppressed",
-        "allowedMutations": []
+        "allowedMutations": [],
+        "reasonIncludes": ["Existing issue PR or parsed marker found"]
       }
     },
     {
@@ -56,7 +57,8 @@
       },
       "expect": {
         "decision": "duplicate_suppressed",
-        "allowedMutations": []
+        "allowedMutations": [],
+        "reasonIncludes": ["Existing issue PR or parsed marker found"]
       }
     },
     {
@@ -82,7 +84,8 @@
         "decision": "evidence_gap_blocked",
         "readyAllowed": false,
         "approveAllowed": false,
-        "forbiddenMutations": ["approve_pr", "mark_ready"]
+        "forbiddenMutations": ["approve_pr", "mark_ready"],
+        "reasonIncludes": ["Missing required evidence: visual evidence."]
       }
     },
     {
@@ -97,7 +100,10 @@
       },
       "expect": {
         "decision": "repo_mismatch_blocked",
-        "allowedMutations": []
+        "allowedMutations": [],
+        "reasonIncludes": [
+          "Mutation stopped because cwdRepo=JeremyDev87/other-repo"
+        ]
       }
     },
     {
@@ -112,7 +118,10 @@
       },
       "expect": {
         "decision": "repo_mismatch_blocked",
-        "allowedMutations": []
+        "allowedMutations": [],
+        "reasonIncludes": [
+          "targetUrlRepo=JeremyDev87/other-repo; URL beats cwd."
+        ]
       }
     },
     {
@@ -204,7 +213,9 @@
           "Queries attempted",
           "Wiki sources read",
           "Unknowns not found in wiki",
-          "Non-wiki inference"
+          "Non-wiki inference",
+          "Quality Lens Router Output",
+          "Evidence Contract"
         ]
       }
     },
@@ -322,7 +333,8 @@
         "decision": "source_edit_blocked",
         "readyAllowed": false,
         "approveAllowed": false,
-        "forbiddenMutations": ["edit_source"]
+        "forbiddenMutations": ["edit_source"],
+        "reasonIncludes": ["plan must not edit repository source files."]
       }
     },
     {
@@ -357,6 +369,187 @@
           "Findings strengthened by wiki sources",
           "Wiki search failures or gaps",
           "Non-wiki inference"
+        ]
+      }
+    },
+    {
+      "name": "issue-command-does-not-edit-source",
+      "invariant": "issue-command-source-edit-forbidden",
+      "state": {
+        "cwdRepo": "JeremyDev87/ddalggak",
+        "targetRepo": "JeremyDev87/ddalggak",
+        "requestedCommand": "issue",
+        "attemptedSourceEdit": true
+      },
+      "expect": {
+        "decision": "source_edit_blocked",
+        "readyAllowed": false,
+        "approveAllowed": false,
+        "forbiddenMutations": ["edit_source", "approve_pr", "mark_ready"],
+        "reasonIncludes": ["issue must not edit repository source files."]
+      }
+    },
+    {
+      "name": "status-command-does-not-edit-source",
+      "invariant": "status-command-source-edit-forbidden",
+      "state": {
+        "cwdRepo": "JeremyDev87/ddalggak",
+        "targetRepo": "JeremyDev87/ddalggak",
+        "requestedCommand": "status",
+        "attemptedSourceEdit": true
+      },
+      "expect": {
+        "decision": "source_edit_blocked",
+        "readyAllowed": false,
+        "approveAllowed": false,
+        "forbiddenMutations": ["edit_source", "approve_pr", "mark_ready"],
+        "reasonIncludes": ["status must not edit repository source files."]
+      }
+    },
+    {
+      "name": "retro-command-does-not-edit-source",
+      "invariant": "retro-command-source-edit-forbidden",
+      "state": {
+        "cwdRepo": "JeremyDev87/ddalggak",
+        "targetRepo": "JeremyDev87/ddalggak",
+        "requestedCommand": "retro",
+        "attemptedSourceEdit": true
+      },
+      "expect": {
+        "decision": "source_edit_blocked",
+        "readyAllowed": false,
+        "approveAllowed": false,
+        "forbiddenMutations": ["edit_source", "approve_pr", "mark_ready"],
+        "reasonIncludes": ["retro must not edit repository source files."]
+      }
+    },
+    {
+      "name": "plan-output-omits-wiki-context-manifest-blocks-ready",
+      "invariant": "plan-output-contract-fail-closed-wiki-context-manifest",
+      "state": {
+        "cwdRepo": "JeremyDev87/ddalggak",
+        "targetRepo": "JeremyDev87/ddalggak",
+        "targetUrl": "https://github.com/JeremyDev87/ddalggak/issues/149",
+        "openIssues": [
+          {
+            "number": 149,
+            "title": "[Sub] readiness eval에 권한/출력 섹션 fail-closed 케이스 추가"
+          }
+        ],
+        "requestedCommand": "plan",
+        "outputSections": [
+          "Goal / Context",
+          "Queries attempted",
+          "Wiki sources read",
+          "Unknowns not found in wiki",
+          "Non-wiki inference",
+          "Quality Lens Router Output",
+          "Evidence Contract"
+        ]
+      },
+      "expect": {
+        "decision": "output_contract_blocked",
+        "readyAllowed": false,
+        "approveAllowed": false,
+        "forbiddenMutations": ["approve_pr", "mark_ready"],
+        "requiredOutputSections": [
+          "Wiki Context Manifest",
+          "Queries attempted",
+          "Wiki sources read",
+          "Unknowns not found in wiki",
+          "Non-wiki inference",
+          "Quality Lens Router Output",
+          "Evidence Contract"
+        ],
+        "reasonIncludes": [
+          "plan output is missing required sections: Wiki Context Manifest."
+        ]
+      }
+    },
+    {
+      "name": "plan-output-omits-evidence-contract-blocks-ready",
+      "invariant": "plan-output-contract-fail-closed-evidence-contract",
+      "state": {
+        "cwdRepo": "JeremyDev87/ddalggak",
+        "targetRepo": "JeremyDev87/ddalggak",
+        "targetUrl": "https://github.com/JeremyDev87/ddalggak/issues/149",
+        "openIssues": [
+          {
+            "number": 149,
+            "title": "[Sub] readiness eval에 권한/출력 섹션 fail-closed 케이스 추가"
+          }
+        ],
+        "requestedCommand": "plan",
+        "outputSections": [
+          "Goal / Context",
+          "Wiki Context Manifest",
+          "Queries attempted",
+          "Wiki sources read",
+          "Unknowns not found in wiki",
+          "Non-wiki inference",
+          "Quality Lens Router Output"
+        ]
+      },
+      "expect": {
+        "decision": "output_contract_blocked",
+        "readyAllowed": false,
+        "approveAllowed": false,
+        "forbiddenMutations": ["approve_pr", "mark_ready"],
+        "requiredOutputSections": [
+          "Wiki Context Manifest",
+          "Queries attempted",
+          "Wiki sources read",
+          "Unknowns not found in wiki",
+          "Non-wiki inference",
+          "Quality Lens Router Output",
+          "Evidence Contract"
+        ],
+        "reasonIncludes": [
+          "plan output is missing required sections: Evidence Contract."
+        ]
+      }
+    },
+    {
+      "name": "review-output-omits-quality-lens-router-output-blocks-approve",
+      "invariant": "review-output-contract-fail-closed-quality-lens-router-output",
+      "state": {
+        "cwdRepo": "JeremyDev87/ddalggak",
+        "targetRepo": "JeremyDev87/ddalggak",
+        "targetUrl": "https://github.com/JeremyDev87/ddalggak/pull/149",
+        "pullRequest": {
+          "number": 149,
+          "checks": [{ "name": "local", "conclusion": "success" }],
+          "requiredEvidence": ["npm test"],
+          "providedEvidence": ["npm test"]
+        },
+        "requestedCommand": "review",
+        "outputSections": [
+          "Wiki Context Manifest",
+          "Queries attempted",
+          "Wiki sources read",
+          "Findings backed by live PR/repo evidence",
+          "Findings strengthened by wiki sources",
+          "Wiki search failures or gaps",
+          "Non-wiki inference",
+          "Evidence Contract"
+        ]
+      },
+      "expect": {
+        "decision": "output_contract_blocked",
+        "readyAllowed": false,
+        "approveAllowed": false,
+        "forbiddenMutations": ["approve_pr", "mark_ready"],
+        "requiredOutputSections": [
+          "Wiki Context Manifest",
+          "Quality Lens Router Output",
+          "Evidence Contract",
+          "Findings backed by live PR/repo evidence",
+          "Findings strengthened by wiki sources",
+          "Wiki search failures or gaps",
+          "Non-wiki inference"
+        ],
+        "reasonIncludes": [
+          "review output is missing required sections: Quality Lens Router Output."
         ]
       }
     }
