@@ -51,6 +51,24 @@ export const requiredDisclosureAssetsBySubcommand = {
     templates: [],
   },
 };
+export const requiredIssueTemplateFields = [
+  "Wiki Context Manifest",
+  "Parallelization note",
+  "Commit lane suggestion",
+  "Owned files",
+  "Must not touch",
+  "Validation/evidence",
+  "Dependencies / blocked by",
+];
+export const requiredEpicTemplateFields = [
+  "Wiki Context Manifest",
+  "Parallelization note",
+  "Commit lane suggestion",
+  "Owned files",
+  "Must not touch",
+  "Validation/evidence",
+  "Dependencies / blocked by",
+];
 export const skillPayloadRoots = [
   ".codex/skills/ddalggak",
   "ddalggak",
