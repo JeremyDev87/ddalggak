@@ -3,6 +3,9 @@ command: issue
 show_doc_heading: "Plan to Issues"
 source_edit_allowed: false
 purpose: "Create GitHub issues from an approved plan."
+mode: "github-write"
+write_side_effects: "Create/edit GitHub issues and comments only; no repository source edits."
+stop_condition: "Stop after live issue URLs/labels/assignees/body UTF-8 verification or on metadata permission failure."
 required_references:
   - plan-to-issues.md
 

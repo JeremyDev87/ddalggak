@@ -3,6 +3,9 @@ command: ship
 show_doc_heading: "Ship"
 source_edit_allowed: false
 purpose: "Commit/push/open draft PR for existing scoped changes."
+mode: "github-write"
+write_side_effects: "Commit, push, and draft PR for already-existing scoped changes; no new source edits."
+stop_condition: "Stop after PR creation/current-head publication evidence or on no-diff/scope/validation blocker."
 required_references:
   - ship.md
 

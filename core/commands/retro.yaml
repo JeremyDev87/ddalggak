@@ -3,6 +3,9 @@ command: retro
 show_doc_heading: "Retrospective"
 source_edit_allowed: false
 purpose: "Extract reusable lessons after merge without transient memory."
+mode: "read-only"
+write_side_effects: "Retrospective notes and skill/wiki/memory update proposals only; no source edits by default."
+stop_condition: "Stop after reusable lessons are separated from transient incident records."
 required_references:
   - retrospective.md
   - retrospective-workflow.md
