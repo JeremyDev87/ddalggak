@@ -3,6 +3,9 @@ command: start
 show_doc_heading: "Start Workflow"
 source_edit_allowed: true
 purpose: "Issue implementation from live issue body/comments; one issue PR by default."
+mode: "source-edit"
+write_side_effects: "Repo source edits in issue scope; PR/comment side effects only through ship/review gates."
+stop_condition: "Stop on stale base, missing issue body/comments, duplicate PR, or required files outside the issue-owned scope."
 required_references:
   - quality-lens-router.md
   - evidence-contract.md

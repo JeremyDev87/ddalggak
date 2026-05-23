@@ -28,6 +28,9 @@ const virtualCommands = {
     show_doc_heading: "GetWiki Bridge",
     source_edit_allowed: false,
     purpose: "Wiki context retrieval bridge.",
+    mode: "read-only",
+    write_side_effects: "Delegate to dedicated /getwiki retrieval; no wiki or repo mutation.",
+    stop_condition: "Stop after cited wiki sources or retrieval gaps are reported.",
     required_references: ["wiki-bridge.md"],
     required_templates: [],
   },
@@ -36,6 +39,9 @@ const virtualCommands = {
     show_doc_heading: "SetWiki Bridge",
     source_edit_allowed: false,
     purpose: "Wiki write workflow bridge.",
+    mode: "approval-gated-write",
+    write_side_effects: "Delegate to dedicated /setwiki; wiki writes require explicit approval and verification.",
+    stop_condition: "Stop at review-only plan unless explicit approval is present; then stop after wiki write verification.",
     required_references: ["wiki-bridge.md"],
     required_templates: [],
   },
@@ -182,40 +188,61 @@ function renderLegacyCodePermissionTable() {
 
 function renderCodexSubcommandTable() {
   const lines = [
-    "## Subcommand Dispatch Table",
+    "## Subcommand Contract Table",
     "",
-    "| Subcommand | Show-doc heading | Purpose | Required assets |",
-    "| --- | --- | --- | --- |",
+    "| Subcommand | Mode | Show-doc heading | Purpose | Side effects | Stop condition | Required assets |",
+    "| --- | --- | --- | --- | --- | --- | --- |",
   ];
   for (const doc of commands) {
     const refs = mdList(doc.required_references || [], "references/");
     const templates = mdList(doc.required_templates || [], "templates/");
-    lines.push(`| \`${doc.command}\` | ${doc.show_doc_heading} | ${purpose(doc)} | refs: ${refs}; templates: ${templates} |`);
+    lines.push(`| \`${doc.command}\` | ${doc.mode || "read-only"} | ${doc.show_doc_heading} | ${purpose(doc)} | ${doc.write_side_effects || "response output only"} | ${doc.stop_condition || "Stop after reporting current state."} | refs: ${refs}; templates: ${templates} |`);
   }
   return lines.join("\n");
 }
 
 function renderLegacySubcommandTable() {
   const lines = [
-    "| subcommand | show-doc heading | 목적 | 상세 reference rule |",
-    "|---|---|---|---|",
+    "| subcommand | mode | show-doc heading | 목적 | side effects | stop condition | 상세 reference rule |",
+    "|---|---|---|---|---|---|---|",
   ];
   for (const doc of commands) {
     const refs = mdList(doc.required_references || [], "references/");
     const templates = mdList(doc.required_templates || [], "templates/");
-    lines.push(`| \`${doc.command}\` | ${doc.show_doc_heading} | ${purpose(doc)} | refs: ${refs}; templates: ${templates} |`);
+    lines.push(`| \`${doc.command}\` | ${doc.mode || "read-only"} | ${doc.show_doc_heading} | ${purpose(doc)} | ${doc.write_side_effects || "response output only"} | ${doc.stop_condition || "Stop after reporting current state."} | refs: ${refs}; templates: ${templates} |`);
   }
   return lines.join("\n");
 }
 
+const gateReferences = new Set([
+  "quality-lens-router.md",
+  "evidence-contract.md",
+  "simplicity-deletability-gate.md",
+  "core-invariants.md",
+  "regression-library.md",
+]);
+
+const wikiReferences = new Set(["wiki-context-preflight.md", "wiki-bridge.md"]);
+
+function splitReferencesByGroup(refs) {
+  const groups = { workflow: [], gates: [], wiki: [] };
+  for (const ref of refs || []) {
+    if (gateReferences.has(ref)) groups.gates.push(ref);
+    else if (wikiReferences.has(ref)) groups.wiki.push(ref);
+    else groups.workflow.push(ref);
+  }
+  return groups;
+}
+
 function renderRequiredReferenceMap() {
   const lines = [
-    "| Subcommand | Required references | Required templates |",
-    "| --- | --- | --- |",
+    "| Subcommand | Workflow reference | Gate references | Wiki/meta references | Required templates |",
+    "| --- | --- | --- | --- | --- |",
   ];
   for (const doc of commands) {
+    const refs = splitReferencesByGroup(doc.required_references || []);
     lines.push(
-      `| \`${doc.command}\` | ${mdList(doc.required_references || [], "references/")} | ${mdList(doc.required_templates || [], "templates/")} |`,
+      `| \`${doc.command}\` | ${mdList(refs.workflow, "references/")} | ${mdList(refs.gates, "references/")} | ${mdList(refs.wiki, "references/")} | ${mdList(doc.required_templates || [], "templates/")} |`,
     );
   }
   return lines.join("\n");

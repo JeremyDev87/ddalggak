@@ -77,6 +77,27 @@ function printVersion() {
   console.log(pkg.version);
 }
 
+function printSkillDocSummary() {
+  const skillPath = join(__dirname, "..", "ddalggak", "SKILL.md");
+  const body = readFileSync(skillPath, "utf8");
+  const lines = body.split("\n");
+  const startIdx = lines.findIndex((line) => line.trim() === "## 서브커맨드 분기");
+  if (startIdx === -1) {
+    process.stderr.write("ddalggak contract section not found in SKILL.md\n");
+    return 1;
+  }
+  let endIdx = lines.length;
+  for (let i = startIdx + 1; i < lines.length; i++) {
+    if (lines[i].startsWith("## Start Workflow")) {
+      endIdx = i;
+      break;
+    }
+  }
+  const section = lines.slice(startIdx, endIdx).join("\n").trimEnd();
+  process.stdout.write(section + "\n");
+  return 0;
+}
+
 function levenshtein(a, b) {
   if (a === b) return 0;
   const m = a.length;
@@ -163,6 +184,10 @@ async function main() {
   if (first === "--help" || first === "-h") {
     printHelp();
     return 0;
+  }
+
+  if (first === "--show-doc") {
+    return printSkillDocSummary();
   }
 
   if (first === "--version" || first === "-v") {
