@@ -243,7 +243,7 @@ Before changing the CLI bridge, Codex skill source, release helpers, or package 
 npm run verify
 ```
 
-`npm run verify` runs the CLI smoke suite, Codex skill verifier, ddalggak readiness eval fixtures, release helper tests, release drafter tests, manual release bump tests, release candidate tests, release publish tests, and npm package artifact inspection. For focused diagnostics, maintainers can still run each underlying check directly:
+`npm run verify` runs the CLI smoke suite, Codex skill verifier, ddalggak readiness eval fixtures, release helper tests, release drafter tests, manual release bump tests, release candidate tests, release publish tests, security posture evidence tests/report, and npm package artifact inspection. For focused diagnostics, maintainers can still run each underlying check directly:
 
 ```bash
 npm test
@@ -254,10 +254,12 @@ npm run test:release-drafter
 npm run test:manual-release-bump
 npm run test:release-candidate
 npm run test:release-publish
+npm run verify:security-posture
+npm run test:security-posture
 env npm_config_cache=/tmp/ddalggak-npm-cache npm pack --dry-run --ignore-scripts --loglevel=silent
 ```
 
-Use `npm test` for CLI setup and dispatch behavior, including setup safety/idempotency, `status --local` installed-skill parity states, dispatch quoting edge cases, and every subcommand `--show-doc` surface. Use `npm run verify:codex-skill` for Codex skill source, metadata, Quality Lens Router anchors, subcommand routing changes, progressive-disclosure budgets, required reference/template maps, legacy/Codex payload parity, detail-template regression guards, and npm package artifact inclusion. Use `npm run eval:ddalggak-readiness` for mock JSON replay checks covering no-work mutation suppression, duplicate PR/comment suppression, evidence-gap readiness blocking, URL-beats-cwd mutation blocking, and hard-conflict fallback classification. Use the pack dry-run as an explicit maintainer-facing package artifact inspection as well.
+Use `npm test` for CLI setup and dispatch behavior, including setup safety/idempotency, `status --local` installed-skill parity states, dispatch quoting edge cases, and every subcommand `--show-doc` surface. Use `npm run verify:codex-skill` for Codex skill source, metadata, Quality Lens Router anchors, subcommand routing changes, progressive-disclosure budgets, required reference/template maps, legacy/Codex payload parity, detail-template regression guards, and npm package artifact inclusion. Use `npm run eval:ddalggak-readiness` for mock JSON replay checks covering no-work mutation suppression, duplicate PR/comment suppression, evidence-gap readiness blocking, URL-beats-cwd mutation blocking, and hard-conflict fallback classification. Use `npm run verify:security-posture` for a read-only GitHub Actions posture inventory covering permissions blocks, action reference pinning, direct untrusted shell interpolation candidates, and official CodeQL/Dependency Review/Scorecard evidence presence. Missing official scan evidence is reported separately and must not be described as proof that the repository is safe. Use the pack dry-run as an explicit maintainer-facing package artifact inspection as well.
 
 ## Platform Support
 
