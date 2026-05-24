@@ -30,6 +30,8 @@ const requiredArtifactPaths = [
   "scripts/test-release-publish.mjs",
   "scripts/security-posture-report.mjs",
   "scripts/test-security-posture-report.mjs",
+  "scripts/pr-check-evidence-report.mjs",
+  "scripts/test-pr-check-evidence-report.mjs",
   "scripts/lib/release.mjs",
   "scripts/release-plan.mjs",
   "scripts/bump-release-version.mjs",
@@ -230,6 +232,10 @@ try {
   runStep("security posture evidence report", npmCommand, [
     "run",
     "verify:security-posture",
+  ]);
+  runStep("PR check evidence report tests", npmCommand, [
+    "run",
+    "test:pr-check-evidence",
   ]);
   verifyArtifactContents();
   console.log("\n[verify-package] passed");
