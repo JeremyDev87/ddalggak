@@ -1,4 +1,9 @@
 # Evidence Contract
+Use when: a plan, implementation, review, PR body, or readiness report claims work is complete, safe, validated, approved, or ready for manual merge.
+Required by: `plan`, `start`, `review`; PR/readiness conclusions.
+Side effects: none
+Do not use when: the report is only a discovery failure/no-op status with no readiness or completion claim.
+
 
 Use this reference when `ddalggak plan`, `start`, or `review` claims that work is complete, ready for PR, ready for approval, or safe to ship.
 

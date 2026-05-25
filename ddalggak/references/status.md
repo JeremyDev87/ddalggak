@@ -1,4 +1,9 @@
 # Status 상세 절차
+Use when: `status` or a scheduled report needs a read-only snapshot of git, worktrees, issues, PRs, checks, blockers, and next action.
+Required by: `status`; scheduled conductor reporting.
+Side effects: none
+Do not use when: the user asked to implement, ship, review, or mutate GitHub state rather than inspect current state.
+
 
 > Source of truth for legacy Claude Code ddalggak details. The always-loaded SKILL.md keeps only router/invariant anchors and points here for low-frequency detail.
 

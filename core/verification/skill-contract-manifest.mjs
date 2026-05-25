@@ -73,6 +73,28 @@ export const skillPayloadRoots = [
   ".codex/skills/ddalggak",
   "ddalggak",
 ];
+export const requiredReferenceAdmissionHeaderFields = [
+  "Use when:",
+  "Required by:",
+  "Side effects:",
+  "Do not use when:",
+];
+export const requiredReferenceAdmissionHeaders = [
+  "start-workflow.md",
+  "cross-review-loop.md",
+  "ship.md",
+  "merge-cleanup.md",
+  "status.md",
+  "issue-ready-plan.md",
+  "plan-to-issues.md",
+  "local-diff-check.md",
+  "prompt-skill-optimization-staging.md",
+  "wiki-bridge.md",
+  "quality-lens-router.md",
+  "evidence-contract.md",
+  "simplicity-deletability-gate.md",
+  "regression-library.md",
+];
 // <!-- ddalggak:generated:start package-required-asset-list -->
 export const requiredPackageFiles = [
   ".codex/skills/ddalggak/SKILL.md",

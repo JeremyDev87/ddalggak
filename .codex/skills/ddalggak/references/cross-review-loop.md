@@ -1,4 +1,9 @@
 # Cross-Review Loop Reference
+Use when: a `review` run must judge a live PR/diff, verify current-head evidence, or decide whether blocker findings prevent APPROVE/ready.
+Required by: `review`; post-PR review/fix loops after `start`/`ship`.
+Side effects: source-edit
+Do not use when: there is no PR/diff to review, or the task is a read-only local `check` that must not post comments or edit source.
+
 
 Use this when `review` needs full adversarial review details beyond the hot path.
 

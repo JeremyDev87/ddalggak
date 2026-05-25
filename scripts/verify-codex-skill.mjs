@@ -9,6 +9,8 @@ import {
   requiredEpicTemplateFields,
   skillPayloadRoots,
   requiredPackageFiles,
+  requiredReferenceAdmissionHeaderFields,
+  requiredReferenceAdmissionHeaders,
   forbiddenHotPathTemplateSentinels,
   requiredSubcommands,
   requiredLegacyHeadings,
@@ -330,6 +332,27 @@ function assertRequiredDisclosureAssetsExist() {
   }
 }
 
+function assertRequiredReferenceAdmissionHeaders() {
+  for (const reference of requiredReferenceAdmissionHeaders) {
+    for (const root of skillPayloadRoots) {
+      const relativePath = `${root}/references/${reference}`;
+      const absolutePath = path.join(rootDir, relativePath);
+      if (!statSync(absolutePath, { throwIfNoEntry: false })?.isFile()) {
+        fail(`required reference admission header file missing: ${relativePath}`);
+        continue;
+      }
+      const text = readText(absolutePath);
+      const firstBlock = text.split(/\n\n/)[0] || "";
+      const missingFields = requiredReferenceAdmissionHeaderFields.filter((field) => !firstBlock.includes(field));
+      if (missingFields.length > 0) {
+        fail(
+          `${relativePath} missing required reference admission header fields:\n${formatAnchorList(missingFields)}`,
+        );
+      }
+    }
+  }
+}
+
 function assertForbiddenHotPathTemplateSentinels({ label, text }) {
   for (const sentinel of forbiddenHotPathTemplateSentinels) {
     if (sentinel.pattern.test(text)) {
@@ -491,6 +514,7 @@ for (const budget of skillBudgets) {
   assertSkillBudget(budget);
 }
 assertRequiredDisclosureAssetsExist();
+assertRequiredReferenceAdmissionHeaders();
 assertPackageArtifactIncludes();
 
 for (const root of skillPayloadRoots) {

@@ -137,4 +137,18 @@ withTempRepo("core invariants reference must exist in both payload roots", (temp
   );
 });
 
+withTempRepo("required references must keep admission headers", (tempDir) => {
+  for (const referenceRelativePath of [
+    ".codex/skills/ddalggak/references/start-workflow.md",
+    "ddalggak/references/start-workflow.md",
+  ]) {
+    replaceInFile(path.join(tempDir, referenceRelativePath), "Use when:", "Missing use trigger:");
+  }
+  assertFail(
+    "required references must keep admission headers",
+    runVerifier(tempDir),
+    "missing required reference admission header fields",
+  );
+});
+
 console.log("\n[test:reference-aware-skill-anchors] passed");

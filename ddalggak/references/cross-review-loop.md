@@ -1,4 +1,9 @@
 # Cross-Review Loop 상세 절차
+Use when: a `review` run must judge a live PR/diff, verify current-head evidence, or decide whether blocker findings prevent APPROVE/ready.
+Required by: `review`; post-PR review/fix loops after `start`/`ship`.
+Side effects: source-edit
+Do not use when: there is no PR/diff to review, or the task is a read-only local `check` that must not post comments or edit source.
+
 
 > Source of truth for legacy Claude Code ddalggak details. The always-loaded SKILL.md keeps only router/invariant anchors and points here for low-frequency detail.
 

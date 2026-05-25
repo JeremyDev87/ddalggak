@@ -1,4 +1,9 @@
 # Plan to Issues 상세 절차
+Use when: `issue` converts an accepted plan into GitHub issue bodies with owned files, non-goals, validation, dependency, and UTF-8 metadata guarantees.
+Required by: `issue`; parent/child issue generation.
+Side effects: github-write
+Do not use when: the user asked only for a plan/review, or the plan lacks enough detail to create automatable issues.
+
 
 > Source of truth for legacy Claude Code ddalggak details. The always-loaded SKILL.md keeps only router/invariant anchors and points here for low-frequency detail.
 

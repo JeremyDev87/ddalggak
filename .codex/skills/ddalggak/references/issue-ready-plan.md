@@ -1,4 +1,9 @@
 # Issue-Ready Plan Reference
+Use when: `plan` must turn an issue/user request into an implementation-ready plan grounded in issue comments, wiki context, repo files, and validation evidence.
+Required by: `plan`; pre-implementation readiness planning.
+Side effects: none
+Do not use when: the workflow already has an approved plan and is executing `start`, or the request is only issue creation/triage.
+
 
 Use this when `plan` needs full planning detail beyond the hot path.
 
