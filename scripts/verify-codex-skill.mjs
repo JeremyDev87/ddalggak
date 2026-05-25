@@ -11,6 +11,7 @@ import {
   requiredPackageFiles,
   requiredReferenceAdmissionHeaderFields,
   requiredReferenceAdmissionHeaders,
+  subcommandExecutionContracts,
   forbiddenHotPathTemplateSentinels,
   requiredSubcommands,
   requiredLegacyHeadings,
@@ -353,6 +354,117 @@ function assertRequiredReferenceAdmissionHeaders() {
   }
 }
 
+function assertSubcommandExecutionContracts() {
+  const contractKeys = Object.keys(subcommandExecutionContracts);
+  if (!arraysEqual(contractKeys, requiredSubcommands)) {
+    fail(
+      `subcommandExecutionContracts keys drifted. Expected ${requiredSubcommands.join(", ")}; got ${contractKeys.join(", ")}`,
+    );
+  }
+
+  const allowedSourceEditors = new Set(["start", "review"]);
+  const allowedGithubWriters = new Set(["review", "issue", "ship"]);
+  for (const subcommand of requiredSubcommands) {
+    const contract = subcommandExecutionContracts[subcommand];
+    if (!contract || typeof contract !== "object") {
+      fail(`subcommandExecutionContracts.${subcommand} must be an object.`);
+      continue;
+    }
+
+    for (const field of ["mode", "stopCondition"]) {
+      if (typeof contract[field] !== "string" || contract[field].trim().length === 0) {
+        fail(`subcommandExecutionContracts.${subcommand}.${field} must be a non-empty string.`);
+      }
+    }
+    for (const field of ["sourceEditAllowed", "githubWriteAllowed"]) {
+      if (typeof contract[field] !== "boolean") {
+        fail(`subcommandExecutionContracts.${subcommand}.${field} must be a boolean.`);
+      }
+    }
+    if (!Array.isArray(contract.requiredReferences) || contract.requiredReferences.length === 0) {
+      fail(`subcommandExecutionContracts.${subcommand}.requiredReferences must be a non-empty array.`);
+    } else {
+      for (const reference of contract.requiredReferences) {
+        if (typeof reference !== "string" || !reference.endsWith(".md")) {
+          fail(`subcommandExecutionContracts.${subcommand}.requiredReferences contains invalid reference '${reference}'.`);
+          continue;
+        }
+        const existsInPayload = skillPayloadRoots.some((root) =>
+          statSync(path.join(rootDir, root, "references", reference), { throwIfNoEntry: false })?.isFile(),
+        );
+        if (!existsInPayload) {
+          fail(`subcommandExecutionContracts.${subcommand} references missing payload file '${reference}'.`);
+        }
+      }
+    }
+
+    if (contract.sourceEditAllowed !== allowedSourceEditors.has(subcommand)) {
+      fail(
+        `subcommandExecutionContracts.${subcommand}.sourceEditAllowed must be ${allowedSourceEditors.has(subcommand)}; only start/review may modify source files.`,
+      );
+    }
+    if (contract.githubWriteAllowed !== allowedGithubWriters.has(subcommand)) {
+      fail(
+        `subcommandExecutionContracts.${subcommand}.githubWriteAllowed must be ${allowedGithubWriters.has(subcommand)}; only review/issue/ship may directly write GitHub artifacts.`,
+      );
+    }
+  }
+}
+
+function assertRenderedSubcommandContracts({ label, text }) {
+  const permissionRows = parseCodePermissionRows(extractGeneratedBlock(text, "code-permission-table"));
+  const contractRows = parseSubcommandContractRows(extractGeneratedBlock(text, "subcommand-table"));
+  const allowedSourceEditors = new Set(["start", "review"]);
+  const sourceEditAuthorityPatterns = [
+    /\bmay edit source\b/i,
+    /\bmay modify source\b/i,
+    /\bsource edits are allowed\b/i,
+    /Repo source edits/i,
+    /accepted .* fixes may edit source/i,
+  ];
+
+  for (const subcommand of requiredSubcommands) {
+    const manifestContract = subcommandExecutionContracts[subcommand];
+    const permission = permissionRows.get(subcommand);
+    const renderedContract = contractRows.get(subcommand);
+    if (!permission) {
+      fail(`${label} code permission table missing '${subcommand}'.`);
+      continue;
+    }
+    if (!renderedContract) {
+      fail(`${label} subcommand contract table missing '${subcommand}'.`);
+      continue;
+    }
+
+    if (permission.mayModify !== manifestContract.sourceEditAllowed) {
+      fail(
+        `${label} code permission table for '${subcommand}' drifted from manifest sourceEditAllowed=${manifestContract.sourceEditAllowed}.`,
+      );
+    }
+    if (!renderedContract.mode || renderedContract.mode !== manifestContract.mode) {
+      fail(
+        `${label} subcommand table mode for '${subcommand}' drifted. Expected '${manifestContract.mode}', got '${renderedContract.mode}'.`,
+      );
+    }
+    if (!renderedContract.stopCondition) {
+      fail(`${label} subcommand table stop condition for '${subcommand}' must be non-empty.`);
+    }
+    for (const reference of manifestContract.requiredReferences) {
+      if (!renderedContract.requiredReferences.includes(reference)) {
+        fail(`${label} subcommand table for '${subcommand}' missing required reference '${reference}'.`);
+      }
+    }
+
+    const renderedAuthorityText = `${permission.allowedArtifacts}\n${renderedContract.sideEffects}`;
+    const grantsSourceAuthority = sourceEditAuthorityPatterns.some((pattern) => pattern.test(renderedAuthorityText));
+    if (!allowedSourceEditors.has(subcommand) && grantsSourceAuthority) {
+      fail(
+        `${label} non-source-edit subcommand '${subcommand}' contains unnegated source-edit authority wording.`,
+      );
+    }
+  }
+}
+
 function assertForbiddenHotPathTemplateSentinels({ label, text }) {
   for (const sentinel of forbiddenHotPathTemplateSentinels) {
     if (sentinel.pattern.test(text)) {
@@ -469,6 +581,53 @@ function extractMarkdownSection(text, heading) {
   return lines.slice(startIdx, endIdx).join("\n");
 }
 
+function extractGeneratedBlock(text, name) {
+  const pattern = new RegExp(
+    `<!-- ddalggak:generated:start ${name} -->\\n([\\s\\S]*?)\\n<!-- ddalggak:generated:end ${name} -->`,
+  );
+  const match = text.match(pattern);
+  return match ? match[1] : "";
+}
+
+function parseMarkdownTableRows(block) {
+  return block
+    .split("\n")
+    .filter((line) => line.trim().startsWith("|"))
+    .slice(2)
+    .map((line) => line.trim());
+}
+
+function parseCodePermissionRows(block) {
+  const rows = new Map();
+  for (const line of parseMarkdownTableRows(block)) {
+    const cells = line.split("|").slice(1, -1).map((cell) => cell.trim());
+    const subcommand = cells[0]?.match(/`([^`]+)`/)?.[1];
+    if (!subcommand) continue;
+    const mayModify = /^(✅|yes)$/.test(cells[1]);
+    rows.set(subcommand, { mayModify, allowedArtifacts: cells[2] || "" });
+  }
+  return rows;
+}
+
+function parseSubcommandContractRows(block) {
+  const rows = new Map();
+  for (const line of parseMarkdownTableRows(block)) {
+    const cells = line.split("|").slice(1, -1).map((cell) => cell.trim());
+    const subcommand = cells[0]?.match(/`([^`]+)`/)?.[1];
+    if (!subcommand) continue;
+    const requiredReferences = [...(cells[6] || "").matchAll(/`references\/([^`]+\.md)`/g)].map(
+      (match) => match[1],
+    );
+    rows.set(subcommand, {
+      mode: cells[1] || "",
+      sideEffects: cells[4] || "",
+      stopCondition: cells[5] || "",
+      requiredReferences,
+    });
+  }
+  return rows;
+}
+
 function missingAnchors(text, anchors) {
   return anchors.filter((anchor) => !text.includes(anchor));
 }
@@ -515,6 +674,7 @@ for (const budget of skillBudgets) {
 }
 assertRequiredDisclosureAssetsExist();
 assertRequiredReferenceAdmissionHeaders();
+assertSubcommandExecutionContracts();
 assertPackageArtifactIncludes();
 
 for (const root of skillPayloadRoots) {
@@ -923,6 +1083,14 @@ for (const [subcommand, anchors] of Object.entries(compactShowDocContracts)) {
 const codexSkillText = statSync(skillPath, { throwIfNoEntry: false })?.isFile()
   ? readText(skillPath)
   : "";
+assertRenderedSubcommandContracts({
+  label: ".codex/skills/ddalggak/SKILL.md",
+  text: codexSkillText,
+});
+assertRenderedSubcommandContracts({
+  label: "ddalggak/SKILL.md",
+  text: legacySkillText,
+});
 const codexCompactSubcommandContracts = {
   plan: [
     "Full procedure: `references/issue-ready-plan.md`; wiki preflight: `references/wiki-context-preflight.md`; wiki bridge: `references/wiki-bridge.md`.",
