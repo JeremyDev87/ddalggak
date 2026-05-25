@@ -1,4 +1,9 @@
 # Start Workflow Reference
+Use when: a `start` run needs full issue implementation detail beyond the hot path, including target resolution, task scope, worker brief, validation, and PR-ready evidence.
+Required by: `start`; implementation gate families selected by Quality Lens Router.
+Side effects: source-edit
+Do not use when: the user asked only for `plan`, `status`, `check`, `prompt`, or another read-only subcommand.
+
 
 Use this when `start` needs full issue implementation detail beyond the hot path.
 

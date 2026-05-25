@@ -1,4 +1,9 @@
 # Continuous Regression Library
+Use when: reviewing prompt/skill/workflow changes for repeated AI failure classes, or deciding whether a finding should become a durable scenario card.
+Required by: `review`; broad prompt/skill/workflow rewrites; recurring Medium/High risk checks.
+Side effects: none
+Do not use when: the issue is a one-off product/code change with no repeated workflow-risk pattern and no regression-library candidate.
+
 
 Use this reference to recognize repeated AI code-quality failure classes across reviews. The library is durable reference material, not session memory. Do not add transient progress, one-off incident details, PR numbers, commit SHAs, or single-session logs here. Promote a new entry only when a repeated Medium/High pattern generalizes across work and has a detection signal, a blocking review rule, and a minimal fixture or evidence idea.
 

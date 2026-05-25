@@ -1,4 +1,9 @@
 # Prompt / Skill Optimization Staging
+Use when: a prompt/skill optimizer, eval harness, or agent proposal suggests changes to canonical ddalggak skill, reference, template, verifier, or CLI-dispatched documentation surfaces.
+Required by: prompt/skill optimization review; packaged-skill change planning/review.
+Side effects: none
+Do not use when: the change is a normal issue implementation with no optimizer-generated candidate or canonical skill-surface proposal.
+
 
 Use this reference when a GEPA, DSPy, prompt optimizer, evaluation harness, or agent-generated proposal suggests changes to a ddalggak prompt, `SKILL.md`, reference file, template, CLI-dispatched documentation, or packaged skill payload.
 

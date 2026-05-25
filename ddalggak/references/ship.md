@@ -1,4 +1,9 @@
 # Ship 상세 절차
+Use when: `ship` needs to publish already-existing validated changes as a draft PR with Korean metadata and manual-merge boundaries.
+Required by: `ship`; combined `start` → `ship` runs after implementation evidence exists.
+Side effects: github-write
+Do not use when: there is no meaningful diff against the intended base or validation/scope evidence is missing.
+
 
 > Source of truth for legacy Claude Code ddalggak details. The always-loaded SKILL.md keeps only router/invariant anchors and points here for low-frequency detail.
 

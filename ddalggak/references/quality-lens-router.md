@@ -1,4 +1,9 @@
 # Quality Lens Router
+Use when: `plan`, `start`, or `review` must decide which quality gates apply and which gates are explicitly skipped for the current issue, PR, or diff.
+Required by: `plan`, `start`, `review`; gate-family routing.
+Side effects: none
+Do not use when: the command is purely `status`, `clean`, `ship`, `check`, or issue metadata work with no quality-gate decision.
+
 
 Use this reference when `ddalggak plan`, `start`, or `review` must decide which quality gates apply to a request, issue, PR, or diff.
 

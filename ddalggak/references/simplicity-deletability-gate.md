@@ -1,4 +1,9 @@
 # Simplicity / Deletability Gate
+Use when: a proposed change may add structure, abstraction, helper layers, wrappers, registries, or other indirection that affects future readability/deletion.
+Required by: `plan`, `start`, `review`; code-shape and architecture judgment.
+Side effects: none
+Do not use when: the change is metadata-only or a narrow documentation/reporting update that adds no new code shape or abstraction.
+
 
 Use this reference from `plan`, `start`, and `review` whenever a change may add code, structure, abstraction, indirection, or a new pattern.
 

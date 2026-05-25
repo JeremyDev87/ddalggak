@@ -1,4 +1,9 @@
 # Status Reference
+Use when: `status` or a scheduled report needs a read-only snapshot of git, worktrees, issues, PRs, checks, blockers, and next action.
+Required by: `status`; scheduled conductor reporting.
+Side effects: none
+Do not use when: the user asked to implement, ship, review, or mutate GitHub state rather than inspect current state.
+
 
 Read-only state snapshot: fetch, status, worktrees, open PRs, issue linkage, CI/check state, lane/session state, blockers, and next action.
 

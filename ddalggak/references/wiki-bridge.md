@@ -1,4 +1,9 @@
 # Wiki Bridge Contract
+Use when: ddalggak crosses into wiki/getwiki/setwiki context, including read-only wiki retrieval or approval-gated wiki writes.
+Required by: `plan`, `review`, `retro`, `getwiki`, `setwiki`; wiki context/admission boundary.
+Side effects: approval-gated-write
+Do not use when: the task has no wiki retrieval/write surface, or another dedicated wiki skill owns the detailed procedure.
+
 
 Use this reference when ddalggak needs LLM Wiki context or wants to preserve a reusable lesson from planning, implementation, review, ship, or retro work.
 
