@@ -138,6 +138,86 @@ function classifyActionRef(ref) {
   return "branch-or-floating";
 }
 
+// Exception ledger: explicit exceptions + policy for unregistered tag refs.
+// Entries in explicitExceptions are keyed by action name (without ref).
+// "sha-pinned" entries are compliant by definition.
+// "warning-first" policy: tag refs are needs-review, not fail-block.
+const ACTION_PIN_EXCEPTION_LEDGER = {
+  policy: "warning-first",
+  explicitExceptions: [
+    {
+      action: "release-drafter/release-drafter",
+      currentRef: "6db134d15f3909ccc9eefd369f02bd1e9cffdf97",
+      pinClass: "sha-pinned",
+      reason: "Third-party; already SHA-pinned",
+      status: "compliant",
+    },
+  ],
+  unregisteredTagRefs: "needs-review",
+};
+
+function resolveExceptionStatus(actionName, ref, pinClass) {
+  if (pinClass === "local-or-docker") {
+    return "local-or-docker";
+  }
+  if (pinClass === "missing-ref") {
+    return "missing-ref";
+  }
+  if (pinClass === "sha-pinned") {
+    // Check if it matches a registered explicit exception
+    const match = ACTION_PIN_EXCEPTION_LEDGER.explicitExceptions.find(
+      (entry) => entry.action === actionName && entry.currentRef === ref,
+    );
+    return match ? match.status : "sha-pinned";
+  }
+  // For tag refs (version-tag, major-tag) or branch-or-floating:
+  const match = ACTION_PIN_EXCEPTION_LEDGER.explicitExceptions.find(
+    (entry) => entry.action === actionName,
+  );
+  if (match) {
+    return match.status;
+  }
+  return ACTION_PIN_EXCEPTION_LEDGER.unregisteredTagRefs;
+}
+
+function buildActionPinPolicy(workflows) {
+  const findings = [];
+  for (const workflow of workflows) {
+    for (const action of workflow.actions) {
+      if (action.pin === "local-or-docker" || action.pin === "missing-ref") {
+        continue;
+      }
+      const exceptionStatus = resolveExceptionStatus(action.name, action.ref, action.pin);
+      findings.push({
+        workflow: workflow.path,
+        line: action.line,
+        action: action.name,
+        ref: action.ref,
+        pinClass: action.pin,
+        exceptionStatus,
+      });
+    }
+  }
+
+  const shaCount = findings.filter((f) => f.pinClass === "sha-pinned").length;
+  const needsReviewCount = findings.filter((f) => f.exceptionStatus === "needs-review").length;
+  const compliantCount = findings.filter((f) => f.exceptionStatus === "compliant").length;
+
+  return {
+    policy: ACTION_PIN_EXCEPTION_LEDGER.policy,
+    unregisteredTagRefPolicy: ACTION_PIN_EXCEPTION_LEDGER.unregisteredTagRefs,
+    summary: {
+      total: findings.length,
+      "sha-pinned": shaCount,
+      compliant: compliantCount,
+      "needs-review": needsReviewCount,
+    },
+    caveat:
+      "SHA pinning provides immutability evidence (the ref cannot be repointed after pin), not semantic safety. A SHA-pinned action may still contain unsafe code. Official GitHub-maintained actions (actions/*) are not inherently unsafe because they use major-tag refs; they are listed here as needs-review pending explicit exception registration.",
+    findings,
+  };
+}
+
 function detectActionUses(lines) {
   const actions = [];
   for (let index = 0; index < lines.length; index += 1) {
@@ -340,6 +420,7 @@ function analyzeWorkflows(rootDir = defaultRoot) {
       scorecard: workflows.some((workflow) => workflow.securityScans.scorecard),
     },
     actionPinSummary: summarizeActionPins(workflows),
+    actionPinPolicy: buildActionPinPolicy(workflows),
     workflowCommandWrites: allCommandWrites,
     workflows,
     caveats: [
@@ -347,6 +428,7 @@ function analyzeWorkflows(rootDir = defaultRoot) {
       "Repository settings, branch protection, environments, and secret values are outside file-based evidence.",
       "Missing official Scorecard/CodeQL/Dependency Review evidence is reported separately from local static inventory.",
       "workflowCommandWrites is a static line-level inventory. Environment-file channel transition reduces deprecated stdout command-injection class but does not eliminate downstream authority risks from untrusted values.",
+      "actionPinPolicy findings: sha-pinned = immutability evidence only, not semantic safety. needs-review = tag ref without explicit exception registration; not a fail-block under warning-first policy.",
     ],
   };
 }
@@ -372,6 +454,10 @@ function formatMarkdown(report) {
   lines.push(`- Dependency Review evidence: ${report.securityScans.dependencyReview ? "present" : "missing optional evidence"}`);
   lines.push(`- OpenSSF Scorecard evidence: ${report.securityScans.scorecard ? "present" : "missing optional evidence"}`);
   lines.push(`- action pin summary: ${Object.entries(report.actionPinSummary).map(([key, value]) => `${key}=${value}`).join(", ")}`);
+  if (report.actionPinPolicy) {
+    const pol = report.actionPinPolicy;
+    lines.push(`- action pin policy: ${pol.policy} | total=${pol.summary.total} sha-pinned=${pol.summary["sha-pinned"]} compliant=${pol.summary.compliant} needs-review=${pol.summary["needs-review"]}`);
+  }
   lines.push("");
   lines.push("## Caveats");
   for (const caveat of report.caveats) {
@@ -404,6 +490,24 @@ function formatMarkdown(report) {
       const risk = write.riskNote ?? "";
       lines.push(`| ${write.workflow} | ${write.line} | ${write.channel} | ${write.sourceKind} | ${write.encodingGuard} | ${risk} |`);
     }
+  }
+  lines.push("");
+  lines.push("## Action pin policy");
+  if (report.actionPinPolicy && report.actionPinPolicy.findings.length > 0) {
+    const pol = report.actionPinPolicy;
+    lines.push(`- policy: ${pol.policy}`);
+    lines.push(`- unregistered tag ref policy: ${pol.unregisteredTagRefPolicy}`);
+    lines.push(`- caveat: ${pol.caveat}`);
+    lines.push("");
+    lines.push("| workflow | line | action | ref | pinClass | exceptionStatus |");
+    lines.push("|---|---|---|---|---|---|");
+    for (const finding of pol.findings) {
+      lines.push(
+        `| ${finding.workflow} | ${finding.line} | ${finding.action} | ${finding.ref} | ${finding.pinClass} | ${finding.exceptionStatus} |`,
+      );
+    }
+  } else {
+    lines.push("- no pinnable action refs detected");
   }
   lines.push("");
   lines.push("## Workflow inventory");
@@ -446,4 +550,4 @@ if (process.argv[1] && path.resolve(process.argv[1]) === __filename) {
   }
 }
 
-export { analyzeWorkflows, classifyActionRef, detectUntrustedInterpolations, detectWorkflowCommandWrites, formatMarkdown };
+export { analyzeWorkflows, buildActionPinPolicy, classifyActionRef, detectUntrustedInterpolations, detectWorkflowCommandWrites, formatMarkdown, resolveExceptionStatus };
