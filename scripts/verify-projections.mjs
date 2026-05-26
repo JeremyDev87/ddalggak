@@ -2,6 +2,29 @@ import { spawnSync } from "node:child_process";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 
+const AGENTS_MD_REQUIRED_ANCHORS = [
+  "Canonical owner",
+  "Side-effect boundary",
+  "No merge",
+  "npm run verify",
+];
+
+// These sentinels are patterns that indicate granting prohibited authority or leaking secrets.
+// They are precise enough to avoid false positives on boundary-description phrases in AGENTS.md itself.
+const AGENTS_MD_FORBIDDEN_SENTINELS = [
+  "enable auto-merge",
+  "allow auto-merge",
+  "auto-merge allowed",
+  "force-push bypass",
+  "force-push allowed",
+  "ghp_",
+  "npm_",
+  "GITHUB_TOKEN =",
+  "NPM_TOKEN =",
+];
+
+const AGENTS_MD_MAX_LINES = 100;
+
 const rootDir = process.cwd();
 const commandDir = path.join(rootDir, "core", "commands");
 const runtimeDir = path.join(rootDir, "core", "runtimes");
@@ -128,7 +151,38 @@ function assertSkillPayload(root, label, commandDoc) {
   }
 }
 
+function runProjectionArtifactGuard() {
+  const agentsMdPath = path.join(rootDir, "AGENTS.md");
+  if (!exists(agentsMdPath)) {
+    fail("AGENTS.md missing: projection artifact guard requires root AGENTS.md");
+    return;
+  }
+
+  const text = readText(agentsMdPath);
+  if (!text) return;
+
+  const lineCount = text.split(/\r?\n/).length;
+  if (lineCount > AGENTS_MD_MAX_LINES) {
+    fail(
+      `AGENTS.md is ${lineCount} lines (max ${AGENTS_MD_MAX_LINES}): thin adapter must not duplicate long policy from canonical sources`,
+    );
+  }
+
+  for (const anchor of AGENTS_MD_REQUIRED_ANCHORS) {
+    if (!text.includes(anchor)) {
+      fail(`AGENTS.md missing required anchor: "${anchor}"`);
+    }
+  }
+
+  for (const sentinel of AGENTS_MD_FORBIDDEN_SENTINELS) {
+    if (text.includes(sentinel)) {
+      fail(`AGENTS.md contains forbidden sentinel: "${sentinel}"`);
+    }
+  }
+}
+
 runGeneratedBlockCheck();
+runProjectionArtifactGuard();
 
 const projectionsText = readText(projectionPath);
 if (!projectionsText.includes("source_root: ddalggak")) {
@@ -196,5 +250,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  `[verify:projections] passed: ${requiredCommands.length} command contracts, ${runtimeFiles.length} runtimes, 2 projection roots`
+  `[verify:projections] passed: ${requiredCommands.length} command contracts, ${runtimeFiles.length} runtimes, 2 projection roots, AGENTS.md projection artifact guard`
 );
