@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links: []
+# Note: blank_issues_enabled:false reduces contributor drift but does NOT prevent
+# maintainers with write+ access from opening blank issues via GitHub UI bypass.
+# This is a pre-admission completeness aid, not an enforcement gate.

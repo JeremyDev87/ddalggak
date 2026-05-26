@@ -68,6 +68,24 @@ The Quality Lens Router chooses applicable gate families from request text, issu
 - Review should cite CI status as evidence, then focus on behavior intent, scope, code quality, architecture/domain boundaries, maintainability, and deletability.
 - For no-argument `start`, `status:unlocked` issues are preferred candidates. If none exist, ddalggak falls back to open issues without mutating labels; `status:locked` issues are excluded without changing the label. Labels are selection hints, not workflow-outcome triggers.
 
+## Issue Forms — Pre-Admission Completeness Aid
+
+GitHub Issue Forms (`.github/ISSUE_TEMPLATE/ddalggak-issue.yml`) provide a pre-admission schema that ensures issues arriving at the ddalggak workflow have minimum required context fields before agent planning begins.
+
+**What Issue Forms are:**
+- A pre-admission completeness aid that prompts contributors to include goal, source of truth, scope, owned files, validation, and blockers.
+- A file-based schema surface that reduces the rate of missing context reaching the `plan → issue → start` pipeline.
+
+**What Issue Forms are NOT:**
+- Automatic execution approval: a submitted issue form does not authorize `dobby:pending` or any automated merge action.
+- Immutable source of truth: form body remains user-editable untrusted text after submission. The agent must still verify all claims before acting.
+- A replacement for Evidence Contract or wiki verification. Live evidence must still be collected post-implementation.
+
+**Caveats:**
+- `blank_issues_enabled: false` reduces contributor drift but does not prevent maintainers with write+ access from opening blank issues via GitHub UI.
+- Labels listed in form defaults must exist in the live repo; GitHub does not auto-create missing labels.
+- `verifier/verify-issue-forms.mjs` checks file existence, required field ids, non-empty labels/assignees, and caveat text presence at CI time.
+
 ## Progressive Disclosure Budget
 
 The always-loaded skill body should remain a thin router. Keep `SKILL.md` focused on routing invariants, code-modification permissions, global guardrails, subcommand dispatch, required reference maps, stop conditions, and verification checklists. Move long procedures to `references/`, reusable prompt/body shapes to `templates/`, and mechanical regression checks to `scripts/` or future `fixtures/` / `evals/`.

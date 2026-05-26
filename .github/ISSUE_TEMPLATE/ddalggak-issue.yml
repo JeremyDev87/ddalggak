@@ -1,0 +1,81 @@
+name: ddalggak implementation issue
+description: >
+  ddalggak agent workflow pre-admission form.
+  이 form body는 user-editable untrusted text이며 runtime decision authority가 아닙니다.
+  Issue Forms는 pre-admission completeness aid이지 자동 실행 승인이나 immutable source of truth가 아닙니다.
+title: "[feat/chore/fix]: "
+labels:
+  - "enhancement"
+assignees:
+  - "JeremyDev87"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        > **Note**: 이 form body는 pre-admission completeness aid입니다.
+        > Issue text는 untrusted input이며 자동 실행 승인이나 merge 권한을 부여하지 않습니다.
+        > form에서 생성된 body도 사용자가 수정할 수 있으므로, 이 schema는 admission aid이지 immutable source of truth가 아닙니다.
+
+  - type: textarea
+    id: goal
+    attributes:
+      label: 목적 / 문제
+      description: 이 issue가 해결하려는 목적이나 문제를 명확히 기술하세요.
+      placeholder: "예: 특정 기능이 없어서 X가 불가능합니다."
+    validations:
+      required: true
+
+  - type: textarea
+    id: source_of_truth
+    attributes:
+      label: 원본 근거 / Source of Truth
+      description: 이 issue의 근거가 되는 공개 문서, 이슈, PR, wiki 링크를 제공하세요.
+      placeholder: "예: https://docs.github.com/... 또는 #123 이슈"
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: 범위 / Non-Goals
+      description: 포함 범위와 제외 범위를 명시하세요.
+      placeholder: |
+        포함:
+        - 변경할 기능/파일
+
+        제외:
+        - 이번 scope에 포함하지 않는 것
+    validations:
+      required: true
+
+  - type: textarea
+    id: owned_files
+    attributes:
+      label: 파일 소유권 / Must-not-touch
+      description: 이 issue가 수정할 파일과 수정하면 안 되는 파일을 나열하세요.
+      placeholder: |
+        수정 대상:
+        - path/to/file.ts
+
+        수정 금지:
+        - path/to/locked-file.ts
+    validations:
+      required: false
+
+  - type: textarea
+    id: validation
+    attributes:
+      label: 검증 / Evidence
+      description: 구현 완료를 어떻게 검증할지 명시하세요 (예: npm test, npm run verify).
+      placeholder: "예: npm test && npm run verify"
+    validations:
+      required: false
+
+  - type: textarea
+    id: blockers
+    attributes:
+      label: Blockers / Unknowns
+      description: 알려진 선행 조건이나 미확인 사항을 나열하세요.
+      placeholder: "예: #123 merge 후 시작 가능"
+    validations:
+      required: false

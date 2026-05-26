@@ -37,6 +37,7 @@ const requiredArtifactPaths = [
   "scripts/test-pr-check-evidence-report.mjs",
   "scripts/pr-status-evidence-report.mjs",
   "scripts/test-pr-status-evidence-report.mjs",
+  "scripts/verify-issue-forms.mjs",
   "scripts/lib/release.mjs",
   "scripts/release-plan.mjs",
   "scripts/bump-release-version.mjs",
@@ -253,6 +254,10 @@ try {
   runStep("PR status evidence report tests", npmCommand, [
     "run",
     "test:pr-status-evidence",
+  ]);
+  runStep("issue forms admission schema verifier", npmCommand, [
+    "run",
+    "verify:issue-forms",
   ]);
   verifyArtifactContents();
   console.log("\n[verify-package] passed");
