@@ -92,6 +92,63 @@ Action pinning evidence (this section) is distinct from:
 - **Workflow command channel writes** — recorded in the `workflowCommandWrites` section
 - **Repository settings** — branch protection, environments, secrets — outside file-based proof
 
+---
+
+## Workflow Static Lint Gate (Issue #182)
+
+`scripts/verify-workflow-lint.mjs` is a separate, independent admission evidence lane.
+
+### Scope
+
+Checks `.github/workflows/*.yml` files for:
+
+- Workflow YAML/expression structure (`syntax_result`, `expression_result`)
+- Action `with:` input / `steps.<id>.outputs` reference mismatch (`action_io_result`)
+- Reusable workflow `on: workflow_call` inputs/outputs contract structure (`reusable_workflow_result`)
+- Direct interpolation of untrusted context (`github.head_ref`, `inputs.*`, `github.event.*`, etc.) inside `run:` blocks (`script_injection_result`)
+- Hard-coded credential patterns in workflow YAML (`credential_pattern`)
+
+### Non-scope (boundary)
+
+| Concern | Owner |
+|---|---|
+| Workflow command channel injection patterns | Issue #180 |
+| Action pinning / SHA reproducibility | Issue #181 |
+| Release provenance / attestation | Issue #178 |
+| Repository settings, branch protection, secrets | Outside file-based evidence |
+| Semantic safety (workflow does what it claims) | Not in scope for any static lint |
+
+### Commands
+
+```bash
+npm run verify:workflow-lint
+npm run verify:workflow-lint -- --json
+npm run test:workflow-lint
+```
+
+`npm run verify` includes this lane after the security posture evidence report.
+
+### Evidence fields
+
+| Field | Description |
+|---|---|
+| `lintTool` | `actionlint` (preferred) or `javascript-native` (fallback) |
+| `toolVersion` | Tool version string |
+| `checkedWorkflows` | List of `.github/workflows/*.yml` relative paths |
+| `categorySummary` | Per-category pass/finding-count status |
+| `findings` | Content-light list: workflow path, category, line, bounded summary, severity |
+| `allowedWarnings` | Explicit false-positive ledger (empty = zero-warning policy) |
+| `warningPolicy` | Zero-warning policy statement when allowedWarnings is empty |
+| `caveat` | Non-overclaiming statement (always present) |
+
+### Allowed warnings / false-positive policy
+
+Current policy: **zero-warning**. No exceptions have been registered. All findings require review or explicit suppression via the `allowedWarnings` ledger in the script.
+
+### Caveat
+
+Static lint green does **not** imply semantic safety, secret safety, or provenance safety. It records structural evidence only.
+
 ## Review checklist
 
 - Does the report avoid printing secrets or credential values?
