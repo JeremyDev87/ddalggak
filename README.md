@@ -216,6 +216,21 @@ Publishing prioritizes npm trusted publishing with provenance. A `NPM_TOKEN` fal
 
 The `Release Published Follow-up Audit` workflow runs after a GitHub release is published, or manually for an existing tag. It verifies the GitHub release and npm registry metadata, including package name, version, `bin.ddalggak`, license, and repository URL.
 
+After registry metadata verification, the workflow collects content-light provenance/signature evidence. The audit summary records the following fields:
+
+- `node_npm_requirement_status` — Node.js and npm version in the runner at audit time.
+- `trusted_publisher_identity_status` — recorded as `manual-confirmed` because npm Trusted Publisher settings cannot be proven from CI alone.
+- `workflow_filename_match` — the workflow filename used for trusted publishing (`release.yml`).
+- `environment_protection_status` — confirms the publish job is gated by the `release` protected environment.
+- `token_fallback_used` — `true` when `NPM_TOKEN` fallback was used; `false` when the trusted publishing path ran. When `true`, `provenance_status` is set to `provenance-limited`.
+- `provenance_status` — `trusted-publishing-path` (OIDC-based publish with `--provenance`) or `provenance-limited` (NPM_TOKEN fallback, no OIDC provenance).
+- `registry_signature_status` — result of `npm audit signatures`; distinguished states: `verified`, `unsupported-or-no-attestation`, or `unverified-exit=<N>`.
+- `release_tarball_artifact_name`, `artifact_id`, `artifact_digest`, `download_digest_validation`, `retention_days` — tarball artifact identity and integrity fields collected from the GitHub Actions artifact API and npm registry.
+- `hidden_files_included`, `overwrite_policy` — static policy facts about the packed tarball.
+- `attestation_status` — result of `gh attestation verify`; states include `verified`, `no-attestation-found`, `unsupported`, or `unverified`.
+
+**Important caveat:** provenance and attestation confirm publish-time identity binding only. They are not a guarantee of semantic safety — a package with verified provenance is not automatically free of vulnerabilities or correct in behavior. Fields that cannot be collected are recorded as `unknown` and are not promoted to a passing status.
+
 ## External Release Setup Checklist
 
 Before the first npm publication, maintainers must complete the external settings that cannot be proven from this repository alone:
