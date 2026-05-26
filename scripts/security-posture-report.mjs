@@ -22,6 +22,15 @@ const UNTRUSTED_EXPRESSION_PATTERNS = [
   "github.base_ref",
 ];
 
+const COMMAND_CHANNEL_PATTERNS = [
+  { channel: "GITHUB_OUTPUT", pattern: />>\s*["']?\s*\$\{?GITHUB_OUTPUT\}?["']?/ },
+  { channel: "GITHUB_STATE", pattern: />>\s*["']?\s*\$\{?GITHUB_STATE\}?["']?/ },
+  { channel: "GITHUB_ENV", pattern: />>\s*["']?\s*\$\{?GITHUB_ENV\}?["']?/ },
+  { channel: "GITHUB_STEP_SUMMARY", pattern: />>\s*["']?\s*\$\{?GITHUB_STEP_SUMMARY\}?["']?/ },
+];
+
+const UNTRUSTED_CONTEXT_PATTERN = /\$\{\{\s*(github\.event\.|inputs\.)/;
+
 function parseArgs(argv) {
   const options = {
     format: "markdown",
@@ -209,6 +218,69 @@ function detectUntrustedInterpolations(lines) {
   return findings;
 }
 
+function classifySourceKind(snippet) {
+  if (UNTRUSTED_CONTEXT_PATTERN.test(snippet)) {
+    return "github-context";
+  }
+  if (/node\s+\S+\.m?js|bash\s+\S+\.sh|python\s+\S+\.py/.test(snippet)) {
+    return "repo-script-output";
+  }
+  if (/\$\(/.test(snippet) || /`[^`]+`/.test(snippet)) {
+    return "external-command-output";
+  }
+  if (/echo\s+["']?[A-Za-z0-9_-]+=/.test(snippet) || /^\s*\{/.test(snippet)) {
+    return "literal";
+  }
+  return "unknown";
+}
+
+function classifyEncodingGuard(snippet) {
+  if (/<<\s*['"]?EOF['"]?/.test(snippet) || /<<\s*['"]?HEREDOC['"]?/.test(snippet)) {
+    return "multiline-delimiter";
+  }
+  if (/GITHUB_STEP_SUMMARY/.test(snippet) && /cat\s*>/.test(snippet)) {
+    return "markdown-summary";
+  }
+  if (/>>["']\s*\$/.test(snippet)) {
+    return "quoted-env-file";
+  }
+  return "unknown";
+}
+
+function detectWorkflowCommandWrites(lines) {
+  const findings = [];
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+
+    for (const { channel, pattern } of COMMAND_CHANNEL_PATTERNS) {
+      if (!pattern.test(line)) {
+        continue;
+      }
+
+      const snippet = line.trim();
+      const sourceKind = classifySourceKind(snippet);
+      const encodingGuard = classifyEncodingGuard(snippet);
+
+      let riskNote = null;
+      if (sourceKind === "github-context") {
+        riskNote = "untrusted context value written directly to channel";
+      }
+
+      findings.push({
+        line: index + 1,
+        channel,
+        snippet,
+        sourceKind,
+        encodingGuard,
+        riskNote,
+      });
+    }
+  }
+
+  return findings;
+}
+
 function detectSecurityScans(text) {
   return Object.fromEntries(
     Object.entries(SECURITY_SCAN_PATTERNS).map(([name, patterns]) => [
@@ -241,15 +313,22 @@ function analyzeWorkflows(rootDir = defaultRoot) {
   const workflows = workflowFiles.map((filePath) => {
     const text = readFileSync(filePath, "utf8");
     const lines = text.split(/\r?\n/);
+    const workflowPath = path.relative(rootDir, filePath).split(path.sep).join("/");
+    const commandWrites = detectWorkflowCommandWrites(lines);
     return {
-      path: path.relative(rootDir, filePath).split(path.sep).join("/"),
+      path: workflowPath,
       bytes: statSync(filePath).size,
       permissions: detectPermissions(lines),
       actions: detectActionUses(lines),
       untrustedShellInterpolations: detectUntrustedInterpolations(lines),
       securityScans: detectSecurityScans(text),
+      workflowCommandWrites: commandWrites,
     };
   });
+
+  const allCommandWrites = workflows.flatMap((workflow) =>
+    workflow.workflowCommandWrites.map((write) => ({ workflow: workflow.path, ...write })),
+  );
 
   return {
     rootDir,
@@ -261,11 +340,13 @@ function analyzeWorkflows(rootDir = defaultRoot) {
       scorecard: workflows.some((workflow) => workflow.securityScans.scorecard),
     },
     actionPinSummary: summarizeActionPins(workflows),
+    workflowCommandWrites: allCommandWrites,
     workflows,
     caveats: [
       "This report is a read-only workflow inventory, not a security guarantee.",
       "Repository settings, branch protection, environments, and secret values are outside file-based evidence.",
       "Missing official Scorecard/CodeQL/Dependency Review evidence is reported separately from local static inventory.",
+      "workflowCommandWrites is a static line-level inventory. Environment-file channel transition reduces deprecated stdout command-injection class but does not eliminate downstream authority risks from untrusted values.",
     ],
   };
 }
@@ -295,6 +376,34 @@ function formatMarkdown(report) {
   lines.push("## Caveats");
   for (const caveat of report.caveats) {
     lines.push(`- ${caveat}`);
+  }
+  lines.push("");
+
+  const channelCounts = {};
+  let riskCount = 0;
+  for (const write of report.workflowCommandWrites) {
+    channelCounts[write.channel] = (channelCounts[write.channel] || 0) + 1;
+    if (write.riskNote) {
+      riskCount += 1;
+    }
+  }
+  lines.push("## Workflow command channel inventory");
+  lines.push("");
+  if (report.workflowCommandWrites.length === 0) {
+    lines.push("- no GITHUB_OUTPUT/STATE/ENV/STEP_SUMMARY writes detected");
+  } else {
+    lines.push(`- total channel writes: ${report.workflowCommandWrites.length}`);
+    for (const [channel, count] of Object.entries(channelCounts)) {
+      lines.push(`  - ${channel}: ${count}`);
+    }
+    lines.push(`- risk findings (untrusted context interpolation): ${riskCount}`);
+    lines.push("");
+    lines.push("| workflow | line | channel | sourceKind | encodingGuard | riskNote |");
+    lines.push("|---|---|---|---|---|---|");
+    for (const write of report.workflowCommandWrites) {
+      const risk = write.riskNote ?? "";
+      lines.push(`| ${write.workflow} | ${write.line} | ${write.channel} | ${write.sourceKind} | ${write.encodingGuard} | ${risk} |`);
+    }
   }
   lines.push("");
   lines.push("## Workflow inventory");
@@ -337,4 +446,4 @@ if (process.argv[1] && path.resolve(process.argv[1]) === __filename) {
   }
 }
 
-export { analyzeWorkflows, classifyActionRef, detectUntrustedInterpolations, formatMarkdown };
+export { analyzeWorkflows, classifyActionRef, detectUntrustedInterpolations, detectWorkflowCommandWrites, formatMarkdown };
