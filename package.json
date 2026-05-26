@@ -21,6 +21,7 @@
     "verify:security-posture": "node scripts/security-posture-report.mjs",
     "test:security-posture": "node scripts/test-security-posture-report.mjs",
     "test:pr-check-evidence": "node scripts/test-pr-check-evidence-report.mjs",
+    "test:pr-status-evidence": "node scripts/test-pr-status-evidence-report.mjs",
     "prepublishOnly": "npm run verify",
     "verify": "node scripts/verify-package.mjs"
   },

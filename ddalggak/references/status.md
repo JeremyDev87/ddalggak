@@ -22,3 +22,9 @@ Do not use when: the user asked to implement, ship, review, or mutate GitHub sta
 - `formal review/branch protection 상태`: GitHub `reviewDecision`, required review, `mergeStateStatus`, branch protection을 top-level approval comment와 별도로 적는다.
 - `merge blocker`: pending/failing checks, required formal approval, conflicts, evidence gap, missing human decision, manual merge boundary를 구체적으로 나열한다.
 - `human action`: 주인님이 해야 할 다음 행동이 있으면 명시하고, 없으면 수동 merge 대기/정보 대기 등 현재 경계를 말한다.
+
+## check-only vs PR-status evidence helper
+
+- check-only (`scripts/pr-check-evidence-report.mjs`): CI check runs만 보고. 빠른 check 상태 확인에 사용.
+- PR-status bundle (`scripts/pr-status-evidence-report.mjs`): 5개 section (check / formal review / merge state+rulesets / conversation freshness / human action)을 분리 출력. Step 7 / final PR report에 사용.
+- 상세 사용법은 `ddalggak/references/pr-status-evidence-bundle.md` 참조.
