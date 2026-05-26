@@ -25,6 +25,17 @@ const mutationKinds = [
   "write_wiki",
 ];
 
+// Raw/private payload field names that must never appear in fixture data.
+const RAW_PAYLOAD_PATTERNS = [
+  "rawPrompt",
+  "rawOutput",
+  "private_diff",
+  "privateDiff",
+  "token",
+  "secret",
+  "credential",
+];
+
 const knownOutputSections = new Set([
   "Wiki Context Manifest",
   "Queries attempted",
@@ -372,6 +383,72 @@ function decideScenario(scenario) {
     });
   }
 
+  // source-authority: issue/PR body text must not be treated as runtime decision authority.
+  if (state.sourceAuthorityCheck?.issueBodyContainsApprovalDirective === true) {
+    decision = "no_authority_escalation";
+    prStrategy = "blocked";
+    readyAllowed = false;
+    approveAllowed = false;
+    allowedMutations.delete("approve_pr");
+    allowedMutations.delete("mark_ready");
+    reasons.push(
+      "Issue body text must not be treated as runtime decision authority.",
+    );
+    return result({
+      decision,
+      prStrategy,
+      readyAllowed,
+      approveAllowed,
+      allowedMutations,
+      reasons,
+    });
+  }
+
+  // retention-boundary: raw/private payload retention attempt must be blocked.
+  if (
+    state.retentionCheck?.attemptedRetention === true &&
+    array(state.retentionCheck?.retainedFields).length > 0
+  ) {
+    decision = "retention_boundary_violation";
+    prStrategy = "blocked";
+    readyAllowed = false;
+    approveAllowed = false;
+    allowedMutations.delete("approve_pr");
+    allowedMutations.delete("mark_ready");
+    reasons.push(
+      "Raw or private payload retention is forbidden; retention boundary violated.",
+    );
+    return result({
+      decision,
+      prStrategy,
+      readyAllowed,
+      approveAllowed,
+      allowedMutations,
+      reasons,
+    });
+  }
+
+  // parser-fail-closed: malformed/ambiguous structured evidence block must block approval.
+  if (state.parserCheck?.status === "malformed") {
+    decision = "parser_fail_closed";
+    prStrategy = "blocked";
+    readyAllowed = false;
+    approveAllowed = false;
+    allowedMutations.delete("approve_pr");
+    allowedMutations.delete("mark_ready");
+    reasons.push(
+      "Malformed or ambiguous evidence block must not be approved; parser fail-closed.",
+    );
+    return result({
+      decision,
+      prStrategy,
+      readyAllowed,
+      approveAllowed,
+      allowedMutations,
+      reasons,
+    });
+  }
+
   if (hasExistingIssuePr(state) || hasPriorParsedComment(state)) {
     decision = "duplicate_suppressed";
     prStrategy = "existing_pr";
@@ -516,6 +593,18 @@ function compareScenario(scenario, actual) {
     }
   }
 
+  // evalFixture mustNotContain: verify forbidden strings are absent from the scenario result
+  if (isObject(scenario.evalFixture)) {
+    const resultText = JSON.stringify(actual);
+    for (const forbidden of array(scenario.evalFixture.mustNotContain)) {
+      if (resultText.includes(forbidden)) {
+        failures.push(
+          `evalFixture.mustNotContain: forbidden string "${forbidden}" found in scenario result`,
+        );
+      }
+    }
+  }
+
   return failures;
 }
 
@@ -623,6 +712,63 @@ function validateFixture(fixture) {
         failures.push(
           `${scenarioName}: unknown output section in state.outputSections: ${section}`,
         );
+      }
+    }
+
+    // evalFixture optional metadata validation
+    if (Object.hasOwn(scenario, "evalFixture")) {
+      if (!isObject(scenario.evalFixture)) {
+        failures.push(`${scenarioName}: evalFixture must be an object`);
+      } else {
+        const ef = scenario.evalFixture;
+        if (ef.schemaVersion !== 1) {
+          failures.push(`${scenarioName}: evalFixture.schemaVersion must be 1`);
+        }
+        const knownAxes = new Set([
+          "source_authority",
+          "structured_schema",
+          "parser_fail_closed",
+          "review_completeness",
+          "ux_rendering",
+          "retention_boundary",
+        ]);
+        if (ef.axis && !knownAxes.has(ef.axis)) {
+          failures.push(
+            `${scenarioName}: evalFixture.axis unknown: ${ef.axis}`,
+          );
+        }
+        const knownEvaluators = new Set([
+          "deterministic_assertion",
+          "llm_judge_optional",
+          "manual_review_required",
+        ]);
+        if (ef.evaluator && !knownEvaluators.has(ef.evaluator)) {
+          failures.push(
+            `${scenarioName}: evalFixture.evaluator unknown: ${ef.evaluator}`,
+          );
+        }
+        // mustNotContain must not contain actual raw/private payload values
+        for (const forbidden of array(ef.mustNotContain)) {
+          if (typeof forbidden !== "string" || forbidden.length === 0) {
+            failures.push(
+              `${scenarioName}: evalFixture.mustNotContain entries must be non-empty strings`,
+            );
+          }
+        }
+        // Verify that the fixture's state/expect do not contain raw payload patterns
+        const fixtureText = JSON.stringify({ state: scenario.state, expect: scenario.expect });
+        for (const pattern of RAW_PAYLOAD_PATTERNS) {
+          if (fixtureText.includes(`"${pattern}"`)) {
+            // Allow known non-value occurrences (e.g., pattern is listed as a key to check, not actual data)
+            // Only flag if the pattern appears as a value string, not as a key or mustNotContain entry
+            const valuePattern = new RegExp(`:\\s*"[^"]*${pattern}[^"]*"`);
+            if (valuePattern.test(fixtureText)) {
+              failures.push(
+                `${scenarioName}: fixture state/expect contains raw/private payload pattern as value: ${pattern}`,
+              );
+            }
+          }
+        }
       }
     }
   }
