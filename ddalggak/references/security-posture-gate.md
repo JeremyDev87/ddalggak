@@ -38,9 +38,66 @@ npm run test:security-posture
 
 `npm run verify` includes this evidence gate so package verification records the current posture inventory.
 
+## Action pinning policy
+
+The gate tracks three distinct concerns for action references:
+
+1. **Immutability evidence** — Is the ref SHA-pinned (full 40-hex commit SHA)?  SHA pinning means the resolved commit cannot be repointed after the pin. It is not a claim that the action code is safe.
+2. **Provenance exception registration** — Is the action listed in the explicit exception ledger with an owner, rationale, and review cadence?
+3. **Semantic safety** — Separate from pinning; outside the scope of this gate.
+
+### Pin classes
+
+| class | description |
+|---|---|
+| `sha-pinned` | Full 40-character hex commit SHA — immutability evidence |
+| `version-tag` | `vX.Y.Z` or `vX.Y` — floating within patch/minor series |
+| `major-tag` | `vX` only — floating within major series |
+| `branch-or-floating` | Named branch ref — fully floating |
+| `local-or-docker` | `./` relative or `docker://` — local action or Docker image |
+| `missing-ref` | No `@ref` present — inventory gap |
+
+### Policy: warning-first
+
+The default policy is **warning-first**: tag refs (`version-tag`, `major-tag`) without an explicit exception are reported as `needs-review`, not as a fail-block. This avoids over-claiming that official GitHub-maintained actions (`actions/*`) are unsafe simply because they use major-tag refs.
+
+To convert a finding from `needs-review` to `compliant`, register it in the `ACTION_PIN_EXCEPTION_LEDGER` in `scripts/security-posture-report.mjs` with:
+- `action` — full `owner/repo` name
+- `currentRef` — the specific ref value being registered
+- `pinClass` — the resolved pin class
+- `reason` — human-readable rationale
+- `status` — `compliant` if intentionally accepted, or `pending-remediation` if tracked for future SHA-pinning
+
+### Current exception ledger
+
+| action | currentRef | pinClass | reason | status |
+|---|---|---|---|---|
+| `release-drafter/release-drafter` | `6db134d15f3909ccc9eefd369f02bd1e9cffdf97` | `sha-pinned` | Third-party; already SHA-pinned | compliant |
+
+All other action refs in `.github/workflows/*.yml` use major-tag or version-tag refs for official GitHub-maintained actions. These are reported as `needs-review` and may be registered as explicit exceptions with update cadence notes in a future issue.
+
+### SHA pinning caveat
+
+SHA pinning provides **immutability evidence**, not semantic safety. A SHA-pinned action:
+- Cannot have its commit repointed after the pin (immutability)
+- May still contain unsafe code at that commit (semantic safety, out of scope here)
+- Should be reviewed before pinning, not assumed safe after pinning
+
+This gate does not claim that official GitHub-maintained actions (`actions/checkout`, `actions/setup-node`, etc.) are unsafe. Their tag refs are listed as `needs-review` because they lack registered explicit exceptions, not because they are known to be harmful.
+
+### Separation from release provenance
+
+Action pinning evidence (this section) is distinct from:
+- **Release provenance/attestation** — recorded at release-time in the release posture gate
+- **Workflow command channel writes** — recorded in the `workflowCommandWrites` section
+- **Repository settings** — branch protection, environments, secrets — outside file-based proof
+
 ## Review checklist
 
 - Does the report avoid printing secrets or credential values?
 - Are official scan absences described as missing evidence rather than a pass?
 - Are action pinning findings separated from remediation requirements?
 - If a PR changes workflows, does it explain whether posture findings are in scope or intentionally deferred?
+- Is `release-drafter/release-drafter@6db134d15f3909ccc9eefd369f02bd1e9cffdf97` still recognized as `sha-pinned` and `compliant`?
+- Are `actions/checkout@v5` and similar official major-tag refs showing as `needs-review` (not fail-block)?
+- Does the `actionPinPolicy.caveat` field distinguish immutability evidence from semantic safety?
