@@ -189,6 +189,89 @@ const tests = [
     },
   },
   {
+    name: "follow-up audit contains content-light provenance/signature evidence step",
+    run() {
+      const workflow = read(
+        ".github/workflows/release-published-follow-up.yml",
+      );
+      for (const expected of [
+        "Post-publish provenance/signature evidence",
+        "npm audit signatures",
+        "registry_signature_status",
+        "token_fallback_used",
+        "provenance_status",
+        "provenance-limited",
+        "trusted-publishing-path",
+        "node_npm_requirement_status",
+        "trusted_publisher_identity_status",
+        "workflow_filename_match",
+        "environment_protection_status",
+        "continue-on-error: true",
+        "provenance/attestation confirms publish-time identity binding only",
+        "not assert semantic correctness",
+        "unknown/unavailable fields remain unresolved and are not promoted to pass",
+      ]) {
+        assertIncludes(
+          workflow,
+          expected,
+          `provenance evidence step contract ${expected}`,
+        );
+      }
+      // Trusted publishing path and token fallback path must produce different provenance_status values
+      assert(
+        workflow.includes("provenance_status=\"provenance-limited\"") &&
+          workflow.includes("provenance_status=\"trusted-publishing-path\""),
+        "provenance_status must differ between trusted-publishing and token-fallback paths",
+      );
+      // NPM_TOKEN secret value must not be echoed or printed
+      assert(
+        !workflow.includes("echo.*NPM_TOKEN") &&
+          !workflow.includes("echo $NPM_TOKEN") &&
+          !workflow.includes("echo \"$NPM_TOKEN\""),
+        "NPM_TOKEN secret value must not be echoed in workflow",
+      );
+    },
+  },
+  {
+    name: "follow-up audit contains tarball artifact integrity/retention evidence step",
+    run() {
+      const workflow = read(
+        ".github/workflows/release-published-follow-up.yml",
+      );
+      for (const expected of [
+        "Tarball artifact integrity/retention evidence",
+        "release_tarball_artifact_name",
+        "artifact_id",
+        "artifact_digest",
+        "download_digest_validation",
+        "retention_days",
+        "hidden_files_included",
+        "overwrite_policy",
+        "attestation_status",
+        "continue-on-error: true",
+        "unknown/unavailable fields remain unresolved and are not promoted to pass",
+      ]) {
+        assertIncludes(
+          workflow,
+          expected,
+          `artifact integrity evidence step contract ${expected}`,
+        );
+      }
+      // unknown fields must not be promoted to pass (the caveat line must be present)
+      assertIncludes(
+        workflow,
+        "unknown/unavailable fields remain unresolved and are not promoted to pass",
+        "artifact evidence step must include unknown-not-promoted-to-pass caveat",
+      );
+      // attestation_status unknown/unverified must remain distinguishable from verified
+      assert(
+        workflow.includes("attestation_status=\"verified\"") ||
+          workflow.includes('attestation_status="verified"'),
+        "attestation_status must have a verified branch (not just unknown)",
+      );
+    },
+  },
+  {
     name: "README documents approval gate, trusted publishing, fallback, dist-tags, and audit",
     run() {
       const readme = read("README.md");
@@ -207,6 +290,26 @@ const tests = [
           readme,
           expected,
           `README release publish/audit contract ${expected}`,
+        );
+      }
+    },
+  },
+  {
+    name: "README Follow-up Audit section documents provenance evidence and semantic-safety caveat",
+    run() {
+      const readme = read("README.md");
+      for (const expected of [
+        "provenance",
+        "semantic safety",
+        "provenance-limited",
+        "token_fallback_used",
+        "registry_signature_status",
+        "attestation_status",
+      ]) {
+        assertIncludes(
+          readme,
+          expected,
+          `README provenance/audit evidence contract ${expected}`,
         );
       }
     },
