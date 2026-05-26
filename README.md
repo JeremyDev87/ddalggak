@@ -10,6 +10,12 @@ ddalggak is a workflow skill for turning GitHub issues into planned, parallel, r
 
 This repository ships a package-local [`llms.txt`](./llms.txt) index for humans and AI coding agents that need a compact map of the skill entrypoints, workflow references, and package verification surfaces. It is a repository/package navigation file only; it is not a crawler directive, hosted API promise, or publication of private project state.
 
+## Instruction Projection
+
+`AGENTS.md` (repository root) is a **thin cross-runtime adapter** for agent runtimes that look for a repo-root instruction file (such as OpenAI Codex cloud agents). It is a projection pointer only — it names the canonical policy sources and states the side-effect boundary in short form. It does not duplicate or extend the workflow policy in this README or `.codex/skills/ddalggak/SKILL.md`.
+
+Maintainer rule: instruction projection adapters are not canonical policy. Canonical policy lives in `README.md` and `SKILL.md`. If an adapter file and a canonical source conflict, the canonical source wins and the adapter must be updated to match. `npm run verify:projections` enforces required anchors, forbidden sentinels, and thin-adapter size limits on `AGENTS.md`.
+
 ## Codex App
 
 For Codex App, use the repository-local skill source at `.codex/skills/ddalggak/`.
