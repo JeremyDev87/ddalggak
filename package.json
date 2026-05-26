@@ -25,6 +25,7 @@
     "test:pr-check-evidence": "node scripts/test-pr-check-evidence-report.mjs",
     "test:pr-status-evidence": "node scripts/test-pr-status-evidence-report.mjs",
     "verify:workflow-boundary": "node scripts/workflow-boundary-inventory.mjs",
+    "verify:issue-forms": "node scripts/verify-issue-forms.mjs",
     "prepublishOnly": "npm run verify",
     "verify": "node scripts/verify-package.mjs"
   },
