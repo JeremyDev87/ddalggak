@@ -18,6 +18,7 @@ const pkg = JSON.parse(
   readFileSync(path.join(rootDir, "package.json"), "utf8"),
 );
 const readme = readFileSync(path.join(rootDir, "README.md"), "utf8");
+const llmsIndex = readFileSync(path.join(rootDir, "llms.txt"), "utf8");
 const tempRoots = [];
 
 function makeTempHome() {
@@ -892,6 +893,37 @@ const cases = [
       assertExit(result, 0);
       assertIncludes(`${result.stdout}${result.stderr}`, "not found", "output");
       assertIncludes(result.stdout, "/ddalggak status", "stdout");
+    },
+  },
+  {
+    name: "AI-readable docs index is package-local and points at shipped files",
+    run() {
+      assert(
+        pkg.files?.includes("llms.txt"),
+        "expected llms.txt to be included in package artifact boundary",
+      );
+      for (const required of [
+        "# ddalggak AI-readable documentation index",
+        "./README.md",
+        "./.codex/skills/ddalggak/SKILL.md",
+        "./ddalggak/SKILL.md",
+        "./scripts/verify-package.mjs",
+        "not a crawler directive",
+        "Secrets, credentials, private issue comments",
+      ]) {
+        assertIncludes(llmsIndex, required, "llms.txt");
+      }
+      for (const missing of [
+        "https://docs.github.com/llms.txt",
+        "https://modelcontextprotocol.io/llms.txt",
+        "Authorization:",
+        "Bearer",
+      ]) {
+        assert(
+          !llmsIndex.includes(missing),
+          `expected llms.txt not to include external/private runtime token ${JSON.stringify(missing)}`,
+        );
+      }
     },
   },
   {

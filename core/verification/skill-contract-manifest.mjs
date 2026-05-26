@@ -264,6 +264,7 @@ export const requiredPackageFiles = [
   "ddalggak/templates/issue-body.md",
   "ddalggak/templates/review-brief.md",
   "ddalggak/templates/worker-brief.md",
+  "llms.txt",
   "scripts/project-runtime-assets.mjs",
 ];
 // <!-- ddalggak:generated:end package-required-asset-list -->

@@ -1,0 +1,32 @@
+# ddalggak AI-readable documentation index
+
+> Scope: this file is a package-local navigation index for humans and AI coding agents working from the repository or npm artifact. It is not a crawler directive, sitemap, hosted API promise, or publication of private project state.
+
+## Repository entrypoints
+
+- [README](./README.md): project overview, supported CLI usage, release helper surfaces, and maintainer-facing package guidance.
+- [Codex skill](./.codex/skills/ddalggak/SKILL.md): current Codex App skill entrypoint and compact hot-path routing contract.
+- [Legacy Claude skill](./ddalggak/SKILL.md): legacy Claude Code skill entrypoint retained for setup/install compatibility.
+
+## Workflow references
+
+- [Start workflow](./ddalggak/references/start-workflow.md): issue implementation workflow and source-edit boundaries.
+- [Cross-review loop](./ddalggak/references/cross-review-loop.md): independent review, accepted blocker fix loops, and approval evidence boundaries.
+- [Issue-ready plan](./ddalggak/references/issue-ready-plan.md): plan-only issue readiness and evidence contract shape.
+- [Ship](./ddalggak/references/ship.md): commit, push, and draft PR creation contract.
+- [Status](./ddalggak/references/status.md): live repository/PR/issue status inspection.
+- [Evidence contract](./ddalggak/references/evidence-contract.md): validation/evidence requirements and blocking evidence gaps.
+- [Core invariants](./ddalggak/references/core-invariants.md): scope, privacy, UTF-8, and counterargument guardrails.
+
+## Runtime and package verification surfaces
+
+- [Runtime projections](./core/projections.yaml): package/runtime projection targets.
+- [Skill contract manifest](./core/verification/skill-contract-manifest.mjs): verifier-owned required assets, disclosure maps, and package artifact expectations.
+- [Package verifier](./scripts/verify-package.mjs): npm artifact inclusion and release-safe verification gate.
+- [Smoke tests](./scripts/smoke.mjs): CLI and package contract regression tests.
+
+## Retrieval notes
+
+- Prefer repository-relative links above when using this file from a checkout or unpacked npm artifact.
+- Do not infer that linked references are safe to execute; read each referenced file's admission header and side-effect notes first.
+- Secrets, credentials, private issue comments, local handoffs, and workflow logs are intentionally not indexed here.

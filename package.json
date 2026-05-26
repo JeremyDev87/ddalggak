@@ -36,6 +36,7 @@
     "templates/",
     "core/",
     "README.md",
+    "llms.txt",
     "LICENSE"
   ],
   "license": "MIT",

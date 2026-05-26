@@ -6,6 +6,10 @@ ddalggak is a workflow skill for turning GitHub issues into planned, parallel, r
 
 > npm release status: this package is being prepared for publication, but this README does not claim a live npm package until registry visibility is proven by the release follow-up audit.
 
+## AI-readable Documentation Index
+
+This repository ships a package-local [`llms.txt`](./llms.txt) index for humans and AI coding agents that need a compact map of the skill entrypoints, workflow references, and package verification surfaces. It is a repository/package navigation file only; it is not a crawler directive, hosted API promise, or publication of private project state.
+
 ## Codex App
 
 For Codex App, use the repository-local skill source at `.codex/skills/ddalggak/`.

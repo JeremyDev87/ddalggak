@@ -268,6 +268,7 @@ function requiredPackageFiles() {
     "bin/lib/dispatch.mjs",
     "bin/lib/setup.mjs",
     "README.md",
+    "llms.txt",
     "LICENSE",
   ]);
   for (const doc of commands) {

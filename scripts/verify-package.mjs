@@ -10,6 +10,7 @@ const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
 const requiredArtifactPaths = [
   "package.json",
   "README.md",
+  "llms.txt",
   "LICENSE",
   "bin/ddalggak.js",
   "bin/lib/dispatch.mjs",
