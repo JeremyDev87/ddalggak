@@ -22,6 +22,7 @@
     "test:security-posture": "node scripts/test-security-posture-report.mjs",
     "verify:workflow-lint": "node scripts/verify-workflow-lint.mjs",
     "test:workflow-lint": "node scripts/test-verify-workflow-lint.mjs",
+    "test:development-control-plane": "node scripts/test-development-control-plane.mjs",
     "test:pr-check-evidence": "node scripts/test-pr-check-evidence-report.mjs",
     "test:pr-status-evidence": "node scripts/test-pr-status-evidence-report.mjs",
     "verify:workflow-boundary": "node scripts/workflow-boundary-inventory.mjs",

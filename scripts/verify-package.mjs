@@ -17,6 +17,7 @@ const requiredArtifactPaths = [
   "bin/lib/profile.mjs",
   "bin/lib/setup.mjs",
   "bin/lib/status.mjs",
+  "core/development-control-plane.mjs",
   "scripts/project-runtime-assets.mjs",
   "scripts/smoke.mjs",
   "scripts/verify-codex-skill.mjs",
@@ -33,6 +34,7 @@ const requiredArtifactPaths = [
   "scripts/test-security-posture-report.mjs",
   "scripts/verify-workflow-lint.mjs",
   "scripts/test-verify-workflow-lint.mjs",
+  "scripts/test-development-control-plane.mjs",
   "scripts/pr-check-evidence-report.mjs",
   "scripts/test-pr-check-evidence-report.mjs",
   "scripts/pr-status-evidence-report.mjs",
@@ -243,6 +245,10 @@ try {
   runStep("workflow lint tests", npmCommand, [
     "run",
     "test:workflow-lint",
+  ]);
+  runStep("development control-plane tests", npmCommand, [
+    "run",
+    "test:development-control-plane",
   ]);
   runStep("workflow static lint evidence report", npmCommand, [
     "run",
