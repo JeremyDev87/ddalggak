@@ -20,6 +20,8 @@
     "test:release-publish": "node scripts/test-release-publish.mjs",
     "verify:security-posture": "node scripts/security-posture-report.mjs",
     "test:security-posture": "node scripts/test-security-posture-report.mjs",
+    "verify:workflow-lint": "node scripts/verify-workflow-lint.mjs",
+    "test:workflow-lint": "node scripts/test-verify-workflow-lint.mjs",
     "test:pr-check-evidence": "node scripts/test-pr-check-evidence-report.mjs",
     "test:pr-status-evidence": "node scripts/test-pr-status-evidence-report.mjs",
     "prepublishOnly": "npm run verify",

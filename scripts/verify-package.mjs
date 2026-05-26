@@ -31,6 +31,8 @@ const requiredArtifactPaths = [
   "scripts/test-release-publish.mjs",
   "scripts/security-posture-report.mjs",
   "scripts/test-security-posture-report.mjs",
+  "scripts/verify-workflow-lint.mjs",
+  "scripts/test-verify-workflow-lint.mjs",
   "scripts/pr-check-evidence-report.mjs",
   "scripts/test-pr-check-evidence-report.mjs",
   "scripts/pr-status-evidence-report.mjs",
@@ -235,6 +237,14 @@ try {
   runStep("security posture evidence report", npmCommand, [
     "run",
     "verify:security-posture",
+  ]);
+  runStep("workflow lint tests", npmCommand, [
+    "run",
+    "test:workflow-lint",
+  ]);
+  runStep("workflow static lint evidence report", npmCommand, [
+    "run",
+    "verify:workflow-lint",
   ]);
   runStep("PR check evidence report tests", npmCommand, [
     "run",
