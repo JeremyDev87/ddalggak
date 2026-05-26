@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import { analyzeWorkflows, classifyActionRef, detectWorkflowCommandWrites } from "./security-posture-report.mjs";
+import { analyzeWorkflows, buildActionPinPolicy, classifyActionRef, detectWorkflowCommandWrites, resolveExceptionStatus } from "./security-posture-report.mjs";
 
 function assert(condition, message) {
   if (!condition) {
@@ -150,6 +150,81 @@ const tests = [
       const findings = detectWorkflowCommandWrites(linesVariant);
       assertEqual(findings.length, 1, "one finding for STEP_SUMMARY");
       assertEqual(findings[0].channel, "GITHUB_STEP_SUMMARY", "channel is STEP_SUMMARY");
+    },
+  },
+  {
+    name: "action pin policy: SHA-pinned release-drafter is compliant",
+    run() {
+      // release-drafter/release-drafter@6db134d15f3909ccc9eefd369f02bd1e9cffdf97 is in the explicit exception ledger
+      const exceptionStatus = resolveExceptionStatus(
+        "release-drafter/release-drafter",
+        "6db134d15f3909ccc9eefd369f02bd1e9cffdf97",
+        "sha-pinned",
+      );
+      assertEqual(exceptionStatus, "compliant", "SHA-pinned release-drafter should be compliant");
+    },
+  },
+  {
+    name: "action pin policy: official major-tag action is needs-review not fail-block",
+    run() {
+      // actions/checkout@v5 is a major-tag ref with no explicit exception
+      const exceptionStatus = resolveExceptionStatus("actions/checkout", "v5", "major-tag");
+      assertEqual(
+        exceptionStatus,
+        "needs-review",
+        "major-tag without explicit exception should be needs-review, not fail-block",
+      );
+    },
+  },
+  {
+    name: "action pin policy: fixture workflow reports sha-pinned compliant and tag-ref needs-review",
+    run() {
+      const root = makeFixture({
+        "pintest.yml": [
+          "name: Pin Test",
+          "on: [push]",
+          "jobs:",
+          "  job1:",
+          "    runs-on: ubuntu-latest",
+          "    steps:",
+          // SHA-pinned release-drafter (compliant per ledger)
+          "      - uses: release-drafter/release-drafter@6db134d15f3909ccc9eefd369f02bd1e9cffdf97",
+          // major-tag official action (needs-review)
+          "      - uses: actions/checkout@v5",
+          // version-tag third-party without exception (needs-review)
+          "      - uses: some-third-party/action@v1.2.3",
+        ].join("\n"),
+      });
+      try {
+        const report = analyzeWorkflows(root);
+        const pol = report.actionPinPolicy;
+        assert(pol !== undefined, "actionPinPolicy must be present in report");
+        assertEqual(pol.policy, "warning-first", "policy is warning-first");
+        assertEqual(pol.summary.total, 3, "three pinnable action refs");
+        assertEqual(pol.summary["sha-pinned"], 1, "one sha-pinned ref");
+        assertEqual(pol.summary.compliant, 1, "release-drafter SHA-pinned is compliant");
+        assertEqual(pol.summary["needs-review"], 2, "two needs-review refs (major-tag + version-tag)");
+
+        const rdFinding = pol.findings.find((f) => f.action === "release-drafter/release-drafter");
+        assert(rdFinding !== undefined, "release-drafter finding present");
+        assertEqual(rdFinding.pinClass, "sha-pinned", "release-drafter is sha-pinned");
+        assertEqual(rdFinding.exceptionStatus, "compliant", "release-drafter is compliant");
+
+        const checkoutFinding = pol.findings.find((f) => f.action === "actions/checkout");
+        assert(checkoutFinding !== undefined, "checkout finding present");
+        assertEqual(checkoutFinding.exceptionStatus, "needs-review", "checkout@v5 is needs-review");
+
+        const thirdPartyFinding = pol.findings.find((f) => f.action === "some-third-party/action");
+        assert(thirdPartyFinding !== undefined, "third-party finding present");
+        assertEqual(thirdPartyFinding.exceptionStatus, "needs-review", "unknown third-party tag is needs-review");
+
+        assert(pol.caveat.includes("immutability evidence"), "caveat mentions immutability evidence");
+
+        // Verify the report does not fail-block on needs-review (policy is warning-first)
+        assertEqual(pol.unregisteredTagRefPolicy, "needs-review", "unregistered tag refs policy is needs-review");
+      } finally {
+        rmSync(root, { recursive: true, force: true });
+      }
     },
   },
   {

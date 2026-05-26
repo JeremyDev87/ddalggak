@@ -38,62 +38,59 @@ npm run test:security-posture
 
 `npm run verify` includes this evidence gate so package verification records the current posture inventory.
 
----
+## Action pinning policy
 
-## Workflow Static Lint Gate (Issue #182)
+The gate tracks three distinct concerns for action references:
 
-`scripts/verify-workflow-lint.mjs` is a separate, independent admission evidence lane.
+1. **Immutability evidence** — Is the ref SHA-pinned (full 40-hex commit SHA)?  SHA pinning means the resolved commit cannot be repointed after the pin. It is not a claim that the action code is safe.
+2. **Provenance exception registration** — Is the action listed in the explicit exception ledger with an owner, rationale, and review cadence?
+3. **Semantic safety** — Separate from pinning; outside the scope of this gate.
 
-### Scope
+### Pin classes
 
-Checks `.github/workflows/*.yml` files for:
-
-- Workflow YAML/expression structure (`syntax_result`, `expression_result`)
-- Action `with:` input / `steps.<id>.outputs` reference mismatch (`action_io_result`)
-- Reusable workflow `on: workflow_call` inputs/outputs contract structure (`reusable_workflow_result`)
-- Direct interpolation of untrusted context (`github.head_ref`, `inputs.*`, `github.event.*`, etc.) inside `run:` blocks (`script_injection_result`)
-- Hard-coded credential patterns in workflow YAML (`credential_pattern`)
-
-### Non-scope (boundary)
-
-| Concern | Owner |
+| class | description |
 |---|---|
-| Workflow command channel injection patterns | Issue #180 |
-| Action pinning / SHA reproducibility | Issue #181 |
-| Release provenance / attestation | Issue #178 |
-| Repository settings, branch protection, secrets | Outside file-based evidence |
-| Semantic safety (workflow does what it claims) | Not in scope for any static lint |
+| `sha-pinned` | Full 40-character hex commit SHA — immutability evidence |
+| `version-tag` | `vX.Y.Z` or `vX.Y` — floating within patch/minor series |
+| `major-tag` | `vX` only — floating within major series |
+| `branch-or-floating` | Named branch ref — fully floating |
+| `local-or-docker` | `./` relative or `docker://` — local action or Docker image |
+| `missing-ref` | No `@ref` present — inventory gap |
 
-### Commands
+### Policy: warning-first
 
-```bash
-npm run verify:workflow-lint
-npm run verify:workflow-lint -- --json
-npm run test:workflow-lint
-```
+The default policy is **warning-first**: tag refs (`version-tag`, `major-tag`) without an explicit exception are reported as `needs-review`, not as a fail-block. This avoids over-claiming that official GitHub-maintained actions (`actions/*`) are unsafe simply because they use major-tag refs.
 
-`npm run verify` includes this lane after the security posture evidence report.
+To convert a finding from `needs-review` to `compliant`, register it in the `ACTION_PIN_EXCEPTION_LEDGER` in `scripts/security-posture-report.mjs` with:
+- `action` — full `owner/repo` name
+- `currentRef` — the specific ref value being registered
+- `pinClass` — the resolved pin class
+- `reason` — human-readable rationale
+- `status` — `compliant` if intentionally accepted, or `pending-remediation` if tracked for future SHA-pinning
 
-### Evidence fields
+### Current exception ledger
 
-| Field | Description |
-|---|---|
-| `lintTool` | `actionlint` (preferred) or `javascript-native` (fallback) |
-| `toolVersion` | Tool version string |
-| `checkedWorkflows` | List of `.github/workflows/*.yml` relative paths |
-| `categorySummary` | Per-category pass/finding-count status |
-| `findings` | Content-light list: workflow path, category, line, bounded summary, severity |
-| `allowedWarnings` | Explicit false-positive ledger (empty = zero-warning policy) |
-| `warningPolicy` | Zero-warning policy statement when allowedWarnings is empty |
-| `caveat` | Non-overclaiming statement (always present) |
+| action | currentRef | pinClass | reason | status |
+|---|---|---|---|---|
+| `release-drafter/release-drafter` | `6db134d15f3909ccc9eefd369f02bd1e9cffdf97` | `sha-pinned` | Third-party; already SHA-pinned | compliant |
 
-### Allowed warnings / false-positive policy
+All other action refs in `.github/workflows/*.yml` use major-tag or version-tag refs for official GitHub-maintained actions. These are reported as `needs-review` and may be registered as explicit exceptions with update cadence notes in a future issue.
 
-Current policy: **zero-warning**. No exceptions have been registered. All findings require review or explicit suppression via the `allowedWarnings` ledger in the script.
+### SHA pinning caveat
 
-### Caveat
+SHA pinning provides **immutability evidence**, not semantic safety. A SHA-pinned action:
+- Cannot have its commit repointed after the pin (immutability)
+- May still contain unsafe code at that commit (semantic safety, out of scope here)
+- Should be reviewed before pinning, not assumed safe after pinning
 
-Static lint green does **not** imply semantic safety, secret safety, or provenance safety. It records structural evidence only.
+This gate does not claim that official GitHub-maintained actions (`actions/checkout`, `actions/setup-node`, etc.) are unsafe. Their tag refs are listed as `needs-review` because they lack registered explicit exceptions, not because they are known to be harmful.
+
+### Separation from release provenance
+
+Action pinning evidence (this section) is distinct from:
+- **Release provenance/attestation** — recorded at release-time in the release posture gate
+- **Workflow command channel writes** — recorded in the `workflowCommandWrites` section
+- **Repository settings** — branch protection, environments, secrets — outside file-based proof
 
 ## Review checklist
 
@@ -101,3 +98,6 @@ Static lint green does **not** imply semantic safety, secret safety, or provenan
 - Are official scan absences described as missing evidence rather than a pass?
 - Are action pinning findings separated from remediation requirements?
 - If a PR changes workflows, does it explain whether posture findings are in scope or intentionally deferred?
+- Is `release-drafter/release-drafter@6db134d15f3909ccc9eefd369f02bd1e9cffdf97` still recognized as `sha-pinned` and `compliant`?
+- Are `actions/checkout@v5` and similar official major-tag refs showing as `needs-review` (not fail-block)?
+- Does the `actionPinPolicy.caveat` field distinguish immutability evidence from semantic safety?
