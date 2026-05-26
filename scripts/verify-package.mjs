@@ -38,6 +38,7 @@ const requiredArtifactPaths = [
   "scripts/pr-status-evidence-report.mjs",
   "scripts/test-pr-status-evidence-report.mjs",
   "scripts/verify-issue-forms.mjs",
+  "scripts/workflow-boundary-inventory.mjs",
   "scripts/lib/release.mjs",
   "scripts/release-plan.mjs",
   "scripts/bump-release-version.mjs",
@@ -258,6 +259,10 @@ try {
   runStep("issue forms admission schema verifier", npmCommand, [
     "run",
     "verify:issue-forms",
+  ]);
+  runStep("workflow boundary inventory verification", npmCommand, [
+    "run",
+    "verify:workflow-boundary",
   ]);
   verifyArtifactContents();
   console.log("\n[verify-package] passed");
