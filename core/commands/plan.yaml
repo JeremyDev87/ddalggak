@@ -8,6 +8,7 @@ write_side_effects: "No source edits; no GitHub writes unless the user separatel
 stop_condition: "Stop after an issue-ready plan with evidence/unknowns and PR topology."
 required_references:
   - wiki-context-preflight.md
+  - 2026-06-04-brain-v0-wiki-authority-in-ddalggak.md
   - wiki-bridge.md
   - quality-lens-router.md
   - evidence-contract.md

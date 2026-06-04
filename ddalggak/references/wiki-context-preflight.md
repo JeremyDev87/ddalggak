@@ -27,6 +27,16 @@ Load `getwiki` / `pjw-icloud-llm-wiki` workflow when available. Search in this o
 
 Read only the relevant wiki sources needed for the current judgment, normally 1-5 pages. If retrieval fails or no relevant source exists, record the gap and continue from live evidence.
 
+## Brain v0 authority routing
+
+After the Brain v0 migration/hardening batches, ddalggak wiki preflight must apply `2026-06-04-brain-v0-wiki-authority-in-ddalggak.md` in addition to generic retrieval:
+
+- Treat broad `qmd://wiki` search results as discovery, not direct current-answer authority.
+- Prefer Brain P0/P1/domain/SSOT/control pages and split `wiki-brain-v0` / `wiki-control` where available for authority-sensitive claims.
+- Treat `raw/`, `harin/raw/`, `ai-assets/`, hidden paths, `index.md`, `log.md`, and redirected legacy aliases as evidence-only unless a canonical/distilled Brain page authorizes the claim.
+- Follow `status: redirected` aliases via `canonical_path`; do not cite `do_not_answer_as_current: true` pages as current authority.
+- Record raw/imported/alias evidence seen-but-not-used in the Wiki Context Manifest when relevant.
+
 ## Manifest
 
 Every `plan` and `review` output must include a wiki context manifest:
@@ -39,6 +49,11 @@ Every `plan` and `review` output must include a wiki context manifest:
 - Constraints / prior decisions:
 - Unknowns not found in wiki:
 - Non-wiki inference:
+- Brain v0 authority sources read:
+- Raw/imported/alias sources seen but not used as authority:
+- Redirect aliases followed:
+- Split index used / unavailable:
+- Authority conflicts or evidence gaps:
 ```
 
 For review output, also distinguish findings backed by live PR/repo evidence from findings strengthened by wiki sources.

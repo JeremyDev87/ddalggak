@@ -8,6 +8,7 @@ write_side_effects: "Top-level review comment; accepted Critical/High fixes may 
 stop_condition: "Stop before APPROVE if current-head CI is not terminal green/skipped, blockers remain, or wiki/evidence preflight has blocking gaps."
 required_references:
   - wiki-context-preflight.md
+  - 2026-06-04-brain-v0-wiki-authority-in-ddalggak.md
   - evidence-contract.md
   - simplicity-deletability-gate.md
   - core-invariants.md
