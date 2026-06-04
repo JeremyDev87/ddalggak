@@ -178,11 +178,13 @@ jobs:
 
       - name: Dry-run summary
         if: ${{ inputs.dry_run }}
+        env:
+          INPUT_BASE_REF: ${{ inputs.base_ref }}
         run: |
           {
             echo "## Manual release bump dry-run"
             echo ""
-            echo "- base_ref: ${{ inputs.base_ref }}"
+            echo "- base_ref: $INPUT_BASE_REF"
             echo "- tag: ${{ steps.meta.outputs.tag }}"
             echo "- current version: ${{ steps.meta.outputs.currentVersion }}"
             echo "- target version: ${{ steps.meta.outputs.version }}"
