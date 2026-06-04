@@ -61,11 +61,13 @@ jobs:
 
       - name: Dry-run release draft summary
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
+        env:
+          INPUT_TARGET_REF: ${{ inputs.target_ref }}
         run: |
           {
             echo "## Release Drafter dry-run"
             echo ""
-            echo "- target_ref: ${{ inputs.target_ref }}"
+            echo "- target_ref: $INPUT_TARGET_REF"
             echo "- draft tag: ${{ steps.meta.outputs.draftTag }}"
             echo "- draft name: ${{ steps.meta.outputs.draftName }}"
             echo "- version: ${{ steps.meta.outputs.version }}"
