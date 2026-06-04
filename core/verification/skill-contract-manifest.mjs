@@ -3,11 +3,11 @@
 
 export const requiredDisclosureAssetsBySubcommand = {
   start: {
-    references: ["start-workflow.md", "core-invariants.md"],
+    references: ["start-workflow.md", "core-invariants.md", "2026-06-04-brain-v0-wiki-authority-in-ddalggak.md"],
     templates: ["worker-brief.md"],
   },
   review: {
-    references: ["cross-review-loop.md", "core-invariants.md"],
+    references: ["cross-review-loop.md", "core-invariants.md", "2026-06-04-brain-v0-wiki-authority-in-ddalggak.md"],
     templates: ["review-brief.md", "fix-brief.md"],
   },
   status: {
@@ -15,7 +15,7 @@ export const requiredDisclosureAssetsBySubcommand = {
     templates: [],
   },
   plan: {
-    references: ["issue-ready-plan.md", "core-invariants.md", "wiki-bridge.md"],
+    references: ["issue-ready-plan.md", "core-invariants.md", "wiki-bridge.md", "2026-06-04-brain-v0-wiki-authority-in-ddalggak.md"],
     templates: [],
   },
   issue: {
@@ -43,11 +43,11 @@ export const requiredDisclosureAssetsBySubcommand = {
     templates: [],
   },
   getwiki: {
-    references: ["wiki-bridge.md"],
+    references: ["wiki-bridge.md", "2026-06-04-brain-v0-wiki-authority-in-ddalggak.md"],
     templates: [],
   },
   setwiki: {
-    references: ["wiki-bridge.md"],
+    references: ["wiki-bridge.md", "2026-06-04-brain-v0-wiki-authority-in-ddalggak.md"],
     templates: [],
   },
 };
@@ -90,6 +90,7 @@ export const requiredReferenceAdmissionHeaders = [
   "local-diff-check.md",
   "prompt-skill-optimization-staging.md",
   "wiki-bridge.md",
+  "2026-06-04-brain-v0-wiki-authority-in-ddalggak.md",
   "quality-lens-router.md",
   "evidence-contract.md",
   "simplicity-deletability-gate.md",
@@ -101,6 +102,8 @@ export const subcommandExecutionContracts = {
     sourceEditAllowed: true,
     githubWriteAllowed: false,
     requiredReferences: [
+      "wiki-context-preflight.md",
+      "2026-06-04-brain-v0-wiki-authority-in-ddalggak.md",
       "quality-lens-router.md",
       "evidence-contract.md",
       "simplicity-deletability-gate.md",
@@ -116,6 +119,7 @@ export const subcommandExecutionContracts = {
     githubWriteAllowed: true,
     requiredReferences: [
       "wiki-context-preflight.md",
+      "2026-06-04-brain-v0-wiki-authority-in-ddalggak.md",
       "evidence-contract.md",
       "simplicity-deletability-gate.md",
       "core-invariants.md",
@@ -137,6 +141,7 @@ export const subcommandExecutionContracts = {
     githubWriteAllowed: false,
     requiredReferences: [
       "wiki-context-preflight.md",
+      "2026-06-04-brain-v0-wiki-authority-in-ddalggak.md",
       "wiki-bridge.md",
       "quality-lens-router.md",
       "evidence-contract.md",
@@ -192,14 +197,14 @@ export const subcommandExecutionContracts = {
     mode: "read-only",
     sourceEditAllowed: false,
     githubWriteAllowed: false,
-    requiredReferences: ["wiki-bridge.md"],
+    requiredReferences: ["wiki-bridge.md", "2026-06-04-brain-v0-wiki-authority-in-ddalggak.md"],
     stopCondition: "delegated read-only wiki retrieval command emitted",
   },
   setwiki: {
     mode: "approval-gated-write",
     sourceEditAllowed: false,
     githubWriteAllowed: false,
-    requiredReferences: ["wiki-bridge.md"],
+    requiredReferences: ["wiki-bridge.md", "2026-06-04-brain-v0-wiki-authority-in-ddalggak.md"],
     stopCondition: "approval-gated setwiki delegation only",
   },
 };
@@ -207,6 +212,7 @@ export const subcommandExecutionContracts = {
 export const requiredPackageFiles = [
   ".codex/skills/ddalggak/SKILL.md",
   ".codex/skills/ddalggak/agents/openai.yaml",
+  ".codex/skills/ddalggak/references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md",
   ".codex/skills/ddalggak/references/agent-runtime-contract.md",
   ".codex/skills/ddalggak/references/core-invariants.md",
   ".codex/skills/ddalggak/references/cross-review-loop.md",
@@ -239,6 +245,7 @@ export const requiredPackageFiles = [
   "bin/lib/setup.mjs",
   "core/verification/skill-contract-manifest.mjs",
   "ddalggak/SKILL.md",
+  "ddalggak/references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md",
   "ddalggak/references/agent-runtime-contract.md",
   "ddalggak/references/core-invariants.md",
   "ddalggak/references/cross-review-loop.md",

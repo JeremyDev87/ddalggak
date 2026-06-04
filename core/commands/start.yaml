@@ -7,6 +7,8 @@ mode: "source-edit"
 write_side_effects: "Repo source edits in issue scope; PR/comment side effects only through ship/review gates."
 stop_condition: "Stop on stale base, missing issue body/comments, duplicate PR, or required files outside the issue-owned scope."
 required_references:
+  - wiki-context-preflight.md
+  - 2026-06-04-brain-v0-wiki-authority-in-ddalggak.md
   - quality-lens-router.md
   - evidence-contract.md
   - simplicity-deletability-gate.md

@@ -31,7 +31,7 @@ const virtualCommands = {
     mode: "read-only",
     write_side_effects: "Delegate to dedicated /getwiki retrieval; no wiki or repo mutation.",
     stop_condition: "Stop after cited wiki sources or retrieval gaps are reported.",
-    required_references: ["wiki-bridge.md"],
+    required_references: ["wiki-bridge.md", "2026-06-04-brain-v0-wiki-authority-in-ddalggak.md"],
     required_templates: [],
   },
   setwiki: {
@@ -42,7 +42,7 @@ const virtualCommands = {
     mode: "approval-gated-write",
     write_side_effects: "Delegate to dedicated /setwiki; wiki writes require explicit approval and verification.",
     stop_condition: "Stop at review-only plan unless explicit approval is present; then stop after wiki write verification.",
-    required_references: ["wiki-bridge.md"],
+    required_references: ["wiki-bridge.md", "2026-06-04-brain-v0-wiki-authority-in-ddalggak.md"],
     required_templates: [],
   },
 };
@@ -222,7 +222,7 @@ const gateReferences = new Set([
   "regression-library.md",
 ]);
 
-const wikiReferences = new Set(["wiki-context-preflight.md", "wiki-bridge.md"]);
+const wikiReferences = new Set(["wiki-context-preflight.md", "wiki-bridge.md", "2026-06-04-brain-v0-wiki-authority-in-ddalggak.md"]);
 
 function splitReferencesByGroup(refs) {
   const groups = { workflow: [], gates: [], wiki: [] };

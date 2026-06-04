@@ -1015,7 +1015,7 @@ for (const [subcommand, heading] of Object.entries(requiredLegacyHeadings)) {
 
 const compactShowDocContracts = {
   plan: [
-    "Full procedure: `references/issue-ready-plan.md`; wiki preflight: `references/wiki-context-preflight.md`; wiki bridge: `references/wiki-bridge.md`.",
+    "Full procedure: `references/issue-ready-plan.md`; wiki preflight: `references/wiki-context-preflight.md`; wiki bridge: `references/wiki-bridge.md`; Brain v0 authority: `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`.",
     "references/wiki-bridge.md",
     "Execution contract index:",
     "Quality Lens Router Output",
@@ -1043,7 +1043,7 @@ const compactShowDocContracts = {
     "commit/push/PR/evidence/blocking gaps",
   ],
   review: [
-    "Full procedure: `references/cross-review-loop.md`; reusable prompt: `templates/review-brief.md`.",
+    "Full procedure: `references/cross-review-loop.md`; wiki authority: `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`; reusable prompt: `templates/review-brief.md`.",
     "Execution contract index:",
     "live PR state",
     "diff/files/checks",
@@ -1093,7 +1093,7 @@ assertRenderedSubcommandContracts({
 });
 const codexCompactSubcommandContracts = {
   plan: [
-    "Full procedure: `references/issue-ready-plan.md`; wiki preflight: `references/wiki-context-preflight.md`; wiki bridge: `references/wiki-bridge.md`.",
+    "Full procedure: `references/issue-ready-plan.md`; wiki preflight: `references/wiki-context-preflight.md`; wiki bridge: `references/wiki-bridge.md`; Brain v0 authority: `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`.",
     "references/wiki-bridge.md",
     "Execution contract index:",
     "Quality Lens Router Output",
@@ -1116,7 +1116,7 @@ const codexCompactSubcommandContracts = {
     "validation/PR evidence",
   ],
   review: [
-    "Full procedure: `references/cross-review-loop.md`; reusable prompt: `templates/review-brief.md`.",
+    "Full procedure: `references/cross-review-loop.md`; wiki authority: `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`; reusable prompt: `templates/review-brief.md`.",
     "Execution contract index:",
     "live PR/diff/files/checks/issue/head SHA",
     "Wiki Context Preflight",
