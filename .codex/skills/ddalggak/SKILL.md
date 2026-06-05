@@ -102,12 +102,13 @@ Use Codex App native orchestration names in briefs and state records: `spawn_age
 - **Issue-PRs by default**: one issue PR per independent issue; only proven hard conflicts may use one PR with separate commits.
 - **Runtime contract language**: `references/agent-runtime-contract.md` owns Task Scope Contract, Context Assembly Manifest, Resume Snapshot, Control-flow ownership, tool capability boundary, task scope contract, out-of-scope diff, and scope-expansion failure.
 - **Quality Lens Router**: `references/quality-lens-router.md` owns Applicable gate families, Skipped gates, Required references, lightweight/limited gates, backend-only skip, and Repo/product conventions. Domain gate is a lens, not a mandate.
+- **React Code Quality Harness**: when React/Next.js code quality, AI-generated React diffs, component/hook/state/fallback/rendering boundaries are in scope, route `react-code-quality-harness` and read `references/react-code-quality-harness.md`; do not copy gate conditions into the hot path.
 - **Wiki Context First**: `plan` and `review` must run `references/wiki-context-preflight.md`; cite wiki paths for wiki-derived claims or record retrieval gaps.
 - **Wiki Bridge**: `getwiki` is read-only retrieval; `setwiki` is approval-gated write. ddalggak owns only the admission/approval boundary in `references/wiki-bridge.md` and delegates iCloud/QMD/wiki mechanics to the canonical wiki workflow.
 - **Evidence Contract**: `references/evidence-contract.md` is mandatory before completion, readiness, approval, deploy, performance, UI, security, data, or API claims. Blocking evidence gaps block No evidence, no readiness or approval.
 - **Simplicity / Deletability Gate**: `references/simplicity-deletability-gate.md` is mandatory for code-shape decisions. Start with small direct change first and ask why any proposed abstraction is necessary.
 - **Core Invariants Reference**: `references/core-invariants.md` owns long-form guardrail rationale for Counterargument Pass, privacy, knowledge extraction, rendered evidence, component methodology gate, raw UTF-8, Self-created complexity is a defect, and no silent fallback.
-- **Conditional gates stay conditional**: frontend design, Vercel agent skills, and regression-library references load only when applicable, with explicit backend-only or lightweight skip reasons.
+- **Conditional gates stay conditional**: frontend design, Vercel agent skills, and regression-library references load only when applicable; React code quality references also load only when applicable, with explicit backend-only or lightweight skip reasons.
 
 ## Required Reference Map
 
@@ -142,7 +143,7 @@ Command contract: mode `source-edit`; source edits are limited to live issue-own
 
 Full procedure: `references/start-workflow.md`; reusable prompt: `templates/worker-brief.md`.
 
-Execution contract index: target repo/base freshness, issue body+comments, Quality Lens Router Output, Evidence Contract, Simplicity / Deletability Gate, allowed/forbidden/inspect-only/Must not touch, one issue PR by default, hard-conflict fallback only with reason, validation/PR evidence, and blocking gaps.
+Execution contract index: target repo/base freshness, issue body+comments, Quality Lens Router Output, React Code Quality Harness when applicable, Evidence Contract, Simplicity / Deletability Gate, allowed/forbidden/inspect-only/Must not touch, one issue PR by default, hard-conflict fallback only with reason, validation/PR evidence, and blocking gaps.
 
 ## `review` - Cross-Review Loop
 
@@ -150,7 +151,7 @@ Command contract: mode `review-fix`; source edits are allowed only for accepted 
 
 Full procedure: `references/cross-review-loop.md`; wiki authority: `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`; reusable prompt: `templates/review-brief.md`.
 
-Execution contract index: live PR/diff/files/checks/issue/head SHA, Wiki Context Preflight, Quality Lens Router Output, Evidence Contract, Simplicity / Deletability Gate, conditional frontend/Vercel/regression gates, blocker triage, and top-level conclusion comment when formal approval is inappropriate.
+Execution contract index: live PR/diff/files/checks/issue/head SHA, Wiki Context Preflight, Quality Lens Router Output, React Code Quality Harness when applicable, Evidence Contract, Simplicity / Deletability Gate, conditional frontend/Vercel/regression gates, React code quality gates when applicable, blocker triage, and top-level conclusion comment when formal approval is inappropriate.
 
 ## `status` - Current State Snapshot
 
@@ -160,7 +161,7 @@ Read `.ddalggak/session-state.json` if present, then inspect live git/GitHub sta
 
 Full procedure: `references/issue-ready-plan.md`; wiki preflight: `references/wiki-context-preflight.md`; wiki bridge: `references/wiki-bridge.md`; Brain v0 authority: `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`.
 
-Execution contract index: source of truth, non-goals, context anchors, assumptions/unknowns, work inventory, ownership, forbidden/inspect-only files, Quality Lens Router Output, Evidence Contract, Counterargument Pass, Simplicity / Deletability Gate, one issue PR by default, conflict fallback only with proof, Parallelization Decision, Must not touch, evidence/validation, and commit message.
+Execution contract index: source of truth, non-goals, context anchors, assumptions/unknowns, work inventory, ownership, forbidden/inspect-only files, Quality Lens Router Output, React Code Quality Harness when applicable, Evidence Contract, Counterargument Pass, Simplicity / Deletability Gate, one issue PR by default, conflict fallback only with proof, Parallelization Decision, Must not touch, evidence/validation, and commit message.
 
 ## `issue` - Plan To GitHub Issues
 
@@ -289,6 +290,14 @@ The following compact contract keeps hot-path guardrails operational while detai
 - smaller or more direct change
 - Simplicity / Deletability Gate
 - references/simplicity-deletability-gate.md
+- React Code Quality Harness
+- react-code-quality-harness
+- references/react-code-quality-harness.md
+- Readability
+- Predictability
+- Hook/effect stability
+- Rendered evidence
+- Rendering/performance boundary
 - Frontend Design Gate
 - references/frontend-design-gate.md
 - Frontend Design Brief

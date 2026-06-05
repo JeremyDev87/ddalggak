@@ -56,6 +56,7 @@ Use these stable names so future issue-specific gates can plug into the same con
 | Gate family | Activate when | Skip when |
 | --- | --- | --- |
 | `frontend-design` | UI, frontend, design, page, component, layout, polish, responsive, screenshot, or frontend primitives are in scope. | Backend/API-only, test-only, or narrow non-visual bugfixes. |
+| `react-code-quality-harness` | React/Next.js code quality, AI-generated React diff review, component responsibility, hooks/effects, state/fallback behavior, runtime UI type boundary, rendered evidence, or React rendering/performance boundary is in scope. | Non-React work, backend/API-only work with no rendered contract, docs-only work with no runtime/frontend quality claim, or tests unrelated to React behavior. |
 | `vercel-agent-skills` | React, Next.js, component API, animation, Vercel deploy/env/token, React Native, or mobile performance is in scope. | No React/frontend/deploy/mobile surface is touched. |
 | `react-next-boundary-performance` | React/Next server-client boundary, data fetching, hydration, caching, bundle, or performance claims are in scope. | Non-React work or documentation-only work with no runtime claim. |
 | `composition-api` | Component API, variants, slots, compound components, render props, context, wrapper abstractions, or component methodology gate concerns are proposed; require behavior/type tests or concrete usage evidence. For UI/component work, route the worker and review packet to the `frontend-design` component methodology gate covering main component only assembles, `ComponentName.parts.tsx`, `ComponentName.utils.ts`, `satisfies Record<...>`, public visual-contract tests, and no silent fallback. | Local one-off rendering with no reusable API change. |
@@ -75,12 +76,15 @@ After choosing applicable gate families, attach only the matching references:
 | Applicable gate family | Required reference |
 | --- | --- |
 | `frontend-design` | `references/frontend-design-gate.md` |
+| `react-code-quality-harness` | `references/react-code-quality-harness.md` |
 | `vercel-agent-skills`, `react-next-boundary-performance`, `composition-api`, `motion-meaning`, `web-design-a11y-evidence`, `deploy-token-safety`, `react-native-expo` | `references/vercel-agent-skills-gates.md` |
 | `simplicity-deletability` | `references/simplicity-deletability-gate.md` |
 | `evidence-contract` | `references/evidence-contract.md` |
 | `regression-library` | `references/regression-library.md` |
 
 `tdd-systematic-debugging` currently routes to the Evidence Contract bugfix/regression template and existing repository testing/debugging conventions. `regression-library` applies only when a review finds a repeated Medium/High pattern or a retrospective generalizes a failure class; one-off incidents without a generalized detection signal stay skipped.
+
+`react-code-quality-harness` routes to the React Code Quality Harness reference. It uses `PASS`, `FAIL`, `NEEDS_EVIDENCE`, or `N_A` verdicts and includes Rendered evidence plus Rendering/performance boundary checks only when those surfaces are actually in scope.
 
 ## Priority Order
 

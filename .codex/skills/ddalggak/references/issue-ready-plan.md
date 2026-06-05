@@ -9,7 +9,7 @@ Use this when `plan` needs full planning detail beyond the hot path.
 
 ## Required output
 - Goal, Source of Truth, Non-Goals / Constraints, Context Recovery Anchors, Assumptions And Unknowns.
-- Quality Lens Router Output.
+- Quality Lens Router Output and React Code Quality Harness when React/Next.js code-quality surfaces are in scope.
 - Evidence Contract with blocking evidence gaps.
 - Counterargument Pass.
 - Simplicity / Deletability Gate including the question: why is this abstraction necessary?
