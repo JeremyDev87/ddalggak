@@ -446,6 +446,7 @@ export const requiredLegacySkillHotPathAnchors = [
 
 export const requiredRouterGateFamilies = [
   "frontend-design",
+  "react-code-quality-harness",
   "vercel-agent-skills",
   "react-next-boundary-performance",
   "composition-api",
@@ -467,6 +468,11 @@ export const requiredRouterReferenceAnchors = [
   "Lightweight or limited gates",
   "backend-only: no rendered",
   "This priority is exact",
+  "references/react-code-quality-harness.md",
+  "React Code Quality Harness",
+  "PASS`, `FAIL`, `NEEDS_EVIDENCE`, or `N_A`",
+  "Rendered evidence",
+  "Rendering/performance boundary",
   "references/regression-library.md",
   "repeated Medium/High pattern",
   "one-off incidents without a generalized detection signal",

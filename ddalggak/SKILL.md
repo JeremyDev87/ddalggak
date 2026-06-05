@@ -59,12 +59,13 @@ user-invocable: true
 - approval-comment policy: formal approval이 부적절하면 current head SHA, review scope, validation evidence, blocking finding count, conclusion을 포함한 top-level PR comment를 사용한다. Top-level APPROVE comment는 GitHub formal approval과 다르므로 `CI/check`, `formal review/branch protection`, `merge blocker`, `human action`을 분리한다.
 - Runtime contract language: `references/agent-runtime-contract.md`가 Task Scope Contract, Context Assembly Manifest, Resume Snapshot, Control-flow ownership을 소유한다.
 - Quality Lens Router Output: `references/quality-lens-router.md`가 Applicable gate families, Skipped gates, Required references, Repo/product conventions, backend-only skip을 소유한다. Domain gate is a lens, not a mandate.
+- React Code Quality Harness: React/Next.js 코드 품질, AI-generated React diff, component/hook/state/fallback/rendering boundary가 걸리면 Quality Lens Router에서 `react-code-quality-harness`를 적용하고 `references/react-code-quality-harness.md`의 packaged SSOT를 읽는다. Gate 조건은 hot path에 복사하지 않는다.
 - Wiki Context First for plan/review: `references/wiki-context-preflight.md`를 실행하고 wiki-derived claim은 source path 또는 evidence gap을 남긴다. After Brain v0 migration/hardening, also apply `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`: broad `qmd://wiki` is discovery only; current-answer claims route through Brain P0/P1/domain/SSOT/control docs; raw/imported/hidden/index/log/redirect alias hits are evidence-only unless canonical/distilled.
 - Wiki Bridge: `getwiki`는 read-only retrieval, `setwiki`는 approval-gated write다. ddalggak은 `references/wiki-bridge.md`에서 admission/approval boundary만 소유하고 iCloud/QMD/wiki 상세 절차는 canonical wiki workflow로 위임한다.
 - Evidence Contract: `references/evidence-contract.md` 기준이며 Blocking evidence gaps가 있으면 PR ready/APPROVE 금지다.
 - Simplicity / Deletability Gate: `references/simplicity-deletability-gate.md` 기준이며 small direct change first와 why is this abstraction necessary?를 우선한다.
 - Core Invariants Reference: `references/core-invariants.md`가 Counterargument Pass, scope expansion, privacy, knowledge extraction, rendered evidence, component methodology gate, raw UTF-8 같은 장문 guardrail rationale를 소유한다.
-- Conditional gates: frontend, Vercel, regression-library는 해당 작업에만 관련 reference를 로드하고 backend-only/lightweight skip reason을 남긴다.
+- Conditional gates: frontend, React code quality, Vercel, regression-library는 해당 작업에만 관련 reference를 로드하고 backend-only/lightweight skip reason을 남긴다.
 
 ## 서브커맨드 분기
 
@@ -113,7 +114,7 @@ Full procedure: `references/start-workflow.md`; reusable prompt: `templates/work
 
 Execution contract index:
 - Source: issue body/comments, URL beats cwd, base freshness first.
-- Gates: Quality Lens Router, Evidence Contract, Simplicity / Deletability, Core Invariants; frontend/vercel/regression only when applicable.
+- Gates: Quality Lens Router, Evidence Contract, Simplicity / Deletability, Core Invariants; frontend/vercel/regression only when applicable; React code quality only when applicable.
 - Scope: allowed, forbidden, inspect-only, Must not touch, and one issue PR by default; hard-conflict fallback only with reason.
 - Output: `ISSUE_PR_READY` or `LANE_READY` with commit/push/PR/evidence/blocking gaps.
 
@@ -127,7 +128,7 @@ Full procedure: `references/cross-review-loop.md`; wiki authority: `references/2
 
 Execution contract index:
 - Re-read live PR state, diff/files/checks, linked issue, current head SHA, and wiki-context preflight.
-- Apply Quality Lens Router, Evidence Contract, Simplicity / Deletability, Core Invariants, and conditional frontend/vercel/regression gates.
+- Apply Quality Lens Router, Evidence Contract, Simplicity / Deletability, Core Invariants, and conditional frontend/vercel/regression gates, and React code quality gates when applicable.
 - Findings must separate live evidence, wiki-strengthened rationale, non-wiki inference, and retrieval gaps.
 - If formal approval is inappropriate, use a top-level comment with SHA, scope, validation, blocker count, and conclusion.
 
@@ -148,7 +149,7 @@ Full procedure: `references/issue-ready-plan.md`; wiki preflight: `references/wi
 Execution contract index:
 - Identify Goal, Source Of Truth, Non-Goals, Context Recovery Anchors, Assumptions/Unknowns.
 - Include Wiki Context Manifest, Quality Lens Router Output, Evidence Contract, Counterargument Pass, and Simplicity / Deletability Gate.
-- Add Frontend/Vercel/Regression details only when applicable, with skip or lightweight reason otherwise.
+- Add Frontend/Vercel/Regression details only when applicable, plus React code quality details only when applicable, with skip or lightweight reason otherwise.
 - Plan Issue-PR Strategy: one PR per issue by default, conflict fallback only with proof, Parallelization Decision, Must not touch, evidence, commit message.
 
 ---
