@@ -209,6 +209,10 @@ function verifyArtifactContents() {
 
 try {
   runStep("npm test", npmCommand, ["test"]);
+  runStep("ddalggak doctor diagnostics gate", process.execPath, [
+    "bin/ddalggak.js",
+    "doctor",
+  ]);
   runStep("codex skill verifier", npmCommand, ["run", "verify:codex-skill"]);
   runStep("projection verifier", npmCommand, ["run", "verify:projections"]);
   const tokenBudgetReport = runStep(

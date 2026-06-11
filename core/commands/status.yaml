@@ -8,6 +8,7 @@ write_side_effects: "No source, GitHub, or local cleanup mutation; report live g
 stop_condition: "Stop after a live state snapshot and next-action recommendation."
 required_references:
   - status.md
+  - pr-check-evidence-bundle.md
 
 required_templates:
   []
