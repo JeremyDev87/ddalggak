@@ -16,6 +16,7 @@ import path from "node:path";
 import process from "node:process";
 
 import { escapeRegExp } from "./lib/escape-regexp.mjs";
+import { parseSimpleYaml } from "./lib/parse-simple-yaml.mjs";
 
 const rootDir = process.cwd();
 const defaultFixturePath = path.join(
@@ -77,39 +78,6 @@ function isObject(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
-// Minimal data-only YAML subset parser; mirrors scripts/project-runtime-assets.mjs.
-function parseSimpleYaml(text) {
-  const doc = {};
-  let activeList = null;
-  for (const rawLine of text.split(/\r?\n/)) {
-    const line = rawLine.replace(/\s+#.*$/, "");
-    if (!line.trim() || line.trimStart().startsWith("#")) continue;
-
-    const top = line.match(/^([A-Za-z0-9_-]+):\s*(.*)$/);
-    if (top) {
-      activeList = null;
-      const [, key, rawValue] = top;
-      const value = rawValue.trim();
-      if (value === "") {
-        doc[key] = [];
-        activeList = key;
-      } else if (value === "[]") {
-        doc[key] = [];
-      } else if (value === "true" || value === "false") {
-        doc[key] = value === "true";
-      } else {
-        doc[key] = value.replace(/^"|"$/g, "");
-      }
-      continue;
-    }
-
-    const listItem = line.match(/^\s+-\s+(.+)$/);
-    if (listItem && activeList) {
-      doc[activeList].push(listItem[1].trim().replace(/^"|"$/g, ""));
-    }
-  }
-  return doc;
-}
 
 // Load canonical command contracts so fixture expectations derive from the
 // real artifacts instead of values hardcoded in this eval (fail-closed).
@@ -130,6 +98,7 @@ function loadCommandContracts() {
   for (const name of contractFiles) {
     const doc = parseSimpleYaml(
       readFileSync(path.join(contractsDir, name), "utf8"),
+      `core/commands/${name}`,
     );
     const contractFailures = [];
     if (typeof doc.command !== "string" || doc.command.length === 0) {
