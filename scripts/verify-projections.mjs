@@ -2,6 +2,8 @@ import { spawnSync } from "node:child_process";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 
+import { requiredReferenceAdmissionHeaderFields } from "../core/verification/skill-contract-manifest.mjs";
+
 const AGENTS_MD_REQUIRED_ANCHORS = [
   "Canonical owner",
   "Side-effect boundary",
@@ -151,6 +153,152 @@ function assertSkillPayload(root, label, commandDoc) {
   }
 }
 
+const PARITY_LEDGER_CLASSES = new Set(["must-match", "may-localize", "root-specific"]);
+const PARITY_LEDGER_ENTRY_FIELDS = new Set(["class", "root", "reason"]);
+const parityRootsByKey = {
+  claude_legacy: sourceSkillRoot,
+  codex: codexSkillRoot,
+};
+
+function parseParityLedger(text) {
+  const lines = text.split(/\r?\n/);
+  const start = lines.indexOf("parity_ledger:");
+  if (start === -1) {
+    fail("core/projections.yaml must declare a parity_ledger block");
+    return null;
+  }
+
+  const entries = [];
+  let current = null;
+  for (let index = start + 1; index < lines.length; index += 1) {
+    const line = lines[index];
+    if (!line.trim() || line.trimStart().startsWith("#")) continue;
+    if (/^[A-Za-z0-9_-]+:/.test(line)) break;
+
+    const entryStart = line.match(/^ {2}- path:\s*(\S+)\s*$/);
+    if (entryStart) {
+      current = { path: entryStart[1], line: index + 1 };
+      entries.push(current);
+      continue;
+    }
+
+    const field = current && line.match(/^ {4}([A-Za-z_]+):\s*(.+?)\s*$/);
+    if (field && PARITY_LEDGER_ENTRY_FIELDS.has(field[1])) {
+      current[field[1]] = field[2];
+      continue;
+    }
+
+    fail(`core/projections.yaml line ${index + 1}: unparseable parity_ledger line: ${line.trim()}`);
+  }
+  return entries;
+}
+
+function listParityFiles(dir, prefix = "") {
+  const files = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    // Skip OS metadata dotfiles (e.g. .DS_Store); instruction payloads are never dotfiles.
+    if (entry.name.startsWith(".")) continue;
+    const relPath = prefix ? `${prefix}/${entry.name}` : entry.name;
+    if (entry.isDirectory()) {
+      files.push(...listParityFiles(path.join(dir, entry.name), relPath));
+    } else if (entry.isFile()) {
+      files.push(relPath);
+    }
+  }
+  return files.sort();
+}
+
+function admissionHeaderFieldLines(filePath) {
+  const firstBlock = readText(filePath).split(/\n\n/)[0] || "";
+  return firstBlock
+    .split("\n")
+    .filter((line) => requiredReferenceAdmissionHeaderFields.some((field) => line.startsWith(field)))
+    .join("\n");
+}
+
+function runParityLedgerCheck(projectionsText) {
+  const entries = parseParityLedger(projectionsText);
+  if (entries === null) return 0;
+
+  const ledger = new Map();
+  for (const entry of entries) {
+    if (ledger.has(entry.path)) {
+      fail(`core/projections.yaml line ${entry.line}: duplicate parity_ledger path: ${entry.path}`);
+      continue;
+    }
+    ledger.set(entry.path, entry);
+
+    if (!PARITY_LEDGER_CLASSES.has(entry.class)) {
+      fail(
+        `core/projections.yaml line ${entry.line}: ${entry.path} has unknown parity class: ${entry.class ?? "(missing)"}`,
+      );
+      continue;
+    }
+    if (entry.class === "root-specific") {
+      if (!Object.hasOwn(parityRootsByKey, entry.root ?? "")) {
+        fail(
+          `core/projections.yaml line ${entry.line}: ${entry.path} root-specific entry needs root: codex or claude_legacy`,
+        );
+      }
+      if (!entry.reason) {
+        fail(`core/projections.yaml line ${entry.line}: ${entry.path} root-specific entry needs a reason`);
+      }
+    } else if (entry.root) {
+      fail(`core/projections.yaml line ${entry.line}: ${entry.path} only root-specific entries may declare root`);
+    }
+  }
+
+  for (const entry of ledger.values()) {
+    const claudeFile = path.join(parityRootsByKey.claude_legacy, entry.path);
+    const codexFile = path.join(parityRootsByKey.codex, entry.path);
+
+    if (entry.class === "must-match" || entry.class === "may-localize") {
+      const claudeExists = exists(claudeFile);
+      const codexExists = exists(codexFile);
+      if (!claudeExists) fail(`parity ledger (${entry.class}): ddalggak/${entry.path} missing`);
+      if (!codexExists) fail(`parity ledger (${entry.class}): .codex/skills/ddalggak/${entry.path} missing`);
+      if (!claudeExists || !codexExists) continue;
+
+      if (entry.class === "must-match") {
+        if (!readFileSync(claudeFile).equals(readFileSync(codexFile))) {
+          fail(
+            `parity ledger (must-match): ${entry.path} differs between ddalggak/ and .codex/skills/ddalggak/`,
+          );
+        }
+      } else if (admissionHeaderFieldLines(claudeFile) !== admissionHeaderFieldLines(codexFile)) {
+        fail(`parity ledger (may-localize): ${entry.path} admission header fields differ between roots`);
+      }
+      continue;
+    }
+
+    if (entry.class === "root-specific" && Object.hasOwn(parityRootsByKey, entry.root ?? "")) {
+      const otherRootKey = entry.root === "codex" ? "claude_legacy" : "codex";
+      const ownRootFile = entry.root === "codex" ? codexFile : claudeFile;
+      const otherRootFile = entry.root === "codex" ? claudeFile : codexFile;
+      if (!exists(ownRootFile)) {
+        fail(`parity ledger (root-specific): ${entry.path} missing from its declared root ${entry.root}`);
+      }
+      if (exists(otherRootFile)) {
+        fail(
+          `parity ledger (root-specific): ${entry.path} is declared ${entry.root}-only but also exists in the ${otherRootKey} root`,
+        );
+      }
+    }
+  }
+
+  for (const [rootKey, rootDirPath] of Object.entries(parityRootsByKey)) {
+    for (const relPath of listParityFiles(rootDirPath)) {
+      if (!ledger.has(relPath)) {
+        fail(
+          `parity ledger: ${path.relative(rootDir, rootDirPath)}/${relPath} (${rootKey}) is not registered in core/projections.yaml parity_ledger`,
+        );
+      }
+    }
+  }
+
+  return ledger.size;
+}
+
 function runProjectionArtifactGuard() {
   const agentsMdPath = path.join(rootDir, "AGENTS.md");
   if (!exists(agentsMdPath)) {
@@ -194,6 +342,8 @@ if (!projectionsText.includes(".codex/skills/ddalggak")) {
 if (!projectionsText.includes("execution_runtime: false")) {
   fail("core/projections.yaml must mark Hermes parity target as non-execution runtime");
 }
+
+const parityLedgerEntryCount = runParityLedgerCheck(projectionsText);
 
 const runtimeFiles = readdirSync(runtimeDir).filter((name) => name.endsWith(".yaml"));
 for (const runtimeName of ["claude.yaml", "codex.yaml", "hermes.yaml"]) {
@@ -250,5 +400,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  `[verify:projections] passed: ${requiredCommands.length} command contracts, ${runtimeFiles.length} runtimes, 2 projection roots, AGENTS.md projection artifact guard`
+  `[verify:projections] passed: ${requiredCommands.length} command contracts, ${runtimeFiles.length} runtimes, 2 projection roots, ${parityLedgerEntryCount} parity ledger entries, AGENTS.md projection artifact guard`
 );
