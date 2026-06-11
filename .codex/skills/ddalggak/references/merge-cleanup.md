@@ -1,7 +1,7 @@
 # Merge Cleanup Reference
 Use when: `clean` is requested after live GitHub evidence proves the relevant PR was merged.
 Required by: `clean`; post-manual-merge local cleanup.
-Side effects: none
+Side effects: local-destructive — deletes merge-verified local branches/worktrees; no repo source or GitHub mutation
 Do not use when: merge evidence is missing, the target branch/PR is ambiguous, or local worktrees are dirty.
 
 
