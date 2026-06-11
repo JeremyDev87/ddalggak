@@ -176,6 +176,20 @@ const tests = [
     },
   },
   {
+    name: "violation: budget change + rename out of measured path fails",
+    run({ repoDir, baseSha }) {
+      git(repoDir, ["checkout", "-q", "-b", "case-rename-out", baseSha]);
+      editRepoFile(repoDir, "core/projections.yaml", "review: 20000", "review: 21500");
+      git(repoDir, ["mv", "ddalggak/SKILL.md", "docs-moved-skill.md"]);
+      const headSha = commitAll(repoDir, "move skill out of measured tree and raise budget");
+      const result = runCheck(repoDir, baseSha, headSha);
+      assertExit(this.name, result, 1);
+      if (!result.stderr.includes("ddalggak/SKILL.md")) {
+        throw new Error(`${this.name}: renamed-away source path missing from output:\n${result.stderr}`);
+      }
+    },
+  },
+  {
     name: "missing --base/--head arguments exit 2",
     run({ repoDir, baseSha }) {
       const result = spawnSync(process.execPath, [checkScript, "--base", baseSha], {

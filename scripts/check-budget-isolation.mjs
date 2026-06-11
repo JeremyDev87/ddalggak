@@ -117,7 +117,9 @@ const budgetsChanged =
   canonicalBudgets(showFileAt(mergeBase, PROJECTIONS_PATH)) !==
   canonicalBudgets(showFileAt(head, PROJECTIONS_PATH));
 
-const changedFiles = git(["diff", "--name-only", mergeBase, head])
+// --no-renames: a rename out of a measured path must list the measured
+// source path as deleted, not collapse into a destination-only rename entry.
+const changedFiles = git(["diff", "--name-only", "--no-renames", mergeBase, head])
   .stdout.split("\n")
   .map((line) => line.trim())
   .filter(Boolean);
