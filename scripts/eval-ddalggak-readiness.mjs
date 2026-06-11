@@ -1,4 +1,17 @@
-import { readFileSync } from "node:fs";
+// ddalggak readiness eval — verification boundary.
+//
+// What this eval verifies:
+// - Deterministic decision-policy invariants over mock JSON scenarios in
+//   evals/ddalggak-readiness/fixtures.json (no GitHub mutation, no LLM call).
+// - Contract-derived expectations: source-edit permissions and required
+//   reference coverage are loaded from core/commands/*.yaml at eval time, so
+//   a command contract change fails this eval until fixtures are reconciled.
+//
+// What this eval does NOT verify:
+// - Real LLM behavior, prompt quality, or live GitHub/CI side effects.
+// - That an actual skill run loaded the references it claims; scenario state
+//   is mock input, not a recorded run.
+import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import process from "node:process";
 
@@ -61,6 +74,123 @@ function array(value) {
 function isObject(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
+
+// Minimal data-only YAML subset parser; mirrors scripts/project-runtime-assets.mjs.
+function parseSimpleYaml(text) {
+  const doc = {};
+  let activeList = null;
+  for (const rawLine of text.split(/\r?\n/)) {
+    const line = rawLine.replace(/\s+#.*$/, "");
+    if (!line.trim() || line.trimStart().startsWith("#")) continue;
+
+    const top = line.match(/^([A-Za-z0-9_-]+):\s*(.*)$/);
+    if (top) {
+      activeList = null;
+      const [, key, rawValue] = top;
+      const value = rawValue.trim();
+      if (value === "") {
+        doc[key] = [];
+        activeList = key;
+      } else if (value === "[]") {
+        doc[key] = [];
+      } else if (value === "true" || value === "false") {
+        doc[key] = value === "true";
+      } else {
+        doc[key] = value.replace(/^"|"$/g, "");
+      }
+      continue;
+    }
+
+    const listItem = line.match(/^\s+-\s+(.+)$/);
+    if (listItem && activeList) {
+      doc[activeList].push(listItem[1].trim().replace(/^"|"$/g, ""));
+    }
+  }
+  return doc;
+}
+
+// Load canonical command contracts so fixture expectations derive from the
+// real artifacts instead of values hardcoded in this eval (fail-closed).
+function loadCommandContracts() {
+  const contractsDir = path.join(rootDir, "core", "commands");
+  const contracts = new Map();
+  let contractFiles;
+  try {
+    contractFiles = readdirSync(contractsDir).filter((entry) =>
+      entry.endsWith(".yaml"),
+    );
+  } catch {
+    console.error(
+      `[eval:ddalggak-readiness] cannot read command contracts at ${contractsDir}; run from the repository root`,
+    );
+    process.exit(1);
+  }
+  for (const name of contractFiles) {
+    const doc = parseSimpleYaml(
+      readFileSync(path.join(contractsDir, name), "utf8"),
+    );
+    const contractFailures = [];
+    if (typeof doc.command !== "string" || doc.command.length === 0) {
+      contractFailures.push("missing command key");
+    }
+    if (typeof doc.source_edit_allowed !== "boolean") {
+      contractFailures.push("source_edit_allowed must be a boolean");
+    }
+    if (typeof doc.mode !== "string" || doc.mode.length === 0) {
+      contractFailures.push("mode must be a non-empty string");
+    }
+    if (typeof doc.stop_condition !== "string" || doc.stop_condition.length === 0) {
+      contractFailures.push("stop_condition must be a non-empty string");
+    }
+    if (
+      !Array.isArray(doc.required_references) ||
+      doc.required_references.some(
+        (reference) => typeof reference !== "string" || reference.length === 0,
+      )
+    ) {
+      contractFailures.push(
+        "required_references must be a list of non-empty strings",
+      );
+    }
+    if (contractFailures.length > 0) {
+      console.error(
+        `[eval:ddalggak-readiness] invalid command contract core/commands/${name}:`,
+      );
+      for (const failure of contractFailures) {
+        console.error(`- ${failure}`);
+      }
+      process.exit(1);
+    }
+    if (contracts.has(doc.command)) {
+      console.error(
+        `[eval:ddalggak-readiness] duplicate command contract: ${doc.command}`,
+      );
+      process.exit(1);
+    }
+    contracts.set(doc.command, {
+      command: doc.command,
+      file: `core/commands/${name}`,
+      sourceEditAllowed: doc.source_edit_allowed,
+      mode: doc.mode,
+      stopCondition: doc.stop_condition,
+      requiredReferences: doc.required_references,
+    });
+  }
+  if (contracts.size === 0) {
+    console.error(
+      "[eval:ddalggak-readiness] no command contracts found in core/commands",
+    );
+    process.exit(1);
+  }
+  return contracts;
+}
+
+const commandContracts = loadCommandContracts();
+const sourceEditAllowedCommands = new Set(
+  [...commandContracts.values()]
+    .filter((contract) => contract.sourceEditAllowed === true)
+    .map((contract) => contract.command),
+);
 
 function repoFromGitHubUrl(url) {
   if (!url) {
@@ -213,9 +343,10 @@ function decideScenario(scenario) {
     });
   }
 
+  // Derived from core/commands/*.yaml source_edit_allowed, not hardcoded here.
   if (
     state.attemptedSourceEdit &&
-    !["start", "review"].includes(state.requestedCommand)
+    !sourceEditAllowedCommands.has(state.requestedCommand)
   ) {
     decision = "source_edit_blocked";
     prStrategy = "blocked";
@@ -251,6 +382,81 @@ function decideScenario(scenario) {
     reasons.push(
       `${state.requestedCommand || "<unknown>"} output is missing required sections: ${outputSectionGaps.join(", ")}.`,
     );
+    return result({
+      decision,
+      prStrategy,
+      readyAllowed,
+      approveAllowed,
+      allowedMutations,
+      reasons,
+    });
+  }
+
+  // Required-reference coverage derives from the live command contract; a
+  // contract change fails fixtures until they are reconciled.
+  const referenceContract = commandContracts.get(state.requestedCommand);
+  if (referenceContract && Array.isArray(state.loadedReferences)) {
+    const loadedReferences = new Set(state.loadedReferences);
+    const missingReferences = referenceContract.requiredReferences.filter(
+      (reference) => !loadedReferences.has(reference),
+    );
+    if (missingReferences.length > 0) {
+      decision = "reference_contract_blocked";
+      prStrategy = "blocked";
+      readyAllowed = false;
+      approveAllowed = false;
+      allowedMutations.delete("approve_pr");
+      allowedMutations.delete("mark_ready");
+      reasons.push(
+        `${state.requestedCommand} run is missing required references from ${referenceContract.file}: ${missingReferences.join(", ")}.`,
+      );
+      return result({
+        decision,
+        prStrategy,
+        readyAllowed,
+        approveAllowed,
+        allowedMutations,
+        reasons,
+      });
+    }
+  }
+
+  // clean stop_condition derives from core/commands/clean.yaml; if the
+  // contract stops declaring unmerged, the blocked fixture fails and forces
+  // explicit reconciliation.
+  if (state.requestedCommand === "clean" && isObject(state.cleanOperation)) {
+    const cleanContract = commandContracts.get("clean");
+    const contractStopsOnUnmerged =
+      typeof cleanContract?.stopCondition === "string" &&
+      cleanContract.stopCondition.toLowerCase().includes("unmerged");
+    const deletionTargets = array(state.cleanOperation.deletionTargets);
+    const unmergedTargets = deletionTargets.filter(
+      (target) => target?.merged !== true,
+    );
+    readyAllowed = false;
+    approveAllowed = false;
+    allowedMutations.clear();
+    if (unmergedTargets.length > 0 && contractStopsOnUnmerged) {
+      decision = "clean_unmerged_blocked";
+      prStrategy = "blocked";
+      reasons.push(
+        `clean must stop on unmerged branches per ${cleanContract.file} stop_condition: ${unmergedTargets
+          .map((target) => target?.branch || "<unknown>")
+          .join(", ")}.`,
+      );
+    } else if (unmergedTargets.length > 0) {
+      decision = "clean_local_cleanup_allowed";
+      prStrategy = "none";
+      reasons.push(
+        `clean contract no longer declares an unmerged stop_condition; reconcile fixtures with ${cleanContract?.file || "core/commands/clean.yaml"}.`,
+      );
+    } else {
+      decision = "clean_local_cleanup_allowed";
+      prStrategy = "none";
+      reasons.push(
+        "clean targets all have live merge evidence; local cleanup only, no GitHub mutation.",
+      );
+    }
     return result({
       decision,
       prStrategy,
@@ -579,6 +785,32 @@ function compareScenario(scenario, actual) {
     }
   }
 
+  // Bidirectional contract match: the fixture's loadedReferences must equal
+  // the live contract list, so adding OR removing a required_references entry
+  // in core/commands/*.yaml fails this scenario until it is reconciled.
+  if (expected.loadedReferencesMatchContract === true) {
+    const contract = commandContracts.get(scenario.state?.requestedCommand);
+    if (!contract) {
+      failures.push(
+        "loadedReferencesMatchContract requires a command with a core/commands contract",
+      );
+    } else {
+      const loadedReferences = new Set(array(scenario.state?.loadedReferences));
+      const requiredReferences = new Set(contract.requiredReferences);
+      const missing = contract.requiredReferences.filter(
+        (reference) => !loadedReferences.has(reference),
+      );
+      const extra = [...loadedReferences].filter(
+        (reference) => !requiredReferences.has(reference),
+      );
+      if (missing.length > 0 || extra.length > 0) {
+        failures.push(
+          `loadedReferencesMatchContract: fixture diverges from ${contract.file} (missing: ${JSON.stringify(missing)}, extra: ${JSON.stringify(extra)})`,
+        );
+      }
+    }
+  }
+
   if (actual.decision !== "ready_for_issue_pr" && actual.reasons.length === 0) {
     failures.push("blocked/non-ready decision must include an explicit reason");
   }
@@ -714,6 +946,56 @@ function validateFixture(fixture) {
         );
       }
     }
+    if (
+      Object.hasOwn(scenario.expect, "loadedReferencesMatchContract") &&
+      scenario.expect.loadedReferencesMatchContract !== true
+    ) {
+      failures.push(
+        `${scenarioName}: expect.loadedReferencesMatchContract must be boolean true when present`,
+      );
+    }
+    if (Object.hasOwn(scenario.state, "loadedReferences")) {
+      if (
+        !Array.isArray(scenario.state.loadedReferences) ||
+        scenario.state.loadedReferences.some(
+          (reference) =>
+            typeof reference !== "string" || reference.length === 0,
+        )
+      ) {
+        failures.push(
+          `${scenarioName}: state.loadedReferences must be an array of non-empty strings`,
+        );
+      }
+      if (!commandContracts.has(scenario.state.requestedCommand)) {
+        failures.push(
+          `${scenarioName}: state.loadedReferences requires a command with a core/commands contract, got: ${scenario.state.requestedCommand || "<missing>"}`,
+        );
+      }
+    }
+    if (Object.hasOwn(scenario.state, "cleanOperation")) {
+      if (scenario.state.requestedCommand !== "clean") {
+        failures.push(
+          `${scenarioName}: state.cleanOperation applies only to clean scenarios`,
+        );
+      }
+      const deletionTargets = scenario.state.cleanOperation?.deletionTargets;
+      if (
+        !isObject(scenario.state.cleanOperation) ||
+        !Array.isArray(deletionTargets) ||
+        deletionTargets.length === 0 ||
+        deletionTargets.some(
+          (target) =>
+            !isObject(target) ||
+            typeof target.branch !== "string" ||
+            target.branch.length === 0 ||
+            typeof target.merged !== "boolean",
+        )
+      ) {
+        failures.push(
+          `${scenarioName}: state.cleanOperation.deletionTargets must be a non-empty array of { branch: string, merged: boolean }`,
+        );
+      }
+    }
 
     // evalFixture optional metadata validation
     if (Object.hasOwn(scenario, "evalFixture")) {
@@ -842,13 +1124,66 @@ function runFixtureValidationSelfTest() {
       },
     ],
   });
+  const invalidLoadedReferences = validateFixture({
+    version: 1,
+    scenarios: [
+      {
+        name: "invalid-loaded-references",
+        invariant: "self-test",
+        state: {
+          cwdRepo: "JeremyDev87/ddalggak",
+          targetRepo: "JeremyDev87/ddalggak",
+          requestedCommand: "getwiki",
+          loadedReferences: ["wiki-context-preflight.md"],
+        },
+        expect: {
+          decision: "wiki_readonly_delegate",
+          loadedReferencesMatchContract: "true",
+        },
+      },
+      {
+        name: "invalid-clean-operation",
+        invariant: "self-test",
+        state: {
+          cwdRepo: "JeremyDev87/ddalggak",
+          targetRepo: "JeremyDev87/ddalggak",
+          requestedCommand: "status",
+          cleanOperation: { deletionTargets: [] },
+        },
+        expect: { decision: "ready_for_issue_pr" },
+      },
+      {
+        name: "valid-filler-a",
+        invariant: "self-test",
+        state: {
+          cwdRepo: "JeremyDev87/ddalggak",
+          targetRepo: "JeremyDev87/ddalggak",
+        },
+        expect: { decision: "ready_for_issue_pr" },
+      },
+    ],
+  });
   if (
     !invalidMutation.some((failure) => failure.includes("unknown mutation")) ||
-    !invalidOutput.some((failure) => failure.includes("unknown output section"))
+    !invalidOutput.some((failure) => failure.includes("unknown output section")) ||
+    !invalidLoadedReferences.some((failure) =>
+      failure.includes("requires a command with a core/commands contract"),
+    ) ||
+    !invalidLoadedReferences.some((failure) =>
+      failure.includes("applies only to clean scenarios"),
+    ) ||
+    !invalidLoadedReferences.some((failure) =>
+      failure.includes("deletionTargets must be a non-empty array"),
+    ) ||
+    !invalidLoadedReferences.some((failure) =>
+      failure.includes(
+        "loadedReferencesMatchContract must be boolean true when present",
+      ),
+    )
   ) {
     console.error("[eval:ddalggak-readiness:self-test] failed");
     console.error(
-      "- expected known-bad fixture validation to reject unknown mutation and output section fields",
+      "- expected known-bad fixture validation to reject unknown mutation, output section, contract-less loadedReferences, and malformed cleanOperation fields",
     );
     process.exit(1);
   }
