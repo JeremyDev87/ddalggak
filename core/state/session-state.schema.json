@@ -1,0 +1,182 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/JeremyDev87/ddalggak/blob/master/core/state/session-state.schema.json",
+  "title": "ddalggak session state",
+  "description": "Single source of truth for ddalggak session state. `.ddalggak/session-state.json` must satisfy this schema; `templates/conductor-state.md` and `templates/lane-state.md` are markdown projections of it (conductor sections map to the top-level fields, lane-state Event Record maps to one `lanes[]` entry). Validated by `ddalggak status --local` with the zero-dependency subset validator in bin/lib/status.mjs: type, const, enum, required, properties, items, format=date-time.",
+  "x-ddalggak": {
+    "staleAfterHours": 24,
+    "projections": {
+      "templates/conductor-state.md": {
+        "Phase": "phase",
+        "Issues / PRs / Branches": "lanes[] (Issue -> lanes[].issue, Branch -> lanes[].branch.name, Worktree -> lanes[].branch.worktree, PR -> lanes[].pull_request.url, State -> lanes[].state)",
+        "Validation Evidence": "validation_evidence[] (per lane: lanes[].validation)",
+        "Blocking Gaps": "blocking_gaps[] (per lane: lanes[].validation.blocking_gaps)",
+        "Next Gate": "next_gate (per lane: lanes[].next_gate)"
+      },
+      "templates/lane-state.md": {
+        "recorded_at": "updated_at",
+        "repo": "repo",
+        "base_branch": "base_branch",
+        "phase": "phase",
+        "lane_id": "lanes[].lane_id",
+        "state": "lanes[].state",
+        "issue": "lanes[].issue",
+        "branch": "lanes[].branch",
+        "pull_request": "lanes[].pull_request",
+        "scope": "lanes[].scope",
+        "validation": "lanes[].validation",
+        "review": "lanes[].review",
+        "next_gate": "lanes[].next_gate"
+      }
+    }
+  },
+  "type": "object",
+  "required": ["schema", "phase", "updated_at", "lanes"],
+  "properties": {
+    "schema": {
+      "const": "ddalggak-session-state/v1",
+      "description": "Schema identity tag for forward-compatible migration."
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 timestamp of the last state write. Drives the stale judgment: older than x-ddalggak.staleAfterHours means the file must not be trusted for resume decisions."
+    },
+    "phase": {
+      "type": "string",
+      "description": "Current phase or wave name. Conductor-state projection: `## Phase`."
+    },
+    "repo": {
+      "type": "string",
+      "description": "owner/repo of the working repository."
+    },
+    "base_branch": {
+      "type": "string",
+      "description": "Base branch PRs target, e.g. master."
+    },
+    "lanes": {
+      "type": "array",
+      "description": "One entry per implementation lane. Conductor-state projection: `## Issues / PRs / Branches` table rows; lane-state Event Record maps to one entry.",
+      "items": {
+        "type": "object",
+        "required": ["state"],
+        "properties": {
+          "lane_id": { "type": "string" },
+          "state": {
+            "enum": [
+              "planned",
+              "implementing",
+              "validated",
+              "pushed",
+              "pr_opened",
+              "review_pending",
+              "fix_pending",
+              "ready_for_manual_merge",
+              "blocked",
+              "merged"
+            ],
+            "description": "Lane lifecycle state; values and transitions are defined in templates/lane-state.md."
+          },
+          "issue": {
+            "type": "object",
+            "properties": {
+              "number": { "type": "integer" },
+              "url": { "type": "string" },
+              "title": { "type": "string" }
+            }
+          },
+          "branch": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "worktree": { "type": "string" },
+              "base_sha": { "type": "string" },
+              "head_sha": { "type": "string" }
+            }
+          },
+          "pull_request": {
+            "type": "object",
+            "properties": {
+              "url": { "type": "string" },
+              "number": { "type": ["integer", "null"] },
+              "is_draft": { "type": "boolean" },
+              "base_ref": { "type": "string" },
+              "head_ref": { "type": "string" }
+            }
+          },
+          "scope": {
+            "type": "object",
+            "properties": {
+              "allowed_files": { "type": "array", "items": { "type": "string" } },
+              "forbidden_files": { "type": "array", "items": { "type": "string" } },
+              "non_goals": { "type": "array", "items": { "type": "string" } }
+            }
+          },
+          "validation": {
+            "type": "object",
+            "properties": {
+              "commands": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "command": { "type": "string" },
+                    "result": { "enum": ["not_run", "passed", "failed", "skipped"] },
+                    "evidence": { "type": "string" }
+                  }
+                }
+              },
+              "blocking_gaps": { "type": "array", "items": { "type": "string" } }
+            }
+          },
+          "review": {
+            "type": "object",
+            "properties": {
+              "required_for_head_sha": { "type": "string" },
+              "latest_conclusion": {
+                "enum": ["none", "pending", "approve", "changes_requested"]
+              },
+              "conclusion_head_sha": { "type": "string" },
+              "comment_url": { "type": "string" },
+              "stale_reason": { "type": "string" }
+            }
+          },
+          "waiting_on": { "type": "string" },
+          "next_gate": {
+            "type": "object",
+            "properties": {
+              "owner": { "enum": ["conductor", "worker", "reviewer", "human"] },
+              "action": { "type": "string" },
+              "command": { "type": "string" },
+              "exit_condition": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "validation_evidence": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Session-level validation evidence lines. Conductor-state projection: `## Validation Evidence`."
+    },
+    "blocking_gaps": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Session-level blockers. Conductor-state projection: `## Blocking Gaps`."
+    },
+    "waiting_on": {
+      "type": "string",
+      "description": "What the session is currently waiting on (human decision, external job, merge)."
+    },
+    "next_gate": {
+      "type": "object",
+      "description": "Next safe gate for the whole session. Conductor-state projection: `## Next Gate`.",
+      "properties": {
+        "owner": { "enum": ["conductor", "worker", "reviewer", "human"] },
+        "action": { "type": "string" },
+        "command": { "type": "string" },
+        "exit_condition": { "type": "string" }
+      }
+    }
+  }
+}

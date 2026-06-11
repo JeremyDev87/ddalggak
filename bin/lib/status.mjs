@@ -1,4 +1,6 @@
-// ddalggak status --local — inspect source/Codex/installed skill parity.
+// ddalggak status --local — inspect source/Codex/installed skill parity and
+// validate workspace session state (.ddalggak/session-state.json) against
+// core/state/session-state.schema.json.
 // Read-only diagnostics; never mutates the installed Claude skill.
 
 import { createHash } from "node:crypto";
@@ -13,6 +15,14 @@ const PKG_ROOT = resolve(__dirname, "..", "..");
 const PKG_JSON = join(PKG_ROOT, "package.json");
 const SOURCE_PAYLOAD_ROOT = join(PKG_ROOT, "ddalggak");
 const CODEX_PAYLOAD_ROOT = join(PKG_ROOT, ".codex", "skills", "ddalggak");
+const SESSION_STATE_SCHEMA_PATH = join(
+  PKG_ROOT,
+  "core",
+  "state",
+  "session-state.schema.json",
+);
+const SESSION_STATE_RELATIVE_PATH = join(".ddalggak", "session-state.json");
+const DEFAULT_SESSION_STALE_HOURS = 24;
 const MINIMUM_NODE_MAJOR = 18;
 
 const HELP_TEXT = `ddalggak status --local — inspect local skill installation parity
@@ -28,6 +38,14 @@ State values:
   ok            Installed Claude skill matches the source payload checksum.
   stale         Installed skill exists but version, checksum, or required files differ.
   not-installed No installed Claude skill was found under CLAUDE_HOME.
+
+Session state evidence:
+  When <workspace>/.ddalggak/session-state.json exists it is validated against
+  core/state/session-state.schema.json and judged separately from the skill
+  install state: absent, valid, malformed (not JSON), invalid (schema
+  violation), or stale (updated_at older than the schema's
+  x-ddalggak.staleAfterHours). Workspace root defaults to the current
+  directory; override with DDALGGAK_WORKSPACE_ROOT.
 `;
 
 function out(message) {
@@ -64,6 +82,169 @@ function resolveClaudeHome() {
       ? process.env.CLAUDE_HOME
       : join(homedir(), ".claude"),
   );
+}
+
+function resolveWorkspaceRoot() {
+  return resolve(
+    process.env.DDALGGAK_WORKSPACE_ROOT &&
+      process.env.DDALGGAK_WORKSPACE_ROOT.length > 0
+      ? process.env.DDALGGAK_WORKSPACE_ROOT
+      : process.cwd(),
+  );
+}
+
+function typeOfValue(value) {
+  if (value === null) return "null";
+  if (Array.isArray(value)) return "array";
+  if (typeof value === "number") {
+    return Number.isInteger(value) ? "integer" : "number";
+  }
+  return typeof value;
+}
+
+function matchesType(value, expected) {
+  const actual = typeOfValue(value);
+  if (expected === "number") return actual === "number" || actual === "integer";
+  return actual === expected;
+}
+
+// Minimal zero-dependency JSON Schema subset validator. Supports exactly the
+// keywords core/state/session-state.schema.json uses: type, const, enum,
+// required, properties, items, and format "date-time". Unknown keywords are
+// ignored, matching JSON Schema annotation semantics.
+function collectSchemaViolations(schema, value, path, violations) {
+  if (Object.hasOwn(schema, "const") && value !== schema.const) {
+    violations.push(
+      `${path}: expected ${JSON.stringify(schema.const)}, got ${JSON.stringify(value)}`,
+    );
+    return;
+  }
+  if (Object.hasOwn(schema, "enum") && !schema.enum.includes(value)) {
+    violations.push(
+      `${path}: expected one of ${JSON.stringify(schema.enum)}, got ${JSON.stringify(value)}`,
+    );
+    return;
+  }
+  if (Object.hasOwn(schema, "type")) {
+    const allowed = Array.isArray(schema.type) ? schema.type : [schema.type];
+    if (!allowed.some((expected) => matchesType(value, expected))) {
+      violations.push(
+        `${path}: expected type ${allowed.join("|")}, got ${typeOfValue(value)}`,
+      );
+      return;
+    }
+  }
+  if (
+    schema.format === "date-time" &&
+    typeof value === "string" &&
+    Number.isNaN(Date.parse(value))
+  ) {
+    violations.push(
+      `${path}: expected ISO-8601 date-time, got ${JSON.stringify(value)}`,
+    );
+    return;
+  }
+  if (typeOfValue(value) === "object") {
+    for (const requiredKey of schema.required || []) {
+      if (!Object.hasOwn(value, requiredKey)) {
+        violations.push(`${path}: missing required field "${requiredKey}"`);
+      }
+    }
+    for (const [key, childSchema] of Object.entries(schema.properties || {})) {
+      if (Object.hasOwn(value, key)) {
+        collectSchemaViolations(
+          childSchema,
+          value[key],
+          `${path}.${key}`,
+          violations,
+        );
+      }
+    }
+  }
+  if (Array.isArray(value) && schema.items) {
+    for (let index = 0; index < value.length; index += 1) {
+      collectSchemaViolations(
+        schema.items,
+        value[index],
+        `${path}[${index}]`,
+        violations,
+      );
+    }
+  }
+}
+
+// Judges the workspace session state file independently from the installed
+// skill state so the parity contract above stays deterministic regardless of
+// what .ddalggak/ holds in the current workspace.
+async function collectSessionStateEvidence() {
+  const sessionStatePath = join(
+    resolveWorkspaceRoot(),
+    SESSION_STATE_RELATIVE_PATH,
+  );
+  const evidence = {
+    path: sessionStatePath,
+    schemaPath: SESSION_STATE_SCHEMA_PATH,
+    status: "absent",
+    updatedAt: null,
+    ageHours: null,
+    staleAfterHours: DEFAULT_SESSION_STALE_HOURS,
+    violations: [],
+    action: "No session state file found; nothing to validate.",
+  };
+  if (!(await pathExists(sessionStatePath))) return evidence;
+
+  let state;
+  try {
+    state = JSON.parse(await readFile(sessionStatePath, "utf8"));
+  } catch (error) {
+    evidence.status = "malformed";
+    evidence.violations = [
+      `$: ${error && error.message ? error.message : String(error)}`,
+    ];
+    evidence.action =
+      "Rewrite .ddalggak/session-state.json as valid JSON before trusting resume state.";
+    return evidence;
+  }
+
+  let schema;
+  try {
+    schema = JSON.parse(await readFile(SESSION_STATE_SCHEMA_PATH, "utf8"));
+  } catch (error) {
+    evidence.status = "schema-unavailable";
+    evidence.violations = [
+      `schema: ${error && error.message ? error.message : String(error)}`,
+    ];
+    evidence.action =
+      "Reinstall the ddalggak package; core/state/session-state.schema.json is missing or unreadable.";
+    return evidence;
+  }
+  const staleAfterHours = schema["x-ddalggak"]?.staleAfterHours;
+  if (typeof staleAfterHours === "number" && staleAfterHours > 0) {
+    evidence.staleAfterHours = staleAfterHours;
+  }
+
+  const violations = [];
+  collectSchemaViolations(schema, state, "$", violations);
+  if (violations.length > 0) {
+    evidence.status = "invalid";
+    evidence.violations = violations;
+    evidence.action =
+      "Fix the schema violations before trusting resume state; see core/state/session-state.schema.json.";
+    return evidence;
+  }
+
+  evidence.updatedAt = state.updated_at;
+  const ageMs = Date.now() - Date.parse(state.updated_at);
+  evidence.ageHours = Math.round((ageMs / 36e5) * 100) / 100;
+  if (ageMs > evidence.staleAfterHours * 36e5) {
+    evidence.status = "stale";
+    evidence.action = `Session state is older than ${evidence.staleAfterHours}h; rebuild it from live git/GitHub state before resuming.`;
+    return evidence;
+  }
+  evidence.status = "valid";
+  evidence.action =
+    "Session state matches the schema and is fresh enough to trust for resume.";
+  return evidence;
 }
 
 async function pathExists(path) {
@@ -325,6 +506,7 @@ function buildEvidence({
 export async function collectStatus() {
   const packageVersion = readPackageVersion();
   const claudeHome = resolveClaudeHome();
+  const sessionState = await collectSessionStateEvidence();
   const installedClaudeSkillPath = join(claudeHome, "skills", "ddalggak");
   const installedExists = await pathExists(installedClaudeSkillPath);
   const sourceChecksum = await payloadChecksum(SOURCE_PAYLOAD_ROOT);
@@ -404,6 +586,7 @@ export async function collectStatus() {
     installedFileCount: installedFiles.length,
     missingRequiredPaths,
     extraInstalledPaths: extraPaths,
+    sessionState,
     evidence,
   };
 }
@@ -438,6 +621,19 @@ function printHuman(status) {
   } else {
     out("extra installed payload files: none");
   }
+  out(`session state file: ${status.sessionState.path}`);
+  out(`session state: ${status.sessionState.status}`);
+  if (status.sessionState.updatedAt) {
+    out(
+      `session state updated_at: ${status.sessionState.updatedAt} (age ${status.sessionState.ageHours}h, stale after ${status.sessionState.staleAfterHours}h)`,
+    );
+  }
+  if (status.sessionState.violations.length > 0) {
+    out("session state violations:");
+    for (const violation of status.sessionState.violations) {
+      out(`  - ${violation}`);
+    }
+  }
   out("evidence:");
   out(
     `  runtime: ${status.evidence.runtime.status} (node ${status.evidence.runtime.nodeVersion}, requires ${status.evidence.runtime.minimumNodeVersion})`,
@@ -446,6 +642,8 @@ function printHuman(status) {
   out(
     `  package payload: ${status.evidence.package.payload.checksumsMatch ? "matched" : "needs sync"}`,
   );
+  out(`  session state: ${status.sessionState.status}`);
+  out(`  session next: ${status.sessionState.action}`);
   out(`  next: ${status.evidence.nextAction}`);
 }
 
