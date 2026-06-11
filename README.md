@@ -129,6 +129,8 @@ node bin/ddalggak.js profile hermes --print-claude-md-patch
 
 The proposed profile adds Korean honorific/truth-first defaults, GitHub issue body/labels/comments checks, the ddalggak issue → plan → start → ship → review cycle, `getwiki` before plan/review, approval-gated `setwiki`, and a never-merge / never-auto-merge policy.
 
+Note that Hermes is an unverified, aspirational parity target: it is declared in `core/projections.yaml` (`status: aspirational`, `verified: false`), but no script in this repository verifies Hermes parity, so `npm run verify` does not validate this profile against any runtime.
+
 ### Legacy Setup
 
 `setup` installs the legacy Claude Code skill payload into `~/.claude/skills/ddalggak/`:

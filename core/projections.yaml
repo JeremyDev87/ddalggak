@@ -16,6 +16,11 @@ parity_targets:
     runtime: hermes
     generated: false
     execution_runtime: false
+    # Declared parity target only: verify-projections.mjs guards this
+    # declaration's invariants (execution_runtime stays false, hermes.yaml
+    # contract shape) but no script verifies actual hermes parity.
+    status: aspirational
+    verified: false
 commands_glob: core/commands/*.yaml
 runtimes_glob: core/runtimes/*.yaml
 # Per-file parity class ledger across the two projection roots.
