@@ -2,6 +2,15 @@
 
 `ddalggak retro` runs after a PR merge or after a completed session when the user explicitly chooses a session-based retrospective. It writes retrospective artifacts only; it does not edit source code.
 
+## Write-permission boundary
+
+The canonical contract is `write_side_effects` in `core/commands/retro.yaml`; retro may write only repo-external locations.
+
+- **Allowed**: the retrospective note under `~/workspace/retrospective/` (or the `RETRO_DIR` override path), and memory files or memory-update request artifacts in the runtime memory directory.
+- **Forbidden**: no writes to any path inside the repository — source, docs, or config alike, with no exceptions. The permission table's source-edit ❌ covers every repo path.
+- **Wiki**: never written directly; only approval-gated `/setwiki` proposals through the `wiki-bridge.md` bridge.
+- Improvements to the ddalggak skill or its permission tables stay proposal-only inside the retrospective note.
+
 ## Target selection
 
 1. If a PR number is provided, use that PR.
