@@ -26,6 +26,7 @@ jobs:
       version: ${{ steps.release.outputs.version }}
       npm_dist_tag: ${{ steps.release.outputs.npmDistTag }}
       tarball: ${{ steps.pack.outputs.tarball }}
+      tarball_sha256: ${{ steps.pack.outputs.tarball_sha256 }}
       sha: ${{ steps.verified_ref.outputs.sha }}
 
     steps:
@@ -102,9 +103,12 @@ jobs:
             exit 1
           fi
 
+          tarball_sha256=$(sha256sum "$tarball_path" | awk '{print $1}')
+
           {
             echo "tarball=$tarball"
             echo "tarball_path=$tarball_path"
+            echo "tarball_sha256=$tarball_sha256"
           } >> "$GITHUB_OUTPUT"
 
       - name: Smoke install packed package
@@ -132,6 +136,10 @@ jobs:
   publish_to_npm:
     needs: verify_tagged_ref
     runs-on: ubuntu-latest
+    # The release environment approval gate is enforced by GitHub repository
+    # environment protection rules (required reviewers), not by this file.
+    # Workflow YAML alone cannot prove the gate is active; see
+    # ddalggak/references/security-posture-gate.md (Release publish integrity chain).
     environment:
       name: release
     permissions:
@@ -171,6 +179,15 @@ jobs:
             exit 1
           fi
 
+      # Publishing a tarball does not run the prepublishOnly hook, so the
+      # publish context gets no verification for free. Re-run the full verify
+      # gate against the approved checkout SHA here. The checkout is used
+      # instead of the extracted tarball because the tarball omits
+      # .github/workflows, which would let the workflow lint and posture
+      # lanes pass vacuously.
+      - name: Re-verify package in publish context
+        run: npm run verify
+
       - name: Download verified release tarball
         uses: actions/download-artifact@v5
         with:
@@ -187,6 +204,25 @@ jobs:
             exit 1
           fi
           echo "tarball_path=$tarball_path" >> "$GITHUB_OUTPUT"
+
+      - name: Verify tarball checksum against verified pack output
+        shell: bash
+        run: |
+          expected_sha256="${{ needs.verify_tagged_ref.outputs.tarball_sha256 }}"
+          tarball_path="${{ steps.tarball.outputs.tarball_path }}"
+
+          if [ -z "$expected_sha256" ]; then
+            echo "Verified tarball sha256 job output is missing; refusing to publish."
+            exit 1
+          fi
+
+          actual_sha256=$(sha256sum "$tarball_path" | awk '{print $1}')
+          if [ "$actual_sha256" != "$expected_sha256" ]; then
+            echo "Tarball checksum mismatch: expected $expected_sha256, got $actual_sha256."
+            exit 1
+          fi
+
+          echo "Tarball checksum verified: sha256 $actual_sha256"
 
       - name: Publish package with trusted publishing
         id: trusted_publish
@@ -262,4 +298,5 @@ jobs:
             echo "- version: ${{ needs.verify_tagged_ref.outputs.version }}"
             echo "- npm dist-tag: ${{ needs.verify_tagged_ref.outputs.npm_dist_tag }}"
             echo "- tarball: ${{ needs.verify_tagged_ref.outputs.tarball }}"
+            echo "- tarball sha256: ${{ needs.verify_tagged_ref.outputs.tarball_sha256 }}"
           } >> "$GITHUB_STEP_SUMMARY"
