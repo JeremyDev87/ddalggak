@@ -159,7 +159,7 @@ export const subcommandExecutionContracts = {
     stopCondition: "GitHub issues created or blocked with verification",
   },
   clean: {
-    mode: "read-only",
+    mode: "local-destructive",
     sourceEditAllowed: false,
     githubWriteAllowed: false,
     requiredReferences: ["merge-cleanup.md"],

@@ -3,7 +3,7 @@ command: clean
 show_doc_heading: "Merge Cleanup"
 source_edit_allowed: false
 purpose: "Post-merge local cleanup after live merge evidence."
-mode: "read-only"
+mode: "local-destructive"
 write_side_effects: "Local branch/worktree cleanup only after live merge evidence; no GitHub mutation."
 stop_condition: "Stop on dirty, ambiguous, unmerged, or non-ancestor worktrees/branches."
 required_references:
