@@ -2,6 +2,9 @@
 import { readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
+import { escapeRegExp } from "./lib/escape-regexp.mjs";
+import { parseSimpleYaml } from "./lib/parse-simple-yaml.mjs";
+
 const rootDir = process.cwd();
 const args = new Set(process.argv.slice(2));
 const writeMode = args.has("--write");
@@ -46,44 +49,14 @@ function writeText(relativePath, text) {
   writeFileSync(path.join(rootDir, relativePath), text);
 }
 
-function parseSimpleYaml(text) {
-  const doc = {};
-  let activeList = null;
-  for (const rawLine of text.split(/\r?\n/)) {
-    const line = rawLine.replace(/\s+#.*$/, "");
-    if (!line.trim() || line.trimStart().startsWith("#")) continue;
-
-    const top = line.match(/^([A-Za-z0-9_-]+):\s*(.*)$/);
-    if (top) {
-      activeList = null;
-      const [, key, rawValue] = top;
-      const value = rawValue.trim();
-      if (value === "") {
-        doc[key] = [];
-        activeList = key;
-      } else if (value === "[]") {
-        doc[key] = [];
-      } else if (value === "true" || value === "false") {
-        doc[key] = value === "true";
-      } else {
-        doc[key] = value.replace(/^"|"$/g, "");
-      }
-      continue;
-    }
-
-    const listItem = line.match(/^\s+-\s+(.+)$/);
-    if (listItem && activeList) {
-      doc[activeList].push(listItem[1].trim().replace(/^"|"$/g, ""));
-    }
-  }
-  return doc;
-}
-
 function loadCommands() {
   const commandDir = path.join(rootDir, "core", "commands");
   const docs = new Map();
   for (const name of readdirSync(commandDir).filter((entry) => entry.endsWith(".yaml"))) {
-    const doc = parseSimpleYaml(readFileSync(path.join(commandDir, name), "utf8"));
+    const doc = parseSimpleYaml(
+      readFileSync(path.join(commandDir, name), "utf8"),
+      `core/commands/${name}`,
+    );
     if (doc.command) docs.set(doc.command, doc);
   }
   return commandOrder.map((command) => {
@@ -118,10 +91,6 @@ function replaceGeneratedBlock(text, id, body, relativePath) {
     throw new Error(`${relativePath}: expected exactly one generated block for ${id}, found ${matches.length}`);
   }
   return text.replace(pattern, generatedBlock(id, body, relativePath));
-}
-
-function escapeRegExp(value) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function mdList(items, prefix) {
