@@ -168,14 +168,18 @@ function extractSection(markdown, title) {
   return lines.slice(startIdx, endIdx).join("\n");
 }
 
-// Minimal reader for core/projections.yaml: source_root plus the
-// name/root pairs under projection_roots. Anything else is ignored.
+// Minimal reader for core/projections.yaml: source_root, name/root pairs under
+// projection_roots, and parity_ledger entries doctor needs to distinguish
+// shared skill files from ledger-declared root-specific files.
 function parseProjections(text) {
   const lines = text.split(/\r?\n/);
   let sourceRoot = null;
   const projectionRoots = [];
+  const parityLedger = [];
   let inProjectionRoots = false;
+  let inParityLedger = false;
   let currentName = null;
+  let currentLedgerEntry = null;
   for (const rawLine of lines) {
     const line = rawLine.replace(/\s+#.*$/, "");
     if (!line.trim() || line.trimStart().startsWith("#")) continue;
@@ -183,12 +187,33 @@ function parseProjections(text) {
     const topLevel = line.match(/^([A-Za-z0-9_-]+):\s*(.*)$/);
     if (topLevel) {
       inProjectionRoots = topLevel[1] === "projection_roots";
+      inParityLedger = topLevel[1] === "parity_ledger";
       if (topLevel[1] === "source_root") {
         sourceRoot = topLevel[2].trim().replace(/^"|"$/g, "");
       }
       currentName = null;
+      currentLedgerEntry = null;
       continue;
     }
+
+    if (inParityLedger) {
+      const itemLine = line.match(/^\s*-\s+path:\s*(.+)$/);
+      if (itemLine) {
+        currentLedgerEntry = {
+          path: itemLine[1].trim().replace(/^"|"$/g, ""),
+        };
+        parityLedger.push(currentLedgerEntry);
+        continue;
+      }
+      const fieldLine = line.match(/^\s{4,}([A-Za-z0-9_-]+):\s*(.+)$/);
+      if (fieldLine && currentLedgerEntry) {
+        currentLedgerEntry[fieldLine[1]] = fieldLine[2]
+          .trim()
+          .replace(/^"|"$/g, "");
+      }
+      continue;
+    }
+
     if (!inProjectionRoots) continue;
 
     const nameLine = line.match(/^  ([A-Za-z0-9_-]+):\s*$/);
@@ -204,7 +229,7 @@ function parseProjections(text) {
       });
     }
   }
-  return { sourceRoot, projectionRoots };
+  return { sourceRoot, projectionRoots, parityLedger };
 }
 
 // Minimal reader for core/commands/*.yaml: required_references,
@@ -256,6 +281,7 @@ function loadLayout(rootDir) {
   const projectionsText = tryReadText(projectionsPath);
   let sourceRootRel = null;
   let projectionRoots = [];
+  let parityLedger = [];
   if (projectionsText === null) {
     findings.push("missing core/projections.yaml (cannot resolve source/projection roots)");
   } else {
@@ -265,6 +291,7 @@ function loadLayout(rootDir) {
       ...entry,
       abs: path.join(rootDir, entry.root),
     }));
+    parityLedger = parsed.parityLedger;
     if (!sourceRootRel) {
       findings.push("core/projections.yaml has no source_root entry");
     }
@@ -318,6 +345,7 @@ function loadLayout(rootDir) {
     sourceRoot,
     sourceRootRel,
     projectionRoots,
+    parityLedger,
     commands,
     skillText,
     referenceFiles,
@@ -517,9 +545,22 @@ function checkRootParity(layout) {
   for (const surface of present) {
     for (const file of surface.files) union.add(file);
   }
+  const parityByPath = new Map(
+    layout.parityLedger
+      .filter((entry) => entry.path)
+      .map((entry) => [entry.path, entry]),
+  );
   for (const file of [...union].sort()) {
     const have = present.filter((surface) => surface.files.has(file));
     if (have.length === present.length) continue;
+    const ledgerEntry = parityByPath.get(file);
+    if (
+      ledgerEntry?.class === "root-specific" &&
+      have.length === 1 &&
+      have[0].name === ledgerEntry.root
+    ) {
+      continue;
+    }
     for (const missing of present.filter((surface) => !surface.files.has(file))) {
       findings.push(
         `missing in ${missing.root}: ${file} (present in ${have

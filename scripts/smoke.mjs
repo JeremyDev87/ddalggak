@@ -154,6 +154,17 @@ function writeDoctorFixture() {
       "  claude_legacy:",
       "    root: ddalggak",
       "    runtime: claude",
+      "parity_ledger:",
+      "  - path: SKILL.md",
+      "    class: may-localize",
+      "  - path: references/alpha.md",
+      "    class: must-match",
+      "  - path: references/claude-only.md",
+      "    class: root-specific",
+      "    root: claude_legacy",
+      "    reason: fixture root-specific regression asset",
+      "  - path: templates/brief.md",
+      "    class: must-match",
       "",
     ].join("\n"),
   );
@@ -174,6 +185,7 @@ function writeDoctorFixture() {
     "# fixture skill",
     "",
     "Read `references/alpha.md` first.",
+    "Claude-only procedure: `references/claude-only.md`.",
     "",
     "## 명명 규칙",
     "",
@@ -187,6 +199,10 @@ function writeDoctorFixture() {
     write(path.join(root, "references", "alpha.md"), alpha);
     write(path.join(root, "templates", "brief.md"), brief);
   }
+  write(
+    path.join("ddalggak", "references", "claude-only.md"),
+    "# claude only\n\nLedger-declared root-specific fixture.\n",
+  );
   return fixtureRoot;
 }
 
@@ -1111,6 +1127,20 @@ const cases = [
     },
   },
   {
+    name: "doctor root-parity honors ledger root-specific files",
+    run() {
+      const fixtureRoot = writeDoctorFixture();
+      const result = runCli(["doctor", "--root", fixtureRoot, "--json"]);
+      assertExit(result, 0);
+      const report = parseJsonStdout(result);
+      assert(report.checks["root-parity"].ok === true, "expected root-parity to pass");
+      assert(
+        !result.stdout.includes("references/claude-only.md"),
+        "expected ledger root-specific file not to be reported as missing",
+      );
+    },
+  },
+  {
     name: "doctor detects orphan reference",
     run() {
       const fixtureRoot = writeDoctorFixture();
@@ -1195,6 +1225,29 @@ const cases = [
       assertIncludes(
         result.stdout,
         "missing in .codex/skills/ddalggak: references/alpha.md (present in ddalggak)",
+        "stdout",
+      );
+    },
+  },
+  {
+    name: "doctor detects unregistered single-root reference file",
+    run() {
+      const fixtureRoot = writeDoctorFixture();
+      writeFileSync(
+        path.join(
+          fixtureRoot,
+          "ddalggak",
+          "references",
+          "unregistered.md",
+        ),
+        "# Unregistered reference\n",
+        "utf8",
+      );
+      const result = runCli(["doctor", "--root", fixtureRoot]);
+      assertExit(result, 1);
+      assertIncludes(
+        result.stdout,
+        "missing in .codex/skills/ddalggak: references/unregistered.md (present in ddalggak)",
         "stdout",
       );
     },
