@@ -1,0 +1,7 @@
+{
+  "frontmatterKey": "name.with+special",
+  "constName": "required.items",
+  "generatedBlockName": "code.permission[table]",
+  "fieldId": "source.of+truth",
+  "rawPayloadPattern": "RAW[PAYLOAD]*"
+}

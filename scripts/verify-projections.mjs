@@ -86,35 +86,121 @@ function readText(filePath) {
   }
 }
 
-function parseSimpleYaml(text) {
+function parseScalar(value) {
+  if (value === "true" || value === "false") return value === "true";
+  return value.replace(/^"|"$/g, "");
+}
+
+function parseSimpleYaml(text, label = "YAML") {
   const doc = {};
-  let activeList = null;
-  for (const rawLine of text.split(/\r?\n/)) {
+  let activeBlock = null;
+  const seenKeys = new Set();
+  const nestedSeenKeysByParent = new Map();
+  const lines = text.split(/\r?\n/);
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const rawLine = lines[index];
+    const lineNumber = index + 1;
     const line = rawLine.replace(/\s+#.*$/, "");
     if (!line.trim() || line.trimStart().startsWith("#")) continue;
 
+    if (/\t/.test(line)) {
+      fail(`${label} line ${lineNumber}: tabs are unsupported indentation`);
+      continue;
+    }
+
     const top = line.match(/^([A-Za-z0-9_-]+):\s*(.*)$/);
     if (top) {
-      activeList = null;
       const [, key, rawValue] = top;
+      activeBlock = null;
+      if (seenKeys.has(key)) {
+        fail(`${label} line ${lineNumber}: duplicate key: ${key}`);
+        continue;
+      }
+      seenKeys.add(key);
+
       const value = rawValue.trim();
       if (value === "") {
         doc[key] = [];
-        activeList = key;
+        activeBlock = key;
       } else if (value === "[]") {
         doc[key] = [];
-      } else if (value === "true" || value === "false") {
-        doc[key] = value === "true";
+      } else if (/^[\[\{]/.test(value)) {
+        fail(`${label} line ${lineNumber}: unsupported inline structure for key: ${key}`);
       } else {
-        doc[key] = value.replace(/^"|"$/g, "");
+        doc[key] = parseScalar(value);
       }
       continue;
     }
 
-    const listItem = line.match(/^\s+-\s+(.+)$/);
-    if (listItem && activeList) {
-      doc[activeList].push(listItem[1].trim().replace(/^"|"$/g, ""));
+    const nestedField = line.match(/^ {2}([A-Za-z0-9_-]+):\s*(.+)$/);
+    if (nestedField) {
+      if (!activeBlock) {
+        fail(`${label} line ${lineNumber}: nested mapping without an active top-level key`);
+        continue;
+      }
+      if (Array.isArray(doc[activeBlock]) && doc[activeBlock].length > 0) {
+        fail(`${label} line ${lineNumber}: cannot mix list items and nested mapping under ${activeBlock}`);
+        continue;
+      }
+      if (Array.isArray(doc[activeBlock])) {
+        doc[activeBlock] = {};
+        nestedSeenKeysByParent.set(activeBlock, new Set());
+      }
+      const [, nestedKey, rawValue] = nestedField;
+      const nestedSeenKeys = nestedSeenKeysByParent.get(activeBlock) || new Set();
+      nestedSeenKeysByParent.set(activeBlock, nestedSeenKeys);
+      if (nestedSeenKeys.has(nestedKey)) {
+        fail(`${label} line ${lineNumber}: duplicate nested key under ${activeBlock}: ${nestedKey}`);
+        continue;
+      }
+      nestedSeenKeys.add(nestedKey);
+
+      const value = rawValue.trim();
+      if (value === "" || /^[\[\{]/.test(value)) {
+        fail(`${label} line ${lineNumber}: unsupported nested structure for ${activeBlock}.${nestedKey}`);
+        continue;
+      }
+      doc[activeBlock][nestedKey] = parseScalar(value);
+      continue;
     }
+
+    if (/^ {2}\[\]\s*$/.test(line)) {
+      if (!activeBlock || !Array.isArray(doc[activeBlock]) || doc[activeBlock].length > 0) {
+        fail(`${label} line ${lineNumber}: standalone empty list marker must belong to an empty top-level list`);
+      }
+      continue;
+    }
+
+    const indentedListItem = line.match(/^(\s*)-\s+(.+)$/);
+    if (indentedListItem) {
+      const [, indent, item] = indentedListItem;
+      if (indent.length !== 2) {
+        fail(`${label} line ${lineNumber}: list indentation must be exactly two spaces`);
+        continue;
+      }
+      if (!activeBlock) {
+        fail(`${label} line ${lineNumber}: list item without an active top-level list`);
+        continue;
+      }
+      if (!Array.isArray(doc[activeBlock])) {
+        fail(`${label} line ${lineNumber}: cannot mix nested mapping and list items under ${activeBlock}`);
+        continue;
+      }
+      if (/^[A-Za-z0-9_-]+:\s*/.test(item.trim())) {
+        fail(`${label} line ${lineNumber}: nested mapping list items are unsupported`);
+        continue;
+      }
+      doc[activeBlock].push(item.trim().replace(/^"|"$/g, ""));
+      continue;
+    }
+
+    if (/^\s+/.test(line)) {
+      fail(`${label} line ${lineNumber}: unsupported indentation or nested mapping: ${line.trim()}`);
+      continue;
+    }
+
+    fail(`${label} line ${lineNumber}: unsupported YAML line: ${line.trim()}`);
   }
   return doc;
 }
@@ -353,7 +439,10 @@ for (const runtimeName of ["claude.yaml", "codex.yaml", "hermes.yaml"]) {
     fail(`core/runtimes/${runtimeName} missing`);
   }
 }
-const hermesRuntime = parseSimpleYaml(readText(path.join(runtimeDir, "hermes.yaml")));
+const hermesRuntime = parseSimpleYaml(
+  readText(path.join(runtimeDir, "hermes.yaml")),
+  "core/runtimes/hermes.yaml",
+);
 if (hermesRuntime.execution_runtime !== false) {
   fail("core/runtimes/hermes.yaml must set execution_runtime: false");
 }
@@ -364,7 +453,10 @@ if (hermesRuntime.kind !== "parity_target_contract") {
 const commandFiles = readdirSync(commandDir).filter((name) => name.endsWith(".yaml"));
 const commandDocs = new Map();
 for (const name of commandFiles) {
-  const doc = parseSimpleYaml(readText(path.join(commandDir, name)));
+  const doc = parseSimpleYaml(
+    readText(path.join(commandDir, name)),
+    `core/commands/${name}`,
+  );
   if (doc.command) commandDocs.set(doc.command, doc);
 }
 

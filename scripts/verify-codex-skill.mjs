@@ -33,6 +33,8 @@ import {
   requiredWikiBridgeReferenceAnchors,
   requiredReadmeQualityAnchors,
 } from "../core/verification/skill-contract-manifest.mjs";
+import { escapeRegExp } from "./lib/escape-regexp.mjs";
+
 const rootDir = process.cwd();
 const skillDir = path.join(rootDir, ".codex", "skills", "ddalggak");
 const skillPath = path.join(skillDir, "SKILL.md");
@@ -133,7 +135,7 @@ function getFrontmatter(text) {
 }
 
 function getFrontmatterValue(frontmatter, key) {
-  const pattern = new RegExp(`^${key}:\\s*(.+?)\\s*$`, "m");
+  const pattern = new RegExp(`^${escapeRegExp(key)}:\\s*(.+?)\\s*$`, "m");
   const match = frontmatter.match(pattern);
   if (!match) {
     return null;
@@ -142,7 +144,7 @@ function getFrontmatterValue(frontmatter, key) {
 }
 
 function extractStringArray(text, constName) {
-  const pattern = new RegExp(String.raw`const ${constName} = \[([\s\S]*?)\];`);
+  const pattern = new RegExp(String.raw`const ${escapeRegExp(constName)} = \[([\s\S]*?)\];`);
   const match = text.match(pattern);
   if (!match) {
     return null;
@@ -582,8 +584,9 @@ function extractMarkdownSection(text, heading) {
 }
 
 function extractGeneratedBlock(text, name) {
+  const escapedName = escapeRegExp(name);
   const pattern = new RegExp(
-    `<!-- ddalggak:generated:start ${name} -->\\n([\\s\\S]*?)\\n<!-- ddalggak:generated:end ${name} -->`,
+    `<!-- ddalggak:generated:start ${escapedName} -->\\n([\\s\\S]*?)\\n<!-- ddalggak:generated:end ${escapedName} -->`,
   );
   const match = text.match(pattern);
   return match ? match[1] : "";
