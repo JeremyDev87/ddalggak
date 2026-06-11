@@ -2,6 +2,15 @@
 
 `/ddalggak retro`는 PR merge 이후 이번 사이클에서 배운 점을 정리해 `~/workspace/retrospective/`에 저장하고, 재사용 가치가 있는 교훈을 메모리 후보로 분리한다.
 
+## 쓰기 권한 경계
+
+canonical 계약은 `core/commands/retro.yaml`의 `write_side_effects`이며, retro가 파일을 쓸 수 있는 위치는 repo 외부로 한정된다.
+
+- **허용**: `~/workspace/retrospective/`(또는 `RETRO_DIR` override 경로)의 회고 노트 파일(Step 3), 그리고 메모리 디렉토리(`~/.claude/projects/.../memory/`)의 메모리 파일과 `MEMORY.md` 인덱스(Step 4).
+- **금지**: repo 내 파일은 소스·문서·설정을 불문하고 어떤 경로에도 쓰지 않는다(생성·수정 모두). 예외 없음 — 권한 표의 소스 코드 수정 ❌는 repo 내 모든 경로에 적용된다.
+- **wiki**: 직접 쓰지 않는다. `wiki-bridge.md`의 approval-gated `/setwiki` 제안으로만 처리한다(Step 6).
+- skill·권한 표 등 ddalggak 자체 개선점은 회고 노트 안의 제안(proposal)으로만 남기고 직접 반영하지 않는다.
+
 ## Step 0. PR 번호 확정
 
 인수 파싱은 반드시 이 순서로 판정한다.
