@@ -102,10 +102,12 @@ function makePackageFixture() {
     "process.exit(0);\n",
     "utf8",
   );
+  writeFileSync(path.join(root, "bin", "ddalggak.js"), "process.exit(0);\n", "utf8");
 
+  // Trailing "--" keeps stubs tolerant of forwarded args (e.g. "-- --admission").
   const scripts = { test: 'node -e "process.exit(0)"' };
   for (const name of runStepNames) {
-    scripts[name] = 'node -e "process.exit(0)"';
+    scripts[name] = 'node -e "process.exit(0)" --';
   }
 
   writeFileSync(
@@ -199,6 +201,28 @@ const tests = [
       assertIncludes(result.stderr, "missing required paths by category", "stderr");
       assertIncludes(result.stderr, "runtime-surface", "stderr");
       assertIncludes(result.stderr, victim, "stderr");
+    },
+  },
+
+  {
+    name: "fails when the ddalggak doctor diagnostics gate reports findings",
+    run() {
+      const root = makePackageFixture();
+      writeFileSync(
+        path.join(root, "bin", "ddalggak.js"),
+        'console.log("doctor: 1 finding(s)");\nprocess.exit(1);\n',
+        "utf8",
+      );
+      const result = runVerifyPackage(root);
+      assert(
+        result.status === 1,
+        `expected exit 1, got ${result.status}\nstdout:\n${result.stdout}\nstderr:\n${result.stderr}`,
+      );
+      assertIncludes(
+        result.stderr,
+        "ddalggak doctor diagnostics gate failed with exit 1",
+        "stderr",
+      );
     },
   },
 

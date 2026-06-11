@@ -41,10 +41,6 @@ parity_ledger:
     class: must-match
   - path: references/common-rules.md
     class: may-localize
-  - path: references/conductor-state.md
-    class: root-specific
-    root: claude_legacy
-    reason: claude-runtime conductor operational state contract
   - path: references/context-compact.md
     class: may-localize
   - path: references/core-invariants.md
