@@ -209,6 +209,10 @@ function verifyArtifactContents() {
 
 try {
   runStep("npm test", npmCommand, ["test"]);
+  runStep("verify pipeline entrypoint unit tests", npmCommand, [
+    "run",
+    "test:verify-package",
+  ]);
   runStep("ddalggak doctor diagnostics gate", process.execPath, [
     "bin/ddalggak.js",
     "doctor",
