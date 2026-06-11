@@ -21,6 +21,7 @@ concurrency:
 jobs:
   verify_tagged_ref:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     outputs:
       tag: ${{ steps.release.outputs.tag }}
       version: ${{ steps.release.outputs.version }}
@@ -136,6 +137,7 @@ jobs:
   publish_to_npm:
     needs: verify_tagged_ref
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     # The release environment approval gate is enforced by GitHub repository
     # environment protection rules (required reviewers), not by this file.
     # Workflow YAML alone cannot prove the gate is active; see
