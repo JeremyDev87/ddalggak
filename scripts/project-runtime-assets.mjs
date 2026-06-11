@@ -298,6 +298,22 @@ const tokenBudgetRoots = [
   { key: "codex", base: ".codex/skills/ddalggak" },
 ];
 
+// `bytes / 4` systematically undercounts multibyte content: a Hangul syllable
+// is 3 UTF-8 bytes (~0.75 tokens under that rule) while real tokenizers spend
+// ~1.5-2 tokens per syllable. Count ASCII at 4 chars per token and every
+// non-ASCII code point (string iteration yields code points, so a 4-byte
+// emoji counts once) at 1.5 tokens — a zero-dependency heuristic, not a
+// tokenizer (#266).
+function fileTokenEstimate(relativePath) {
+  let asciiChars = 0;
+  let multibyteChars = 0;
+  for (const char of readText(relativePath)) {
+    if (char.codePointAt(0) <= 0x7f) asciiChars += 1;
+    else multibyteChars += 1;
+  }
+  return asciiChars / 4 + multibyteChars * 1.5;
+}
+
 function parseSubcommandTokenBudgets() {
   const lines = readText("core/projections.yaml").split(/\r?\n/);
   const start = lines.indexOf("subcommand_token_budgets:");
@@ -327,18 +343,27 @@ function runTokenBudgetReport() {
   for (const { key, base } of tokenBudgetRoots) {
     const budgets = budgetsByRoot.get(key) ?? new Map();
     const skillBytes = fileSize(`${base}/SKILL.md`);
+    const skillTokens = fileTokenEstimate(`${base}/SKILL.md`);
     const rows = [];
     for (const doc of commands) {
       const referenceBytes = (doc.required_references || []).reduce(
         (sum, ref) => sum + fileSize(`${base}/references/${ref}`),
         0,
       );
+      const referenceTokens = (doc.required_references || []).reduce(
+        (sum, ref) => sum + fileTokenEstimate(`${base}/references/${ref}`),
+        0,
+      );
       const templateBytes = (doc.required_templates || []).reduce(
         (sum, template) => sum + fileSize(`${base}/templates/${template}`),
         0,
       );
+      const templateTokens = (doc.required_templates || []).reduce(
+        (sum, template) => sum + fileTokenEstimate(`${base}/templates/${template}`),
+        0,
+      );
       const totalBytes = skillBytes + referenceBytes + templateBytes;
-      const estTokens = Math.ceil(totalBytes / 4);
+      const estTokens = Math.ceil(skillTokens + referenceTokens + templateTokens);
       const budget = budgets.get(doc.command);
       let status = "ok";
       if (budget === undefined) {
@@ -351,7 +376,7 @@ function runTokenBudgetReport() {
       rows.push({ root: key, command: doc.command, skillBytes, referenceBytes, templateBytes, totalBytes, estTokens, budget, status });
     }
 
-    console.log(`[token-budget] per-subcommand effective load (root: ${base}/, est tokens = ceil(bytes / 4))`);
+    console.log(`[token-budget] per-subcommand effective load (root: ${base}/, est tokens = ceil(ascii_chars / 4 + multibyte_chars x 1.5))`);
     console.log("| subcommand | skill_md_bytes | reference_bytes | template_bytes | total_bytes | est_tokens | budget_tokens | status |");
     console.log("| --- | --- | --- | --- | --- | --- | --- | --- |");
     for (const row of rows) {
