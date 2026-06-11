@@ -97,7 +97,7 @@ Maintainer target after the #94 thin-router pass:
 
 These are budget targets, not permission to delete guardrails. Routing, source-edit permissions, manual merge policy, issue-PR topology, Evidence Contract, Simplicity / Deletability, and URL target resolution must remain discoverable from the hot path.
 
-Per-subcommand effective load (`ddalggak/SKILL.md` + required references + required templates, estimated tokens = bytes / 4) is measured by `node scripts/project-runtime-assets.mjs --report` against the soft budgets declared in `core/projections.yaml` `subcommand_token_budgets`; exceeding a budget warns without failing.
+Per-subcommand effective load (`ddalggak/SKILL.md` + required references + required templates, estimated tokens = bytes / 4) is measured against the budgets declared in `core/projections.yaml` `subcommand_token_budgets`. Inside `npm run verify` the token budget step runs `node scripts/project-runtime-assets.mjs --report --admission` as an admission gate: any over-budget or missing-budget subcommand fails verify (exit 1). Running `node scripts/project-runtime-assets.mjs --report` on its own remains advisory and reports without failing.
 
 ## Claude Code Legacy
 
