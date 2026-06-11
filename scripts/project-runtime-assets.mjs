@@ -167,12 +167,36 @@ const gateReferences = new Set([
 
 const wikiReferences = new Set(["wiki-context-preflight.md", "wiki-bridge.md", "2026-06-04-brain-v0-wiki-authority-in-ddalggak.md"]);
 
+const workflowReferences = new Set([
+  "agent-runtime-contract.md",
+  "cross-review-loop.md",
+  "issue-ready-plan.md",
+  "local-diff-check.md",
+  "merge-cleanup.md",
+  "plan-to-issues.md",
+  "pr-check-evidence-bundle.md",
+  "prompt-optimizer.md",
+  "prompt-skill-optimization-staging.md",
+  "retrospective-workflow.md",
+  "retrospective.md",
+  "security-posture-gate.md",
+  "ship.md",
+  "start-workflow.md",
+  "status.md",
+  "wiki-growth-triage.md",
+]);
+
 function splitReferencesByGroup(refs) {
   const groups = { workflow: [], gates: [], wiki: [] };
   for (const ref of refs || []) {
     if (gateReferences.has(ref)) groups.gates.push(ref);
     else if (wikiReferences.has(ref)) groups.wiki.push(ref);
-    else groups.workflow.push(ref);
+    else if (workflowReferences.has(ref)) groups.workflow.push(ref);
+    else {
+      throw new Error(
+        `unclassified required reference: ${ref}; add it to gateReferences, wikiReferences, or workflowReferences in scripts/project-runtime-assets.mjs`,
+      );
+    }
   }
   return groups;
 }
