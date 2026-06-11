@@ -1253,6 +1253,112 @@ const cases = [
     },
   },
   {
+    name: "doctor reports malformed command contract structure",
+    run() {
+      const fixtureRoot = writeDoctorFixture();
+      const contractPath = path.join(
+        fixtureRoot,
+        "core",
+        "commands",
+        "start.yaml",
+      );
+      writeFileSync(
+        contractPath,
+        readFileSync(contractPath, "utf8").replace(
+          "required_references:\n  - alpha.md",
+          "required_references: [alpha.md]",
+        ),
+        "utf8",
+      );
+      const result = runCli(["doctor", "--root", fixtureRoot]);
+      assertExit(result, 1);
+      assertIncludes(
+        result.stdout,
+        "malformed command contract: core/commands/start.yaml line 2: unsupported inline structure for key: required_references",
+        "stdout",
+      );
+    },
+  },
+  {
+    name: "doctor reports non-list required_references",
+    run() {
+      const fixtureRoot = writeDoctorFixture();
+      const contractPath = path.join(
+        fixtureRoot,
+        "core",
+        "commands",
+        "start.yaml",
+      );
+      writeFileSync(
+        contractPath,
+        readFileSync(contractPath, "utf8").replace(
+          "required_references:\n  - alpha.md",
+          "required_references: alpha.md",
+        ),
+        "utf8",
+      );
+      const result = runCli(["doctor", "--root", fixtureRoot]);
+      assertExit(result, 1);
+      assertIncludes(
+        result.stdout,
+        "malformed command contract: core/commands/start.yaml: required_references must be a list",
+        "stdout",
+      );
+    },
+  },
+  {
+    name: "doctor reports unparseable parity_ledger line",
+    run() {
+      const fixtureRoot = writeDoctorFixture();
+      const projectionsPath = path.join(
+        fixtureRoot,
+        "core",
+        "projections.yaml",
+      );
+      writeFileSync(
+        projectionsPath,
+        readFileSync(projectionsPath, "utf8").replace(
+          "  - path: SKILL.md\n    class: may-localize",
+          "  - SKILL.md",
+        ),
+        "utf8",
+      );
+      const result = runCli(["doctor", "--root", fixtureRoot]);
+      assertExit(result, 1);
+      assertIncludes(
+        result.stdout,
+        "core/projections.yaml line 10: unparseable parity_ledger line: - SKILL.md",
+        "stdout",
+      );
+    },
+  },
+  {
+    name: "doctor reports inline projections section structure",
+    run() {
+      const fixtureRoot = writeDoctorFixture();
+      const projectionsPath = path.join(
+        fixtureRoot,
+        "core",
+        "projections.yaml",
+      );
+      writeFileSync(
+        projectionsPath,
+        readFileSync(projectionsPath, "utf8").replace(
+          "parity_ledger:",
+          "parity_ledger: [{path: SKILL.md}]",
+        ),
+        "utf8",
+      );
+      const result = runCli(["doctor", "--root", fixtureRoot]);
+      assertExit(result, 1);
+      assertIncludes(
+        result.stdout,
+        "core/projections.yaml line 9: unsupported inline structure for key: parity_ledger",
+        "stdout",
+      );
+    },
+  },
+  {
     name: "doctor --json reports machine-readable contract",
     run() {
       const cleanRoot = writeDoctorFixture();

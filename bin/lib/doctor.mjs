@@ -1,10 +1,15 @@
 // ddalggak doctor — repo-source health checks for the skill payload.
 // Read-only diagnostics: doc reachability, dead pointers, completion-signal
-// registry, and projection-root file existence parity. zero-dep, ESM only.
+// registry, and projection-root file existence parity. Zero npm deps, ESM
+// only; command contracts are read with the same in-package simple-YAML
+// parser as verify:projections so the two tools cannot disagree on what a
+// contract says (#265).
 
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+
+import { parseSimpleYaml } from "../../scripts/lib/parse-simple-yaml.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PKG_ROOT = path.resolve(__dirname, "..", "..");
@@ -170,24 +175,38 @@ function extractSection(markdown, title) {
 
 // Minimal reader for core/projections.yaml: source_root, name/root pairs under
 // projection_roots, and parity_ledger entries doctor needs to distinguish
-// shared skill files from ledger-declared root-specific files.
+// shared skill files from ledger-declared root-specific files. The file holds
+// more sections than doctor consumes (parity targets, token budgets); those
+// stay ignored, but unsupported structures inside the consumed sections are
+// reported instead of silently dropped (#265).
 function parseProjections(text) {
   const lines = text.split(/\r?\n/);
   let sourceRoot = null;
   const projectionRoots = [];
   const parityLedger = [];
+  const errors = [];
   let inProjectionRoots = false;
   let inParityLedger = false;
   let currentName = null;
   let currentLedgerEntry = null;
-  for (const rawLine of lines) {
-    const line = rawLine.replace(/\s+#.*$/, "");
+  const malformed = (lineNumber, message) => {
+    errors.push(`core/projections.yaml line ${lineNumber}: ${message}`);
+  };
+  for (let index = 0; index < lines.length; index++) {
+    const lineNumber = index + 1;
+    const line = lines[index].replace(/\s+#.*$/, "");
     if (!line.trim() || line.trimStart().startsWith("#")) continue;
 
     const topLevel = line.match(/^([A-Za-z0-9_-]+):\s*(.*)$/);
     if (topLevel) {
       inProjectionRoots = topLevel[1] === "projection_roots";
       inParityLedger = topLevel[1] === "parity_ledger";
+      if ((inProjectionRoots || inParityLedger) && topLevel[2].trim() !== "") {
+        malformed(
+          lineNumber,
+          `unsupported inline structure for key: ${topLevel[1]}`,
+        );
+      }
       if (topLevel[1] === "source_root") {
         sourceRoot = topLevel[2].trim().replace(/^"|"$/g, "");
       }
@@ -210,7 +229,9 @@ function parseProjections(text) {
         currentLedgerEntry[fieldLine[1]] = fieldLine[2]
           .trim()
           .replace(/^"|"$/g, "");
+        continue;
       }
+      malformed(lineNumber, `unparseable parity_ledger line: ${line.trim()}`);
       continue;
     }
 
@@ -221,57 +242,30 @@ function parseProjections(text) {
       currentName = nameLine[1];
       continue;
     }
-    const rootLine = line.match(/^\s{4,}root:\s*(.+)$/);
-    if (rootLine && currentName) {
-      projectionRoots.push({
-        name: currentName,
-        root: rootLine[1].trim().replace(/^"|"$/g, ""),
-      });
+    const fieldLine = line.match(/^\s{4,}([A-Za-z0-9_-]+):\s*(.+)$/);
+    if (fieldLine && currentName) {
+      if (fieldLine[1] === "root") {
+        projectionRoots.push({
+          name: currentName,
+          root: fieldLine[2].trim().replace(/^"|"$/g, ""),
+        });
+      }
+      continue;
     }
+    malformed(lineNumber, `unparseable projection_roots line: ${line.trim()}`);
   }
-  return { sourceRoot, projectionRoots, parityLedger };
+  return { sourceRoot, projectionRoots, parityLedger, errors };
 }
 
-// Minimal reader for core/commands/*.yaml: required_references,
-// required_templates, and output_contract.completion_signal.
-function parseCommandContract(text) {
-  const requiredReferences = [];
-  const requiredTemplates = [];
-  let completionSignal = null;
-  let activeList = null;
-  for (const rawLine of text.split(/\r?\n/)) {
-    const line = rawLine.replace(/\s+#.*$/, "");
-    if (!line.trim() || line.trimStart().startsWith("#")) continue;
-
-    const topLevel = line.match(/^([A-Za-z0-9_-]+):\s*(.*)$/);
-    if (topLevel) {
-      activeList =
-        topLevel[1] === "required_references"
-          ? requiredReferences
-          : topLevel[1] === "required_templates"
-            ? requiredTemplates
-            : null;
-      continue;
-    }
-
-    const signal = line.match(/^\s+completion_signal:\s*"?([A-Z_]+)"?\s*$/);
-    if (signal) {
-      completionSignal = signal[1];
-      activeList = null;
-      continue;
-    }
-
-    const listItem = line.match(/^\s+-\s+(.+)$/);
-    if (listItem && activeList) {
-      activeList.push(listItem[1].trim().replace(/^"|"$/g, ""));
-      continue;
-    }
-
-    if (/^\s+[A-Za-z0-9_-]+:/.test(line)) {
-      activeList = null;
-    }
-  }
-  return { requiredReferences, requiredTemplates, completionSignal };
+// parseSimpleYaml accepts a scalar value for these keys; doctor needs lists,
+// and silently coercing a scalar to [] would drop required assets from every
+// downstream check — report it as malformed instead.
+function contractRequiredList(doc, label, key, findings) {
+  const value = doc[key];
+  if (value === undefined) return [];
+  if (Array.isArray(value)) return value;
+  findings.push(`malformed command contract: ${label}: ${key} must be a list`);
+  return [];
 }
 
 function loadLayout(rootDir) {
@@ -286,6 +280,7 @@ function loadLayout(rootDir) {
     findings.push("missing core/projections.yaml (cannot resolve source/projection roots)");
   } else {
     const parsed = parseProjections(projectionsText);
+    findings.push(...parsed.errors);
     sourceRootRel = parsed.sourceRoot;
     projectionRoots = parsed.projectionRoots.map((entry) => ({
       ...entry,
@@ -330,7 +325,30 @@ function loadLayout(rootDir) {
         findings.push(`unreadable command contract: core/commands/${file}`);
         continue;
       }
-      commands.push({ file, ...parseCommandContract(text) });
+      const label = `core/commands/${file}`;
+      const doc = parseSimpleYaml(text, label, {
+        onError: (message) =>
+          findings.push(`malformed command contract: ${message}`),
+      });
+      commands.push({
+        file,
+        requiredReferences: contractRequiredList(
+          doc,
+          label,
+          "required_references",
+          findings,
+        ),
+        requiredTemplates: contractRequiredList(
+          doc,
+          label,
+          "required_templates",
+          findings,
+        ),
+        completionSignal:
+          typeof doc.output_contract?.completion_signal === "string"
+            ? doc.output_contract.completion_signal
+            : null,
+      });
     }
   }
 
