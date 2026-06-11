@@ -42,27 +42,53 @@ const allowedArtifactByCommand = {
   setwiki: "delegate to dedicated `/setwiki` approval-gated write workflow",
 };
 
+// Parse and file-access failures are real failures (exit 1), but a raw stack
+// trace is not a diagnostic: print the path/line context and fail closed (#265).
+function fatal(message) {
+  console.error(`[project-runtime-assets] ${message}`);
+  process.exit(1);
+}
+
 function readText(relativePath) {
-  return readFileSync(path.join(rootDir, relativePath), "utf8");
+  try {
+    return readFileSync(path.join(rootDir, relativePath), "utf8");
+  } catch (error) {
+    fatal(`cannot read ${relativePath}: ${error.message}`);
+  }
 }
 
 function writeText(relativePath, text) {
-  writeFileSync(path.join(rootDir, relativePath), text);
+  try {
+    writeFileSync(path.join(rootDir, relativePath), text);
+  } catch (error) {
+    fatal(`cannot write ${relativePath}: ${error.message}`);
+  }
 }
 
 function loadCommands() {
   const commandDir = path.join(rootDir, "core", "commands");
   const docs = new Map();
-  for (const name of readdirSync(commandDir).filter((entry) => entry.endsWith(".yaml"))) {
-    const doc = parseSimpleYaml(
-      readFileSync(path.join(commandDir, name), "utf8"),
-      `core/commands/${name}`,
-    );
+  let names;
+  try {
+    names = readdirSync(commandDir).filter((entry) => entry.endsWith(".yaml"));
+  } catch (error) {
+    fatal(`cannot list core/commands: ${error.message}`);
+  }
+  for (const name of names) {
+    let doc;
+    try {
+      doc = parseSimpleYaml(
+        readFileSync(path.join(commandDir, name), "utf8"),
+        `core/commands/${name}`,
+      );
+    } catch (error) {
+      fatal(`cannot load command contract: ${error.message}`);
+    }
     if (doc.command) docs.set(doc.command, doc);
   }
   return commandOrder.map((command) => {
     const doc = docs.get(command);
-    if (!doc) throw new Error(`core command contract missing: ${command}`);
+    if (!doc) fatal(`core command contract missing: ${command}`);
     return doc;
   });
 }
@@ -260,7 +286,11 @@ function renderRequiredPackageFiles() {
 }
 
 function fileSize(relativePath) {
-  return statSync(path.join(rootDir, relativePath)).size;
+  try {
+    return statSync(path.join(rootDir, relativePath)).size;
+  } catch (error) {
+    fatal(`cannot stat ${relativePath}: ${error.message}`);
+  }
 }
 
 const tokenBudgetRoots = [

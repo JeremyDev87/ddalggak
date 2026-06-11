@@ -121,6 +121,7 @@ for (const [fixtureName, expectedMessage] of [
   ["broken-duplicate-key.yaml", "duplicate key: command"],
   ["broken-list-indentation.yaml", "list indentation must be exactly two spaces"],
   ["broken-nested-structure.yaml", "unsupported indentation or nested mapping"],
+  ["broken-inline-structure.yaml", "unsupported inline structure for key: required_references"],
 ]) {
   const tempDir = copyRepo();
   const fixtureText = readFileSync(path.join(fixtureDir, fixtureName), "utf8");
@@ -139,6 +140,10 @@ for (const [fixtureName, expectedMessage] of [
   assert(
     generatorOutput.includes(expectedMessage),
     `${fixtureName}: expected generator output to include ${JSON.stringify(expectedMessage)}\n${generatorOutput}`,
+  );
+  assert(
+    !generatorOutput.includes("    at "),
+    `${fixtureName}: generator must fail with a diagnostic, not a raw stack trace\n${generatorOutput}`,
   );
 }
 
