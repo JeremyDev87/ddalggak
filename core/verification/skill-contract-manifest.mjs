@@ -85,6 +85,7 @@ export const requiredReferenceAdmissionHeaders = [
   "ship.md",
   "merge-cleanup.md",
   "status.md",
+  "pr-check-evidence-bundle.md",
   "issue-ready-plan.md",
   "plan-to-issues.md",
   "local-diff-check.md",

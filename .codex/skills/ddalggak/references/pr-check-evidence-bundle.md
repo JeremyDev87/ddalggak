@@ -1,4 +1,8 @@
 # PR check evidence bundle
+Use when: a ddalggak/Dobby report needs to summarize GitHub PR check results without copying raw CI logs.
+Required by: `status`; PR check reporting in readiness/status conclusions.
+Side effects: none
+Do not use when: the report needs raw log contents or stdout/stderr excerpts; this bundle forbids copying them.
 
 Use this reference when a ddalggak/Dobby report needs to summarize GitHub PR checks without copying raw CI logs.
 
