@@ -32,6 +32,7 @@ Codex App:
 
 Subcommands:
   setup                Install legacy Claude Code skill to ~/.claude/skills/ddalggak/
+  doctor               Run repo-source health checks (reachability, dead pointers, signals, root parity)
   start                Run issue-based implementation lanes
   review               Run independent review and accepted-fix loops
   status               Inspect current lane, worktree, and PR state
@@ -123,7 +124,7 @@ function levenshtein(a, b) {
 }
 
 function suggestCandidate(input) {
-  const pool = ["setup", ...SUBCOMMANDS];
+  const pool = ["setup", "doctor", ...SUBCOMMANDS];
   let best = null;
   let bestDist = Infinity;
   for (const cand of pool) {
@@ -199,6 +200,15 @@ async function main() {
     const mod = await loadLib(
       "./lib/setup.mjs",
       "ddalggak setup: implementation not installed yet.\n(./bin/lib/setup.mjs is missing - this CLI is in active development.)"
+    );
+    const code = await mod.run(rest);
+    return typeof code === "number" ? code : 0;
+  }
+
+  if (first === "doctor") {
+    const mod = await loadLib(
+      "./lib/doctor.mjs",
+      "ddalggak doctor: implementation not installed yet.\n(./bin/lib/doctor.mjs is missing - this CLI is in active development.)"
     );
     const code = await mod.run(rest);
     return typeof code === "number" ? code : 0;
