@@ -1,4 +1,8 @@
 # Retrospective Workflow Reference
+Use when: a `retro` run executes the retrospective steps: PR confirmation, note writing, memory extraction, completion report, and wiki registration.
+Required by: `retro`; every retrospective artifact written outside the repository.
+Side effects: repo-external writes only (retrospective notes, memory artifacts); never edits repository files.
+Do not use when: the work would write any path inside the repository, or a wiki write would bypass the approval-gated `setwiki` bridge.
 
 `/ddalggak retro`는 PR merge 이후 이번 사이클에서 배운 점을 정리해 `~/workspace/retrospective/`에 저장하고, 재사용 가치가 있는 교훈을 메모리 후보로 분리한다.
 

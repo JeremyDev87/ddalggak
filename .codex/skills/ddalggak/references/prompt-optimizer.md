@@ -1,4 +1,8 @@
 # Prompt Optimizer Reference
+Use when: a `prompt` run audits a draft instruction and compiles it into a safer brief/review/fix artifact with an explicit judgement label.
+Required by: `prompt`; the Prompt Safety / Brief Compiler and `prompt grill-me` flows.
+Side effects: none
+Do not use when: the request is to change skill behavior or canonical skill/reference files; those follow the normal issue/branch/PR/review path.
 
 Audit BRIEF/REVIEW/FIX prompts for single goal, why, concrete validation, restatement, and question path. Do not edit skill definition files from this subcommand.
 

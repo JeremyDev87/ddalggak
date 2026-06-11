@@ -1,4 +1,8 @@
 # Agent Runtime Contract
+Use when: a lane's runtime boundary must be explicit before dispatch or judgment: tool capability vs task scope, context sources, resume state, and gate ownership.
+Required by: `start`; `plan`/`review` when Task Scope Contract, Context Assembly Manifest, Resume Snapshot, or Control-flow ownership needs its long-form definition.
+Side effects: none
+Do not use when: the task asks for runtime machinery; event sourcing, job state stores, and pause/resume APIs are non-goals here, not contract requirements.
 
 Use this reference when `ddalggak plan`, `start`, or `review` must make the runtime boundary of an agent lane explicit. The goal is not to increase hidden worker autonomy; it is to keep conductor/reviewer-owned control flow visible, reviewable, and resumable.
 

@@ -1,4 +1,8 @@
 # Core Invariants Reference
+Use when: `plan`, `start`, or `review` needs the long-form rationale behind the global guardrails indexed as hot-path anchors in SKILL.md.
+Required by: `plan`, `review`, `start`; progressive-disclosure backing for the always-loaded invariant pointers.
+Side effects: none
+Do not use when: the run needs subcommand procedure; workflow steps live in the per-subcommand references, not in this invariant index.
 
 Use this reference when `ddalggak plan`, `start`, or `review` needs the long-form rationale behind global guardrails that are indexed in `SKILL.md`. The always-loaded SKILL files keep only compact invariants and pointers; this file preserves the detailed anchors so guardrails are not lost during progressive disclosure.
 

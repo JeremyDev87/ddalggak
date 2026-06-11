@@ -1,7 +1,6 @@
 # Security Posture Gate
-
 Use when: a ddalggak maintenance issue touches repository security posture evidence, GitHub Actions workflow safety, release-adjacent security gates, or package verification reports.
-Required by: maintainer verification and release/readiness reviews when workflow posture is part of the issue contract.
+Required by: `review`; maintainer verification and release/readiness reviews when workflow posture is part of the issue contract.
 Side effects: none; the gate is read-only unless a separate issue explicitly owns remediation.
 Do not use when: the task is only an application code change with no workflow, package, release, or repository-posture evidence requirement.
 
