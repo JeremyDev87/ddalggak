@@ -109,10 +109,6 @@ parity_ledger:
     class: must-match
   - path: references/wiki-growth-triage.md
     class: must-match
-  - path: references/workflow-boundary-gate.md
-    class: root-specific
-    root: claude_legacy
-    reason: claude-runtime workflow boundary gate procedure
   - path: agents/openai.yaml
     class: root-specific
     root: codex
