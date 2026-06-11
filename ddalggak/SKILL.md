@@ -260,4 +260,4 @@ Full procedure: `references/verification-checklist.md`. Verify base freshness, i
 
 ## 명명 규칙
 
-Full procedure: `references/naming-rules.md`. Branches are purpose-centered; completion signals distinguish ISSUE_PR_READY, LANE_READY, REVIEW DONE, FIX DONE, and REBASE DONE.
+Branches are purpose-centered with no generated date/time suffixes; commit/PR description requirements live in `references/ship.md`. Completion-signal SSOT: per-subcommand signals are `output_contract.completion_signal` in `core/commands/*.yaml` (e.g. ISSUE_PR_READY); multi-agent handoff signals LANE_READY, REVIEW DONE, and FIX DONE are defined in `templates/worker-brief.md`, `templates/review-brief.md`, and `templates/fix-brief.md`. `ddalggak doctor` signal-registry flags signals named here without a definition.
