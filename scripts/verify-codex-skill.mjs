@@ -669,6 +669,74 @@ function assertReferenceAnchors({ label, text, anchors }) {
   }
 }
 
+function parseMarkdownSections(text) {
+  const lines = text.split("\n");
+  const headings = [];
+  let inFence = false;
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+    if (/^\s*(?:```|~~~)/.test(line)) {
+      inFence = !inFence;
+      continue;
+    }
+    if (inFence) {
+      continue;
+    }
+    const headingMatch = line.match(/^(#{1,6})\s+(.+)$/);
+    if (headingMatch) {
+      headings.push({ level: headingMatch[1].length, heading: headingMatch[2].trim(), lineIdx: index });
+    }
+  }
+  return headings.map((entry, order) => {
+    let endIdx = lines.length;
+    for (let cursor = order + 1; cursor < headings.length; cursor += 1) {
+      if (headings[cursor].level <= entry.level) {
+        endIdx = headings[cursor].lineIdx;
+        break;
+      }
+    }
+    return {
+      level: entry.level,
+      heading: entry.heading,
+      body: lines.slice(entry.lineIdx + 1, endIdx).join("\n"),
+    };
+  });
+}
+
+function substantiveBodyLength(body) {
+  return body.replace(/<!--[\s\S]*?-->/g, "").replace(/\s+/g, "").length;
+}
+
+function assertSubstantiveSectionBodies({ label, fileName, text }) {
+  for (const section of parseMarkdownSections(text)) {
+    if (allowedEmptySectionBodies.has(`${fileName} :: ${section.heading}`)) {
+      continue;
+    }
+    const bodyLength = substantiveBodyLength(section.body);
+    if (bodyLength < minSubstantiveSectionBodyChars) {
+      fail(
+        `${label} section "${section.heading}" must keep a substantive body (>= ${minSubstantiveSectionBodyChars} non-whitespace chars excluding HTML comments); found ${bodyLength}. A heading without prose does not satisfy the prose gate.`,
+      );
+    }
+  }
+}
+
+function assertSectionScopedAnchors({ label, parsedSections, heading, anchors }) {
+  const matchingSections = parsedSections.filter((section) => section.heading === heading);
+  if (matchingSections.length === 0) {
+    fail(`${label} required section heading missing: "${heading}". Section-scoped anchors need their owning heading.`);
+    return;
+  }
+  const missingScopedAnchors = anchors.filter(
+    (anchor) => !matchingSections.some((section) => section.body.includes(anchor)),
+  );
+  if (missingScopedAnchors.length > 0) {
+    fail(
+      `${label} section "${heading}" missing required anchors; each must appear under this heading, not just anywhere in the file:\n${formatAnchorList(missingScopedAnchors)}`,
+    );
+  }
+}
+
 for (const budget of skillBudgets) {
   assertSkillBudget(budget);
 }
@@ -954,6 +1022,105 @@ if (codexWikiBridgeExists && legacyWikiBridgeExists) {
     text: codexWikiBridgeText,
     anchors: requiredWikiBridgeReferenceAnchors,
   });
+}
+
+const minSubstantiveSectionBodyChars = 40;
+// Known pre-existing index-style heading with an intentionally empty body (#214 audit finding).
+// The document itself is must-not-touch in #214; do not extend this list without an issue reference.
+const allowedEmptySectionBodies = new Set(["regression-library.md :: Existing failure classes"]);
+const substantiveSectionReferencePaths = [
+  ...new Set([
+    ...requiredDisclosureAssetPaths()
+      .filter((assetPath) => assetPath.includes("/references/"))
+      .map((assetPath) => path.join(rootDir, assetPath)),
+    ...routerReferencePaths,
+    ...evidenceReferencePaths,
+    ...simplicityReferencePaths,
+    ...frontendDesignReferencePaths,
+    ...vercelAgentSkillsReferencePaths,
+    ...regressionLibraryReferencePaths,
+    ...agentRuntimeContractReferencePaths,
+    ...coreInvariantReferencePaths,
+    ...promptOptimizerReferencePaths,
+    ...wikiBridgeReferencePaths,
+  ]),
+];
+for (const referencePath of substantiveSectionReferencePaths) {
+  // Missing required files are already reported by the existence checks above.
+  if (!statSync(referencePath, { throwIfNoEntry: false })?.isFile()) {
+    continue;
+  }
+  assertSubstantiveSectionBodies({
+    label: path.relative(rootDir, referencePath),
+    fileName: path.basename(referencePath),
+    text: readText(referencePath),
+  });
+}
+
+// Section-scoped anchor contracts: the heading must exist and the anchor must live under it.
+// A matching string elsewhere in the file must not satisfy these. Manifest arrays stay file-wide
+// for backward compatibility; this layer pins the anchors that are only meaningful inside their section.
+const referenceSectionAnchorContracts = [
+  {
+    referencePaths: routerReferencePaths,
+    sections: [
+      {
+        heading: "Gate Families",
+        anchors: requiredRouterGateFamilies.map((gateFamily) => `\`${gateFamily}\``),
+      },
+      {
+        heading: "Required Reference Mapping",
+        anchors: [
+          "`references/frontend-design-gate.md`",
+          "`references/react-code-quality-harness.md`",
+          "`references/vercel-agent-skills-gates.md`",
+          "`references/simplicity-deletability-gate.md`",
+          "`references/evidence-contract.md`",
+          "`references/regression-library.md`",
+        ],
+      },
+      {
+        heading: "Priority Order",
+        anchors: ["This priority is exact"],
+      },
+    ],
+  },
+  {
+    referencePaths: evidenceReferencePaths,
+    sections: [
+      {
+        heading: "Evidence Templates",
+        anchors: [
+          "UI/design/frontend",
+          "Deploy/release/env",
+          "Performance",
+          "Bugfix/regression",
+          "Security/auth/privacy",
+          "Data/API/backend",
+        ],
+      },
+      {
+        heading: "Missing Evidence Severity",
+        anchors: ["not-applicable: <reason>", "High"],
+      },
+      {
+        heading: "Approval Rule",
+        anchors: ["APPROVE", "not-applicable: <reason>"],
+      },
+    ],
+  },
+];
+for (const { referencePaths, sections } of referenceSectionAnchorContracts) {
+  for (const referencePath of referencePaths) {
+    if (!statSync(referencePath, { throwIfNoEntry: false })?.isFile()) {
+      continue;
+    }
+    const label = path.relative(rootDir, referencePath);
+    const parsedSections = parseMarkdownSections(readText(referencePath));
+    for (const { heading, anchors } of sections) {
+      assertSectionScopedAnchors({ label, parsedSections, heading, anchors });
+    }
+  }
 }
 
 const readmeText = readText(readmePath);

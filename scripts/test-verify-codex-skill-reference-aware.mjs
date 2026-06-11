@@ -151,4 +151,51 @@ withTempRepo("required references must keep admission headers", (tempDir) => {
   );
 });
 
+const routerReferenceRelativePaths = [
+  ".codex/skills/ddalggak/references/quality-lens-router.md",
+  "ddalggak/references/quality-lens-router.md",
+];
+const routerInputsSectionBody = `Inspect all available signals before selecting gates:
+
+- user request text;
+- GitHub issue body and comments;
+- PR file list;
+- diff paths and changed symbols;
+- repository and product conventions that outrank generic rules.`;
+
+withTempRepo("section kept as heading-only must fail", (tempDir) => {
+  for (const referenceRelativePath of routerReferenceRelativePaths) {
+    replaceInFile(path.join(tempDir, referenceRelativePath), routerInputsSectionBody, "");
+  }
+  assertFail("section kept as heading-only must fail", runVerifier(tempDir), "must keep a substantive body");
+});
+
+withTempRepo("section-scoped anchors require their owning heading", (tempDir) => {
+  for (const referenceRelativePath of routerReferenceRelativePaths) {
+    replaceInFile(path.join(tempDir, referenceRelativePath), "## Priority Order", "## Priorities");
+  }
+  assertFail(
+    "section-scoped anchors require their owning heading",
+    runVerifier(tempDir),
+    "required section heading missing",
+  );
+});
+
+withTempRepo("anchor moved to an unrelated section must fail", (tempDir) => {
+  for (const referenceRelativePath of routerReferenceRelativePaths) {
+    const referencePath = path.join(tempDir, referenceRelativePath);
+    replaceInFile(referencePath, "This priority is exact. For example,", "For example,");
+    replaceInFile(
+      referencePath,
+      "Backend-only work must not receive frontend/UI/domain gates",
+      "This priority is exact. Backend-only work must not receive frontend/UI/domain gates",
+    );
+  }
+  assertFail(
+    "anchor moved to an unrelated section must fail",
+    runVerifier(tempDir),
+    "must appear under this heading",
+  );
+});
+
 console.log("\n[test:reference-aware-skill-anchors] passed");
