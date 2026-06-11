@@ -22,31 +22,6 @@ const commandOrder = [
   "setwiki",
 ];
 
-const virtualCommands = {
-  getwiki: {
-    command: "getwiki",
-    show_doc_heading: "GetWiki Bridge",
-    source_edit_allowed: false,
-    purpose: "Wiki context retrieval bridge.",
-    mode: "read-only",
-    write_side_effects: "Delegate to dedicated /getwiki retrieval; no wiki or repo mutation.",
-    stop_condition: "Stop after cited wiki sources or retrieval gaps are reported.",
-    required_references: ["wiki-bridge.md", "2026-06-04-brain-v0-wiki-authority-in-ddalggak.md"],
-    required_templates: [],
-  },
-  setwiki: {
-    command: "setwiki",
-    show_doc_heading: "SetWiki Bridge",
-    source_edit_allowed: false,
-    purpose: "Wiki write workflow bridge.",
-    mode: "approval-gated-write",
-    write_side_effects: "Delegate to dedicated /setwiki; wiki writes require explicit approval and verification.",
-    stop_condition: "Stop at review-only plan unless explicit approval is present; then stop after wiki write verification.",
-    required_references: ["wiki-bridge.md", "2026-06-04-brain-v0-wiki-authority-in-ddalggak.md"],
-    required_templates: [],
-  },
-};
-
 const allowedArtifactByCommand = {
   start: "worker agents may edit only files named in their brief",
   review: "author agents may apply accepted review fixes only",
@@ -109,9 +84,6 @@ function loadCommands() {
   for (const name of readdirSync(commandDir).filter((entry) => entry.endsWith(".yaml"))) {
     const doc = parseSimpleYaml(readFileSync(path.join(commandDir, name), "utf8"));
     if (doc.command) docs.set(doc.command, doc);
-  }
-  for (const [command, doc] of Object.entries(virtualCommands)) {
-    docs.set(command, doc);
   }
   return commandOrder.map((command) => {
     const doc = docs.get(command);

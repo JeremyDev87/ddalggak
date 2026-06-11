@@ -46,6 +46,8 @@ const requiredCommands = [
   "retro",
   "prompt",
   "check",
+  "getwiki",
+  "setwiki",
 ];
 
 const failures = [];
