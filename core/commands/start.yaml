@@ -19,6 +19,7 @@ required_references:
 required_templates:
   - worker-brief.md
   - conductor-state.md
+  - lane-state.md
 
 output_contract:
   completion_signal: "ISSUE_PR_READY"

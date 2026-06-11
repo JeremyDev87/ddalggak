@@ -8,6 +8,7 @@ write_side_effects: "Brief/review/fix artifacts only after explicit confirmation
 stop_condition: "Stop with READY_FOR_BRIEF, NEEDS_CLARIFICATION, BLOCKED_UNSAFE, or DISCOVERY_ONLY."
 required_references:
   - prompt-optimizer.md
+  - prompt-skill-optimization-staging.md
 
 required_templates:
   []
