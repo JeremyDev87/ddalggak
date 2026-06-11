@@ -389,6 +389,8 @@ function classifyWriteEscalation(workflowPerms, jobPermsMap, filePath) {
 
   const filename = path.basename(filePath);
   const reasons = {
+    "codeql.yml":
+      "analyze job: security-events:write required to upload CodeQL SARIF results to code scanning",
     "release-drafter.yml":
       "contents:write and pull-requests:write required for release draft creation/update",
     "manual-release-bump.yml":
