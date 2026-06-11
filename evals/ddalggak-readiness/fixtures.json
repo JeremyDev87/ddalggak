@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "description": "Dry-run ddalggak idempotency/readiness fixtures. These scenarios are mock JSON only and must not perform GitHub mutations.",
+  "description": "Dry-run ddalggak idempotency/readiness fixtures. These scenarios are mock JSON only and must not perform GitHub mutations. Source-edit permissions and required-reference expectations derive from core/commands/*.yaml at eval time, so a contract change fails this eval until fixtures are reconciled.",
   "scenarios": [
     {
       "name": "no-open-issue-does-not-mutate",
@@ -665,6 +665,130 @@
         "expectedVerdict": "CHANGE_REQUEST",
         "evaluator": "deterministic_assertion",
         "mustNotContain": ["rawPrompt", "rawOutput", "private_diff", "token", "secret", "credential"]
+      }
+    },
+    {
+      "name": "start-loads-all-contract-references-ready",
+      "invariant": "contract-derived-reference-coverage",
+      "state": {
+        "cwdRepo": "JeremyDev87/ddalggak",
+        "targetRepo": "JeremyDev87/ddalggak",
+        "targetUrl": "https://github.com/JeremyDev87/ddalggak/issues/215",
+        "openIssues": [
+          {
+            "number": 215,
+            "title": "readiness eval 자기참조 해소 — core/commands 계약 파생 검증"
+          }
+        ],
+        "openPullRequests": [],
+        "requestedCommand": "start",
+        "loadedReferences": [
+          "wiki-context-preflight.md",
+          "2026-06-04-brain-v0-wiki-authority-in-ddalggak.md",
+          "quality-lens-router.md",
+          "evidence-contract.md",
+          "simplicity-deletability-gate.md",
+          "agent-runtime-contract.md",
+          "core-invariants.md",
+          "start-workflow.md"
+        ]
+      },
+      "expect": {
+        "decision": "ready_for_issue_pr",
+        "prStrategy": "independent_issue_pr",
+        "readyAllowed": true,
+        "approveAllowed": true,
+        "loadedReferencesMatchContract": true
+      }
+    },
+    {
+      "name": "start-missing-contract-reference-blocked",
+      "invariant": "contract-derived-reference-gap-blocks",
+      "state": {
+        "cwdRepo": "JeremyDev87/ddalggak",
+        "targetRepo": "JeremyDev87/ddalggak",
+        "targetUrl": "https://github.com/JeremyDev87/ddalggak/issues/215",
+        "openIssues": [
+          {
+            "number": 215,
+            "title": "readiness eval 자기참조 해소 — core/commands 계약 파생 검증"
+          }
+        ],
+        "openPullRequests": [],
+        "requestedCommand": "start",
+        "loadedReferences": [
+          "wiki-context-preflight.md",
+          "2026-06-04-brain-v0-wiki-authority-in-ddalggak.md",
+          "quality-lens-router.md",
+          "simplicity-deletability-gate.md",
+          "agent-runtime-contract.md",
+          "core-invariants.md",
+          "start-workflow.md"
+        ]
+      },
+      "expect": {
+        "decision": "reference_contract_blocked",
+        "prStrategy": "blocked",
+        "readyAllowed": false,
+        "approveAllowed": false,
+        "forbiddenMutations": ["approve_pr", "mark_ready"],
+        "reasonIncludes": [
+          "start run is missing required references from core/commands/start.yaml: evidence-contract.md."
+        ]
+      }
+    },
+    {
+      "name": "clean-merged-targets-local-cleanup-allowed",
+      "invariant": "clean-merge-evidence-local-cleanup",
+      "state": {
+        "cwdRepo": "JeremyDev87/ddalggak",
+        "targetRepo": "JeremyDev87/ddalggak",
+        "requestedCommand": "clean",
+        "cleanOperation": {
+          "deletionTargets": [
+            {
+              "branch": "test/issue-97-idempotency-readiness-evals",
+              "merged": true
+            }
+          ]
+        }
+      },
+      "expect": {
+        "decision": "clean_local_cleanup_allowed",
+        "prStrategy": "none",
+        "readyAllowed": false,
+        "approveAllowed": false,
+        "allowedMutations": [],
+        "reasonIncludes": [
+          "clean targets all have live merge evidence; local cleanup only, no GitHub mutation."
+        ]
+      }
+    },
+    {
+      "name": "clean-unmerged-branch-deletion-blocked",
+      "invariant": "clean-unmerged-deletion-fail-closed",
+      "state": {
+        "cwdRepo": "JeremyDev87/ddalggak",
+        "targetRepo": "JeremyDev87/ddalggak",
+        "requestedCommand": "clean",
+        "cleanOperation": {
+          "deletionTargets": [
+            {
+              "branch": "test/eval-derive-from-contracts",
+              "merged": false
+            }
+          ]
+        }
+      },
+      "expect": {
+        "decision": "clean_unmerged_blocked",
+        "prStrategy": "blocked",
+        "readyAllowed": false,
+        "approveAllowed": false,
+        "allowedMutations": [],
+        "reasonIncludes": [
+          "clean must stop on unmerged branches per core/commands/clean.yaml stop_condition: test/eval-derive-from-contracts."
+        ]
       }
     }
   ]
