@@ -1,0 +1,17 @@
+# Canonical ddalggak command contract. Keep this file data-only; do not paste long procedure here.
+command: setwiki
+show_doc_heading: "SetWiki Bridge"
+source_edit_allowed: false
+purpose: "Wiki write workflow bridge."
+mode: "approval-gated-write"
+write_side_effects: "Delegate to dedicated /setwiki; wiki writes require explicit approval and verification."
+stop_condition: "Stop at review-only plan unless explicit approval is present; then stop after wiki write verification."
+required_references:
+  - wiki-bridge.md
+  - 2026-06-04-brain-v0-wiki-authority-in-ddalggak.md
+
+required_templates: []
+
+output_contract:
+  completion_signal: "SETWIKI_DONE"
+  evidence_required: true

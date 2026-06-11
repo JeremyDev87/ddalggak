@@ -1,0 +1,17 @@
+# Canonical ddalggak command contract. Keep this file data-only; do not paste long procedure here.
+command: getwiki
+show_doc_heading: "GetWiki Bridge"
+source_edit_allowed: false
+purpose: "Wiki context retrieval bridge."
+mode: "read-only"
+write_side_effects: "Delegate to dedicated /getwiki retrieval; no wiki or repo mutation."
+stop_condition: "Stop after cited wiki sources or retrieval gaps are reported."
+required_references:
+  - wiki-bridge.md
+  - 2026-06-04-brain-v0-wiki-authority-in-ddalggak.md
+
+required_templates: []
+
+output_contract:
+  completion_signal: "GETWIKI_DONE"
+  evidence_required: true
