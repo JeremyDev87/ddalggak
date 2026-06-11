@@ -123,7 +123,9 @@ parity_ledger:
     class: must-match
 # Per-subcommand effective-load budgets in estimated tokens, keyed by
 # projection root. Effective load = <root>/SKILL.md + required_references +
-# required_templates bytes; estimated tokens = ceil(bytes / 4). Measured by
+# required_templates; estimated tokens = ceil(ascii_chars / 4 +
+# multibyte_chars x 1.5) — multibyte-aware heuristic (#266; plain bytes / 4
+# undercounted Korean content by >=1.3x). Measured by
 # scripts/project-runtime-assets.mjs --report. In admission mode
 # (--report --admission, wired into scripts/verify-package.mjs) any
 # over-budget or missing-budget subcommand fails verify (#248 promoted the
@@ -131,33 +133,31 @@ parity_ledger:
 # Budgets are root-specific because the root SKILL.md payloads differ in
 # size and language; a shared budget would either fail codex immediately or
 # force renumbering the claude_legacy baseline.
-# claude_legacy values: #224 initial values (2026-06-11 measurement + 25%
-# headroom, rounded up to 500), unchanged.
-# codex values: #248 (2026-06-11 codex-root measurement + 25% headroom,
-# rounded up to 500).
+# All values: #266 recalibration (2026-06-12 measurement on master c7f35f2
+# with the multibyte-aware formula + 25% headroom, rounded up to 500).
 subcommand_token_budgets:
   claude_legacy:
-    start: 19500
-    review: 20000
-    status: 8000
-    plan: 18500
-    issue: 8000
-    clean: 7500
-    ship: 7500
-    retro: 9500
-    prompt: 9000
-    check: 7500
-    getwiki: 10000
-    setwiki: 10000
-  codex:
     start: 23000
+    review: 26000
+    status: 10000
+    plan: 20000
+    issue: 9000
+    clean: 8500
+    ship: 8500
+    retro: 14000
+    prompt: 12500
+    check: 8500
+    getwiki: 11000
+    setwiki: 13000
+  codex:
+    start: 24000
     review: 26500
-    status: 9500
-    plan: 20500
+    status: 10000
+    plan: 21000
     issue: 10000
     clean: 9500
     ship: 9500
-    retro: 12000
+    retro: 12500
     prompt: 12500
     check: 9500
     getwiki: 11500
