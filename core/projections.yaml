@@ -125,22 +125,44 @@ parity_ledger:
     class: must-match
   - path: templates/worker-brief.md
     class: must-match
-# Soft per-subcommand effective-load budgets in estimated tokens.
-# Effective load = ddalggak/SKILL.md + required_references + required_templates
-# bytes; estimated tokens = ceil(bytes / 4). Measured by
-# scripts/project-runtime-assets.mjs --report; exceeding a budget emits a
-# warning only (fail promotion is deferred until after operation, see #224).
-# Initial values: 2026-06-11 measurement + 25% headroom, rounded up to 500.
+# Per-subcommand effective-load budgets in estimated tokens, keyed by
+# projection root. Effective load = <root>/SKILL.md + required_references +
+# required_templates bytes; estimated tokens = ceil(bytes / 4). Measured by
+# scripts/project-runtime-assets.mjs --report. In admission mode
+# (--report --admission, wired into scripts/verify-package.mjs) any
+# over-budget or missing-budget subcommand fails verify (#248 promoted the
+# #224 advisory warning to fail; --report alone stays advisory).
+# Budgets are root-specific because the root SKILL.md payloads differ in
+# size and language; a shared budget would either fail codex immediately or
+# force renumbering the claude_legacy baseline.
+# claude_legacy values: #224 initial values (2026-06-11 measurement + 25%
+# headroom, rounded up to 500), unchanged.
+# codex values: #248 (2026-06-11 codex-root measurement + 25% headroom,
+# rounded up to 500).
 subcommand_token_budgets:
-  start: 19500
-  review: 20000
-  status: 8000
-  plan: 18500
-  issue: 8000
-  clean: 7500
-  ship: 7500
-  retro: 9500
-  prompt: 9000
-  check: 7500
-  getwiki: 10000
-  setwiki: 10000
+  claude_legacy:
+    start: 19500
+    review: 20000
+    status: 8000
+    plan: 18500
+    issue: 8000
+    clean: 7500
+    ship: 7500
+    retro: 9500
+    prompt: 9000
+    check: 7500
+    getwiki: 10000
+    setwiki: 10000
+  codex:
+    start: 23000
+    review: 26500
+    status: 9500
+    plan: 20500
+    issue: 10000
+    clean: 9500
+    ship: 9500
+    retro: 12000
+    prompt: 12500
+    check: 9500
+    getwiki: 11500
+    setwiki: 13500

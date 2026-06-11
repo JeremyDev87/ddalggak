@@ -211,6 +211,21 @@ try {
   runStep("npm test", npmCommand, ["test"]);
   runStep("codex skill verifier", npmCommand, ["run", "verify:codex-skill"]);
   runStep("projection verifier", npmCommand, ["run", "verify:projections"]);
+  const tokenBudgetReport = runStep(
+    "subcommand token budget admission gate",
+    process.execPath,
+    ["scripts/project-runtime-assets.mjs", "--report", "--admission"],
+    { capture: true },
+  );
+  for (const line of tokenBudgetReport.stdout.split("\n")) {
+    if (
+      line.startsWith("[token-budget] warning:") ||
+      line.startsWith("[token-budget] summary:") ||
+      line.startsWith("[token-budget] admission gate:")
+    ) {
+      console.log(line);
+    }
+  }
   runStep("verification robustness regression tests", npmCommand, [
     "run",
     "test:verify-robustness",
@@ -219,17 +234,6 @@ try {
     "scripts/project-runtime-assets.mjs",
     "--check",
   ]);
-  const tokenBudgetReport = runStep(
-    "subcommand token budget report",
-    process.execPath,
-    ["scripts/project-runtime-assets.mjs", "--report"],
-    { capture: true },
-  );
-  for (const line of tokenBudgetReport.stdout.split("\n")) {
-    if (line.startsWith("[token-budget] warning:") || line.startsWith("[token-budget] summary:")) {
-      console.log(line);
-    }
-  }
   runStep("reference-aware skill anchor tests", npmCommand, [
     "run",
     "test:reference-aware-skill-anchors",
