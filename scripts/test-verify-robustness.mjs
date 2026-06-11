@@ -28,6 +28,14 @@ function runProjectionVerifier(cwd) {
   });
 }
 
+function runRuntimeAssetGenerator(cwd) {
+  return spawnSync(nodeCommand, ["scripts/project-runtime-assets.mjs", "--check"], {
+    cwd,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+}
+
 function copyRepo() {
   const tempDir = mkdtempSync(path.join(os.tmpdir(), "ddalggak-verify-robustness-"));
   tempRoots.push(tempDir);
@@ -92,6 +100,15 @@ const specialInputs = JSON.parse(readFileSync(path.join(fixtureDir, "special-reg
   );
 }
 
+{
+  const tempDir = copyRepo();
+  const result = runRuntimeAssetGenerator(tempDir);
+  assert(
+    result.status === 0,
+    `generator --check on clean copy: expected exit 0, got ${result.status}\n${result.stdout}\n${result.stderr}`,
+  );
+}
+
 for (const [fixtureName, expectedMessage] of [
   ["broken-duplicate-key.yaml", "duplicate key: command"],
   ["broken-list-indentation.yaml", "list indentation must be exactly two spaces"],
@@ -104,6 +121,17 @@ for (const [fixtureName, expectedMessage] of [
   const output = `${result.stdout}\n${result.stderr}`;
   assert(result.status === 1, `${fixtureName}: expected exit 1, got ${result.status}\n${output}`);
   assert(output.includes(expectedMessage), `${fixtureName}: expected output to include ${JSON.stringify(expectedMessage)}\n${output}`);
+
+  const generatorResult = runRuntimeAssetGenerator(tempDir);
+  const generatorOutput = `${generatorResult.stdout}\n${generatorResult.stderr}`;
+  assert(
+    generatorResult.status !== 0,
+    `${fixtureName}: expected generator --check to fail closed, got exit ${generatorResult.status}\n${generatorOutput}`,
+  );
+  assert(
+    generatorOutput.includes(expectedMessage),
+    `${fixtureName}: expected generator output to include ${JSON.stringify(expectedMessage)}\n${generatorOutput}`,
+  );
 }
 
 console.log("[test:verify-robustness] passed");
