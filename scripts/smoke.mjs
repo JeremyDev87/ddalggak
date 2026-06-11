@@ -132,6 +132,64 @@ function writeExistingInstall(claudeHome, version = "0.0.0") {
   return skillDir;
 }
 
+const DOCTOR_FIXTURE_ROOTS = ["ddalggak", ".codex/skills/ddalggak"];
+
+// Minimal repo layout that passes every doctor check; cases break it on
+// purpose so detection does not depend on current real-repo findings.
+function writeDoctorFixture() {
+  const fixtureRoot = makeTempHome();
+  const write = (relPath, content) => {
+    const target = path.join(fixtureRoot, relPath);
+    mkdirSync(path.dirname(target), { recursive: true });
+    writeFileSync(target, content, "utf8");
+  };
+  write(
+    "core/projections.yaml",
+    [
+      "source_root: ddalggak",
+      "projection_roots:",
+      "  codex:",
+      "    root: .codex/skills/ddalggak",
+      "    runtime: codex",
+      "  claude_legacy:",
+      "    root: ddalggak",
+      "    runtime: claude",
+      "",
+    ].join("\n"),
+  );
+  write(
+    "core/commands/start.yaml",
+    [
+      "command: start",
+      "required_references:",
+      "  - alpha.md",
+      "required_templates:",
+      "  - brief.md",
+      "output_contract:",
+      '  completion_signal: "ISSUE_PR_READY"',
+      "",
+    ].join("\n"),
+  );
+  const skill = [
+    "# fixture skill",
+    "",
+    "Read `references/alpha.md` first.",
+    "",
+    "## 명명 규칙",
+    "",
+    "Completion signals distinguish ISSUE_PR_READY and LANE DONE.",
+    "",
+  ].join("\n");
+  const alpha = "# alpha\n\nUse `templates/brief.md`.\n";
+  const brief = "# brief\n\nEnd with LANE DONE.\n";
+  for (const root of DOCTOR_FIXTURE_ROOTS) {
+    write(path.join(root, "SKILL.md"), skill);
+    write(path.join(root, "references", "alpha.md"), alpha);
+    write(path.join(root, "templates", "brief.md"), brief);
+  }
+  return fixtureRoot;
+}
+
 const cases = [
   {
     name: "--version prints package version",
@@ -955,6 +1013,175 @@ const cases = [
         !readme.includes("img.shields.io/npm/"),
         "README must not show npm badges before first publish proves registry visibility",
       );
+    },
+  },
+  {
+    name: "doctor passes on clean fixture",
+    run() {
+      const fixtureRoot = writeDoctorFixture();
+      const result = runCli(["doctor", "--root", fixtureRoot]);
+      assertExit(result, 0);
+      assertIncludes(result.stdout, "doctor: all checks passed", "stdout");
+      assertIncludes(result.stdout, "not checked", "stdout");
+    },
+  },
+  {
+    name: "doctor detects orphan reference",
+    run() {
+      const fixtureRoot = writeDoctorFixture();
+      for (const root of DOCTOR_FIXTURE_ROOTS) {
+        writeFileSync(
+          path.join(fixtureRoot, root, "references", "orphan.md"),
+          "# orphan\n",
+          "utf8",
+        );
+      }
+      const result = runCli(["doctor", "--root", fixtureRoot]);
+      assertExit(result, 1);
+      assertIncludes(
+        result.stdout,
+        "orphan reference: ddalggak/references/orphan.md",
+        "stdout",
+      );
+    },
+  },
+  {
+    name: "doctor detects dead pointer",
+    run() {
+      const fixtureRoot = writeDoctorFixture();
+      const alphaPath = path.join(
+        fixtureRoot,
+        "ddalggak",
+        "references",
+        "alpha.md",
+      );
+      writeFileSync(
+        alphaPath,
+        `${readFileSync(alphaPath, "utf8")}\nAlso read \`references/missing.md\`.\n`,
+        "utf8",
+      );
+      const result = runCli(["doctor", "--root", fixtureRoot]);
+      assertExit(result, 1);
+      assertIncludes(
+        result.stdout,
+        "dead pointer: ddalggak/references/alpha.md -> references/missing.md",
+        "stdout",
+      );
+    },
+  },
+  {
+    name: "doctor detects undefined completion signal",
+    run() {
+      const fixtureRoot = writeDoctorFixture();
+      const skillPath = path.join(fixtureRoot, "ddalggak", "SKILL.md");
+      writeFileSync(
+        skillPath,
+        readFileSync(skillPath, "utf8").replace(
+          "LANE DONE.",
+          "LANE DONE and PHANTOM DONE.",
+        ),
+        "utf8",
+      );
+      const result = runCli(["doctor", "--root", fixtureRoot]);
+      assertExit(result, 1);
+      assertIncludes(
+        result.stdout,
+        'undefined completion signal: "PHANTOM DONE"',
+        "stdout",
+      );
+    },
+  },
+  {
+    name: "doctor detects file missing across projection roots",
+    run() {
+      const fixtureRoot = writeDoctorFixture();
+      rmSync(
+        path.join(
+          fixtureRoot,
+          ".codex",
+          "skills",
+          "ddalggak",
+          "references",
+          "alpha.md",
+        ),
+      );
+      const result = runCli(["doctor", "--root", fixtureRoot]);
+      assertExit(result, 1);
+      assertIncludes(
+        result.stdout,
+        "missing in .codex/skills/ddalggak: references/alpha.md (present in ddalggak)",
+        "stdout",
+      );
+    },
+  },
+  {
+    name: "doctor --json reports machine-readable contract",
+    run() {
+      const cleanRoot = writeDoctorFixture();
+      const clean = runCli(["doctor", "--root", cleanRoot, "--json"]);
+      assertExit(clean, 0);
+      const cleanReport = parseJsonStdout(clean);
+      assert(cleanReport.ok === true, "expected clean fixture to report ok");
+      for (const check of [
+        "layout",
+        "reachability",
+        "dead-pointer",
+        "signal-registry",
+        "root-parity",
+      ]) {
+        assert(
+          cleanReport.checks[check]?.ok === true,
+          `expected clean ${check} check, got ${JSON.stringify(cleanReport.checks[check])}`,
+        );
+      }
+      assert(
+        Array.isArray(cleanReport.notChecked) &&
+          cleanReport.notChecked.length > 0,
+        "expected notChecked disclosure in doctor JSON output",
+      );
+
+      const brokenRoot = writeDoctorFixture();
+      rmSync(
+        path.join(
+          brokenRoot,
+          ".codex",
+          "skills",
+          "ddalggak",
+          "templates",
+          "brief.md",
+        ),
+      );
+      const broken = runCli(["doctor", "--root", brokenRoot, "--json"]);
+      assertExit(broken, 1);
+      const brokenReport = parseJsonStdout(broken);
+      assert(
+        brokenReport.ok === false,
+        "expected broken fixture to report not ok",
+      );
+      assert(
+        brokenReport.findings.some(
+          (finding) =>
+            finding.check === "root-parity" &&
+            finding.message.includes("templates/brief.md"),
+        ),
+        `expected root-parity finding for removed template, got ${JSON.stringify(brokenReport.findings)}`,
+      );
+    },
+  },
+  {
+    name: "doctor rejects unknown option and missing root",
+    run() {
+      const unknown = runCli(["doctor", "--bogus"]);
+      assertExit(unknown, 2);
+      assertIncludes(unknown.stderr, "Unknown option: --bogus", "stderr");
+
+      const missingRoot = runCli([
+        "doctor",
+        "--root",
+        path.join(makeTempHome(), "missing-subdir"),
+      ]);
+      assertExit(missingRoot, 2);
+      assertIncludes(missingRoot.stderr, "not a directory", "stderr");
     },
   },
 ];

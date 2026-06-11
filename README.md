@@ -159,6 +159,14 @@ Common subcommand options:
 - `--print-claude-md-patch`: print only the proposed `CLAUDE.md` unified diff.
 - `--apply`: not supported; apply profile changes manually after review if desired.
 
+`doctor` options:
+
+- `ddalggak doctor` runs read-only repo-source health checks over the skill payload: doc reachability (orphan references/templates unreachable from `SKILL.md` and `core/commands` required entries), dead pointers (`references/*.md` / `templates/*.md` targets that do not exist), completion-signal registry (signals named in the `SKILL.md` naming-rules section without a `core/commands` `completion_signal` or template definition), and projection-root file existence parity (`SKILL.md`, `references/`, `templates/` only).
+- `--json`: print the report as JSON (`ok`, per-check findings, and a `notChecked` disclosure list).
+- `--root <dir>`: inspect a different repo checkout (defaults to the package checkout the CLI runs from).
+- Exit codes: `0` clean, `1` findings detected, `2` usage error.
+- Not checked: projection-root content parity (bytes/checksums), runtime-specific assets outside the shared skill surface (e.g. `.codex` `agents/`), and the installed skill under `CLAUDE_HOME` (use `ddalggak status --local`). Doctor only reports; it never fixes.
+
 `status --local` options:
 
 - `--json`: print package version, payload roots, installed path/version, source/installed checksums, missing required references/templates, extra installed payload files, and `ok` / `stale` / `not-installed` state as JSON. The JSON also includes an `evidence` section with runtime support, package manifest status (`not-installed` / `absent` / `malformed` / `stale` / `present`), payload counts/checksum match, and a short next action.
