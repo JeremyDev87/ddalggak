@@ -9,6 +9,7 @@ const rootDir = process.cwd();
 const args = new Set(process.argv.slice(2));
 const writeMode = args.has("--write");
 const reportMode = args.has("--report");
+const admissionMode = args.has("--admission");
 const checkMode = args.has("--check") || !writeMode;
 
 const commandOrder = [
@@ -238,70 +239,97 @@ function fileSize(relativePath) {
   return statSync(path.join(rootDir, relativePath)).size;
 }
 
+const tokenBudgetRoots = [
+  { key: "claude_legacy", base: "ddalggak" },
+  { key: "codex", base: ".codex/skills/ddalggak" },
+];
+
 function parseSubcommandTokenBudgets() {
   const lines = readText("core/projections.yaml").split(/\r?\n/);
   const start = lines.indexOf("subcommand_token_budgets:");
-  const budgets = new Map();
-  if (start === -1) return budgets;
+  const budgetsByRoot = new Map();
+  if (start === -1) return budgetsByRoot;
+  let currentRoot;
   for (let index = start + 1; index < lines.length; index += 1) {
     const line = lines[index].replace(/\s+#.*$/, "");
     if (!line.trim() || line.trimStart().startsWith("#")) continue;
-    const entry = line.match(/^ {2}([A-Za-z0-9_-]+):\s*(\d+)\s*$/);
-    if (!entry) break;
-    budgets.set(entry[1], Number(entry[2]));
+    const rootEntry = line.match(/^ {2}([A-Za-z0-9_-]+):\s*$/);
+    if (rootEntry) {
+      currentRoot = new Map();
+      budgetsByRoot.set(rootEntry[1], currentRoot);
+      continue;
+    }
+    const entry = line.match(/^ {4}([A-Za-z0-9_-]+):\s*(\d+)\s*$/);
+    if (!entry || !currentRoot) break;
+    currentRoot.set(entry[1], Number(entry[2]));
   }
-  return budgets;
+  return budgetsByRoot;
 }
 
 function runTokenBudgetReport() {
-  const budgets = parseSubcommandTokenBudgets();
-  const skillBytes = fileSize("ddalggak/SKILL.md");
+  const budgetsByRoot = parseSubcommandTokenBudgets();
   const warnings = [];
-  const rows = [];
-  for (const doc of commands) {
-    const referenceBytes = (doc.required_references || []).reduce(
-      (sum, ref) => sum + fileSize(`ddalggak/references/${ref}`),
-      0,
-    );
-    const templateBytes = (doc.required_templates || []).reduce(
-      (sum, template) => sum + fileSize(`ddalggak/templates/${template}`),
-      0,
-    );
-    const totalBytes = skillBytes + referenceBytes + templateBytes;
-    const estTokens = Math.ceil(totalBytes / 4);
-    const budget = budgets.get(doc.command);
-    let status = "ok";
-    if (budget === undefined) {
-      status = "no-budget";
-      warnings.push(`${doc.command}: no budget declared in core/projections.yaml subcommand_token_budgets`);
-    } else if (estTokens > budget) {
-      status = "OVER";
-      warnings.push(`${doc.command}: ~${estTokens} tokens exceeds budget ${budget}`);
+  const allRows = [];
+  for (const { key, base } of tokenBudgetRoots) {
+    const budgets = budgetsByRoot.get(key) ?? new Map();
+    const skillBytes = fileSize(`${base}/SKILL.md`);
+    const rows = [];
+    for (const doc of commands) {
+      const referenceBytes = (doc.required_references || []).reduce(
+        (sum, ref) => sum + fileSize(`${base}/references/${ref}`),
+        0,
+      );
+      const templateBytes = (doc.required_templates || []).reduce(
+        (sum, template) => sum + fileSize(`${base}/templates/${template}`),
+        0,
+      );
+      const totalBytes = skillBytes + referenceBytes + templateBytes;
+      const estTokens = Math.ceil(totalBytes / 4);
+      const budget = budgets.get(doc.command);
+      let status = "ok";
+      if (budget === undefined) {
+        status = "no-budget";
+        warnings.push(`${key}/${doc.command}: no budget declared in core/projections.yaml subcommand_token_budgets.${key}`);
+      } else if (estTokens > budget) {
+        status = "OVER";
+        warnings.push(`${key}/${doc.command}: ~${estTokens} tokens exceeds budget ${budget}`);
+      }
+      rows.push({ root: key, command: doc.command, skillBytes, referenceBytes, templateBytes, totalBytes, estTokens, budget, status });
     }
-    rows.push({ command: doc.command, skillBytes, referenceBytes, templateBytes, totalBytes, estTokens, budget, status });
-  }
 
-  console.log("[token-budget] per-subcommand effective load (root: ddalggak/, est tokens = ceil(bytes / 4))");
-  console.log("| subcommand | skill_md_bytes | reference_bytes | template_bytes | total_bytes | est_tokens | budget_tokens | status |");
-  console.log("| --- | --- | --- | --- | --- | --- | --- | --- |");
-  for (const row of rows) {
-    console.log(
-      `| ${row.command} | ${row.skillBytes} | ${row.referenceBytes} | ${row.templateBytes} | ${row.totalBytes} | ${row.estTokens} | ${row.budget ?? "-"} | ${row.status} |`,
-    );
+    console.log(`[token-budget] per-subcommand effective load (root: ${base}/, est tokens = ceil(bytes / 4))`);
+    console.log("| subcommand | skill_md_bytes | reference_bytes | template_bytes | total_bytes | est_tokens | budget_tokens | status |");
+    console.log("| --- | --- | --- | --- | --- | --- | --- | --- |");
+    for (const row of rows) {
+      console.log(
+        `| ${row.command} | ${row.skillBytes} | ${row.referenceBytes} | ${row.templateBytes} | ${row.totalBytes} | ${row.estTokens} | ${row.budget ?? "-"} | ${row.status} |`,
+      );
+    }
+    allRows.push(...rows);
   }
   for (const warning of warnings) {
     console.log(`[token-budget] warning: ${warning}`);
   }
-  const overBudget = rows.filter((row) => row.status === "OVER").length;
-  const missingBudget = rows.filter((row) => row.status === "no-budget").length;
-  const maxRow = rows.reduce((max, row) => (row.estTokens > max.estTokens ? row : max), rows[0]);
+  const overBudget = allRows.filter((row) => row.status === "OVER").length;
+  const missingBudget = allRows.filter((row) => row.status === "no-budget").length;
+  const maxRow = allRows.reduce((max, row) => (row.estTokens > max.estTokens ? row : max), allRows[0]);
   console.log(
-    `[token-budget] summary: ${rows.length} subcommands, over-budget ${overBudget}, missing-budget ${missingBudget}, max ${maxRow.command} ~${maxRow.estTokens} tokens`,
+    `[token-budget] summary: ${commands.length} subcommands x ${tokenBudgetRoots.length} roots, over-budget ${overBudget}, missing-budget ${missingBudget}, max ${maxRow.root}/${maxRow.command} ~${maxRow.estTokens} tokens`,
   );
+  return { overBudget, missingBudget };
 }
 
 if (reportMode) {
-  runTokenBudgetReport();
+  const { overBudget, missingBudget } = runTokenBudgetReport();
+  if (admissionMode) {
+    if (overBudget + missingBudget > 0) {
+      console.error(
+        `[token-budget] admission gate: fail (over-budget ${overBudget}, missing-budget ${missingBudget}); adjust assets or budgets in core/projections.yaml subcommand_token_budgets`,
+      );
+      process.exit(1);
+    }
+    console.log("[token-budget] admission gate: pass");
+  }
   process.exit(0);
 }
 

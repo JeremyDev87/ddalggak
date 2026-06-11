@@ -36,6 +36,14 @@ function runRuntimeAssetGenerator(cwd) {
   });
 }
 
+function runTokenBudgetReport(cwd, extraArgs = []) {
+  return spawnSync(nodeCommand, ["scripts/project-runtime-assets.mjs", "--report", ...extraArgs], {
+    cwd,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+}
+
 function copyRepo() {
   const tempDir = mkdtempSync(path.join(os.tmpdir(), "ddalggak-verify-robustness-"));
   tempRoots.push(tempDir);
@@ -131,6 +139,76 @@ for (const [fixtureName, expectedMessage] of [
   assert(
     generatorOutput.includes(expectedMessage),
     `${fixtureName}: expected generator output to include ${JSON.stringify(expectedMessage)}\n${generatorOutput}`,
+  );
+}
+
+{
+  const tempDir = copyRepo();
+  const result = runTokenBudgetReport(tempDir, ["--admission"]);
+  const output = `${result.stdout}\n${result.stderr}`;
+  assert(result.status === 0, `token budget admission on clean copy: expected exit 0, got ${result.status}\n${output}`);
+  assert(output.includes("(root: ddalggak/"), `token budget report must measure the claude_legacy root\n${output}`);
+  assert(
+    output.includes("(root: .codex/skills/ddalggak/"),
+    `token budget report must measure the codex root\n${output}`,
+  );
+  assert(
+    output.includes("over-budget 0, missing-budget 0"),
+    `token budget admission on clean copy: expected zero findings\n${output}`,
+  );
+  assert(output.includes("[token-budget] admission gate: pass"), `expected admission pass line\n${output}`);
+}
+
+{
+  const tempDir = copyRepo();
+  const projectionsPath = path.join(tempDir, "core", "projections.yaml");
+  const projections = readFileSync(projectionsPath, "utf8");
+  const lowered = projections.replace(/^( {4}review:) \d+$/gm, "$1 1");
+  assert(lowered !== projections, "fixture setup: expected to lower at least one review budget");
+  writeFileSync(projectionsPath, lowered, "utf8");
+
+  const advisory = runTokenBudgetReport(tempDir);
+  const advisoryOutput = `${advisory.stdout}\n${advisory.stderr}`;
+  assert(
+    advisory.status === 0,
+    `over-budget advisory report must stay exit 0, got ${advisory.status}\n${advisoryOutput}`,
+  );
+  assert(advisoryOutput.includes("exceeds budget 1"), `expected over-budget warning in advisory output\n${advisoryOutput}`);
+
+  const admission = runTokenBudgetReport(tempDir, ["--admission"]);
+  const admissionOutput = `${admission.stdout}\n${admission.stderr}`;
+  assert(
+    admission.status === 1,
+    `over-budget admission gate must fail, got exit ${admission.status}\n${admissionOutput}`,
+  );
+  assert(admissionOutput.includes("exceeds budget 1"), `expected over-budget warning in admission output\n${admissionOutput}`);
+  assert(
+    admissionOutput.includes("[token-budget] admission gate: fail (over-budget 2"),
+    `expected admission fail line counting both roots\n${admissionOutput}`,
+  );
+}
+
+{
+  const tempDir = copyRepo();
+  const projectionsPath = path.join(tempDir, "core", "projections.yaml");
+  const projections = readFileSync(projectionsPath, "utf8");
+  const removed = projections.replace(/^ {4}start: \d+\n/m, "");
+  assert(removed !== projections, "fixture setup: expected to remove one start budget line");
+  writeFileSync(projectionsPath, removed, "utf8");
+
+  const admission = runTokenBudgetReport(tempDir, ["--admission"]);
+  const admissionOutput = `${admission.stdout}\n${admission.stderr}`;
+  assert(
+    admission.status === 1,
+    `missing-budget admission gate must fail closed, got exit ${admission.status}\n${admissionOutput}`,
+  );
+  assert(
+    admissionOutput.includes("no budget declared"),
+    `expected missing-budget warning in admission output\n${admissionOutput}`,
+  );
+  assert(
+    admissionOutput.includes("missing-budget 1"),
+    `expected missing-budget count in summary\n${admissionOutput}`,
   );
 }
 
