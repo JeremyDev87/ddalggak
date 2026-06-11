@@ -18,3 +18,111 @@ parity_targets:
     execution_runtime: false
 commands_glob: core/commands/*.yaml
 runtimes_glob: core/runtimes/*.yaml
+# Per-file parity class ledger across the two projection roots.
+# Classes:
+# - must-match: byte-identical in both roots.
+# - may-localize: present in both roots; bodies may be language-localized, but
+#   admission header fields (Use when / Required by / Side effects /
+#   Do not use when) must stay identical when present.
+# - root-specific: exists only in the declared root; requires root and reason.
+# Any file found in either root but missing from this ledger fails
+# scripts/verify-projections.mjs.
+parity_ledger:
+  - path: SKILL.md
+    class: may-localize
+  - path: references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md
+    class: must-match
+  - path: references/agent-runtime-contract.md
+    class: must-match
+  - path: references/common-rules.md
+    class: may-localize
+  - path: references/conductor-state.md
+    class: root-specific
+    root: claude_legacy
+    reason: claude-runtime conductor operational state contract
+  - path: references/context-compact.md
+    class: may-localize
+  - path: references/core-invariants.md
+    class: must-match
+  - path: references/cross-review-loop.md
+    class: may-localize
+  - path: references/evidence-contract.md
+    class: may-localize
+  - path: references/failure-prevention.md
+    class: may-localize
+  - path: references/frontend-design-gate.md
+    class: must-match
+  - path: references/issue-ready-plan.md
+    class: may-localize
+  - path: references/local-diff-check.md
+    class: may-localize
+  - path: references/merge-cleanup.md
+    class: may-localize
+  - path: references/naming-rules.md
+    class: may-localize
+  - path: references/plan-to-issues.md
+    class: may-localize
+  - path: references/pr-check-evidence-bundle.md
+    class: must-match
+  - path: references/pr-status-evidence-bundle.md
+    class: root-specific
+    root: claude_legacy
+    reason: claude-runtime pr-status evidence bundle procedure
+  - path: references/prompt-optimizer.md
+    class: may-localize
+  - path: references/prompt-skill-optimization-staging.md
+    class: must-match
+  - path: references/quality-lens-router.md
+    class: must-match
+  - path: references/react-code-quality-harness.md
+    class: must-match
+  - path: references/regression-library.md
+    class: must-match
+  - path: references/retrospective-workflow.md
+    class: may-localize
+  - path: references/retrospective.md
+    class: may-localize
+  - path: references/security-posture-gate.md
+    class: may-localize
+  - path: references/ship.md
+    class: may-localize
+  - path: references/simplicity-deletability-gate.md
+    class: must-match
+  - path: references/start-workflow.md
+    class: may-localize
+  - path: references/status.md
+    class: may-localize
+  - path: references/vercel-agent-skills-gates.md
+    class: must-match
+  - path: references/verification-checklist.md
+    class: may-localize
+  - path: references/wake-resume.md
+    class: may-localize
+  - path: references/wiki-bridge.md
+    class: must-match
+  - path: references/wiki-context-preflight.md
+    class: must-match
+  - path: references/wiki-growth-triage.md
+    class: must-match
+  - path: references/workflow-boundary-gate.md
+    class: root-specific
+    root: claude_legacy
+    reason: claude-runtime workflow boundary gate procedure
+  - path: agents/openai.yaml
+    class: root-specific
+    root: codex
+    reason: generated codex agent manifest owned by project-runtime-assets
+  - path: templates/conductor-state.md
+    class: must-match
+  - path: templates/epic-body.md
+    class: must-match
+  - path: templates/fix-brief.md
+    class: must-match
+  - path: templates/issue-body.md
+    class: may-localize
+  - path: templates/lane-state.md
+    class: must-match
+  - path: templates/review-brief.md
+    class: must-match
+  - path: templates/worker-brief.md
+    class: must-match
