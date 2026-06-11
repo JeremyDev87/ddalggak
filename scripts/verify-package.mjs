@@ -238,9 +238,11 @@ try {
     "run",
     "test:security-posture",
   ]);
-  runStep("security posture evidence report", npmCommand, [
+  runStep("security posture admission gate", npmCommand, [
     "run",
     "verify:security-posture",
+    "--",
+    "--admission",
   ]);
   runStep("workflow lint tests", npmCommand, [
     "run",

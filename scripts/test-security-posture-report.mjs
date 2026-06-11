@@ -1,9 +1,14 @@
 #!/usr/bin/env node
+import { spawnSync } from "node:child_process";
 import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { analyzeWorkflows, buildActionPinPolicy, classifyActionRef, detectWorkflowCommandWrites, resolveExceptionStatus } from "./security-posture-report.mjs";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 function assert(condition, message) {
   if (!condition) {
@@ -25,6 +30,18 @@ function makeFixture(files) {
     writeFileSync(path.join(workflowDir, name), content, "utf8");
   }
   return root;
+}
+
+function runSecurityPostureCli(root, ...args) {
+  return spawnSync(process.execPath, [
+    "scripts/security-posture-report.mjs",
+    "--root",
+    root,
+    ...args,
+  ], {
+    cwd: path.resolve(__dirname, ".."),
+    encoding: "utf8",
+  });
 }
 
 const tests = [
@@ -165,19 +182,14 @@ const tests = [
     },
   },
   {
-    name: "action pin policy: official major-tag action is needs-review not fail-block",
+    name: "action pin policy: registered official major-tag action is compliant for admission",
     run() {
-      // actions/checkout@v5 is a major-tag ref with no explicit exception
       const exceptionStatus = resolveExceptionStatus("actions/checkout", "v5", "major-tag");
-      assertEqual(
-        exceptionStatus,
-        "needs-review",
-        "major-tag without explicit exception should be needs-review, not fail-block",
-      );
+      assertEqual(exceptionStatus, "compliant", "registered major-tag should be compliant");
     },
   },
   {
-    name: "action pin policy: fixture workflow reports sha-pinned compliant and tag-ref needs-review",
+    name: "action pin policy: fixture workflow reports registered refs compliant and unregistered refs needs-review",
     run() {
       const root = makeFixture({
         "pintest.yml": [
@@ -189,7 +201,7 @@ const tests = [
           "    steps:",
           // SHA-pinned release-drafter (compliant per ledger)
           "      - uses: release-drafter/release-drafter@6db134d15f3909ccc9eefd369f02bd1e9cffdf97",
-          // major-tag official action (needs-review)
+          // registered official major-tag action (compliant per ledger)
           "      - uses: actions/checkout@v5",
           // version-tag third-party without exception (needs-review)
           "      - uses: some-third-party/action@v1.2.3",
@@ -199,11 +211,11 @@ const tests = [
         const report = analyzeWorkflows(root);
         const pol = report.actionPinPolicy;
         assert(pol !== undefined, "actionPinPolicy must be present in report");
-        assertEqual(pol.policy, "warning-first", "policy is warning-first");
+        assertEqual(pol.policy, "advisory-report-with-admission-fail", "policy includes admission fail mode");
         assertEqual(pol.summary.total, 3, "three pinnable action refs");
         assertEqual(pol.summary["sha-pinned"], 1, "one sha-pinned ref");
-        assertEqual(pol.summary.compliant, 1, "release-drafter SHA-pinned is compliant");
-        assertEqual(pol.summary["needs-review"], 2, "two needs-review refs (major-tag + version-tag)");
+        assertEqual(pol.summary.compliant, 2, "registered refs are compliant");
+        assertEqual(pol.summary["needs-review"], 1, "unregistered version-tag is needs-review");
 
         const rdFinding = pol.findings.find((f) => f.action === "release-drafter/release-drafter");
         assert(rdFinding !== undefined, "release-drafter finding present");
@@ -212,7 +224,7 @@ const tests = [
 
         const checkoutFinding = pol.findings.find((f) => f.action === "actions/checkout");
         assert(checkoutFinding !== undefined, "checkout finding present");
-        assertEqual(checkoutFinding.exceptionStatus, "needs-review", "checkout@v5 is needs-review");
+        assertEqual(checkoutFinding.exceptionStatus, "compliant", "checkout@v5 is registered compliant");
 
         const thirdPartyFinding = pol.findings.find((f) => f.action === "some-third-party/action");
         assert(thirdPartyFinding !== undefined, "third-party finding present");
@@ -220,8 +232,66 @@ const tests = [
 
         assert(pol.caveat.includes("immutability evidence"), "caveat mentions immutability evidence");
 
-        // Verify the report does not fail-block on needs-review (policy is warning-first)
-        assertEqual(pol.unregisteredTagRefPolicy, "needs-review", "unregistered tag refs policy is needs-review");
+        assertEqual(pol.unregisteredActionRefPolicy, "fail-in-admission", "unregistered refs fail admission");
+        assertEqual(pol.unregisteredTagRefPolicy, "needs-review", "unregistered tag refs remain advisory outside admission");
+      } finally {
+        rmSync(root, { recursive: true, force: true });
+      }
+    },
+  },
+
+  {
+    name: "admission mode passes a registered action-only fixture",
+    run() {
+      const root = makeFixture({
+        "ci.yml": [
+          "name: CI",
+          "on: [pull_request]",
+          "permissions:",
+          "  contents: read",
+          "jobs:",
+          "  test:",
+          "    runs-on: ubuntu-latest",
+          "    steps:",
+          "      - uses: actions/checkout@v5",
+        ].join("\n"),
+      });
+      try {
+        const result = runSecurityPostureCli(root, "--admission", "--json");
+        assertEqual(result.status, 0, `admission should pass: ${result.stderr}`);
+        const report = JSON.parse(result.stdout);
+        assertEqual(report.admission.passed, true, "admission report passed");
+        assertEqual(report.admission.findingCount, 0, "no admission findings");
+      } finally {
+        rmSync(root, { recursive: true, force: true });
+      }
+    },
+  },
+  {
+    name: "admission mode fails temporary evil.yml fixture",
+    run() {
+      const root = makeFixture({
+        "evil.yml": [
+          "name: Evil",
+          "on:",
+          "  pull_request_target:",
+          "permissions:",
+          "  contents: write",
+          "jobs:",
+          "  exploit:",
+          "    runs-on: ubuntu-latest",
+          "    steps:",
+          "      - uses: attacker/evil-action@v1",
+        ].join("\n"),
+      });
+      try {
+        const result = runSecurityPostureCli(root, "--admission", "--json");
+        assertEqual(result.status, 1, "admission should fail");
+        const report = JSON.parse(result.stdout);
+        assertEqual(report.admission.passed, false, "admission report failed");
+        assertEqual(report.admission.findings.unregisteredActionRefs.length, 1, "unregistered action finding");
+        assertEqual(report.admission.findings.unreportedWritePermissions.length, 1, "unreported write finding");
+        assertEqual(report.admission.findings.riskyTriggers.length, 1, "risky trigger finding");
       } finally {
         rmSync(root, { recursive: true, force: true });
       }
