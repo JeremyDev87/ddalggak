@@ -15,6 +15,8 @@ import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import process from "node:process";
 
+import { escapeRegExp } from "./lib/escape-regexp.mjs";
+
 const rootDir = process.cwd();
 const defaultFixturePath = path.join(
   rootDir,
@@ -1043,7 +1045,7 @@ function validateFixture(fixture) {
           if (fixtureText.includes(`"${pattern}"`)) {
             // Allow known non-value occurrences (e.g., pattern is listed as a key to check, not actual data)
             // Only flag if the pattern appears as a value string, not as a key or mustNotContain entry
-            const valuePattern = new RegExp(`:\\s*"[^"]*${pattern}[^"]*"`);
+            const valuePattern = new RegExp(`:\\s*"[^"]*${escapeRegExp(pattern)}[^"]*"`);
             if (valuePattern.test(fixtureText)) {
               failures.push(
                 `${scenarioName}: fixture state/expect contains raw/private payload pattern as value: ${pattern}`,

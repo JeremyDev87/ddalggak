@@ -16,6 +16,8 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 
+import { escapeRegExp } from "./lib/escape-regexp.mjs";
+
 const rootDir = process.cwd();
 
 const TEMPLATE_DIR = path.join(rootDir, ".github", "ISSUE_TEMPLATE");
@@ -75,7 +77,7 @@ for (const formFile of allYamls) {
   // Check required field ids
   for (const fieldId of REQUIRED_FIELD_IDS) {
     // Match `id: fieldId` with surrounding whitespace/newline
-    const pattern = new RegExp(`\\bid:\\s*${fieldId}\\b`);
+    const pattern = new RegExp(`\\bid:\\s*${escapeRegExp(fieldId)}\\b`);
     if (!pattern.test(content)) {
       fail(`${formFile}: missing required field id "${fieldId}"`);
     } else {

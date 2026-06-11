@@ -1,0 +1,9 @@
+command: start
+show_doc_heading: "Start Workflow"
+source_edit_allowed: true
+required_references:
+  - start-workflow.md
+required_templates: []
+output_contract:
+  completion_signal:
+    nested: unsupported

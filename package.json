@@ -27,6 +27,7 @@
     "test:pr-status-evidence": "node scripts/test-pr-status-evidence-report.mjs",
     "verify:workflow-boundary": "node scripts/workflow-boundary-inventory.mjs",
     "verify:issue-forms": "node scripts/verify-issue-forms.mjs",
+    "test:verify-robustness": "node scripts/test-verify-robustness.mjs",
     "test:verify-package": "node scripts/test-verify-package.mjs",
     "test:issue-forms": "node scripts/test-verify-issue-forms.mjs",
     "test:workflow-boundary": "node scripts/test-workflow-boundary-inventory.mjs",

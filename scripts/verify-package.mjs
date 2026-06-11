@@ -211,6 +211,10 @@ try {
   runStep("npm test", npmCommand, ["test"]);
   runStep("codex skill verifier", npmCommand, ["run", "verify:codex-skill"]);
   runStep("projection verifier", npmCommand, ["run", "verify:projections"]);
+  runStep("verification robustness regression tests", npmCommand, [
+    "run",
+    "test:verify-robustness",
+  ]);
   runStep("runtime asset generated-block drift check", process.execPath, [
     "scripts/project-runtime-assets.mjs",
     "--check",
