@@ -63,8 +63,6 @@ parity_ledger:
     class: may-localize
   - path: references/merge-cleanup.md
     class: may-localize
-  - path: references/naming-rules.md
-    class: may-localize
   - path: references/plan-to-issues.md
     class: may-localize
   - path: references/pr-check-evidence-bundle.md
