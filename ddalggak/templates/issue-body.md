@@ -2,6 +2,7 @@
 
 <!-- Field alignment: matches .github/ISSUE_TEMPLATE/ddalggak-issue.yml form ids -->
 <!-- goal | source_of_truth | scope | owned_files | validation | blockers -->
+<!-- Worker brief mapping: references/start-workflow.md "Issue Body → Worker Brief 필드 매핑" -->
 
 ## 목적 / 문제
 <!-- form id: goal (required) -->
