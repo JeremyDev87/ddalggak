@@ -99,6 +99,8 @@ These are budget targets, not permission to delete guardrails. Routing, source-e
 
 Per-subcommand effective load (`ddalggak/SKILL.md` + required references + required templates, estimated tokens = bytes / 4) is measured against the budgets declared in `core/projections.yaml` `subcommand_token_budgets`. Inside `npm run verify` the token budget step runs `node scripts/project-runtime-assets.mjs --report --admission` as an admission gate: any over-budget or missing-budget subcommand fails verify (exit 1). Running `node scripts/project-runtime-assets.mjs --report` on its own remains advisory and reports without failing.
 
+Budget changes ship in a separate PR: a PR that changes the `subcommand_token_budgets` block must not also change measured skill content (`ddalggak/**`, `.codex/**`, `core/commands/**`), because raising the budget inside the same PR that grows the content would neutralize the admission gate's ratchet. Budget-only PRs, content-only PRs, and calibration PRs (budget plus non-measured files such as the estimation formula) are all allowed. CI enforces this on pull requests with `node scripts/check-budget-isolation.mjs --base <ref> --head <ref>`, which compares parsed budget values at the merge-base and head, so changes to other `core/projections.yaml` blocks or comment-only edits never count as budget changes.
+
 ## Claude Code Legacy
 
 The legacy CLI bridge builds `/ddalggak <subcommand>` slash commands for Claude Code. From a source checkout, run the CLI directly with Node.js:
