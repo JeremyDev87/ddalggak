@@ -23,3 +23,22 @@ Use this when `start` needs full issue implementation detail beyond the hot path
 - Frontend Design Gate only for UI/frontend work
 - Vercel Agent Skills Gate only for React/Vercel/mobile/motion work
 - Continuous Regression Library only for known/repeated Medium/High risks
+
+## Issue body → worker brief field mapping
+
+When converting an issue body (`templates/issue-body.md`, keyed by GitHub issue form ids) into a worker brief (`templates/worker-brief.md`), follow this table. Ad-hoc reinterpretation outside the table is forbidden.
+
+| Issue body section (form id) | Worker brief field | Default when missing |
+|---|---|---|
+| 목적 / 문제 (`goal`) | Task → Goal, Expected outcome | required — halt conversion and confirm with the conductor |
+| 원본 근거 / Source of Truth (`source_of_truth`) | Context Assembly Manifest → Issue body/comments, Required references | required — halt conversion and confirm with the conductor |
+| 범위 / Non-Goals (`scope`) | Task → Goal scope bounds; Non-Goals go to Task Scope Contract → Forbidden files/actions | required — halt conversion and confirm with the conductor |
+| 파일 소유권 / Must-not-touch (`owned_files`) | Task Scope Contract → Authorized files (change table), Forbidden files/actions (Must-not-touch) | mark `미지정 — conductor가 보강` |
+| 완료 기준 / 검증 · Evidence (`validation`) | Task Scope Contract → Validation commands, Completion evidence; Evidence Contract → Required evidence | mark `미지정 — conductor가 보강`, then record it under Evidence Contract → Blocking evidence gaps |
+| Blockers / Unknowns (`blockers`) | Context Assembly Manifest → Assumptions / known blockers | mark `미지정 — 없음으로 단정하지 않음` |
+
+Rules for unmappable or missing fields:
+- If a required field (`goal`/`source_of_truth`/`scope`) is missing, `start` must not improvise a substitute. Halt the conversion and confirm with the conductor or the user.
+- If an optional field is missing, write the table's default marker verbatim into the worker brief field. Never leave it blank or omit it (blocks implicit "none" interpretation).
+- Worker brief fields absent from the table (Quality Lens Router Output, the remaining Evidence Contract items, Completion Signal) are produced by `start`'s own gates, not taken from the issue body.
+- Non-form sections: the issue body's Wiki Context Manifest is auxiliary input for Context Assembly Manifest → Required references. Owned files / Must not touch under 병렬 실행 메모 are auxiliary signals for the `owned_files` table; on conflict, the `owned_files` table wins.
