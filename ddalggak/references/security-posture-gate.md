@@ -9,7 +9,7 @@ Do not use when: the task is only an application code change with no workflow, p
 
 The security posture gate records file-based evidence about the repository's GitHub Actions posture. It complements, but does not replace, release provenance and external repository settings review.
 
-The gate must not overclaim safety. A green local report means only that the scanner completed and recorded its inventory. It is not approval to run hooks, MCP servers, install scripts, repository settings changes, or credentialed operations.
+The gate must not overclaim safety. A green local report means only that the scanner completed and recorded its inventory, and a green admission run means the configured file-based admission checks found no unregistered deltas. It is not approval to run hooks, MCP servers, install scripts, repository settings changes, or credentialed operations.
 
 ## Evidence surfaces
 
@@ -34,10 +34,21 @@ The gate must not overclaim safety. A green local report means only that the sca
 ```bash
 npm run verify:security-posture
 npm run verify:security-posture -- --json
+npm run verify:security-posture -- --admission
 npm run test:security-posture
 ```
 
-`npm run verify` includes this evidence gate so package verification records the current posture inventory.
+`npm run verify` includes this gate in admission/fail mode so package verification fails on unregistered action refs, unreported write permissions, or risky triggers.
+
+## Admission/fail policy
+
+Normal report mode remains an evidence report. Admission mode (`--admission`, also accepted as `--fail` or `--fail-on-findings`) exits non-zero when any of these are present:
+
+- A reusable action ref that is not explicitly registered in `ACTION_PIN_EXCEPTION_LEDGER` by exact `action` + `currentRef`.
+- A `write` permission entry that is not explicitly registered in `WRITE_PERMISSION_EXCEPTION_LEDGER`.
+- A risky trigger such as `pull_request_target` that is not explicitly registered in `RISKY_TRIGGER_EXCEPTION_LEDGER`.
+
+Current workflows are the baseline and must stay green without changing `.github/workflows/*.yml`. If a workflow change intentionally introduces one of these findings, the same change must add the narrow ledger registration with a rationale and review/update expectation. Otherwise admission mode must fail.
 
 ## Action pinning policy
 
@@ -58,9 +69,9 @@ The gate tracks three distinct concerns for action references:
 | `local-or-docker` | `./` relative or `docker://` — local action or Docker image |
 | `missing-ref` | No `@ref` present — inventory gap |
 
-### Policy: warning-first
+### Policy: admission-fail for unregistered refs
 
-The default policy is **warning-first**: tag refs (`version-tag`, `major-tag`) without an explicit exception are reported as `needs-review`, not as a fail-block. This avoids over-claiming that official GitHub-maintained actions (`actions/*`) are unsafe simply because they use major-tag refs.
+The default policy is **advisory report with admission fail**: normal report mode still labels unregistered tag refs (`version-tag`, `major-tag`) as `needs-review`, but admission mode fails on any action ref that is not registered by exact action/ref. This avoids over-claiming that official GitHub-maintained actions (`actions/*`) are unsafe while still preventing silent workflow authority expansion.
 
 To convert a finding from `needs-review` to `compliant`, register it in the `ACTION_PIN_EXCEPTION_LEDGER` in `scripts/security-posture-report.mjs` with:
 - `action` — full `owner/repo` name
@@ -73,9 +84,18 @@ To convert a finding from `needs-review` to `compliant`, register it in the `ACT
 
 | action | currentRef | pinClass | reason | status |
 |---|---|---|---|---|
+| `actions/checkout` | `93cb6efe18208431cddfb8368fd83d5badbf9bfd` | `sha-pinned` | Current baseline CI/security checkout pin | compliant |
+| `actions/setup-node` | `48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e` | `sha-pinned` | Current baseline CI checkout pin | compliant |
+| `github/codeql-action/init` | `8aad20d150bbac5944a9f9d289da16a4b0d87c1e` | `sha-pinned` | Current baseline CodeQL init pin | compliant |
+| `github/codeql-action/analyze` | `8aad20d150bbac5944a9f9d289da16a4b0d87c1e` | `sha-pinned` | Current baseline CodeQL analyze pin | compliant |
+| `actions/dependency-review-action` | `a1d282b36b6f3519aa1f3fc636f609c47dddb294` | `sha-pinned` | Current baseline Dependency Review pin | compliant |
 | `release-drafter/release-drafter` | `6db134d15f3909ccc9eefd369f02bd1e9cffdf97` | `sha-pinned` | Third-party; already SHA-pinned | compliant |
+| `actions/checkout` | `v5` | `major-tag` | Official GitHub-maintained action used by current baseline workflows | compliant |
+| `actions/setup-node` | `v6` | `major-tag` | Official GitHub-maintained action used by current baseline workflows | compliant |
+| `actions/upload-artifact` | `v4` | `major-tag` | Official GitHub-maintained action used by current baseline release workflow | compliant |
+| `actions/download-artifact` | `v5` | `major-tag` | Official GitHub-maintained action used by current baseline release workflow | compliant |
 
-All other action refs in `.github/workflows/*.yml` use major-tag or version-tag refs for official GitHub-maintained actions. These are reported as `needs-review` and may be registered as explicit exceptions with update cadence notes in a future issue.
+Unregistered action refs in `.github/workflows/*.yml` are admission failures. Register current or intentional exceptions with narrow rationale; do not weaken the fail mode.
 
 ### SHA pinning caveat
 
@@ -84,7 +104,7 @@ SHA pinning provides **immutability evidence**, not semantic safety. A SHA-pinne
 - May still contain unsafe code at that commit (semantic safety, out of scope here)
 - Should be reviewed before pinning, not assumed safe after pinning
 
-This gate does not claim that official GitHub-maintained actions (`actions/checkout`, `actions/setup-node`, etc.) are unsafe. Their tag refs are listed as `needs-review` because they lack registered explicit exceptions, not because they are known to be harmful.
+This gate does not claim that official GitHub-maintained actions (`actions/checkout`, `actions/setup-node`, etc.) are unsafe. Current baseline tag refs are explicit `compliant` admission exceptions in the ledger above; new unregistered tag refs remain review/admission findings until they are registered with narrow rationale.
 
 ### Separation from release provenance
 
@@ -174,5 +194,5 @@ Static lint green does **not** imply semantic safety, secret safety, or provenan
 - If a PR changes workflows, does it explain whether posture findings are in scope or intentionally deferred?
 - If a PR changes the release workflow, do the tarball checksum chain (pack-time sha256 output → publish-time comparison) and the publish-context re-verify step remain intact?
 - Is `release-drafter/release-drafter@6db134d15f3909ccc9eefd369f02bd1e9cffdf97` still recognized as `sha-pinned` and `compliant`?
-- Are `actions/checkout@v5` and similar official major-tag refs showing as `needs-review` (not fail-block)?
+- Are `actions/checkout@v5` and similar current official major-tag refs registered as compliant, while new unregistered refs fail admission mode?
 - Does the `actionPinPolicy.caveat` field distinguish immutability evidence from semantic safety?

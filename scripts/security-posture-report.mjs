@@ -35,6 +35,7 @@ function parseArgs(argv) {
   const options = {
     format: "markdown",
     rootDir: defaultRoot,
+    admission: false,
   };
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -43,6 +44,8 @@ function parseArgs(argv) {
       options.format = "json";
     } else if (arg === "--markdown") {
       options.format = "markdown";
+    } else if (arg === "--admission" || arg === "--fail" || arg === "--fail-on-findings") {
+      options.admission = true;
     } else if (arg === "--root") {
       const value = argv[index + 1];
       if (!value) {
@@ -138,13 +141,48 @@ function classifyActionRef(ref) {
   return "branch-or-floating";
 }
 
-// Exception ledger: explicit exceptions + policy for unregistered tag refs.
-// Entries in explicitExceptions are keyed by action name (without ref).
-// "sha-pinned" entries are compliant by definition.
-// "warning-first" policy: tag refs are needs-review, not fail-block.
+// Exception ledger: explicit baseline registrations + policy for unregistered refs.
+// Entries are keyed by action name + currentRef so admission mode can fail on
+// newly introduced action refs without editing workflow YAML.
+// "sha-pinned" entries provide immutability evidence only, not semantic safety.
 const ACTION_PIN_EXCEPTION_LEDGER = {
-  policy: "warning-first",
+  policy: "advisory-report-with-admission-fail",
   explicitExceptions: [
+    {
+      action: "actions/checkout",
+      currentRef: "93cb6efe18208431cddfb8368fd83d5badbf9bfd",
+      pinClass: "sha-pinned",
+      reason: "Current baseline CI/security checkout pin; reviewed as existing workflow admission exception",
+      status: "compliant",
+    },
+    {
+      action: "actions/setup-node",
+      currentRef: "48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e",
+      pinClass: "sha-pinned",
+      reason: "Current baseline CI checkout pin; reviewed as existing workflow admission exception",
+      status: "compliant",
+    },
+    {
+      action: "github/codeql-action/init",
+      currentRef: "8aad20d150bbac5944a9f9d289da16a4b0d87c1e",
+      pinClass: "sha-pinned",
+      reason: "Current baseline CodeQL init pin; reviewed as existing workflow admission exception",
+      status: "compliant",
+    },
+    {
+      action: "github/codeql-action/analyze",
+      currentRef: "8aad20d150bbac5944a9f9d289da16a4b0d87c1e",
+      pinClass: "sha-pinned",
+      reason: "Current baseline CodeQL analyze pin; reviewed as existing workflow admission exception",
+      status: "compliant",
+    },
+    {
+      action: "actions/dependency-review-action",
+      currentRef: "a1d282b36b6f3519aa1f3fc636f609c47dddb294",
+      pinClass: "sha-pinned",
+      reason: "Current baseline dependency-review pin; reviewed as existing workflow admission exception",
+      status: "compliant",
+    },
     {
       action: "release-drafter/release-drafter",
       currentRef: "6db134d15f3909ccc9eefd369f02bd1e9cffdf97",
@@ -152,9 +190,56 @@ const ACTION_PIN_EXCEPTION_LEDGER = {
       reason: "Third-party; already SHA-pinned",
       status: "compliant",
     },
+    {
+      action: "actions/checkout",
+      currentRef: "v5",
+      pinClass: "major-tag",
+      reason: "Official GitHub-maintained action used by current baseline workflows; accepted as registered admission exception",
+      status: "compliant",
+    },
+    {
+      action: "actions/setup-node",
+      currentRef: "v6",
+      pinClass: "major-tag",
+      reason: "Official GitHub-maintained action used by current baseline workflows; accepted as registered admission exception",
+      status: "compliant",
+    },
+    {
+      action: "actions/upload-artifact",
+      currentRef: "v4",
+      pinClass: "major-tag",
+      reason: "Official GitHub-maintained action used by current baseline release workflow; accepted as registered admission exception",
+      status: "compliant",
+    },
+    {
+      action: "actions/download-artifact",
+      currentRef: "v5",
+      pinClass: "major-tag",
+      reason: "Official GitHub-maintained action used by current baseline release workflow; accepted as registered admission exception",
+      status: "compliant",
+    },
   ],
+  unregisteredActionRefs: "fail-in-admission",
   unregisteredTagRefs: "needs-review",
 };
+
+const WRITE_PERMISSION_EXCEPTION_LEDGER = [
+  { workflow: ".github/workflows/codeql.yml", scope: "nested", permission: "security-events: write", reason: "CodeQL SARIF upload requires security-events write" },
+  { workflow: ".github/workflows/manual-release-bump.yml", scope: "workflow", permission: "contents: write", reason: "Manual release bump creates release/version branch commits" },
+  { workflow: ".github/workflows/manual-release-bump.yml", scope: "workflow", permission: "issues: write", reason: "Manual release bump comments status on the source issue" },
+  { workflow: ".github/workflows/manual-release-bump.yml", scope: "workflow", permission: "pull-requests: write", reason: "Manual release bump opens or updates release bump pull requests" },
+  { workflow: ".github/workflows/release-drafter.yml", scope: "workflow", permission: "contents: write", reason: "Release Drafter maintains draft release notes" },
+  { workflow: ".github/workflows/release-drafter.yml", scope: "workflow", permission: "pull-requests: write", reason: "Release Drafter reads and labels pull request metadata" },
+  { workflow: ".github/workflows/release.yml", scope: "nested", permission: "id-token: write", reason: "Trusted publishing/provenance token for npm publish job" },
+];
+
+const RISKY_TRIGGER_EXCEPTION_LEDGER = [];
+
+function findActionException(actionName, ref) {
+  return ACTION_PIN_EXCEPTION_LEDGER.explicitExceptions.find(
+    (entry) => entry.action === actionName && entry.currentRef === ref,
+  );
+}
 
 function resolveExceptionStatus(actionName, ref, pinClass) {
   if (pinClass === "local-or-docker") {
@@ -164,16 +249,11 @@ function resolveExceptionStatus(actionName, ref, pinClass) {
     return "missing-ref";
   }
   if (pinClass === "sha-pinned") {
-    // Check if it matches a registered explicit exception
-    const match = ACTION_PIN_EXCEPTION_LEDGER.explicitExceptions.find(
-      (entry) => entry.action === actionName && entry.currentRef === ref,
-    );
+    const match = findActionException(actionName, ref);
     return match ? match.status : "sha-pinned";
   }
   // For tag refs (version-tag, major-tag) or branch-or-floating:
-  const match = ACTION_PIN_EXCEPTION_LEDGER.explicitExceptions.find(
-    (entry) => entry.action === actionName,
-  );
+  const match = findActionException(actionName, ref);
   if (match) {
     return match.status;
   }
@@ -205,6 +285,7 @@ function buildActionPinPolicy(workflows) {
 
   return {
     policy: ACTION_PIN_EXCEPTION_LEDGER.policy,
+    unregisteredActionRefPolicy: ACTION_PIN_EXCEPTION_LEDGER.unregisteredActionRefs,
     unregisteredTagRefPolicy: ACTION_PIN_EXCEPTION_LEDGER.unregisteredTagRefs,
     summary: {
       total: findings.length,
@@ -213,7 +294,7 @@ function buildActionPinPolicy(workflows) {
       "needs-review": needsReviewCount,
     },
     caveat:
-      "SHA pinning provides immutability evidence (the ref cannot be repointed after pin), not semantic safety. A SHA-pinned action may still contain unsafe code. Official GitHub-maintained actions (actions/*) are not inherently unsafe because they use major-tag refs; they are listed here as needs-review pending explicit exception registration.",
+      "SHA pinning provides immutability evidence (the ref cannot be repointed after pin), not semantic safety. A SHA-pinned action may still contain unsafe code. Official GitHub-maintained actions (actions/*) are not inherently unsafe because they use major-tag refs; current baseline refs are explicit admission exceptions, while unregistered refs remain needs-review in advisory mode and fail in admission mode.",
     findings,
   };
 }
@@ -361,6 +442,100 @@ function detectWorkflowCommandWrites(lines) {
   return findings;
 }
 
+
+function isWritePermissionEntry(text) {
+  return /(^|[,{}\s])[-A-Za-z0-9]+\s*:\s*write\b/.test(text) || /\bwrite-all\b/.test(text);
+}
+
+function findWritePermissionException(workflow, block, entry) {
+  return WRITE_PERMISSION_EXCEPTION_LEDGER.find(
+    (item) => item.workflow === workflow.path
+      && item.scope === block.scope
+      && item.permission === entry.text,
+  );
+}
+
+function detectRiskyTriggers(lines) {
+  const findings = [];
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = stripComment(lines[index]);
+    if (/\bpull_request_target\s*:?(?:\s|$)/.test(line)) {
+      findings.push({ line: index + 1, trigger: "pull_request_target", snippet: line.trim() });
+    }
+  }
+  return findings;
+}
+
+function evaluateAdmission(report) {
+  const unregisteredActionRefs = [];
+  const unreportedWritePermissions = [];
+  const riskyTriggers = [];
+
+  for (const workflow of report.workflows) {
+    for (const action of workflow.actions) {
+      if (action.pin === "local-or-docker") {
+        continue;
+      }
+      const registered = action.ref ? findActionException(action.name, action.ref) : null;
+      if (!registered) {
+        unregisteredActionRefs.push({
+          workflow: workflow.path,
+          line: action.line,
+          action: action.name,
+          ref: action.ref,
+          pinClass: action.pin,
+        });
+      }
+    }
+
+    for (const block of workflow.permissions) {
+      for (const entry of block.entries) {
+        if (!isWritePermissionEntry(entry.text)) {
+          continue;
+        }
+        const registered = findWritePermissionException(workflow, block, entry);
+        if (!registered) {
+          unreportedWritePermissions.push({
+            workflow: workflow.path,
+            line: entry.line,
+            scope: block.scope,
+            permission: entry.text,
+          });
+        }
+      }
+    }
+
+    for (const trigger of workflow.riskyTriggers) {
+      const registered = RISKY_TRIGGER_EXCEPTION_LEDGER.find(
+        (item) => item.workflow === workflow.path && item.trigger === trigger.trigger,
+      );
+      if (!registered) {
+        riskyTriggers.push({ workflow: workflow.path, ...trigger });
+      }
+    }
+  }
+
+  const findingCount = unregisteredActionRefs.length
+    + unreportedWritePermissions.length
+    + riskyTriggers.length;
+
+  return {
+    mode: "fail",
+    passed: findingCount === 0,
+    findingCount,
+    policy: {
+      unregisteredActionRefs: "fail",
+      unreportedWritePermissions: "fail",
+      riskyTriggers: "fail",
+    },
+    findings: {
+      unregisteredActionRefs,
+      unreportedWritePermissions,
+      riskyTriggers,
+    },
+  };
+}
+
 function detectSecurityScans(text) {
   return Object.fromEntries(
     Object.entries(SECURITY_SCAN_PATTERNS).map(([name, patterns]) => [
@@ -403,6 +578,7 @@ function analyzeWorkflows(rootDir = defaultRoot) {
       untrustedShellInterpolations: detectUntrustedInterpolations(lines),
       securityScans: detectSecurityScans(text),
       workflowCommandWrites: commandWrites,
+      riskyTriggers: detectRiskyTriggers(lines),
     };
   });
 
@@ -410,7 +586,7 @@ function analyzeWorkflows(rootDir = defaultRoot) {
     workflow.workflowCommandWrites.map((write) => ({ workflow: workflow.path, ...write })),
   );
 
-  return {
+  const report = {
     rootDir,
     workflowDir: path.relative(rootDir, workflowDir).split(path.sep).join("/"),
     workflowCount: workflows.length,
@@ -428,9 +604,11 @@ function analyzeWorkflows(rootDir = defaultRoot) {
       "Repository settings, branch protection, environments, and secret values are outside file-based evidence.",
       "Missing official Scorecard/CodeQL/Dependency Review evidence is reported separately from local static inventory.",
       "workflowCommandWrites is a static line-level inventory. Environment-file channel transition reduces deprecated stdout command-injection class but does not eliminate downstream authority risks from untrusted values.",
-      "actionPinPolicy findings: sha-pinned = immutability evidence only, not semantic safety. needs-review = tag ref without explicit exception registration; not a fail-block under warning-first policy.",
+      "actionPinPolicy findings: sha-pinned = immutability evidence only, not semantic safety. needs-review = tag ref without explicit exception registration in advisory mode; unregistered refs fail in admission mode.",
     ],
   };
+  report.admission = evaluateAdmission(report);
+  return report;
 }
 
 function formatPermissions(blocks) {
@@ -457,6 +635,9 @@ function formatMarkdown(report) {
   if (report.actionPinPolicy) {
     const pol = report.actionPinPolicy;
     lines.push(`- action pin policy: ${pol.policy} | total=${pol.summary.total} sha-pinned=${pol.summary["sha-pinned"]} compliant=${pol.summary.compliant} needs-review=${pol.summary["needs-review"]}`);
+  }
+  if (report.admission) {
+    lines.push(`- admission gate: ${report.admission.passed ? "pass" : "fail"} | findings=${report.admission.findingCount}`);
   }
   lines.push("");
   lines.push("## Caveats");
@@ -496,7 +677,8 @@ function formatMarkdown(report) {
   if (report.actionPinPolicy && report.actionPinPolicy.findings.length > 0) {
     const pol = report.actionPinPolicy;
     lines.push(`- policy: ${pol.policy}`);
-    lines.push(`- unregistered tag ref policy: ${pol.unregisteredTagRefPolicy}`);
+    lines.push(`- unregistered action ref admission policy: ${pol.unregisteredActionRefPolicy}`);
+    lines.push(`- unregistered tag ref advisory policy: ${pol.unregisteredTagRefPolicy}`);
     lines.push(`- caveat: ${pol.caveat}`);
     lines.push("");
     lines.push("| workflow | line | action | ref | pinClass | exceptionStatus |");
@@ -510,6 +692,16 @@ function formatMarkdown(report) {
     lines.push("- no pinnable action refs detected");
   }
   lines.push("");
+  lines.push("## Admission gate");
+  if (report.admission.passed) {
+    lines.push("- pass: no unregistered action refs, unreported write permissions, or risky triggers detected");
+  } else {
+    lines.push(`- fail findings: ${report.admission.findingCount}`);
+    lines.push(`  - unregistered action refs: ${report.admission.findings.unregisteredActionRefs.length}`);
+    lines.push(`  - unreported write permissions: ${report.admission.findings.unreportedWritePermissions.length}`);
+    lines.push(`  - risky triggers: ${report.admission.findings.riskyTriggers.length}`);
+  }
+  lines.push("");
   lines.push("## Workflow inventory");
   for (const workflow of report.workflows) {
     lines.push(`### ${workflow.path}`);
@@ -518,6 +710,14 @@ function formatMarkdown(report) {
       ? "    - actions: none"
       : workflow.actions.map((action) => `    - line ${action.line}: ${action.spec} (${action.pin})`).join("\n");
     lines.push(actionSummary);
+    if (workflow.riskyTriggers.length === 0) {
+      lines.push("    - risky triggers: none");
+    } else {
+      lines.push("    - risky triggers:");
+      for (const trigger of workflow.riskyTriggers) {
+        lines.push(`      - line ${trigger.line}: ${trigger.trigger}`);
+      }
+    }
     if (workflow.untrustedShellInterpolations.length === 0) {
       lines.push("    - untrusted shell interpolation candidates: none");
     } else {
@@ -539,6 +739,10 @@ function main() {
   } else {
     process.stdout.write(formatMarkdown(report));
   }
+  if (options.admission && !report.admission.passed) {
+    console.error(`[security-posture-report] admission gate failed with ${report.admission.findingCount} finding(s)`);
+    process.exitCode = 1;
+  }
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === __filename) {
@@ -550,4 +754,4 @@ if (process.argv[1] && path.resolve(process.argv[1]) === __filename) {
   }
 }
 
-export { analyzeWorkflows, buildActionPinPolicy, classifyActionRef, detectUntrustedInterpolations, detectWorkflowCommandWrites, formatMarkdown, resolveExceptionStatus };
+export { analyzeWorkflows, buildActionPinPolicy, classifyActionRef, detectRiskyTriggers, detectUntrustedInterpolations, detectWorkflowCommandWrites, evaluateAdmission, formatMarkdown, resolveExceptionStatus };
