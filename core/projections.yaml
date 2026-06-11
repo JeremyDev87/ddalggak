@@ -131,3 +131,22 @@ parity_ledger:
     class: must-match
   - path: templates/worker-brief.md
     class: must-match
+# Soft per-subcommand effective-load budgets in estimated tokens.
+# Effective load = ddalggak/SKILL.md + required_references + required_templates
+# bytes; estimated tokens = ceil(bytes / 4). Measured by
+# scripts/project-runtime-assets.mjs --report; exceeding a budget emits a
+# warning only (fail promotion is deferred until after operation, see #224).
+# Initial values: 2026-06-11 measurement + 25% headroom, rounded up to 500.
+subcommand_token_budgets:
+  start: 19500
+  review: 20000
+  status: 8000
+  plan: 18500
+  issue: 8000
+  clean: 7500
+  ship: 7500
+  retro: 9500
+  prompt: 9000
+  check: 7500
+  getwiki: 10000
+  setwiki: 10000
