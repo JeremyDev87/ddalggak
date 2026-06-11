@@ -9,6 +9,7 @@ stop_condition: "Stop after reusable lessons are separated from transient incide
 required_references:
   - retrospective.md
   - retrospective-workflow.md
+  - wiki-growth-triage.md
 
 required_templates:
   []

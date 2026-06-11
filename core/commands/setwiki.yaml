@@ -9,6 +9,7 @@ stop_condition: "Stop at review-only plan unless explicit approval is present; t
 required_references:
   - wiki-bridge.md
   - 2026-06-04-brain-v0-wiki-authority-in-ddalggak.md
+  - wiki-growth-triage.md
 
 required_templates: []
 

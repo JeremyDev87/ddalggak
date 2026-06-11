@@ -61,6 +61,8 @@ Use this structure:
 
 ## Storage and reporting
 
+Before classifying any lesson as a memory or wiki candidate, load `references/wiki-growth-triage.md` and apply its triage criteria: assign each lesson to exactly one primary classification lane (immediate guardrail / reference-template / verifier-script / GitHub issue / defer-reject) and run the getwiki deduplication check before proposing it as a memory artifact or a setwiki bridge candidate.
+
 Default path:
 
 ```text
