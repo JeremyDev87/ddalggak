@@ -190,6 +190,91 @@ function writeDoctorFixture() {
   return fixtureRoot;
 }
 
+function writeSessionStateFixture(content) {
+  const workspaceRoot = makeTempHome();
+  mkdirSync(path.join(workspaceRoot, ".ddalggak"), { recursive: true });
+  writeFileSync(
+    path.join(workspaceRoot, ".ddalggak", "session-state.json"),
+    content,
+    "utf8",
+  );
+  return workspaceRoot;
+}
+
+function validSessionState(overrides = {}) {
+  return {
+    schema: "ddalggak-session-state/v1",
+    updated_at: new Date().toISOString(),
+    phase: "wave-1",
+    repo: "JeremyDev87/ddalggak",
+    base_branch: "master",
+    lanes: [
+      {
+        lane_id: "lane-223",
+        state: "pr_opened",
+        issue: {
+          number: 223,
+          url: "https://github.com/JeremyDev87/ddalggak/issues/223",
+          title: "session state schema",
+        },
+        branch: {
+          name: "feat/session-state-schema",
+          worktree: "/tmp/ddalggak-wt-223",
+          base_sha: "0551c0d",
+          head_sha: "abc1234",
+        },
+        pull_request: {
+          url: "https://github.com/JeremyDev87/ddalggak/pull/1",
+          number: 1,
+          is_draft: true,
+          base_ref: "master",
+          head_ref: "feat/session-state-schema",
+        },
+        validation: {
+          commands: [
+            { command: "npm test", result: "passed", evidence: "smoke green" },
+          ],
+          blocking_gaps: [],
+        },
+        review: {
+          required_for_head_sha: "abc1234",
+          latest_conclusion: "pending",
+          conclusion_head_sha: "",
+          comment_url: "",
+          stale_reason: "",
+        },
+        next_gate: {
+          owner: "human",
+          action: "merge the PR",
+          command: "",
+          exit_condition: "PR merged",
+        },
+      },
+    ],
+    validation_evidence: ["npm test green"],
+    blocking_gaps: [],
+    waiting_on: "human review",
+    next_gate: {
+      owner: "human",
+      action: "review the open PR",
+      command: "",
+      exit_condition: "review conclusion posted",
+    },
+    ...overrides,
+  };
+}
+
+function runStatusWithSessionState(workspaceRoot) {
+  const result = runCli(["status", "--local", "--json"], {
+    env: {
+      CLAUDE_HOME: makeTempHome(),
+      DDALGGAK_WORKSPACE_ROOT: workspaceRoot,
+    },
+  });
+  assertExit(result, 0);
+  return parseJsonStdout(result);
+}
+
 const cases = [
   {
     name: "--version prints package version",
@@ -1182,6 +1267,139 @@ const cases = [
       ]);
       assertExit(missingRoot, 2);
       assertIncludes(missingRoot.stderr, "not a directory", "stderr");
+    },
+  },
+  {
+    name: "status --local --json reports absent session state",
+    run() {
+      const workspaceRoot = makeTempHome();
+      const status = runStatusWithSessionState(workspaceRoot);
+      assert(
+        status.sessionState.status === "absent",
+        `expected absent session state, got ${status.sessionState.status}`,
+      );
+      assert(
+        status.sessionState.path ===
+          path.join(workspaceRoot, ".ddalggak", "session-state.json"),
+        `expected session state path under workspace root, got ${status.sessionState.path}`,
+      );
+      assert(
+        status.sessionState.violations.length === 0,
+        "expected no violations for absent session state",
+      );
+    },
+  },
+  {
+    name: "status --local --json reports valid session state evidence",
+    run() {
+      const workspaceRoot = writeSessionStateFixture(
+        `${JSON.stringify(validSessionState(), null, 2)}\n`,
+      );
+      const status = runStatusWithSessionState(workspaceRoot);
+      assert(
+        status.sessionState.status === "valid",
+        `expected valid session state, got ${status.sessionState.status}\nviolations:\n${status.sessionState.violations.join("\n")}`,
+      );
+      assert(
+        status.sessionState.violations.length === 0,
+        "expected no violations for valid session state",
+      );
+      assert(
+        typeof status.sessionState.ageHours === "number" &&
+          status.sessionState.ageHours >= 0 &&
+          status.sessionState.ageHours <
+            status.sessionState.staleAfterHours,
+        `expected fresh ageHours, got ${status.sessionState.ageHours}`,
+      );
+      assertIncludes(
+        status.sessionState.action,
+        "fresh enough to trust",
+        "session state action",
+      );
+    },
+  },
+  {
+    name: "status --local --json reports malformed session state file",
+    run() {
+      const workspaceRoot = writeSessionStateFixture("{not json\n");
+      const status = runStatusWithSessionState(workspaceRoot);
+      assert(
+        status.sessionState.status === "malformed",
+        `expected malformed session state, got ${status.sessionState.status}`,
+      );
+      assert(
+        status.sessionState.violations.length > 0,
+        "expected parse error evidence for malformed session state",
+      );
+      assertIncludes(
+        status.sessionState.action,
+        "valid JSON",
+        "session state action",
+      );
+    },
+  },
+  {
+    name: "status --local --json reports schema-invalid session state without touching skill state",
+    run() {
+      const broken = validSessionState();
+      delete broken.phase;
+      broken.lanes[0].state = "warp-speed";
+      const workspaceRoot = writeSessionStateFixture(
+        `${JSON.stringify(broken, null, 2)}\n`,
+      );
+      const status = runStatusWithSessionState(workspaceRoot);
+      assert(
+        status.sessionState.status === "invalid",
+        `expected invalid session state, got ${status.sessionState.status}`,
+      );
+      assert(
+        status.sessionState.violations.some((violation) =>
+          violation.includes('missing required field "phase"'),
+        ),
+        `expected missing phase violation, got ${status.sessionState.violations.join("; ")}`,
+      );
+      assert(
+        status.sessionState.violations.some((violation) =>
+          violation.startsWith("$.lanes[0].state"),
+        ),
+        `expected lane state enum violation, got ${status.sessionState.violations.join("; ")}`,
+      );
+      assert(
+        status.state === "not-installed",
+        `expected session state judgment not to change skill state, got ${status.state}`,
+      );
+    },
+  },
+  {
+    name: "status --local --json reports stale session state by updated_at",
+    run() {
+      const workspaceRoot = writeSessionStateFixture(
+        `${JSON.stringify(
+          validSessionState({
+            updated_at: new Date(Date.now() - 48 * 36e5).toISOString(),
+          }),
+          null,
+          2,
+        )}\n`,
+      );
+      const status = runStatusWithSessionState(workspaceRoot);
+      assert(
+        status.sessionState.status === "stale",
+        `expected stale session state, got ${status.sessionState.status}\nviolations:\n${status.sessionState.violations.join("\n")}`,
+      );
+      assert(
+        status.sessionState.staleAfterHours === 24,
+        `expected schema staleAfterHours 24, got ${status.sessionState.staleAfterHours}`,
+      );
+      assert(
+        status.sessionState.ageHours > status.sessionState.staleAfterHours,
+        `expected ageHours beyond threshold, got ${status.sessionState.ageHours}`,
+      );
+      assertIncludes(
+        status.sessionState.action,
+        "rebuild it from live git/GitHub state",
+        "session state action",
+      );
     },
   },
 ];
