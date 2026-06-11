@@ -1,4 +1,8 @@
 # Wiki Growth Triage
+Use when: new wiki-derived knowledge, retrospectives, or research notes might change ddalggak policy, references, templates, verifiers, or backlog issues.
+Required by: `retro`, `setwiki`; memory/wiki candidate triage before any durable save or promotion.
+Side effects: none
+Do not use when: the lesson is a one-off incident record without a generalized failure class; defer/reject instead of promoting it to a durable surface.
 
 Use this reference when new wiki-derived knowledge, retrospectives, or research notes might change ddalggak policy, references, templates, verifiers, or backlog issues. The goal is to absorb durable lessons without turning the always-loaded skill into an ever-growing rule dump.
 

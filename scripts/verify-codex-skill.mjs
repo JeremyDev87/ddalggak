@@ -10,7 +10,6 @@ import {
   skillPayloadRoots,
   requiredPackageFiles,
   requiredReferenceAdmissionHeaderFields,
-  requiredReferenceAdmissionHeaders,
   subcommandExecutionContracts,
   forbiddenHotPathTemplateSentinels,
   requiredSubcommands,
@@ -34,6 +33,7 @@ import {
   requiredReadmeQualityAnchors,
 } from "../core/verification/skill-contract-manifest.mjs";
 import { escapeRegExp } from "./lib/escape-regexp.mjs";
+import { parseSimpleYaml } from "./lib/parse-simple-yaml.mjs";
 
 const rootDir = process.cwd();
 const skillDir = path.join(rootDir, ".codex", "skills", "ddalggak");
@@ -335,8 +335,29 @@ function assertRequiredDisclosureAssetsExist() {
   }
 }
 
+// Header enforcement targets are derived from the canonical command contracts so a new
+// required reference can never land without an admission header (fail-closed coverage; #264).
+function requiredReferenceUnionFromCommandContracts() {
+  const commandDir = path.join(rootDir, "core", "commands");
+  const references = new Set();
+  for (const name of readdirSync(commandDir).filter((entry) => entry.endsWith(".yaml")).sort()) {
+    const doc = parseSimpleYaml(readText(path.join(commandDir, name)), `core/commands/${name}`, {
+      onError: fail,
+    });
+    for (const reference of doc.required_references || []) {
+      references.add(reference);
+    }
+  }
+  if (references.size === 0) {
+    fail(
+      "required reference admission header coverage could not be derived: core/commands/*.yaml declared no required_references.",
+    );
+  }
+  return [...references].sort();
+}
+
 function assertRequiredReferenceAdmissionHeaders() {
-  for (const reference of requiredReferenceAdmissionHeaders) {
+  for (const reference of requiredReferenceUnionFromCommandContracts()) {
     for (const root of skillPayloadRoots) {
       const relativePath = `${root}/references/${reference}`;
       const absolutePath = path.join(rootDir, relativePath);

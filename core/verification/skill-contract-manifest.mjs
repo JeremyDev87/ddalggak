@@ -79,24 +79,8 @@ export const requiredReferenceAdmissionHeaderFields = [
   "Side effects:",
   "Do not use when:",
 ];
-export const requiredReferenceAdmissionHeaders = [
-  "start-workflow.md",
-  "cross-review-loop.md",
-  "ship.md",
-  "merge-cleanup.md",
-  "status.md",
-  "pr-check-evidence-bundle.md",
-  "issue-ready-plan.md",
-  "plan-to-issues.md",
-  "local-diff-check.md",
-  "prompt-skill-optimization-staging.md",
-  "wiki-bridge.md",
-  "2026-06-04-brain-v0-wiki-authority-in-ddalggak.md",
-  "quality-lens-router.md",
-  "evidence-contract.md",
-  "simplicity-deletability-gate.md",
-  "regression-library.md",
-];
+// Admission header enforcement targets are not curated here: scripts/verify-codex-skill.mjs
+// derives them from the required_references union across core/commands/*.yaml (#264).
 export const subcommandExecutionContracts = {
   start: {
     mode: "source-edit",
