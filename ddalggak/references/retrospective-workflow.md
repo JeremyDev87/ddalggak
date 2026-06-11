@@ -101,6 +101,8 @@ gh pr view <확정된-PR-번호> --json number,state,mergedAt,title
 
 회고 내용에서 미래 세션에서 재사용할 가치가 있는 교훈을 골라 메모리로 저장한다.
 
+메모리·wiki 후보를 분류하기 전에 `references/wiki-growth-triage.md`를 먼저 로드해 triage 기준을 적용한다. 각 교훈은 classification lane(immediate guardrail / reference-template / verifier-script / GitHub issue / defer-reject) 중 정확히 하나의 primary lane으로 분류하고, getwiki 중복 검사를 통과한 항목만 이 단계의 메모리 저장 또는 Step 6의 wiki 등록 후보로 제안한다.
+
 저장 기준:
 
 - 반복 실수 방지에 직접 도움이 되는 것 → `feedback` 타입
