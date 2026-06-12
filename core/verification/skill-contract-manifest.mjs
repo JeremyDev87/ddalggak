@@ -105,6 +105,7 @@ export const subcommandExecutionContracts = {
     requiredReferences: [
       "wiki-context-preflight.md",
       "2026-06-04-brain-v0-wiki-authority-in-ddalggak.md",
+      "quality-lens-router.md",
       "evidence-contract.md",
       "simplicity-deletability-gate.md",
       "core-invariants.md",
@@ -112,7 +113,7 @@ export const subcommandExecutionContracts = {
       "cross-review-loop.md",
       "security-posture-gate.md",
     ],
-    stopCondition: "REVIEW DONE or accepted blocker fixed and re-reviewed",
+    stopCondition: "REVIEW_DONE or accepted blocker fixed and re-reviewed",
   },
   status: {
     mode: "read-only",
@@ -159,7 +160,7 @@ export const subcommandExecutionContracts = {
     stopCondition: "draft PR opened or no-diff/blocker reported",
   },
   retro: {
-    mode: "read-only",
+    mode: "repo-external-write",
     sourceEditAllowed: false,
     githubWriteAllowed: false,
     requiredReferences: ["retrospective.md", "retrospective-workflow.md", "wiki-growth-triage.md"],

@@ -21,4 +21,4 @@
 - Domain-specific gates if applicable:
 
 ## Output
-`REVIEW DONE PR#<num>: <APPROVE|CHANGES_REQUESTED> critical=N high=N medium=N low=N`
+`REVIEW_DONE PR#<num>: <APPROVE|CHANGES_REQUESTED> critical=N high=N medium=N low=N`

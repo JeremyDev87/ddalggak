@@ -41,11 +41,13 @@ Parse only the first whitespace-separated word from the invocation arguments.
 
 1. If the first word exactly matches a supported subcommand, route to that subcommand.
 2. If there are no arguments, route to `start`.
-3. If the first word is not supported, route to `start` and treat the full argument string as start context.
-4. Once a route is selected, later arguments must never reroute the request, even if they look like an implementation request.
-5. Immediately print exactly one route line before doing work: `-> <subcommand> 실행`.
-6. The routed subcommand must stay inside the code modification permissions in the table below.
-7. If arguments request changes to this skill, its routing rules, its subcommand definitions, or the skill artifact itself, stop with: `메타 요청 감지 - 이 작업은 ddalggak 서브커맨드 범위 밖입니다. /ddalggak 외부 일반 메시지로 다시 요청해 주세요.`
+3. If the first word is an issue reference (GitHub issue/PR URL, `#<number>`, a bare issue number, or `owner/repo#<number>`), route to `start` and treat the full argument string as issue context. An issue reference is an argument, not a command word.
+4. If the first word is a CLI-only command (`doctor`, `setup`, or any command handled by `bin/ddalggak.js`), do not route; reply that it is a terminal CLI command to run as `ddalggak <command>` in the shell, and stop.
+5. Otherwise, when the first word is neither a supported subcommand, an issue reference, nor a CLI-only command (a typo or unrecognized word), do not fall through to `start` (fail-closed). Return `NEEDS_CLARIFICATION` with the supported subcommand list (`start|review|status|plan|issue|clean|ship|retro|prompt|check|getwiki|setwiki`) and ask for intent.
+6. Once a route is selected, later arguments must never reroute the request, even if they look like an implementation request.
+7. Immediately print exactly one route line before doing work: `-> <subcommand> 실행`.
+8. The routed subcommand must stay inside the code modification permissions in the table below.
+9. If arguments request changes to this skill, its routing rules, its subcommand definitions, or the skill artifact itself, stop with: `메타 요청 감지 - 이 작업은 ddalggak 서브커맨드 범위 밖입니다. /ddalggak 외부 일반 메시지로 다시 요청해 주세요.`
 
 ## Code Modification Invariant
 
@@ -55,7 +57,7 @@ Only `start` and `review` may authorize repository source file edits. All other 
 | Subcommand | May modify source files | Allowed artifacts |
 | --- | --- | --- |
 | `start` | yes | worker agents may edit only files named in their brief |
-| `review` | yes | author agents may apply accepted review fixes only |
+| `review` | yes | author agents may apply accepted Critical/High review fixes only |
 | `status` | no | response output only |
 | `plan` | no | response output only unless the user separately asks to write a plan document |
 | `issue` | no | GitHub issues only |
@@ -74,14 +76,14 @@ If a non-writing subcommand would need a source edit to continue, report the nee
 
 | Subcommand | Mode | Show-doc heading | Purpose | Side effects | Stop condition | Required assets |
 | --- | --- | --- | --- | --- | --- | --- |
-| `start` | source-edit | Start Workflow | Issue implementation from live issue body/comments; one issue PR by default | Repo source edits in issue scope; PR/comment side effects only through ship/review gates. | Stop on stale base, missing issue body/comments, duplicate PR, or required files outside the issue-owned scope. | refs: `references/wiki-context-preflight.md`, `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`, `references/quality-lens-router.md`, `references/evidence-contract.md`, `references/simplicity-deletability-gate.md`, `references/agent-runtime-contract.md`, `references/core-invariants.md`, `references/start-workflow.md`; templates: `templates/worker-brief.md`, `templates/conductor-state.md`, `templates/lane-state.md` |
-| `review` | review-fix | Cross-Review Loop | Independent current-head review and accepted fix loop | Top-level review comment; accepted Critical/High fixes may edit source and push to the reviewed PR branch. | Stop before APPROVE if current-head CI is not terminal green/skipped, blockers remain, or wiki/evidence preflight has blocking gaps. | refs: `references/wiki-context-preflight.md`, `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`, `references/evidence-contract.md`, `references/simplicity-deletability-gate.md`, `references/core-invariants.md`, `references/regression-library.md`, `references/cross-review-loop.md`, `references/security-posture-gate.md`; templates: `templates/review-brief.md`, `templates/fix-brief.md` |
+| `start` | source-edit | Start Workflow | Issue implementation from live issue body/comments; one issue PR by default | Repo source edits in issue scope; start publishes the issue PR via the ship procedure (ship.md); cross-review comments come through the review gate. | Stop on stale base, missing issue body/comments, duplicate PR, or required files outside the issue-owned scope. | refs: `references/wiki-context-preflight.md`, `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`, `references/quality-lens-router.md`, `references/evidence-contract.md`, `references/simplicity-deletability-gate.md`, `references/agent-runtime-contract.md`, `references/core-invariants.md`, `references/start-workflow.md`; templates: `templates/worker-brief.md`, `templates/conductor-state.md`, `templates/lane-state.md` |
+| `review` | review-fix | Cross-Review Loop | Independent current-head review and accepted fix loop | Top-level review comment; accepted Critical/High fixes may edit source and push to the reviewed PR branch. | Stop before APPROVE if current-head CI is not terminal green/skipped, blockers remain, or wiki/evidence preflight has blocking gaps. | refs: `references/wiki-context-preflight.md`, `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`, `references/quality-lens-router.md`, `references/evidence-contract.md`, `references/simplicity-deletability-gate.md`, `references/core-invariants.md`, `references/regression-library.md`, `references/cross-review-loop.md`, `references/security-posture-gate.md`; templates: `templates/review-brief.md`, `templates/fix-brief.md` |
 | `status` | read-only | Status | Read-only live git/GitHub/session state snapshot | No source, GitHub, or local cleanup mutation; report live git/GitHub/session state only. | Stop after a live state snapshot and next-action recommendation. | refs: `references/status.md`, `references/pr-check-evidence-bundle.md`; templates: - |
 | `plan` | plan-only | Issue-Ready Plan | Issue-ready implementation plan from issue/wiki/code evidence | No source edits; no GitHub writes unless the user separately requests issue creation. | Stop after an issue-ready plan with evidence/unknowns and PR topology. | refs: `references/wiki-context-preflight.md`, `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`, `references/wiki-bridge.md`, `references/quality-lens-router.md`, `references/evidence-contract.md`, `references/simplicity-deletability-gate.md`, `references/core-invariants.md`, `references/issue-ready-plan.md`; templates: - |
 | `issue` | github-write | Plan to Issues | Create GitHub issues from an approved plan | Create/edit GitHub issues and comments only; no repository source edits. | Stop after live issue URLs/labels/assignees/body UTF-8 verification or on metadata permission failure. | refs: `references/plan-to-issues.md`; templates: `templates/issue-body.md`, `templates/epic-body.md` |
 | `clean` | local-destructive | Merge Cleanup | Post-merge local cleanup after live merge evidence | Local branch/worktree cleanup only after live merge evidence; no GitHub mutation. | Stop on dirty, ambiguous, unmerged, or non-ancestor worktrees/branches. | refs: `references/merge-cleanup.md`; templates: - |
 | `ship` | github-write | Ship | Commit/push/open draft PR for existing scoped changes | Commit, push, and draft PR for already-existing scoped changes; no new source edits. | Stop after PR creation/current-head publication evidence or on no-diff/scope/validation blocker. | refs: `references/ship.md`; templates: - |
-| `retro` | read-only | Retrospective | Extract reusable lessons after merge without transient memory | Repo-external writes only: the retrospective note under ~/workspace/retrospective/ (or the RETRO_DIR override) and memory files or memory-update request artifacts; skill/wiki changes stay proposal-only (wiki via the approval-gated setwiki bridge); no writes to any path inside the repository. | Stop after reusable lessons are separated from transient incident records. | refs: `references/retrospective.md`, `references/retrospective-workflow.md`, `references/wiki-growth-triage.md`; templates: - |
+| `retro` | repo-external-write | Retrospective | Extract reusable lessons after merge without transient memory | Repo-external writes only: the retrospective note under ~/workspace/retrospective/ (or the RETRO_DIR override) and memory files or memory-update request artifacts; skill/wiki changes stay proposal-only (wiki via the approval-gated setwiki bridge); no writes to any path inside the repository. | Stop after reusable lessons are separated from transient incident records. | refs: `references/retrospective.md`, `references/retrospective-workflow.md`, `references/wiki-growth-triage.md`; templates: - |
 | `prompt` | plan-only | Prompt Optimizer | Compile safer prompt briefs without source edits | Brief/review/fix artifacts only after explicit confirmation; no canonical source edits. | Stop with READY_FOR_BRIEF, NEEDS_CLARIFICATION, BLOCKED_UNSAFE, or DISCOVERY_ONLY. | refs: `references/prompt-optimizer.md`, `references/prompt-skill-optimization-staging.md`; templates: - |
 | `check` | read-only | Local Diff Check | Read-only local diff review | Local diff review notes only; no GitHub comments and no repository edits. | Stop after findings and exact validation gaps are reported. | refs: `references/local-diff-check.md`; templates: - |
 | `getwiki` | read-only | GetWiki Bridge | Wiki context retrieval bridge | Delegate to dedicated /getwiki retrieval; no wiki or repo mutation. | Stop after cited wiki sources or retrieval gaps are reported. | refs: `references/wiki-bridge.md`, `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`; templates: - |
@@ -96,8 +98,9 @@ If a non-writing subcommand would need a source edit to continue, report the nee
 | `review-fix` | May edit source and push to the reviewed PR branch only for accepted review fixes. |
 | `plan-only` | Produces plan/brief artifacts only; no source, GitHub, or local git state mutation. |
 | `read-only` | Report-only; no source, GitHub, or local git state mutation. |
+| `repo-external-write` | No writes to any path inside the repo, but may write repo-external paths (`~/workspace/retrospective/`, memory files). |
 | `local-destructive` | No repo source or GitHub mutation, but may delete merge-verified local git state (branches/worktrees). |
-| `github-write` | Creates or edits GitHub artifacts (issues, PRs, comments); no repo source edits. |
+| `github-write` | Creates or edits GitHub artifacts (issues, PRs, comments) and may perform local commit/push (e.g. ship); no repo source edits. |
 | `approval-gated-write` | External (wiki) writes only after explicit approval; review-only before approval. |
 
 ## Codex App Primitives
@@ -128,7 +131,7 @@ Use Codex App native orchestration names in briefs and state records: `spawn_age
 | Subcommand | Workflow reference | Gate references | Wiki/meta references | Required templates |
 | --- | --- | --- | --- | --- |
 | `start` | `references/agent-runtime-contract.md`, `references/start-workflow.md` | `references/quality-lens-router.md`, `references/evidence-contract.md`, `references/simplicity-deletability-gate.md`, `references/core-invariants.md` | `references/wiki-context-preflight.md`, `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md` | `templates/worker-brief.md`, `templates/conductor-state.md`, `templates/lane-state.md` |
-| `review` | `references/cross-review-loop.md`, `references/security-posture-gate.md` | `references/evidence-contract.md`, `references/simplicity-deletability-gate.md`, `references/core-invariants.md`, `references/regression-library.md` | `references/wiki-context-preflight.md`, `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md` | `templates/review-brief.md`, `templates/fix-brief.md` |
+| `review` | `references/cross-review-loop.md`, `references/security-posture-gate.md` | `references/quality-lens-router.md`, `references/evidence-contract.md`, `references/simplicity-deletability-gate.md`, `references/core-invariants.md`, `references/regression-library.md` | `references/wiki-context-preflight.md`, `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md` | `templates/review-brief.md`, `templates/fix-brief.md` |
 | `status` | `references/status.md`, `references/pr-check-evidence-bundle.md` | - | - | - |
 | `plan` | `references/issue-ready-plan.md` | `references/quality-lens-router.md`, `references/evidence-contract.md`, `references/simplicity-deletability-gate.md`, `references/core-invariants.md` | `references/wiki-context-preflight.md`, `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`, `references/wiki-bridge.md` | - |
 | `issue` | `references/plan-to-issues.md` | - | - | `templates/issue-body.md`, `templates/epic-body.md` |
@@ -151,7 +154,7 @@ Use Codex App native orchestration names in briefs and state records: `spawn_age
 
 ## `start` - Issue-Based Implementation
 
-Command contract: mode `source-edit`; source edits are limited to live issue-owned scope; GitHub side effects happen only through ship/review gates; stop on stale base, missing issue body/comments, duplicate PR, or required files outside scope.
+Command contract: mode `source-edit`; source edits are limited to live issue-owned scope; start publishes the issue PR via the ship procedure (`references/ship.md`) and routes cross-review through the review gate; stop on stale base, missing issue body/comments, duplicate PR, or required files outside scope.
 
 Full procedure: `references/start-workflow.md`; reusable prompt: `templates/worker-brief.md`.
 
@@ -231,6 +234,27 @@ Stale repo state; missing issue comments; hallucinated dependencies; unsafe forc
 - Tests distinguished from commit, push, PR, and review completion.
 - Markdown edits preserve frontmatter, routing, code permissions, headings, fences, and numbering.
 - Evidence Contract, Simplicity / Deletability Gate, and relevant conditional references applied or skipped with reasons.
+
+## Completion Signals
+
+Per-subcommand completion signals come from each command contract's `output_contract.completion_signal` and are listed below so the installed skill payload carries them without `core/`. Multi-agent handoff signals LANE_READY, REVIEW_DONE, and FIX_DONE are defined in `templates/worker-brief.md`, `templates/review-brief.md`, and `templates/fix-brief.md`.
+
+<!-- ddalggak:generated:start completion-signal-table -->
+| Subcommand | Completion signal |
+| --- | --- |
+| `start` | `ISSUE_PR_READY` |
+| `review` | `REVIEW_DONE` |
+| `status` | `STATUS_DONE` |
+| `plan` | `PLAN_DONE` |
+| `issue` | `ISSUE_DONE` |
+| `clean` | `CLEAN_DONE` |
+| `ship` | `SHIP_DONE` |
+| `retro` | `RETRO_DONE` |
+| `prompt` | `PROMPT_DONE` |
+| `check` | `CHECK_DONE` |
+| `getwiki` | `GETWIKI_DONE` |
+| `setwiki` | `SETWIKI_DONE` |
+<!-- ddalggak:generated:end completion-signal-table -->
 
 ## Stop Conditions
 

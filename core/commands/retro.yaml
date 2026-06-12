@@ -3,7 +3,7 @@ command: retro
 show_doc_heading: "Retrospective"
 source_edit_allowed: false
 purpose: "Extract reusable lessons after merge without transient memory."
-mode: "read-only"
+mode: "repo-external-write"
 write_side_effects: "Repo-external writes only: the retrospective note under ~/workspace/retrospective/ (or the RETRO_DIR override) and memory files or memory-update request artifacts; skill/wiki changes stay proposal-only (wiki via the approval-gated setwiki bridge); no writes to any path inside the repository."
 stop_condition: "Stop after reusable lessons are separated from transient incident records."
 required_references:

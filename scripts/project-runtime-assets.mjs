@@ -29,7 +29,7 @@ const commandOrder = [
 
 const allowedArtifactByCommand = {
   start: "worker agents may edit only files named in their brief",
-  review: "author agents may apply accepted review fixes only",
+  review: "author agents may apply accepted Critical/High review fixes only",
   prompt: "brief artifacts after explicit confirmation",
   plan: "response output only unless the user separately asks to write a plan document",
   issue: "GitHub issues only",
@@ -237,6 +237,30 @@ function renderRequiredReferenceMap() {
     lines.push(
       `| \`${doc.command}\` | ${mdList(refs.workflow, "references/")} | ${mdList(refs.gates, "references/")} | ${mdList(refs.wiki, "references/")} | ${mdList(doc.required_templates || [], "templates/")} |`,
     );
+  }
+  return lines.join("\n");
+}
+
+function completionSignalOf(doc) {
+  const signal = doc.output_contract?.completion_signal;
+  if (!signal) {
+    fatal(`command contract missing output_contract.completion_signal: ${doc.command}`);
+  }
+  return signal;
+}
+
+function renderLegacyCompletionSignalTable() {
+  const lines = ["| 서브커맨드 | 완료 신호 |", "|---|---|"];
+  for (const doc of commands) {
+    lines.push(`| \`${doc.command}\` | \`${completionSignalOf(doc)}\` |`);
+  }
+  return lines.join("\n");
+}
+
+function renderCodexCompletionSignalTable() {
+  const lines = ["| Subcommand | Completion signal |", "| --- | --- |"];
+  for (const doc of commands) {
+    lines.push(`| \`${doc.command}\` | \`${completionSignalOf(doc)}\` |`);
   }
   return lines.join("\n");
 }
@@ -579,6 +603,7 @@ const projections = [
       ["code-permission-table", renderLegacyCodePermissionTable()],
       ["subcommand-table", renderLegacySubcommandTable()],
       ["required-reference-map", renderRequiredReferenceMap()],
+      ["completion-signal-table", renderLegacyCompletionSignalTable()],
     ],
   },
   {
@@ -587,6 +612,7 @@ const projections = [
       ["code-permission-table", renderCodexCodePermissionTable()],
       ["subcommand-table", renderCodexSubcommandTable()],
       ["required-reference-map", renderRequiredReferenceMap()],
+      ["completion-signal-table", renderCodexCompletionSignalTable()],
     ],
   },
   {
