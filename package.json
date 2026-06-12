@@ -32,6 +32,7 @@
     "test:issue-forms": "node scripts/test-verify-issue-forms.mjs",
     "test:workflow-boundary": "node scripts/test-workflow-boundary-inventory.mjs",
     "test:test-coverage": "node scripts/test-verify-test-coverage.mjs",
+    "test:token-budget-coverage": "node scripts/test-token-budget-coverage.mjs",
     "prepublishOnly": "npm run verify",
     "verify": "node scripts/verify-package.mjs"
   },

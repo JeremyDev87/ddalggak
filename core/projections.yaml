@@ -162,3 +162,78 @@ subcommand_token_budgets:
     check: 9500
     getwiki: 11500
     setwiki: 13500
+# Per-reference effective-load exemptions. The token budget admission gate
+# (scripts/project-runtime-assets.mjs --report --admission) requires every
+# ddalggak/references/*.md file to be EITHER measured (named in some command's
+# required_references, so it counts against that subcommand's budget) OR
+# exempted here with an absolute per-reference cap (#283). Without this a
+# reference that no required_references names is unbudgeted: it can grow
+# without bound while admission stays green. The three conditional gates below
+# are reachable only through the always-loaded references/quality-lens-router.md
+# pointer, so they are not in any base required_references, but max_tokens still
+# bounds their growth. max_tokens uses the same estimator as the budget report
+# (ceil(ascii_chars / 4 + multibyte_chars x 1.5)) measured on the source root.
+reference_budget_exemptions:
+  - reference: frontend-design-gate.md
+    max_tokens: 2100
+    reason: conditional gate reachable only via quality-lens-router; not in any base required_references
+  - reference: react-code-quality-harness.md
+    max_tokens: 1200
+    reason: conditional gate reachable only via quality-lens-router; not in any base required_references
+  - reference: vercel-agent-skills-gates.md
+    max_tokens: 2300
+    reason: conditional gate reachable only via quality-lens-router; not in any base required_references
+  - reference: pr-status-evidence-bundle.md
+    max_tokens: 1400
+    reason: claude-runtime pr-status evidence bundle loaded on demand outside base required_references
+  - reference: failure-prevention.md
+    max_tokens: 600
+    reason: operational guardrail referenced from SKILL.md body pointer, not a per-subcommand required reference
+  - reference: common-rules.md
+    max_tokens: 500
+    reason: operational guardrail referenced from SKILL.md body pointer, not a per-subcommand required reference
+  - reference: context-compact.md
+    max_tokens: 300
+    reason: operational guardrail referenced from SKILL.md body pointer, not a per-subcommand required reference
+  - reference: wake-resume.md
+    max_tokens: 300
+    reason: operational guardrail referenced from SKILL.md body pointer, not a per-subcommand required reference
+  - reference: verification-checklist.md
+    max_tokens: 300
+    reason: operational guardrail referenced from SKILL.md body pointer, not a per-subcommand required reference
+# Per-subcommand absolute token ceilings keyed by projection root. The
+# admission gate requires the declared budget <= ceiling, so a budget-only PR
+# cannot ratchet a budget past its ceiling even though check-budget-isolation
+# permits budget-only changes. This blocks the 2-PR bypass (PR1 raises the
+# budget, PR2 grows content up to the new budget) that no single-PR isolation
+# check catches (#283). Ceilings are frozen constants (current budget x 1.5,
+# rounded up to 500), NOT derived from the live budget; raising a ceiling is a
+# separate, visible edit that exposes the ratchet. Roots differ for the same
+# reason as subcommand_token_budgets (SKILL.md payloads differ in size/language).
+subcommand_token_ceilings:
+  claude_legacy:
+    start: 34500
+    review: 39000
+    status: 15000
+    plan: 30000
+    issue: 13500
+    clean: 13000
+    ship: 13000
+    retro: 21000
+    prompt: 19000
+    check: 13000
+    getwiki: 16500
+    setwiki: 19500
+  codex:
+    start: 36000
+    review: 40000
+    status: 15000
+    plan: 31500
+    issue: 15000
+    clean: 14500
+    ship: 14500
+    retro: 19000
+    prompt: 19000
+    check: 14500
+    getwiki: 17500
+    setwiki: 20500

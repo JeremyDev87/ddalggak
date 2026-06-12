@@ -234,6 +234,10 @@ try {
       console.log(line);
     }
   }
+  runStep("token budget coverage/cap/ceiling rejection tests", npmCommand, [
+    "run",
+    "test:token-budget-coverage",
+  ]);
   runStep("verification robustness regression tests", npmCommand, [
     "run",
     "test:verify-robustness",
