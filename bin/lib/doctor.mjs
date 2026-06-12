@@ -68,8 +68,12 @@ const CHECK_ORDER = [
 // `templates/worker-brief.md` inside markdown bodies.
 const DOC_LINK_PATTERN = /\b(references|templates)\/[A-Za-z0-9][A-Za-z0-9._-]*\.md\b/g;
 
-// Matches completion-signal tokens in both spellings used by the skill docs:
-// underscore form ("ISSUE_PR_READY") and spaced form ("REVIEW DONE").
+// Matches completion-signal tokens in both spellings: the canonical underscore
+// form ("ISSUE_PR_READY") and the legacy spaced form ("REVIEW DONE"). Both
+// spellings are still DETECTED so a reintroduced spaced form is not silently
+// dropped; the registry below keys on the raw spelling (no space->underscore
+// normalization) so a spaced token no longer matches an underscore definition
+// and surfaces as drift instead of being hidden (#280).
 const SIGNAL_TOKEN_PATTERN = /\b[A-Z][A-Z_]*[ _](?:DONE|READY)\b/g;
 
 const NAMING_SECTION_TITLE = "명명 규칙";
@@ -139,15 +143,16 @@ function extractDocLinks(text) {
 }
 
 function extractSignals(text) {
-  const byNormalized = new Map();
+  // Key on the raw spelling so "REVIEW DONE" and "REVIEW_DONE" stay distinct;
+  // collapsing them hid spelling drift the registry should flag (#280).
+  const byRaw = new Map();
   for (const match of text.matchAll(SIGNAL_TOKEN_PATTERN)) {
     const raw = match[0];
-    const normalized = raw.replace(/ /g, "_");
-    if (!byNormalized.has(normalized)) {
-      byNormalized.set(normalized, { raw, normalized });
+    if (!byRaw.has(raw)) {
+      byRaw.set(raw, { raw });
     }
   }
-  return [...byNormalized.values()];
+  return [...byRaw.values()];
 }
 
 // Extracts the body of the first "## <title>" section up to the next H2.
@@ -501,14 +506,14 @@ function checkSignalRegistry(layout) {
     const text = tryReadText(path.join(layout.sourceRoot, "templates", name));
     if (text === null) continue;
     for (const signal of extractSignals(text)) {
-      registry.add(signal.normalized);
+      registry.add(signal.raw);
     }
   }
 
   for (const signal of extractSignals(section)) {
-    if (!registry.has(signal.normalized)) {
+    if (!registry.has(signal.raw)) {
       findings.push(
-        `undefined completion signal: "${signal.raw}" is named in SKILL.md ${NAMING_SECTION_TITLE} but has no core/commands completion_signal or templates/*.md definition`,
+        `undefined completion signal: "${signal.raw}" is named in SKILL.md ${NAMING_SECTION_TITLE} but has no core/commands completion_signal or templates/*.md definition (check space vs underscore spelling)`,
       );
     }
   }

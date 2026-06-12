@@ -238,6 +238,10 @@ try {
     "run",
     "test:token-budget-coverage",
   ]);
+  runStep("doctor signal-registry drift rejection tests", npmCommand, [
+    "run",
+    "test:doctor-signal-drift",
+  ]);
   runStep("verification robustness regression tests", npmCommand, [
     "run",
     "test:verify-robustness",

@@ -9,6 +9,7 @@ stop_condition: "Stop before APPROVE if current-head CI is not terminal green/sk
 required_references:
   - wiki-context-preflight.md
   - 2026-06-04-brain-v0-wiki-authority-in-ddalggak.md
+  - quality-lens-router.md
   - evidence-contract.md
   - simplicity-deletability-gate.md
   - core-invariants.md

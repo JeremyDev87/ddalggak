@@ -33,6 +33,7 @@
     "test:workflow-boundary": "node scripts/test-workflow-boundary-inventory.mjs",
     "test:test-coverage": "node scripts/test-verify-test-coverage.mjs",
     "test:token-budget-coverage": "node scripts/test-token-budget-coverage.mjs",
+    "test:doctor-signal-drift": "node scripts/test-doctor-signal-drift.mjs",
     "prepublishOnly": "npm run verify",
     "verify": "node scripts/verify-package.mjs"
   },
