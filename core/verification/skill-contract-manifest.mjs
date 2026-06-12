@@ -110,6 +110,7 @@ export const subcommandExecutionContracts = {
       "core-invariants.md",
       "regression-library.md",
       "cross-review-loop.md",
+      "security-posture-gate.md",
     ],
     stopCondition: "REVIEW DONE or accepted blocker fixed and re-reviewed",
   },
@@ -117,7 +118,7 @@ export const subcommandExecutionContracts = {
     mode: "read-only",
     sourceEditAllowed: false,
     githubWriteAllowed: false,
-    requiredReferences: ["status.md"],
+    requiredReferences: ["status.md", "pr-check-evidence-bundle.md"],
     stopCondition: "read-only live state report",
   },
   plan: {
@@ -161,14 +162,14 @@ export const subcommandExecutionContracts = {
     mode: "read-only",
     sourceEditAllowed: false,
     githubWriteAllowed: false,
-    requiredReferences: ["retrospective.md", "retrospective-workflow.md"],
+    requiredReferences: ["retrospective.md", "retrospective-workflow.md", "wiki-growth-triage.md"],
     stopCondition: "durable reusable lesson separated from incident log",
   },
   prompt: {
     mode: "plan-only",
     sourceEditAllowed: false,
     githubWriteAllowed: false,
-    requiredReferences: ["prompt-optimizer.md"],
+    requiredReferences: ["prompt-optimizer.md", "prompt-skill-optimization-staging.md"],
     stopCondition: "prompt artifact only; no source edits",
   },
   check: {
@@ -189,7 +190,7 @@ export const subcommandExecutionContracts = {
     mode: "approval-gated-write",
     sourceEditAllowed: false,
     githubWriteAllowed: false,
-    requiredReferences: ["wiki-bridge.md", "2026-06-04-brain-v0-wiki-authority-in-ddalggak.md"],
+    requiredReferences: ["wiki-bridge.md", "2026-06-04-brain-v0-wiki-authority-in-ddalggak.md", "wiki-growth-triage.md"],
     stopCondition: "approval-gated setwiki delegation only",
   },
 };

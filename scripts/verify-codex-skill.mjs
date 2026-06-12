@@ -477,6 +477,18 @@ function assertRenderedSubcommandContracts({ label, text }) {
         fail(`${label} subcommand table for '${subcommand}' missing required reference '${reference}'.`);
       }
     }
+    // Reverse direction: the rendered (yaml-derived) set must not exceed the
+    // manifest either. Without this, a reference present in core/commands/*.yaml
+    // but absent from the manifest is unguarded — it can be deleted from the
+    // yaml and verify stays green (e.g. review's security-posture-gate.md).
+    // Both loops together enforce yaml ↔ manifest set equality (#279).
+    for (const reference of renderedContract.requiredReferences) {
+      if (!manifestContract.requiredReferences.includes(reference)) {
+        fail(
+          `${label} subcommand table for '${subcommand}' lists required reference '${reference}' absent from skill-contract-manifest subcommandExecutionContracts.${subcommand}.requiredReferences; required_references must match the manifest exactly.`,
+        );
+      }
+    }
 
     const renderedAuthorityText = `${permission.allowedArtifacts}\n${renderedContract.sideEffects}`;
     const grantsSourceAuthority = sourceEditAuthorityPatterns.some((pattern) => pattern.test(renderedAuthorityText));
