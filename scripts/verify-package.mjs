@@ -295,9 +295,21 @@ try {
     "run",
     "verify:issue-forms",
   ]);
+  runStep("issue forms fail-closed rejection tests", npmCommand, [
+    "run",
+    "test:issue-forms",
+  ]);
   runStep("workflow boundary inventory verification", npmCommand, [
     "run",
     "verify:workflow-boundary",
+  ]);
+  runStep("workflow boundary fail-closed rejection tests", npmCommand, [
+    "run",
+    "test:workflow-boundary",
+  ]);
+  runStep("test coverage meta-test (no orphan test scripts)", npmCommand, [
+    "run",
+    "test:test-coverage",
   ]);
   verifyArtifactContents();
   console.log("\n[verify-package] passed");
