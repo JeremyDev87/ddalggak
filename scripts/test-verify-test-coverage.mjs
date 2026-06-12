@@ -7,11 +7,15 @@
 //
 // Coverage model (corpus = verify-package.mjs source + all workflow ymls):
 //   a test-*.mjs file is COVERED when
-//     (a) the corpus invokes it directly (`scripts/test-X.mjs`), or
+//     (a) the corpus executes it directly (`node scripts/test-X.mjs`, e.g. a
+//         ci.yml step), or
 //     (b) it is the target of a package.json npm script whose name the corpus
 //         invokes (`npm run <name>` or a spawn array `"run", "<name>"`).
 // verify-package.mjs is flattened into the corpus, so a test reached only via
 // `npm run verify` -> verify-package.mjs -> `npm run test:X` still counts.
+// (a) matches the execution form only, never a bare path mention:
+// verify-package.mjs lists test paths as packaging data in requiredArtifactPaths,
+// and that data must not be misread as "executed".
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 
@@ -48,8 +52,12 @@ function corpusInvokesScript(corpus, name) {
   return quoted.test(corpus) || shell.test(corpus);
 }
 
+// Only a real execution counts (`node scripts/<file>` in a workflow step), not
+// a bare path mention: verify-package.mjs lists every test path in
+// requiredArtifactPaths as packaging data, which must not be read as "executed".
 function corpusInvokesFile(corpus, fileBasename) {
-  return corpus.includes(`scripts/${fileBasename}`);
+  const exec = new RegExp(`node\\s+(?:\\./)?scripts/${escapeRegExp(fileBasename)}(?![\\w.-])`);
+  return exec.test(corpus);
 }
 
 const failures = [];
