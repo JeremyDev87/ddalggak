@@ -314,11 +314,14 @@ function fileTokenEstimate(relativePath) {
   return asciiChars / 4 + multibyteChars * 1.5;
 }
 
-function parseSubcommandTokenBudgets() {
+// Parse a `<blockName>:` mapping of `<root>: { <command>: <int> }` from
+// projections.yaml. Shared by subcommand_token_budgets and
+// subcommand_token_ceilings; both blocks have identical shape (#283).
+function parseRootKeyedIntBlock(blockName) {
   const lines = readText("core/projections.yaml").split(/\r?\n/);
-  const start = lines.indexOf("subcommand_token_budgets:");
-  const budgetsByRoot = new Map();
-  if (start === -1) return budgetsByRoot;
+  const start = lines.indexOf(`${blockName}:`);
+  const byRoot = new Map();
+  if (start === -1) return byRoot;
   let currentRoot;
   for (let index = start + 1; index < lines.length; index += 1) {
     const line = lines[index].replace(/\s+#.*$/, "");
@@ -326,14 +329,54 @@ function parseSubcommandTokenBudgets() {
     const rootEntry = line.match(/^ {2}([A-Za-z0-9_-]+):\s*$/);
     if (rootEntry) {
       currentRoot = new Map();
-      budgetsByRoot.set(rootEntry[1], currentRoot);
+      byRoot.set(rootEntry[1], currentRoot);
       continue;
     }
     const entry = line.match(/^ {4}([A-Za-z0-9_-]+):\s*(\d+)\s*$/);
     if (!entry || !currentRoot) break;
     currentRoot.set(entry[1], Number(entry[2]));
   }
-  return budgetsByRoot;
+  return byRoot;
+}
+
+function parseSubcommandTokenBudgets() {
+  return parseRootKeyedIntBlock("subcommand_token_budgets");
+}
+
+function parseSubcommandTokenCeilings() {
+  return parseRootKeyedIntBlock("subcommand_token_ceilings");
+}
+
+// Parse the `reference_budget_exemptions:` list of
+// `{ reference, max_tokens, reason }` items. The list ends at the next
+// column-0 line (the following comment block / key), so list items at 2-space
+// indent and their 4-space fields are the only lines consumed (#283).
+function parseReferenceBudgetExemptions() {
+  const lines = readText("core/projections.yaml").split(/\r?\n/);
+  const start = lines.indexOf("reference_budget_exemptions:");
+  const exemptions = [];
+  if (start === -1) return exemptions;
+  let current = null;
+  for (let index = start + 1; index < lines.length; index += 1) {
+    const raw = lines[index];
+    if (!raw.trim()) continue;
+    if (/^\S/.test(raw)) break; // next column-0 line (comment or key) ends the list
+    const item = raw.match(/^ {2}- reference:\s*(.+?)\s*$/);
+    if (item) {
+      current = { reference: item[1], maxTokens: undefined, reason: "" };
+      exemptions.push(current);
+      continue;
+    }
+    if (!current) continue;
+    const maxTokens = raw.match(/^ {4}max_tokens:\s*(\d+)\s*$/);
+    if (maxTokens) {
+      current.maxTokens = Number(maxTokens[1]);
+      continue;
+    }
+    const reason = raw.match(/^ {4}reason:\s*(.+?)\s*$/);
+    if (reason) current.reason = reason[1];
+  }
+  return exemptions;
 }
 
 function runTokenBudgetReport() {
@@ -398,12 +441,129 @@ function runTokenBudgetReport() {
   return { overBudget, missingBudget };
 }
 
+function fileExists(relativePath) {
+  try {
+    statSync(path.join(rootDir, relativePath));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Coverage + per-reference cap invariant (#283): every ddalggak/references/*.md
+// file must be EITHER measured (named in some command's required_references, so
+// it counts against that subcommand's budget) OR exempt (registered in
+// reference_budget_exemptions with a positive max_tokens cap). Neither leaves a
+// reference unbudgeted; both is a redundant exemption. Exempted references are
+// still bounded by their cap on each root where the file exists, so a
+// conditional gate reachable only via the always-loaded quality-lens-router
+// cannot grow without bound.
+function runReferenceCoverageChecks() {
+  const failures = [];
+  const measured = new Set();
+  for (const doc of commands) {
+    for (const ref of doc.required_references || []) measured.add(ref);
+  }
+
+  const exemptions = parseReferenceBudgetExemptions();
+  const exemptByRef = new Map();
+  for (const exemption of exemptions) {
+    if (exemptByRef.has(exemption.reference)) {
+      failures.push(`reference_budget_exemptions has a duplicate entry for '${exemption.reference}'`);
+    }
+    exemptByRef.set(exemption.reference, exemption);
+  }
+
+  const referenceDir = path.join(rootDir, "ddalggak", "references");
+  let referenceFiles;
+  try {
+    referenceFiles = readdirSync(referenceDir).filter((name) => name.endsWith(".md"));
+  } catch (error) {
+    fatal(`cannot list ddalggak/references: ${error.message}`);
+  }
+  const referenceSet = new Set(referenceFiles);
+
+  for (const file of referenceFiles) {
+    const isMeasured = measured.has(file);
+    const isExempt = exemptByRef.has(file);
+    if (!isMeasured && !isExempt) {
+      failures.push(
+        `reference ${file} is neither measured (in any command required_references) nor exempt (reference_budget_exemptions); add it to a required_references list or register an exemption with a max_tokens cap`,
+      );
+    } else if (isMeasured && isExempt) {
+      failures.push(
+        `reference ${file} is both measured and listed in reference_budget_exemptions; remove the redundant exemption`,
+      );
+    }
+  }
+
+  for (const exemption of exemptions) {
+    if (!referenceSet.has(exemption.reference)) {
+      failures.push(
+        `reference_budget_exemptions lists '${exemption.reference}' but ddalggak/references/${exemption.reference} does not exist; remove the stale exemption`,
+      );
+      continue;
+    }
+    if (!Number.isInteger(exemption.maxTokens) || exemption.maxTokens <= 0) {
+      failures.push(
+        `reference_budget_exemptions entry '${exemption.reference}' is missing a positive integer max_tokens cap`,
+      );
+      continue;
+    }
+    for (const { key, base } of tokenBudgetRoots) {
+      const relativePath = `${base}/references/${exemption.reference}`;
+      if (!fileExists(relativePath)) continue; // root-specific reference absent on this root
+      const estTokens = Math.ceil(fileTokenEstimate(relativePath));
+      if (estTokens > exemption.maxTokens) {
+        failures.push(
+          `${key}: reference ${exemption.reference} ~${estTokens} tokens exceeds its exemption cap ${exemption.maxTokens}; reduce the reference or raise max_tokens in core/projections.yaml reference_budget_exemptions`,
+        );
+      }
+    }
+  }
+
+  return failures;
+}
+
+// Absolute-ceiling invariant (#283): every declared budget must be <= its
+// declared ceiling. A budget-only PR passes check-budget-isolation, so without
+// this a budget could be ratcheted up indefinitely across PRs; the ceiling is a
+// frozen constant that caps how high the working budget may go.
+function runCeilingChecks() {
+  const failures = [];
+  const budgetsByRoot = parseSubcommandTokenBudgets();
+  const ceilingsByRoot = parseSubcommandTokenCeilings();
+  for (const { key } of tokenBudgetRoots) {
+    const budgets = budgetsByRoot.get(key) ?? new Map();
+    const ceilings = ceilingsByRoot.get(key) ?? new Map();
+    for (const doc of commands) {
+      const budget = budgets.get(doc.command);
+      if (budget === undefined) continue; // missing-budget already reported by runTokenBudgetReport
+      const ceiling = ceilings.get(doc.command);
+      if (ceiling === undefined) {
+        failures.push(`${key}/${doc.command}: no ceiling declared in core/projections.yaml subcommand_token_ceilings.${key}`);
+        continue;
+      }
+      if (budget > ceiling) {
+        failures.push(
+          `${key}/${doc.command}: budget ${budget} exceeds ceiling ${ceiling}; a budget must not be ratcheted past its absolute ceiling (subcommand_token_ceilings)`,
+        );
+      }
+    }
+  }
+  return failures;
+}
+
 if (reportMode) {
   const { overBudget, missingBudget } = runTokenBudgetReport();
+  const extraFailures = [...runReferenceCoverageChecks(), ...runCeilingChecks()];
+  for (const failure of extraFailures) {
+    console.log(`[token-budget] warning: ${failure}`);
+  }
   if (admissionMode) {
-    if (overBudget + missingBudget > 0) {
+    if (overBudget + missingBudget + extraFailures.length > 0) {
       console.error(
-        `[token-budget] admission gate: fail (over-budget ${overBudget}, missing-budget ${missingBudget}); adjust assets or budgets in core/projections.yaml subcommand_token_budgets`,
+        `[token-budget] admission gate: fail (over-budget ${overBudget}, missing-budget ${missingBudget}, coverage/cap/ceiling ${extraFailures.length}); adjust assets, budgets, ceilings, or exemptions in core/projections.yaml`,
       );
       process.exit(1);
     }
