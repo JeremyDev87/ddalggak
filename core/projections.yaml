@@ -37,6 +37,8 @@ parity_ledger:
     class: must-match
   - path: references/agent-runtime-contract.md
     class: must-match
+  - path: references/ci-failure-triage-loop.md
+    class: must-match
   - path: references/common-rules.md
     class: may-localize
   - path: references/context-compact.md
