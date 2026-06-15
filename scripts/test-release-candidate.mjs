@@ -36,9 +36,9 @@ const tests = [
         "required: true",
         "type: string",
         "contents: read",
-        "actions/checkout@v5",
+        "actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd",
         "persist-credentials: false",
-        "actions/setup-node@v6",
+        "actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e",
         "node-version: 24",
         "INPUT_TARGET_SHA: ${{ inputs.target_sha }}",
       ]) {
