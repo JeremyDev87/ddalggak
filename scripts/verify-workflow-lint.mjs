@@ -50,6 +50,10 @@ const UNTRUSTED_CONTEXT_PATTERNS = [
   "github.event.comment.",
   "github.event.review.",
   "github.event.head_commit.",
+  "github.event.before",
+  "github.event.release.",
+  "github.event.workflow_run.",
+  "github.actor",
   "github.head_ref",
   "github.base_ref",
   "github.event.inputs.",
@@ -140,6 +144,12 @@ function collectBlockLines(lines, startIdx) {
 
 function checkScriptInjection(lines, relPath) {
   const findings = [];
+  const taintedOutputStepIds = collectTaintedOutputStepIds(lines);
+
+  const isUntrustedExpression = (expr) =>
+    UNTRUSTED_CONTEXT_PATTERNS.some((p) => expr.startsWith(p))
+      || /^steps\.([A-Za-z0-9_-]+)\.outputs\./.test(expr)
+        && taintedOutputStepIds.has(expr.match(/^steps\.([A-Za-z0-9_-]+)\.outputs\./)?.[1]);
 
   // Multi-line run blocks
   for (let i = 0; i < lines.length; i++) {
@@ -148,7 +158,7 @@ function checkScriptInjection(lines, relPath) {
     for (const { lineNo, text } of block) {
       const exprs = [...text.matchAll(/\$\{\{\s*([^}]+?)\s*\}\}/g)].map((m) => m[1].trim());
       for (const expr of exprs) {
-        if (UNTRUSTED_CONTEXT_PATTERNS.some((p) => expr.startsWith(p))) {
+        if (isUntrustedExpression(expr)) {
           findings.push({
             workflow: relPath,
             category: "script_injection_result",
@@ -168,7 +178,7 @@ function checkScriptInjection(lines, relPath) {
     const text = inlineMatch[1].trim();
     const exprs = [...text.matchAll(/\$\{\{\s*([^}]+?)\s*\}\}/g)].map((m) => m[1].trim());
     for (const expr of exprs) {
-      if (UNTRUSTED_CONTEXT_PATTERNS.some((p) => expr.startsWith(p))) {
+      if (isUntrustedExpression(expr)) {
         findings.push({
           workflow: relPath,
           category: "script_injection_result",
@@ -181,6 +191,30 @@ function checkScriptInjection(lines, relPath) {
   }
 
   return findings;
+}
+
+function collectTaintedOutputStepIds(lines) {
+  const stepIds = new Set();
+  let currentStepId = null;
+
+  for (const line of lines) {
+    if (/^\s*-\s+name\s*:/.test(line) || /^\s*-\s+uses\s*:/.test(line) || /^\s*-\s+run\s*:/.test(line)) {
+      currentStepId = null;
+    }
+    const idMatch = line.match(/^\s*(?:-\s+)?id\s*:\s*([A-Za-z0-9_-]+)\s*$/);
+    if (idMatch) {
+      currentStepId = idMatch[1];
+    }
+    if (!currentStepId || !/>>\s*["']?\s*\$\{?GITHUB_OUTPUT\}?["']?/.test(line)) {
+      continue;
+    }
+    const expressions = [...line.matchAll(/\$\{\{\s*([^}]+?)\s*\}\}/g)].map((m) => m[1].trim());
+    if (expressions.some((expr) => UNTRUSTED_CONTEXT_PATTERNS.some((p) => expr.startsWith(p)))) {
+      stepIds.add(currentStepId);
+    }
+  }
+
+  return stepIds;
 }
 
 function checkCredentialPatterns(lines, relPath) {
@@ -531,14 +565,14 @@ export function runWorkflowLint(rootDir = defaultRoot) {
   if (actionlintVersion) {
     report = runActionlint(rootDir, workflowFiles);
     report.toolVersion = actionlintVersion.split(/\s+/)[0] || actionlintVersion;
-    // Always run JS-native credential check on top of actionlint, because
+    // Always run JS-native security checks on top of actionlint, because
     // actionlint focuses on YAML/expression structure and does not scan
-    // shell script content for hard-coded credential patterns.
+    // shell script content for our content-light credential or output-laundering patterns.
     const jsNative = runJsNativeLint(rootDir, workflowFiles);
-    const credFindings = jsNative.findings.filter(
-      (f) => f.category === "credential_pattern",
+    const supplementalFindings = jsNative.findings.filter(
+      (f) => f.category === "credential_pattern" || f.category === "script_injection_result",
     );
-    report.findings = [...report.findings, ...credFindings];
+    report.findings = [...report.findings, ...supplementalFindings];
   } else {
     report = runJsNativeLint(rootDir, workflowFiles);
   }

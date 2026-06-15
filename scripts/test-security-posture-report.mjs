@@ -302,6 +302,43 @@ const tests = [
     },
   },
   {
+    name: "admission mode fails direct untrusted interpolation and output laundering",
+    run() {
+      const root = makeFixture({
+        "launder.yml": [
+          "name: Launder",
+          "on:",
+          "  workflow_dispatch:",
+          "    inputs:",
+          "      target:",
+          "        type: string",
+          "permissions:",
+          "  contents: read",
+          "jobs:",
+          "  demo:",
+          "    runs-on: ubuntu-latest",
+          "    steps:",
+          "      - id: taint",
+          "        run: |",
+          "          echo \"value=${{ inputs.target }}\" >> \"$GITHUB_OUTPUT\"",
+          "      - run: |",
+          "          echo \"direct=${{ github.actor }}\"",
+          "          echo \"laundered=${{ steps.taint.outputs.value }}\"",
+        ].join("\n"),
+      });
+      try {
+        const result = runSecurityPostureCli(root, "--admission", "--json");
+        assertEqual(result.status, 1, "admission should fail on interpolation findings");
+        const report = JSON.parse(result.stdout);
+        assertEqual(report.admission.passed, false, "admission report failed");
+        assertEqual(report.admission.findings.untrustedShellInterpolations.length, 3, "three interpolation findings");
+        assertEqual(report.admission.findings.riskyCommandWrites.length, 1, "one risky command-channel write");
+      } finally {
+        rmSync(root, { recursive: true, force: true });
+      }
+    },
+  },
+  {
     name: "workflow command channel: all four channels detected in a fixture workflow",
     run() {
       const root = makeFixture({

@@ -16,6 +16,7 @@ const SECURITY_SCAN_PATTERNS = {
 const UNTRUSTED_EXPRESSION_PATTERNS = [
   "inputs.",
   "github.event.",
+  "github.actor",
   "github.ref",
   "github.ref_name",
   "github.head_ref",
@@ -29,7 +30,7 @@ const COMMAND_CHANNEL_PATTERNS = [
   { channel: "GITHUB_STEP_SUMMARY", pattern: />>\s*["']?\s*\$\{?GITHUB_STEP_SUMMARY\}?["']?/ },
 ];
 
-const UNTRUSTED_CONTEXT_PATTERN = /\$\{\{\s*(github\.event\.|inputs\.)/;
+const UNTRUSTED_CONTEXT_PATTERN = /\$\{\{\s*(github\.event\.|github\.actor\b|inputs\.)/;
 
 function parseArgs(argv) {
   const options = {
@@ -226,7 +227,6 @@ const ACTION_PIN_EXCEPTION_LEDGER = {
 const WRITE_PERMISSION_EXCEPTION_LEDGER = [
   { workflow: ".github/workflows/codeql.yml", scope: "nested", permission: "security-events: write", reason: "CodeQL SARIF upload requires security-events write" },
   { workflow: ".github/workflows/manual-release-bump.yml", scope: "workflow", permission: "contents: write", reason: "Manual release bump creates release/version branch commits" },
-  { workflow: ".github/workflows/manual-release-bump.yml", scope: "workflow", permission: "issues: write", reason: "Manual release bump comments status on the source issue" },
   { workflow: ".github/workflows/manual-release-bump.yml", scope: "workflow", permission: "pull-requests: write", reason: "Manual release bump opens or updates release bump pull requests" },
   { workflow: ".github/workflows/release-drafter.yml", scope: "workflow", permission: "contents: write", reason: "Release Drafter maintains draft release notes" },
   { workflow: ".github/workflows/release-drafter.yml", scope: "workflow", permission: "pull-requests: write", reason: "Release Drafter reads and labels pull request metadata" },
@@ -337,19 +337,42 @@ function collectRunBlocks(lines) {
   return blocks;
 }
 
-function findUntrustedExpressions(text) {
+function findUntrustedExpressions(text, taintedOutputStepIds = new Set()) {
   return [...text.matchAll(/\$\{\{\s*([^}]+?)\s*\}\}/g)]
     .map((match) => match[1].trim())
     .filter((expression) =>
-      UNTRUSTED_EXPRESSION_PATTERNS.some((pattern) => expression.includes(pattern)),
+      UNTRUSTED_EXPRESSION_PATTERNS.some((pattern) => expression.includes(pattern))
+        || /^steps\.([A-Za-z0-9_-]+)\.outputs\./.test(expression)
+          && taintedOutputStepIds.has(expression.match(/^steps\.([A-Za-z0-9_-]+)\.outputs\./)?.[1]),
     );
+}
+
+function collectTaintedOutputStepIds(lines) {
+  const stepIds = new Set();
+  let currentStepId = null;
+
+  for (const line of lines) {
+    if (/^\s*-\s+name\s*:/.test(line) || /^\s*-\s+uses\s*:/.test(line) || /^\s*-\s+run\s*:/.test(line)) {
+      currentStepId = null;
+    }
+    const idMatch = line.match(/^\s*(?:-\s+)?id\s*:\s*([A-Za-z0-9_-]+)\s*$/);
+    if (idMatch) {
+      currentStepId = idMatch[1];
+    }
+    if (currentStepId && COMMAND_CHANNEL_PATTERNS[0].pattern.test(line) && findUntrustedExpressions(line).length > 0) {
+      stepIds.add(currentStepId);
+    }
+  }
+
+  return stepIds;
 }
 
 function detectUntrustedInterpolations(lines) {
   const findings = [];
+  const taintedOutputStepIds = collectTaintedOutputStepIds(lines);
   for (const block of collectRunBlocks(lines)) {
     for (const entry of block.entries) {
-      const suspicious = findUntrustedExpressions(entry.text);
+      const suspicious = findUntrustedExpressions(entry.text, taintedOutputStepIds);
       if (suspicious.length > 0) {
         findings.push({
           line: entry.line,
@@ -366,7 +389,7 @@ function detectUntrustedInterpolations(lines) {
       continue;
     }
     const snippet = match[1].trim().replace(/^['"]|['"]$/g, "");
-    const suspicious = findUntrustedExpressions(snippet);
+    const suspicious = findUntrustedExpressions(snippet, taintedOutputStepIds);
     if (suspicious.length > 0) {
       findings.push({
         line: index + 1,
@@ -470,6 +493,8 @@ function evaluateAdmission(report) {
   const unregisteredActionRefs = [];
   const unreportedWritePermissions = [];
   const riskyTriggers = [];
+  const untrustedShellInterpolations = [];
+  const riskyCommandWrites = [];
 
   for (const workflow of report.workflows) {
     for (const action of workflow.actions) {
@@ -513,11 +538,23 @@ function evaluateAdmission(report) {
         riskyTriggers.push({ workflow: workflow.path, ...trigger });
       }
     }
+
+    for (const finding of workflow.untrustedShellInterpolations) {
+      untrustedShellInterpolations.push({ workflow: workflow.path, ...finding });
+    }
+
+    for (const write of workflow.workflowCommandWrites) {
+      if (write.riskNote) {
+        riskyCommandWrites.push({ workflow: workflow.path, ...write });
+      }
+    }
   }
 
   const findingCount = unregisteredActionRefs.length
     + unreportedWritePermissions.length
-    + riskyTriggers.length;
+    + riskyTriggers.length
+    + untrustedShellInterpolations.length
+    + riskyCommandWrites.length;
 
   return {
     mode: "fail",
@@ -527,11 +564,15 @@ function evaluateAdmission(report) {
       unregisteredActionRefs: "fail",
       unreportedWritePermissions: "fail",
       riskyTriggers: "fail",
+      untrustedShellInterpolations: "fail",
+      riskyCommandWrites: "fail",
     },
     findings: {
       unregisteredActionRefs,
       unreportedWritePermissions,
       riskyTriggers,
+      untrustedShellInterpolations,
+      riskyCommandWrites,
     },
   };
 }
@@ -694,12 +735,14 @@ function formatMarkdown(report) {
   lines.push("");
   lines.push("## Admission gate");
   if (report.admission.passed) {
-    lines.push("- pass: no unregistered action refs, unreported write permissions, or risky triggers detected");
+    lines.push("- pass: no unregistered action refs, unreported write permissions, risky triggers, untrusted shell interpolations, or risky command-channel writes detected");
   } else {
     lines.push(`- fail findings: ${report.admission.findingCount}`);
     lines.push(`  - unregistered action refs: ${report.admission.findings.unregisteredActionRefs.length}`);
     lines.push(`  - unreported write permissions: ${report.admission.findings.unreportedWritePermissions.length}`);
     lines.push(`  - risky triggers: ${report.admission.findings.riskyTriggers.length}`);
+    lines.push(`  - untrusted shell interpolations: ${report.admission.findings.untrustedShellInterpolations.length}`);
+    lines.push(`  - risky command-channel writes: ${report.admission.findings.riskyCommandWrites.length}`);
   }
   lines.push("");
   lines.push("## Workflow inventory");
