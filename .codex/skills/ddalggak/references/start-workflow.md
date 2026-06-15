@@ -16,6 +16,16 @@ Use this when `start` needs full issue implementation detail beyond the hot path
 6. Use isolated worktrees. Independent issue lanes must create their own issue PR; hard-conflict fallback lanes hand off patch/commit evidence to one fallback PR.
 7. Completion is not test pass. Require commit, push, PR URL/evidence, validation evidence, and review gate state.
 
+## Stale base / conflict refresh rule
+
+If `start` detects that the lane base is stale or conflicts with the live base, it must not stop at a vague stale-base warning. The conductor owns the refresh decision:
+
+1. Re-read live base/PR/issue state and name the current base SHA, lane head SHA, and conflicting files.
+2. Prefer a normal rebase onto the refreshed base for an unshared or automation-owned lane branch.
+3. Use `--force-with-lease` only after recording the old remote head SHA and only for the same lane branch; never force-push someone else's branch or a protected base.
+4. If the branch is human-owned, ambiguous, or the conflict expands scope beyond the issue contract, stop with `blocked` and ask for direction instead of rewriting history.
+5. After any rebase/conflict fix, rerun the focused validation plus repo verification, update `lane-state` with the new base/head SHA, and require a fresh current-head review before ready.
+
 ## Required gates
 - Quality Lens Router Output
 - Evidence Contract

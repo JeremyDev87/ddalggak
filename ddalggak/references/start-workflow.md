@@ -11,6 +11,16 @@ Do not use when: the user asked only for `plan`, `status`, `check`, `prompt`, or
 
 `start`는 이슈 기반 구현만 수행한다. 먼저 repo URL/issue URL을 해석하고 `git fetch --prune`, branch, ahead/behind, worktree 상태를 확인한다. issue body와 comments를 모두 읽고, Quality Lens Router Output, Evidence Contract, Simplicity / Deletability Gate, Frontend Design Gate, React Code Quality Harness(React/Next.js 표면일 때만), Vercel Agent Skills Gate, Task Scope Contract를 brief에 넣는다. Default PR shape: one PR per issue; conflict fallback only when issue conflicts require it. Issue-PR Strategy with Conflict Fallback, Parallelization Decision, Integration commit, PR CREATE — 독립 이슈는 기본 생성, small direct change first, aesthetic direction, screenshot/viewport/manual evidence, server/client boundary, token source without printing secrets, preview-first, references/regression-library.md, 유용한 범위, class-level risk를 필요한 만큼 명시한다.
 
+## Stale base / conflict refresh rule
+
+If `start` detects that the lane base is stale or conflicts with the live base, it must not stop at a vague stale-base warning. The conductor owns the refresh decision:
+
+1. Re-read live base/PR/issue state and name the current base SHA, lane head SHA, and conflicting files.
+2. Prefer a normal rebase onto the refreshed base for an unshared or automation-owned lane branch.
+3. Use `--force-with-lease` only after recording the old remote head SHA and only for the same lane branch; never force-push someone else's branch or a protected base.
+4. If the branch is human-owned, ambiguous, or the conflict expands scope beyond the issue contract, stop with `blocked` and ask for direction instead of rewriting history.
+5. After any rebase/conflict fix, rerun the focused validation plus repo verification, update `lane-state` with the new base/head SHA, and require a fresh current-head review before ready.
+
 ## Issue Body → Worker Brief 필드 매핑
 
 issue body(`templates/issue-body.md`, GitHub issue form id 기준)를 worker brief(`templates/worker-brief.md`)로 변환할 때 아래 표를 따른다. 표 밖의 임의 재해석은 금지한다.
