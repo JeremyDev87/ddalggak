@@ -21,8 +21,6 @@ parity_targets:
     # contract shape) but no script verifies actual hermes parity.
     status: aspirational
     verified: false
-commands_glob: core/commands/*.yaml
-runtimes_glob: core/runtimes/*.yaml
 # Per-file parity class ledger across the two projection roots.
 # Classes:
 # - must-match: byte-identical in both roots.

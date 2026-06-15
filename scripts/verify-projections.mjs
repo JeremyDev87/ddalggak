@@ -123,6 +123,67 @@ function assertSkillPayload(root, label, commandDoc) {
   }
 }
 
+function parseDeclaredProjectionRoots(text) {
+  const rootsByRuntime = new Map();
+  const lines = text.split(/\r?\n/);
+  const start = lines.indexOf("projection_roots:");
+  if (start === -1) {
+    fail("core/projections.yaml must declare projection_roots");
+    return rootsByRuntime;
+  }
+
+  let currentRuntime = null;
+  for (let index = start + 1; index < lines.length; index += 1) {
+    const line = lines[index];
+    if (!line.trim() || line.trimStart().startsWith("#")) continue;
+    if (/^[A-Za-z0-9_-]+:/.test(line)) break;
+
+    const runtimeStart = line.match(/^ {2}([A-Za-z0-9_-]+):\s*$/);
+    if (runtimeStart) {
+      currentRuntime = runtimeStart[1];
+      rootsByRuntime.set(currentRuntime, null);
+      continue;
+    }
+
+    const rootLine = line.match(/^ {4}root:\s*(\S+)\s*$/);
+    if (rootLine && currentRuntime) {
+      rootsByRuntime.set(currentRuntime, rootLine[1]);
+    }
+  }
+
+  return rootsByRuntime;
+}
+
+function assertRuntimeProjectionContract(runtimeName, projectionsByRuntime) {
+  const relativePath = `core/runtimes/${runtimeName}.yaml`;
+  const runtime = parseSimpleYaml(readText(path.join(runtimeDir, `${runtimeName}.yaml`)), relativePath, {
+    onError: fail,
+  });
+
+  if (runtime.kind !== "execution_projection") {
+    fail(`${relativePath} must be kind: execution_projection`);
+  }
+  if (!Array.isArray(runtime.projection_roots) || runtime.projection_roots.length === 0) {
+    fail(`${relativePath} must declare at least one projection_roots entry`);
+    return;
+  }
+
+  const declaredRoots = new Set([...projectionsByRuntime.values()].filter(Boolean));
+  for (const [index, runtimeRoot] of runtime.projection_roots.entries()) {
+    if (!declaredRoots.has(runtimeRoot)) {
+      fail(
+        `${relativePath} projection_roots[${index}] (${runtimeRoot}) is not declared as a root in core/projections.yaml; use install_targets for install-only paths`,
+      );
+    }
+  }
+
+  if (runtimeName === "claude" && runtime.capabilities?.local_skill_install === true) {
+    if (!Array.isArray(runtime.install_targets) || runtime.install_targets.length === 0) {
+      fail(`${relativePath} must put install-only Claude paths in install_targets`);
+    }
+  }
+}
+
 const PARITY_LEDGER_CLASSES = new Set(["must-match", "may-localize", "root-specific"]);
 const PARITY_LEDGER_ENTRY_FIELDS = new Set(["class", "root", "reason"]);
 const parityRootsByKey = {
@@ -314,12 +375,16 @@ if (!projectionsText.includes("execution_runtime: false")) {
 }
 
 const parityLedgerEntryCount = runParityLedgerCheck(projectionsText);
+const projectionsByRuntime = parseDeclaredProjectionRoots(projectionsText);
 
 const runtimeFiles = readdirSync(runtimeDir).filter((name) => name.endsWith(".yaml"));
 for (const runtimeName of ["claude.yaml", "codex.yaml", "hermes.yaml"]) {
   if (!runtimeFiles.includes(runtimeName)) {
     fail(`core/runtimes/${runtimeName} missing`);
   }
+}
+for (const runtimeName of ["claude", "codex"]) {
+  assertRuntimeProjectionContract(runtimeName, projectionsByRuntime);
 }
 const hermesRuntime = parseSimpleYaml(
   readText(path.join(runtimeDir, "hermes.yaml")),
