@@ -9,6 +9,7 @@
 - secret, `.env.local`, token, service key, private workflow output은 기록하지 않는다.
 - `head_sha`가 바뀌면 기존 review conclusion은 stale로 보고 `review_pending` 또는 `fix_pending`으로 되돌린다.
 - `pr_url`이 비어 있으면 완료 상태가 아니다. 구현·검증이 끝났더라도 `pushed` 상태에 머물게 하고 다음 gate를 PR 생성으로 둔다.
+- draft PR은 `ready_for_manual_merge`가 아니다. current-head validation, terminal checks, and `approve` review evidence가 모두 기록된 뒤 conductor가 `gh pr ready`를 실행하고 `is_draft=false`를 readback해야 ready 상태로 전환할 수 있다.
 
 ## 상태 전이
 
@@ -21,7 +22,7 @@
 5. `pr_opened` — PR URL이 확인됨.
 6. `review_pending` — current head에 대한 독립 리뷰 또는 CI/check terminal success가 아직 없음.
 7. `fix_pending` — current head 리뷰/CI에서 blocker가 발견되어 수정 필요.
-8. `ready_for_manual_merge` — current head checks가 success/skipped 또는 no-CI 검증 완료이고, current head 독립 리뷰가 `APPROVE` 결론임.
+8. `ready_for_manual_merge` — current head checks가 success/skipped 또는 no-CI 검증 완료이고, current head 독립 리뷰가 `APPROVE` 결론이며, draft PR이면 `gh pr ready` 후 `is_draft=false` readback이 끝남.
 9. `blocked` — credentials, scope, conflict, validation gap 등으로 자동 진행 불가.
 10. `merged` — 사람이 merge했고 target branch evidence가 확인됨.
 
@@ -76,6 +77,13 @@ review:
   conclusion_head_sha: "<head sha named by latest conclusion or empty>"
   comment_url: "<review/comment URL or empty>"
   stale_reason: "<empty or why stale>"
+
+ready_transition:
+  owner: "conductor|human"
+  command: "gh pr ready <pr-number> or human action"
+  allowed_when: "current-head validation passed; checks terminal success/skipped; review approve@head; blocker_count=0"
+  is_draft_readback: true
+  merge_authority: "manual-only; no merge/auto-merge"
 
 next_gate:
   owner: "conductor|worker|reviewer|human"
