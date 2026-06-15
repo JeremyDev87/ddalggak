@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
@@ -7,6 +7,7 @@ import {
   buildDdalggakDevelopmentPacket,
   ddalggakIssueContextFromGhJson,
   executePreparedWorkerDispatch,
+  makeCollaboratorAuthorizer,
   normalizeApprovalSource,
   parseGithubIssueCommentApproval,
   prepareDdalggakWorkerDispatch,
@@ -110,18 +111,14 @@ const cases = [
   {
     name: "discord approval source derives actor and reason from session context",
     run() {
-      assert.deepEqual(
-        normalizeApprovalSource({
-          source: "discord",
-          sessionContext: { actor: "박정욱", reason: "current Discord command" },
-        }),
-        {
-          source: "discord",
-          approved: true,
-          approvedBy: "박정욱",
-          reason: "current Discord command",
-        },
-      );
+      const approval = normalizeApprovalSource({
+        source: "discord",
+        sessionContext: { actor: "박정욱", reason: "current Discord command" },
+      });
+      assert.equal(approval.source, "discord");
+      assert.equal(approval.approved, true);
+      assert.equal(approval.approvedBy, "박정욱");
+      assert.equal(approval.reason, "current Discord command");
       assert.equal(normalizeApprovalSource({ source: "discord" }).approved, false);
     },
   },
@@ -142,15 +139,114 @@ const cases = [
     },
   },
   {
-    name: "github issue comment source executes only with dobby approve marker",
+    name: "github issue comment approval requires an authorized marker author",
     run() {
-      const blocked = parseGithubIssueCommentApproval([{ body: "looks good", author: { login: "JeremyDev87" } }]);
+      const authorize = (login) => login === "JeremyDev87";
+      // No marker at all stays blocked regardless of authorizer.
+      const blocked = parseGithubIssueCommentApproval(
+        [{ body: "looks good", author: { login: "JeremyDev87" } }],
+        { authorizeApprover: authorize },
+      );
       assert.equal(blocked.approved, false);
-      const approved = parseGithubIssueCommentApproval([
-        { body: "please continue\n\ndobby:approve", author: { login: "JeremyDev87" }, createdAt: "2026-05-26T00:00:00Z" },
-      ]);
+      // Marker by an authorized collaborator approves with the verified author.
+      const approved = parseGithubIssueCommentApproval(
+        [{ body: "please continue\n\ndobby:approve", author: { login: "JeremyDev87" }, createdAt: "2026-05-26T00:00:00Z" }],
+        { authorizeApprover: authorize },
+      );
       assert.equal(approved.approved, true);
       assert.equal(approved.approvedBy, "JeremyDev87");
+      // Marker by an unauthorized (non-collaborator) author fails closed.
+      const unauthorized = parseGithubIssueCommentApproval(
+        [{ body: "dobby:approve", author: { login: "drive-by-contributor" } }],
+        { authorizeApprover: authorize },
+      );
+      assert.equal(unauthorized.approved, false);
+      assert.equal(unauthorized.approvedBy, null);
+      // No authorizer configured fails closed even for a real marker.
+      const noAuthorizer = parseGithubIssueCommentApproval([
+        { body: "dobby:approve", author: { login: "JeremyDev87" } },
+      ]);
+      assert.equal(noAuthorizer.approved, false);
+    },
+  },
+  {
+    name: "collaborator authorizer authorizes write access and fails closed otherwise",
+    run() {
+      const root = makeTempRoot();
+      // Fake gh: returns permission JSON keyed by the login in the api path so
+      // both the authorized (write) and denied (read/404) branches are exercised
+      // without touching the network.
+      const fakeGh = path.join(root, "fake-gh.mjs");
+      writeFileSync(
+        fakeGh,
+        [
+          "#!/usr/bin/env node",
+          'const parts = (process.argv[3] || "").split("/");',
+          "const login = parts[parts.length - 2];",
+          'if (login === "maintainer") { process.stdout.write(JSON.stringify({ permission: "write", role_name: "write" })); }',
+          'else if (login === "triager") { process.stdout.write(JSON.stringify({ permission: "read", role_name: "triage" })); }',
+          "else { process.exit(1); }",
+          "",
+        ].join("\n"),
+        "utf8",
+      );
+      chmodSync(fakeGh, 0o755);
+      const authorize = makeCollaboratorAuthorizer({ repo: "JeremyDev87/ddalggak", ghCommand: fakeGh });
+      assert.equal(authorize("maintainer"), true);
+      assert.equal(authorize("triager"), false);
+      assert.equal(authorize("ghost"), false); // non-collaborator → non-zero exit → fail closed
+      assert.equal(authorize("../etc/passwd"), false); // login pattern guard rejects before any spawn
+      assert.equal(makeCollaboratorAuthorizer({}), null); // no repo → no authorizer
+      assert.equal(
+        makeCollaboratorAuthorizer({ repo: "o/r", ghCommand: "definitely-not-a-real-cmd-xyz" })("maintainer"),
+        false, // spawn error → fail closed
+      );
+    },
+  },
+  {
+    name: "inline dobby:approve mention is not an approval marker",
+    run() {
+      const inline = parseGithubIssueCommentApproval(
+        [{ body: "let's not dobby:approve yet", author: { login: "JeremyDev87" } }],
+        { authorizeApprover: () => true },
+      );
+      assert.equal(inline.approved, false);
+    },
+  },
+  {
+    name: "github issue comment normalization authorizes via allowlist and brands the approval",
+    run() {
+      const issueContext = ddalggakIssueContextFromGhJson(
+        issue({
+          comments: [{ body: "dobby:approve", author: { login: "JeremyDev87" }, createdAt: "2026-05-26T00:00:00Z" }],
+        }),
+      );
+      const approved = normalizeApprovalSource({
+        source: "github-issue-comment",
+        issueContext,
+        authorizedApprovers: ["JeremyDev87"],
+      });
+      assert.equal(approved.approved, true);
+      assert.equal(approved.approvedBy, "JeremyDev87");
+      // The branded approval drives a real execution path end to end.
+      const packet = packetFixture({
+        issue: { comments: [{ body: "dobby:approve", author: { login: "JeremyDev87" } }] },
+      });
+      const prepared = prepareDdalggakWorkerDispatch(packet);
+      const executed = executePreparedWorkerDispatch(prepared, approved, {
+        runner: () => ({ status: 0, verificationPassed: true }),
+      });
+      assert.equal(executed.executed, true);
+      assert.equal(executed.evidence.status, "fulfilled");
+      // A non-allowlisted author on the same marker fails closed.
+      const denied = normalizeApprovalSource({
+        source: "github-issue-comment",
+        issueContext: ddalggakIssueContextFromGhJson(
+          issue({ comments: [{ body: "dobby:approve", author: { login: "outsider" } }] }),
+        ),
+        authorizedApprovers: ["JeremyDev87"],
+      });
+      assert.equal(denied.approved, false);
     },
   },
   {
@@ -203,12 +299,13 @@ const cases = [
     run() {
       const packet = packetFixture();
       const prepared = prepareDdalggakWorkerDispatch(packet);
-      const result = executePreparedWorkerDispatch(prepared, {
-        source: "direct",
-        approved: true,
-        approvedBy: "JeremyDev87",
-        reason: "test approval",
-      });
+      const result = executePreparedWorkerDispatch(
+        prepared,
+        normalizeApprovalSource({
+          source: "direct",
+          approval: { approved: true, approvedBy: "JeremyDev87", reason: "test approval" },
+        }),
+      );
       assert.equal(result.executed, false);
       assert.equal(result.evidence.status, "blocked");
       assert.equal(result.evidence.workerExecuted, false);
@@ -230,12 +327,38 @@ const cases = [
       const prepared = prepareDdalggakWorkerDispatch(packet);
       const result = executePreparedWorkerDispatch(
         prepared,
-        { source: "direct", approved: true, approvedBy: "JeremyDev87", reason: "test approval" },
+        normalizeApprovalSource({
+          source: "direct",
+          approval: { approved: true, approvedBy: "JeremyDev87", reason: "test approval" },
+        }),
         { runner: () => ({ status: 0 }) },
       );
       assert.equal(result.executed, true);
       assert.equal(result.evidence.status, "blocked");
       assert.equal(result.evidence.verificationPassed, false);
+    },
+  },
+  {
+    name: "un-normalized raw approval is rejected before execution",
+    run() {
+      const packet = packetFixture();
+      const prepared = prepareDdalggakWorkerDispatch(packet);
+      let runnerCalled = false;
+      assert.throws(
+        () =>
+          executePreparedWorkerDispatch(
+            prepared,
+            { source: "direct", approved: true, approvedBy: "JeremyDev87", reason: "forged approval" },
+            {
+              runner() {
+                runnerCalled = true;
+                return { status: 0, verificationPassed: true };
+              },
+            },
+          ),
+        /issued by normalizeApprovalSource/,
+      );
+      assert.equal(runnerCalled, false);
     },
   },
   {
@@ -245,7 +368,10 @@ const cases = [
       const prepared = prepareDdalggakWorkerDispatch(packet);
       const result = executePreparedWorkerDispatch(
         prepared,
-        { source: "direct", approved: true, approvedBy: "JeremyDev87", reason: "test approval" },
+        normalizeApprovalSource({
+          source: "direct",
+          approval: { approved: true, approvedBy: "JeremyDev87", reason: "test approval" },
+        }),
         { runner: () => ({ status: 0, verificationPassed: true }) },
       );
       assert.equal(result.executed, true);
