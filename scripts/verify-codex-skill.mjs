@@ -107,6 +107,14 @@ const skillBudgetMetrics = [];
 
 const failures = [];
 
+const semanticAnchorGuards = [
+  {
+    anchor: "Manual merge only",
+    description: "manual merge only must not be inverted into auto-merge permission",
+    invalidLinePattern: /\b(?:auto-?merge|merge)\b.*\b(?:ok|okay|allowed|enabled|permitted|허용|가능|켜도|해도)|\b(?:not|no longer|아니|아님|폐기|제거)\b/i,
+  },
+];
+
 function fail(message) {
   failures.push(message);
 }
@@ -668,6 +676,29 @@ function missingAnchors(text, anchors) {
   return anchors.filter((anchor) => !text.includes(anchor));
 }
 
+function linesContaining(text, anchor) {
+  return text
+    .split("\n")
+    .map((line, index) => ({ line, lineNumber: index + 1 }))
+    .filter(({ line }) => line.includes(anchor));
+}
+
+function assertSemanticAnchorGuards({ label, text, anchors }) {
+  const anchorSet = new Set(anchors);
+  for (const guard of semanticAnchorGuards) {
+    if (!anchorSet.has(guard.anchor)) {
+      continue;
+    }
+    for (const { line, lineNumber } of linesContaining(text, guard.anchor)) {
+      if (guard.invalidLinePattern.test(line)) {
+        fail(
+          `${label} semantic inversion near required anchor '${guard.anchor}' on line ${lineNumber}: ${guard.description}. Anchor presence alone is not enough when the same line negates or reverses the invariant.`,
+        );
+      }
+    }
+  }
+}
+
 function formatAnchorList(anchors) {
   return anchors.map((anchor) => `  - ${anchor}`).join("\n");
 }
@@ -694,6 +725,7 @@ function verifySkillFile(filePath, { label, hotPathAnchors }) {
         "Reference-only details should be preserved in references/* instead of re-expanded into SKILL.md.",
     );
   }
+  assertSemanticAnchorGuards({ label, text: skillText, anchors: hotPathAnchors });
 }
 
 function assertReferenceAnchors({ label, text, anchors }) {
