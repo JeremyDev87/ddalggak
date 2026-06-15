@@ -217,4 +217,24 @@ for (const [fixtureName, expectedMessage] of [
   );
 }
 
+{
+  const tempDir = copyRepo();
+  const runtimePath = path.join(tempDir, "core", "runtimes", "claude.yaml");
+  const runtime = readFileSync(runtimePath, "utf8");
+  const drifted = runtime.replace(
+    "projection_roots:\n  - ddalggak\ninstall_targets:\n  - .claude/skills/ddalggak",
+    "projection_roots:\n  - ddalggak\n  - .claude/skills/ddalggak\ninstall_targets:\n  - .claude/skills/ddalggak",
+  );
+  assert(drifted !== runtime, "fixture setup: expected to inject install target into projection_roots");
+  writeFileSync(runtimePath, drifted, "utf8");
+
+  const result = runProjectionVerifier(tempDir);
+  const output = `${result.stdout}\n${result.stderr}`;
+  assert(result.status === 1, `runtime projection-root drift must fail, got exit ${result.status}\n${output}`);
+  assert(
+    output.includes("core/runtimes/claude.yaml projection_roots[1] (.claude/skills/ddalggak) is not declared as a root in core/projections.yaml"),
+    `expected runtime projection-root drift diagnostic\n${output}`,
+  );
+}
+
 console.log("[test:verify-robustness] passed");

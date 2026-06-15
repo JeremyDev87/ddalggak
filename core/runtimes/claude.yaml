@@ -2,6 +2,7 @@ runtime: claude
 kind: execution_projection
 projection_roots:
   - ddalggak
+install_targets:
   - .claude/skills/ddalggak
 entrypoints:
   - "ddalggak setup"
