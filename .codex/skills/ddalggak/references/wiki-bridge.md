@@ -22,17 +22,9 @@ Required contract:
 5. If retrieval fails or no relevant page exists, record an evidence gap instead of inventing wiki facts.
 6. Keep live GitHub, local repo, PR diff, checks, and issue comments higher priority than stale wiki notes.
 
-Plan/review artifacts should preserve:
-
-```markdown
-### Wiki Context Manifest
-- Queries attempted:
-- Wiki sources read:
-- Relevant wiki facts:
-- Constraints / prior decisions:
-- Unknowns not found in wiki:
-- Non-wiki inference:
-```
+Plan/review artifacts must use the canonical Wiki Context Manifest defined in
+`references/wiki-context-preflight.md`. This bridge owns the read/write
+boundary; it does not define a competing manifest field set.
 
 ## setwiki bridge — approval-gated write
 

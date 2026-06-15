@@ -5,10 +5,12 @@
 ## 목표
 
 ## Wiki Context Manifest
+<!-- Canonical field set: references/wiki-context-preflight.md -->
+<!-- Required epic subset for intake: discovery, sources, facts, and gaps. -->
 - Queries attempted:
 - Wiki sources read:
 - Relevant wiki facts:
-- Unknowns / evidence gaps:
+- Authority conflicts or evidence gaps:
 
 ## 실행 순서
 

@@ -27,10 +27,12 @@
 <!-- form id: blockers -->
 
 ## Wiki Context Manifest
+<!-- Canonical field set: references/wiki-context-preflight.md -->
+<!-- Required issue subset for intake: discovery, sources, facts, and gaps. -->
 - Queries attempted:
 - Wiki sources read:
 - Relevant wiki facts:
-- Unknowns / evidence gaps:
+- Authority conflicts or evidence gaps:
 
 ## 병렬 실행 메모
 - Parallelization note:
