@@ -263,6 +263,41 @@ const tests = [
       }
     },
   },
+  {
+    name: "detects output-laundered untrusted values even when actionlint is available",
+    run() {
+      const root = makeFixture({
+        "launder.yml": [
+          "name: Launder",
+          "on:",
+          "  workflow_dispatch:",
+          "    inputs:",
+          "      target:",
+          "        type: string",
+          "jobs:",
+          "  demo:",
+          "    runs-on: ubuntu-latest",
+          "    steps:",
+          "      - id: meta",
+          "        run: |",
+          "          echo \"value=${{ inputs.target }}\" >> \"$GITHUB_OUTPUT\"",
+          "      - run: echo \"${{ steps.meta.outputs.value }}\"",
+        ].join("\n") + "\n",
+      });
+      try {
+        const report = runWorkflowLint(root);
+        const injectionFindings = report.findings.filter(
+          (f) => f.category === "script_injection_result",
+        );
+        assert(
+          injectionFindings.length >= 2,
+          `expected direct and laundered interpolation findings, got ${injectionFindings.length}`,
+        );
+      } finally {
+        rmSync(root, { recursive: true, force: true });
+      }
+    },
+  },
 ];
 
 let passed = 0;
