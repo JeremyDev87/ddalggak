@@ -16,16 +16,8 @@ Do not use when: the workflow already has an approved plan and is executing `sta
 
 Before writing the plan, run `references/wiki-context-preflight.md`.
 
-The plan must include:
-
-```markdown
-### Wiki Context Manifest
-- Queries attempted:
-- Wiki sources read:
-- Relevant wiki facts:
-- Constraints / prior decisions:
-- Unknowns not found in wiki:
-- Non-wiki inference:
-```
+The plan must include the canonical Wiki Context Manifest from
+`references/wiki-context-preflight.md`; do not duplicate a shorter local field
+set here.
 
 Use wiki-derived constraints to shape the plan before Quality Lens Router Output, React Code Quality Harness(React/Next.js 표면일 때만), Evidence Contract, and Counterargument Pass. If no relevant wiki source is found, state that explicitly and continue from the issue/repo evidence.
