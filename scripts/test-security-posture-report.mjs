@@ -228,7 +228,7 @@ const tests = [
 
         const checkoutFinding = pol.findings.find((f) => f.action === "actions/checkout");
         assert(checkoutFinding !== undefined, "checkout finding present");
-        assertEqual(checkoutFinding.exceptionStatus, "compliant", "checkout@v5 is registered compliant");
+        assertEqual(checkoutFinding.exceptionStatus, "compliant", "checkout SHA is registered compliant");
 
         const thirdPartyFinding = pol.findings.find((f) => f.action === "some-third-party/action");
         assert(thirdPartyFinding !== undefined, "third-party finding present");
