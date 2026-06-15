@@ -12,7 +12,7 @@
 //   - Idempotent via <dst>/.installed-version (compared against package.json version).
 //   - Atomic backup: rename <dst> → <dst>.bak.<YYYYMMDD-HHMMSS>[-rand6].
 //   - Flags: --dry-run, --force, --no-backup, --target <path>, --help.
-//   - path.resolve-based safety check; rejects "../" escapes onto system roots.
+//   - path/realpath-based safety check; rejects system roots, descendants, and symlink escapes.
 //   - Exit codes: 0 success/no-op, 1 IO failure, 2 argv error or safety failure.
 //   - Zero external dependencies; ESM; Node standard library only.
 
@@ -20,8 +20,10 @@ import { readFileSync } from "node:fs";
 import { createHash, randomBytes } from "node:crypto";
 import {
   cp,
+  mkdtemp,
   rename,
   rm,
+  realpath,
   stat,
   mkdir,
   writeFile,
@@ -132,10 +134,49 @@ const SYSTEM_ROOT_CHILDREN = new Set([
   "/lib",
   "/lib64",
   "/opt",
+  "/private/etc",
+  "/private/var",
 ]);
 
 function isAtFilesystemRoot(p) {
   return resolve(p) === resolve(p, "..");
+}
+
+function isSameOrDescendant(parent, candidate) {
+  const rel = relative(parent, candidate);
+  return rel === "" || (!rel.startsWith("..") && !isAbsolute(rel));
+}
+
+function systemPathMatch(candidate) {
+  for (const systemPath of SYSTEM_ROOT_CHILDREN) {
+    if (systemPath === "/" || systemPath === "/var" || systemPath === "/private/var") {
+      if (candidate === systemPath) return systemPath;
+      continue;
+    }
+    if (isSameOrDescendant(systemPath, candidate)) return systemPath;
+  }
+  return null;
+}
+
+async function resolvePhysicalPath(p) {
+  const absolutePath = resolve(p);
+  let probe = absolutePath;
+
+  while (true) {
+    try {
+      const physicalProbe = await realpath(probe);
+      const rel = relative(probe, absolutePath);
+      return rel ? resolve(physicalProbe, rel) : physicalProbe;
+    } catch (e) {
+      if (e && e.code === "ENOENT") {
+        const parent = resolve(probe, "..");
+        if (parent === probe) return absolutePath;
+        probe = parent;
+        continue;
+      }
+      throw e;
+    }
+  }
 }
 
 function safetyCheck(claudeHomeInput, claudeHomeResolved, dstResolved) {
@@ -145,12 +186,16 @@ function safetyCheck(claudeHomeInput, claudeHomeResolved, dstResolved) {
     return "target escapes CLAUDE_HOME";
   }
 
-  // 2) Refuse filesystem root or its bare children.
+  // 2) Refuse filesystem root, system directories and their descendants, or HOME itself.
   if (isAtFilesystemRoot(claudeHomeResolved)) {
     return `CLAUDE_HOME resolves to filesystem root (${claudeHomeResolved})`;
   }
-  if (SYSTEM_ROOT_CHILDREN.has(claudeHomeResolved)) {
-    return `CLAUDE_HOME resolves to system directory (${claudeHomeResolved})`;
+  if (claudeHomeResolved === resolve(homedir())) {
+    return `CLAUDE_HOME resolves to user home directory (${claudeHomeResolved})`;
+  }
+  const systemPath = systemPathMatch(claudeHomeResolved);
+  if (systemPath) {
+    return `CLAUDE_HOME resolves under system directory (${systemPath}): ${claudeHomeResolved}`;
   }
 
   // 3) If the original input contained ".." segments and resolution traversed
@@ -160,7 +205,7 @@ function safetyCheck(claudeHomeInput, claudeHomeResolved, dstResolved) {
     // Check the resolved path and every ancestor up to root for system-root match.
     let probe = claudeHomeResolved;
     while (true) {
-      if (SYSTEM_ROOT_CHILDREN.has(probe)) {
+      if (systemPathMatch(probe)) {
         return `CLAUDE_HOME traverses into system directory via "..": ${claudeHomeInput} → ${claudeHomeResolved}`;
       }
       const parent = resolve(probe, "..");
@@ -281,7 +326,7 @@ export async function run(args) {
     claudeHomeInput = join(homedir(), ".claude");
   }
 
-  const claudeHomeResolved = resolve(claudeHomeInput);
+  const claudeHomeResolved = await resolvePhysicalPath(claudeHomeInput);
   const dstDir = resolve(claudeHomeResolved, "skills", "ddalggak");
 
   const safetyError = safetyCheck(claudeHomeInput, claudeHomeResolved, dstDir);
@@ -353,31 +398,54 @@ export async function run(args) {
       return 0;
     }
 
-    if (dstExists) {
-      if (opts.noBackup) {
-        await rm(dstDir, { recursive: true, force: true });
-      } else {
-        const backupName = await chooseBackupName(dstDir);
-        await rename(dstDir, backupName);
-        out(`Backed up existing install → ${backupName}`);
-      }
-    }
-
     // Ensure parent directory exists (skills/) for first-time installs.
-    await mkdir(resolve(dstDir, ".."), { recursive: true });
+    const dstParent = resolve(dstDir, "..");
+    await mkdir(dstParent, { recursive: true });
 
-    await cp(SRC_DIR, dstDir, { recursive: true, force: true });
-    await writeFile(join(dstDir, ".installed-version"), version + "\n", "utf8");
+    const stagedDir = await mkdtemp(join(dstParent, ".ddalggak-install-"));
+    await cp(SRC_DIR, stagedDir, { recursive: true, force: true });
+    await writeFile(join(stagedDir, ".installed-version"), version + "\n", "utf8");
     const installedManifest = await buildInstalledManifest({
       sourceRoot: SRC_DIR,
-      installedRoot: dstDir,
+      installedRoot: stagedDir,
       version,
     });
     await writeFile(
-      join(dstDir, ".installed-manifest.json"),
+      join(stagedDir, ".installed-manifest.json"),
       `${JSON.stringify(installedManifest, null, 2)}\n`,
       "utf8",
     );
+
+    if (dstExists) {
+      if (opts.noBackup) {
+        const trashName = await mkdtemp(join(dstParent, ".ddalggak-replace-"));
+        await rm(trashName, { recursive: true, force: true });
+        await rename(dstDir, trashName);
+        try {
+          await rename(stagedDir, dstDir);
+          await rm(trashName, { recursive: true, force: true });
+        } catch (e) {
+          if (!(await pathExists(dstDir)) && (await pathExists(trashName))) {
+            await rename(trashName, dstDir);
+          }
+          throw e;
+        }
+      } else {
+        const backupName = await chooseBackupName(dstDir);
+        await rename(dstDir, backupName);
+        try {
+          await rename(stagedDir, dstDir);
+        } catch (e) {
+          if (!(await pathExists(dstDir)) && (await pathExists(backupName))) {
+            await rename(backupName, dstDir);
+          }
+          throw e;
+        }
+        out(`Backed up existing install → ${backupName}`);
+      }
+    } else {
+      await rename(stagedDir, dstDir);
+    }
 
     out(`✓ Installed ddalggak v${version} → ${dstDir}`);
     out("");
