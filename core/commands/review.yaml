@@ -15,6 +15,7 @@ required_references:
   - core-invariants.md
   - regression-library.md
   - cross-review-loop.md
+  - human-review-feedback-loop.md
   - security-posture-gate.md
 
 required_templates:

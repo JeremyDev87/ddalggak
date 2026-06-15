@@ -35,6 +35,10 @@ Reviewer completion text is not acceptance by itself. Medium/Low findings stay a
 
 Default automated limit: **2 fix iterations per PR review run**. A third loop needs a new user instruction or a fresh conductor decision explaining why the remaining accepted blocker is still in-scope. Critical security/privacy/secret-exposure blockers stop approval immediately; they do not grant unlimited edit authority.
 
+## Human review feedback loop
+
+When live PR comments, review threads, or unresolved conversation evidence exist, apply `references/human-review-feedback-loop.md` before any current-head `approve`/ready conclusion. Human feedback is classified as `accepted`, `countered`, `deferred`, `stale/outdated`, or `needs-human-decision`; accepted Critical/High feedback may be fixed only through the bounded `review` fix authority above, and unknown thread freshness blocks “all feedback resolved” claims.
+
 ## Current-head and stale-review rule
 
 Verdicts and fix results are valid only for the named PR head SHA.

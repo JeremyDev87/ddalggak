@@ -7,7 +7,12 @@ export const requiredDisclosureAssetsBySubcommand = {
     templates: ["worker-brief.md"],
   },
   review: {
-    references: ["cross-review-loop.md", "core-invariants.md", "2026-06-04-brain-v0-wiki-authority-in-ddalggak.md"],
+    references: [
+      "cross-review-loop.md",
+      "human-review-feedback-loop.md",
+      "core-invariants.md",
+      "2026-06-04-brain-v0-wiki-authority-in-ddalggak.md",
+    ],
     templates: ["review-brief.md", "fix-brief.md"],
   },
   status: {
@@ -111,6 +116,7 @@ export const subcommandExecutionContracts = {
       "core-invariants.md",
       "regression-library.md",
       "cross-review-loop.md",
+      "human-review-feedback-loop.md",
       "security-posture-gate.md",
     ],
     stopCondition: "REVIEW_DONE or accepted blocker fixed and re-reviewed",
@@ -204,6 +210,7 @@ export const requiredPackageFiles = [
   ".codex/skills/ddalggak/references/core-invariants.md",
   ".codex/skills/ddalggak/references/cross-review-loop.md",
   ".codex/skills/ddalggak/references/evidence-contract.md",
+  ".codex/skills/ddalggak/references/human-review-feedback-loop.md",
   ".codex/skills/ddalggak/references/issue-ready-plan.md",
   ".codex/skills/ddalggak/references/local-diff-check.md",
   ".codex/skills/ddalggak/references/merge-cleanup.md",
@@ -242,6 +249,7 @@ export const requiredPackageFiles = [
   "ddalggak/references/core-invariants.md",
   "ddalggak/references/cross-review-loop.md",
   "ddalggak/references/evidence-contract.md",
+  "ddalggak/references/human-review-feedback-loop.md",
   "ddalggak/references/issue-ready-plan.md",
   "ddalggak/references/local-diff-check.md",
   "ddalggak/references/merge-cleanup.md",
