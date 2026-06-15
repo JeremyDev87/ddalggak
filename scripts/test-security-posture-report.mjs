@@ -182,10 +182,14 @@ const tests = [
     },
   },
   {
-    name: "action pin policy: registered official major-tag action is compliant for admission",
+    name: "action pin policy: registered official SHA-pinned action is compliant for admission",
     run() {
-      const exceptionStatus = resolveExceptionStatus("actions/checkout", "v5", "major-tag");
-      assertEqual(exceptionStatus, "compliant", "registered major-tag should be compliant");
+      const exceptionStatus = resolveExceptionStatus(
+        "actions/checkout",
+        "93cb6efe18208431cddfb8368fd83d5badbf9bfd",
+        "sha-pinned",
+      );
+      assertEqual(exceptionStatus, "compliant", "registered SHA-pinned action should be compliant");
     },
   },
   {
@@ -201,8 +205,8 @@ const tests = [
           "    steps:",
           // SHA-pinned release-drafter (compliant per ledger)
           "      - uses: release-drafter/release-drafter@6db134d15f3909ccc9eefd369f02bd1e9cffdf97",
-          // registered official major-tag action (compliant per ledger)
-          "      - uses: actions/checkout@v5",
+          // SHA-pinned official action (compliant per ledger)
+          "      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd",
           // version-tag third-party without exception (needs-review)
           "      - uses: some-third-party/action@v1.2.3",
         ].join("\n"),
@@ -213,7 +217,7 @@ const tests = [
         assert(pol !== undefined, "actionPinPolicy must be present in report");
         assertEqual(pol.policy, "advisory-report-with-admission-fail", "policy includes admission fail mode");
         assertEqual(pol.summary.total, 3, "three pinnable action refs");
-        assertEqual(pol.summary["sha-pinned"], 1, "one sha-pinned ref");
+        assertEqual(pol.summary["sha-pinned"], 2, "two sha-pinned refs");
         assertEqual(pol.summary.compliant, 2, "registered refs are compliant");
         assertEqual(pol.summary["needs-review"], 1, "unregistered version-tag is needs-review");
 
@@ -253,7 +257,7 @@ const tests = [
           "  test:",
           "    runs-on: ubuntu-latest",
           "    steps:",
-          "      - uses: actions/checkout@v5",
+          "      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd",
         ].join("\n"),
       });
       try {

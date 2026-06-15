@@ -36,9 +36,9 @@ const tests = [
         "required: true",
         "type: string",
         "INPUT_TAG: ${{ inputs.tag }}",
-        "actions/checkout@v5",
+        "actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd",
         "persist-credentials: false",
-        "actions/setup-node@v6",
+        "actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e",
         "node-version: 24",
       ]) {
         assertIncludes(
@@ -92,12 +92,12 @@ const tests = [
         "sha: ${{ steps.verified_ref.outputs.sha }}",
         "verified_sha=$(git rev-parse HEAD)",
         'echo "sha=$verified_sha" >> "$GITHUB_OUTPUT"',
-        "actions/upload-artifact@v4",
+        "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
         "name: release-tarball-${{ steps.release.outputs.version }}",
         "path: ${{ steps.pack.outputs.tarball }}",
         "ref: ${{ needs.verify_tagged_ref.outputs.sha }}",
         'expected_sha="${{ needs.verify_tagged_ref.outputs.sha }}"',
-        "actions/download-artifact@v5",
+        "actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0",
         "name: release-tarball-${{ needs.verify_tagged_ref.outputs.version }}",
         'npm publish "$tarball_path" --provenance --access public --tag "${{ needs.verify_tagged_ref.outputs.npm_dist_tag }}"',
       ]) {
