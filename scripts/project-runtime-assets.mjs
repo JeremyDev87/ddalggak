@@ -195,6 +195,7 @@ const wikiReferences = new Set(["wiki-context-preflight.md", "wiki-bridge.md", "
 
 const workflowReferences = new Set([
   "agent-runtime-contract.md",
+  "ci-failure-triage-loop.md",
   "cross-review-loop.md",
   "human-review-feedback-loop.md",
   "issue-ready-plan.md",

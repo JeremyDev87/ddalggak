@@ -28,3 +28,5 @@ The Markdown output is intended for final reports, issue comments, or PR status 
 ## Review rule
 
 A content-light check evidence bundle is not an APPROVE signal by itself. Pending/failing checks still block APPROVE and ready transitions until the current head has terminal success/skipped checks or a verified no-CI exception.
+
+When checks are pending or failing, use `references/ci-failure-triage-loop.md` to decide the next action authority: code/test fix, safe rerun, permission/admin blocker, or unknown evidence blocker.

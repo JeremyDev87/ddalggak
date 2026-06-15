@@ -9,6 +9,7 @@ export const requiredDisclosureAssetsBySubcommand = {
   review: {
     references: [
       "cross-review-loop.md",
+      "ci-failure-triage-loop.md",
       "human-review-feedback-loop.md",
       "core-invariants.md",
       "2026-06-04-brain-v0-wiki-authority-in-ddalggak.md",
@@ -117,6 +118,7 @@ export const subcommandExecutionContracts = {
       "regression-library.md",
       "cross-review-loop.md",
       "human-review-feedback-loop.md",
+      "ci-failure-triage-loop.md",
       "security-posture-gate.md",
     ],
     stopCondition: "REVIEW_DONE or accepted blocker fixed and re-reviewed",
@@ -207,6 +209,7 @@ export const requiredPackageFiles = [
   ".codex/skills/ddalggak/agents/openai.yaml",
   ".codex/skills/ddalggak/references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md",
   ".codex/skills/ddalggak/references/agent-runtime-contract.md",
+  ".codex/skills/ddalggak/references/ci-failure-triage-loop.md",
   ".codex/skills/ddalggak/references/core-invariants.md",
   ".codex/skills/ddalggak/references/cross-review-loop.md",
   ".codex/skills/ddalggak/references/evidence-contract.md",
@@ -246,6 +249,7 @@ export const requiredPackageFiles = [
   "ddalggak/SKILL.md",
   "ddalggak/references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md",
   "ddalggak/references/agent-runtime-contract.md",
+  "ddalggak/references/ci-failure-triage-loop.md",
   "ddalggak/references/core-invariants.md",
   "ddalggak/references/cross-review-loop.md",
   "ddalggak/references/evidence-contract.md",

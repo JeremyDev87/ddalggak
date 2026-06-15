@@ -16,6 +16,7 @@ required_references:
   - regression-library.md
   - cross-review-loop.md
   - human-review-feedback-loop.md
+  - ci-failure-triage-loop.md
   - security-posture-gate.md
 
 required_templates:
