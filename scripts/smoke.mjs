@@ -7,6 +7,7 @@ import {
   readdirSync,
   readFileSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from "node:fs";
 import os from "node:os";
@@ -448,6 +449,38 @@ const cases = [
     },
   },
   {
+    name: "setup rejects system directory descendants",
+    run() {
+      const result = runCli(["setup", "--dry-run", "--target", "/etc/ddalggak-test"]);
+      assertExit(result, 2);
+      assertIncludes(result.stderr, "resolves under system directory", "stderr");
+    },
+  },
+  {
+    name: "setup rejects HOME as target",
+    run() {
+      const result = runCli(["setup", "--dry-run", "--target", os.homedir()]);
+      assertExit(result, 2);
+      assertIncludes(result.stderr, "user home directory", "stderr");
+    },
+  },
+  {
+    name: "setup rejects symlink target descendants that resolve to a system directory",
+    run() {
+      const tempRoot = makeTempHome();
+      const linkPath = path.join(tempRoot, "bin-link");
+      symlinkSync("/bin", linkPath, "dir");
+      const result = runCli([
+        "setup",
+        "--dry-run",
+        "--target",
+        path.join(linkPath, "ddalggak-test"),
+      ]);
+      assertExit(result, 2);
+      assertIncludes(result.stderr, "resolves under system directory", "stderr");
+    },
+  },
+  {
     name: "setup installs skill payload",
     run() {
       const claudeHome = makeTempHome();
@@ -547,6 +580,13 @@ const cases = [
           name.startsWith("ddalggak.bak."),
         ),
         "expected --no-backup not to create backup directories",
+      );
+      assert(
+        !listNames(path.join(claudeHome, "skills")).some((name) =>
+          name.startsWith(".ddalggak-install-") ||
+          name.startsWith(".ddalggak-replace-"),
+        ),
+        "expected atomic staging directories to be cleaned up",
       );
       assert(
         readFileSync(
