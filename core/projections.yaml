@@ -51,6 +51,8 @@ parity_ledger:
     class: may-localize
   - path: references/frontend-design-gate.md
     class: must-match
+  - path: references/human-review-feedback-loop.md
+    class: must-match
   - path: references/issue-ready-plan.md
     class: may-localize
   - path: references/local-diff-check.md
