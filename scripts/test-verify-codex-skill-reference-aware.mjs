@@ -87,6 +87,21 @@ withTempRepo("hot-path anchor must remain in SKILL.md", (tempDir) => {
   assertFail("hot-path anchor must remain in SKILL.md", runVerifier(tempDir), "hot-path anchors missing from");
 });
 
+withTempRepo("hot-path invariant anchor cannot be semantically inverted", (tempDir) => {
+  for (const skillRelativePath of [".codex/skills/ddalggak/SKILL.md", "ddalggak/SKILL.md"]) {
+    replaceInFile(
+      path.join(tempDir, skillRelativePath),
+      "Manual merge only",
+      "Manual merge only? 아니, auto-merge OK",
+    );
+  }
+  assertFail(
+    "hot-path invariant anchor cannot be semantically inverted",
+    runVerifier(tempDir),
+    "semantic inversion near required anchor 'Manual merge only'",
+  );
+});
+
 withTempRepo("router reference-owned anchor must remain in references", (tempDir) => {
   for (const referenceRelativePath of [
     ".codex/skills/ddalggak/references/quality-lens-router.md",
