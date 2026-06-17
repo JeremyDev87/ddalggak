@@ -2,7 +2,7 @@
 
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 
-ddalggak is a workflow skill for turning GitHub issues into planned, parallel, reviewed, and recoverable implementation work. This repository contains both the Codex App skill source and a legacy Claude Code CLI bridge.
+ddalggak is a workflow skill for turning GitHub issues into planned, parallel, reviewed, and recoverable implementation work. This repository projects one skill to two co-equal runtimes: the Codex App skill source (`.codex/skills/ddalggak/`) and the Claude Code skill (`ddalggak/`, with a CLI bridge for setup). Each root is canonical for its own runtime, and `npm run verify:projections` enforces parity between them.
 
 > npm release status: this package is being prepared for publication, but this README does not claim a live npm package until registry visibility is proven by the release follow-up audit.
 
@@ -30,7 +30,7 @@ Example invocations:
 [$ddalggak] status
 ```
 
-The Codex skill supports these subcommands:
+ddalggak supports these subcommands (the same set in both runtimes):
 
 - `start`: run issue-based implementation lanes.
 - `review`: run independent review as an AI code quality gate, checking not only correctness but also scope, existing patterns, failure semantics, simplicity, and human reviewability before accepted-fix loops.
@@ -42,16 +42,20 @@ The Codex skill supports these subcommands:
 - `retro`: write a retrospective for the completed workflow.
 - `prompt`: improve lane or review briefs.
 - `check`: run a local diff check.
+- `getwiki`: retrieve related wiki pages as read-only context for plan/review work.
+- `setwiki`: save a source into the wiki through an approval-gated write workflow.
 
-Codex App usage should prefer `.codex/skills/ddalggak/` as the source of truth. The top-level `ddalggak/` directory is retained for the Claude Code legacy setup path described below.
+Codex App loads the skill from `.codex/skills/ddalggak/`; Claude Code loads it from `ddalggak/`. Neither root outranks the other — each is canonical for its own runtime, and the per-file parity contract is declared in `core/projections.yaml` and enforced by `npm run verify:projections`. The Claude Code setup path is described below.
 
 ## Review as Quality Gate
 
 ddalggak treats review as the guardrail that keeps AI-generated implementation work aligned with the codebase. AI implementation productivity remains with the implementation lanes, while review protects codebase direction, maintainability, and long-term ownership. Reviewers should block not only broken code, but also unnecessary abstraction, silent fallback, scope creep, pattern drift, and changes that humans cannot easily understand, modify, or delete later. Self-created complexity is a defect: forced modularization, helper/provider/wrapper sprawl, client-side patches that bypass server/request/data boundaries, and mock-only proof for auth or redirect behavior should all trigger review scrutiny.
 
-For guardrail coverage, the Codex skill also requires frontend rendered evidence gates, transitive fallback audits, missing-evidence severity classification, retrospective knowledge extraction categories, and analytics/privacy allowlist/denylist contracts. `npm run verify:codex-skill` checks stable anchors for these #44 guardrails so maintainer edits cannot silently remove them.
+For guardrail coverage, ddalggak also requires frontend rendered evidence gates, transitive fallback audits, missing-evidence severity classification, retrospective knowledge extraction categories, and analytics/privacy allowlist/denylist contracts. `npm run verify:codex-skill` checks stable anchors for these #44 guardrails across both runtime payloads so maintainer edits cannot silently remove them.
 
 The Quality Lens Router chooses applicable gate families from request text, issue body/comments, PR files, and diff paths before plan, start, or review work. It records both applicable gates and skipped gates so backend-only work does not inherit frontend, deployment, or mobile review requirements by accident.
+
+Review runs as a closed loop, not a one-shot pass. Accepted human-review feedback and failing-check triage are folded back into bounded accepted-fix iterations before APPROVE (human review feedback loop, CI failure triage loop). Before a PR is marked ready, ddalggak confirms the branch is rebased on a fresh base and that the ready conditions hold (rebase and ready gates).
 
 ## Quality Defaults
 
@@ -103,9 +107,9 @@ Budget changes ship in a separate PR: a PR that changes the `subcommand_token_bu
 
 Every `ddalggak/references/*.md` file must be either *measured* — named in some subcommand's `required_references`, so it counts against that subcommand's effective-load budget — or *exempt*, registered in `core/projections.yaml` `reference_budget_exemptions` with an absolute `max_tokens` cap. The admission gate (`scripts/project-runtime-assets.mjs --report --admission`) fails closed if a reference is neither (unbudgeted), is redundantly both, names a missing file (stale), or exceeds its cap on any root. This closes the hole where the conditional gates reachable only through the always-loaded `references/quality-lens-router.md` pointer (`frontend-design-gate`, `react-code-quality-harness`, `vercel-agent-skills-gates`) sat outside every budget and could grow without bound. Separately, each declared budget must stay `<=` its `subcommand_token_ceilings` value — a frozen absolute ceiling (current budget × 1.5) that a budget-only PR cannot ratchet past, blocking the two-PR bypass (raise the budget in one PR, grow content up to it in the next) that the per-PR isolation check alone does not catch. The `reference_budget_exemptions` and `subcommand_token_ceilings` blocks are not `subcommand_token_budgets`, so editing them is never flagged as a budget change by `check-budget-isolation.mjs`.
 
-## Claude Code Legacy
+## Claude Code
 
-The legacy CLI bridge builds `/ddalggak <subcommand>` slash commands for Claude Code. From a source checkout, run the CLI directly with Node.js:
+The CLI bridge builds `/ddalggak <subcommand>` slash commands for Claude Code. From a source checkout, run the CLI directly with Node.js:
 
 ```bash
 node bin/ddalggak.js <subcommand> [args]
@@ -137,9 +141,9 @@ The proposed profile adds Korean honorific/truth-first defaults, GitHub issue bo
 
 Note that Hermes is an unverified, aspirational parity target: it is declared in `core/projections.yaml` (`status: aspirational`, `verified: false`), but no script in this repository verifies Hermes parity, so `npm run verify` does not validate this profile against any runtime.
 
-### Legacy Setup
+### Setup
 
-`setup` installs the legacy Claude Code skill payload into `~/.claude/skills/ddalggak/`:
+`setup` installs the Claude Code skill payload into `~/.claude/skills/ddalggak/`:
 
 ```bash
 node bin/ddalggak.js setup
@@ -319,7 +323,7 @@ npm run test:pr-check-evidence
 env npm_config_cache=/tmp/ddalggak-npm-cache npm pack --dry-run --ignore-scripts --loglevel=silent
 ```
 
-Use `npm test` for CLI setup and dispatch behavior, including setup safety/idempotency, `status --local` installed-skill parity states, dispatch quoting edge cases, and every subcommand `--show-doc` surface. Use `npm run verify:codex-skill` for Codex skill source, metadata, Quality Lens Router anchors, subcommand routing changes, progressive-disclosure budgets, required reference/template maps, legacy/Codex payload parity, detail-template regression guards, and npm package artifact inclusion. Use `npm run eval:ddalggak-readiness` for mock JSON replay checks covering no-work mutation suppression, duplicate PR/comment suppression, evidence-gap readiness blocking, URL-beats-cwd mutation blocking, and hard-conflict fallback classification. Use `npm run verify:security-posture` for a read-only GitHub Actions posture inventory covering permissions blocks, action reference pinning, direct untrusted shell interpolation candidates, and official CodeQL/Dependency Review/Scorecard evidence presence. Use `npm run test:pr-check-evidence` for content-light PR check bundle normalization, failure classification, details URL preservation, and secret-like string redaction. Missing official scan evidence is reported separately and must not be described as proof that the repository is safe. Use the pack dry-run as an explicit maintainer-facing package artifact inspection as well.
+Use `npm test` for CLI setup and dispatch behavior, including setup safety/idempotency, `status --local` installed-skill parity states, dispatch quoting edge cases, and every subcommand `--show-doc` surface. Use `npm run verify:codex-skill` for Codex skill source, metadata, Quality Lens Router anchors, subcommand routing changes, progressive-disclosure budgets, required reference/template maps, Claude/Codex payload parity, detail-template regression guards, and npm package artifact inclusion. Use `npm run eval:ddalggak-readiness` for mock JSON replay checks covering no-work mutation suppression, duplicate PR/comment suppression, evidence-gap readiness blocking, URL-beats-cwd mutation blocking, and hard-conflict fallback classification. Use `npm run verify:security-posture` for a read-only GitHub Actions posture inventory covering permissions blocks, action reference pinning, direct untrusted shell interpolation candidates, and official CodeQL/Dependency Review/Scorecard evidence presence. Use `npm run test:pr-check-evidence` for content-light PR check bundle normalization, failure classification, details URL preservation, and secret-like string redaction. Missing official scan evidence is reported separately and must not be described as proof that the repository is safe. Use the pack dry-run as an explicit maintainer-facing package artifact inspection as well.
 
 ## Platform Support
 

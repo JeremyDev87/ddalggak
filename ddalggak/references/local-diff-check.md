@@ -5,7 +5,7 @@ Side effects: none
 Do not use when: the task requires GitHub PR review comments, implementation fixes, or shipping changes.
 
 
-> Source of truth for legacy Claude Code ddalggak details. The always-loaded SKILL.md keeps only router/invariant anchors and points here for low-frequency detail.
+> Source of truth for Claude Code ddalggak details. The always-loaded SKILL.md keeps only router/invariant anchors and points here for low-frequency detail.
 
 ## Local Diff Check
 

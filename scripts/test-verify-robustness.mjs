@@ -152,7 +152,7 @@ for (const [fixtureName, expectedMessage] of [
   const result = runTokenBudgetReport(tempDir, ["--admission"]);
   const output = `${result.stdout}\n${result.stderr}`;
   assert(result.status === 0, `token budget admission on clean copy: expected exit 0, got ${result.status}\n${output}`);
-  assert(output.includes("(root: ddalggak/"), `token budget report must measure the claude_legacy root\n${output}`);
+  assert(output.includes("(root: ddalggak/"), `token budget report must measure the claude root\n${output}`);
   assert(
     output.includes("(root: .codex/skills/ddalggak/"),
     `token budget report must measure the codex root\n${output}`,

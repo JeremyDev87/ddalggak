@@ -5,8 +5,8 @@
 ## Repository entrypoints
 
 - [README](./README.md): project overview, supported CLI usage, release helper surfaces, and maintainer-facing package guidance.
-- [Codex skill](./.codex/skills/ddalggak/SKILL.md): current Codex App skill entrypoint and compact hot-path routing contract.
-- [Legacy Claude skill](./ddalggak/SKILL.md): legacy Claude Code skill entrypoint retained for setup/install compatibility.
+- [Codex skill](./.codex/skills/ddalggak/SKILL.md): Codex App skill entrypoint and compact hot-path routing contract.
+- [Claude Code skill](./ddalggak/SKILL.md): Claude Code skill entrypoint and compact hot-path routing contract.
 
 ## Workflow references
 

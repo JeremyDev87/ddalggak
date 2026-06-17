@@ -4,7 +4,7 @@ Required by: `prompt`; the Prompt Safety / Brief Compiler and `prompt grill-me` 
 Side effects: none
 Do not use when: the request is to change skill behavior or canonical skill/reference files; those follow the normal issue/branch/PR/review path.
 
-> Source of truth for legacy Claude Code ddalggak details. The always-loaded SKILL.md keeps only router/invariant anchors and points here for low-frequency detail.
+> Source of truth for Claude Code ddalggak details. The always-loaded SKILL.md keeps only router/invariant anchors and points here for low-frequency detail.
 
 ## Prompt Optimizer
 

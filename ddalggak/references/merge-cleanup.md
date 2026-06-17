@@ -5,7 +5,7 @@ Side effects: local-destructive — deletes merge-verified local branches/worktr
 Do not use when: merge evidence is missing, the target branch/PR is ambiguous, or local worktrees are dirty.
 
 
-> Source of truth for legacy Claude Code ddalggak details. The always-loaded SKILL.md keeps only router/invariant anchors and points here for low-frequency detail.
+> Source of truth for Claude Code ddalggak details. The always-loaded SKILL.md keeps only router/invariant anchors and points here for low-frequency detail.
 
 ## Merge Cleanup
 

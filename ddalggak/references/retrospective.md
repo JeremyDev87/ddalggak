@@ -4,7 +4,7 @@ Required by: `retro`; separating durable reusable lessons from one-off incident 
 Side effects: repo-external writes only (retrospective notes, memory artifacts); never edits repository files.
 Do not use when: the underlying PR is not merged and no session retrospective was explicitly chosen, or the user asked for implementation or review work instead.
 
-> Source of truth for legacy Claude Code ddalggak details. The always-loaded SKILL.md keeps only router/invariant anchors and points here for low-frequency detail.
+> Source of truth for Claude Code ddalggak details. The always-loaded SKILL.md keeps only router/invariant anchors and points here for low-frequency detail.
 
 ## Retrospective
 

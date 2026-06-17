@@ -61,9 +61,9 @@ const baseProjections = `source_root: ddalggak
 parity_ledger:
   - path: SKILL.md
     class: must-match
-# claude_legacy values: #224 baseline.
+# claude values: #224 baseline.
 subcommand_token_budgets:
-  claude_legacy:
+  claude:
     start: 19500
     review: 20000
   codex:
@@ -104,7 +104,7 @@ const tests = [
   {
     name: "violation: budget change + ddalggak measured content fails",
     run({ repoDir, baseSha }) {
-      git(repoDir, ["checkout", "-q", "-b", "case-violation-legacy", baseSha]);
+      git(repoDir, ["checkout", "-q", "-b", "case-violation-claude", baseSha]);
       editRepoFile(repoDir, "core/projections.yaml", "start: 19500", "start: 21000");
       editRepoFile(repoDir, "ddalggak/SKILL.md", "skill body v1", "skill body v2 grown");
       const headSha = commitAll(repoDir, "grow content and raise budget");
@@ -150,6 +150,19 @@ const tests = [
       editRepoFile(repoDir, "core/projections.yaml", "class: must-match", "class: may-localize");
       editRepoFile(repoDir, "ddalggak/SKILL.md", "skill body v1", "skill body v2");
       const headSha = commitAll(repoDir, "parity ledger + content, budgets untouched");
+      assertExit(this.name, runCheck(repoDir, baseSha, headSha), 0);
+    },
+  },
+  {
+    name: "root key rename with identical budget values + measured content passes",
+    run({ repoDir, baseSha }) {
+      git(repoDir, ["checkout", "-q", "-b", "case-root-rename", baseSha]);
+      // Rename the budget root key only; values are unchanged. A co-equal
+      // rename like claude_legacy -> claude must not be flagged as a budget
+      // change even when shipped together with measured content.
+      editRepoFile(repoDir, "core/projections.yaml", "  claude:\n", "  claude_renamed:\n");
+      editRepoFile(repoDir, "ddalggak/SKILL.md", "skill body v1", "skill body v2 co-equal");
+      const headSha = commitAll(repoDir, "rename budget root key and reword content");
       assertExit(this.name, runCheck(repoDir, baseSha, headSha), 0);
     },
   },
