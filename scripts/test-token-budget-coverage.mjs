@@ -150,7 +150,7 @@ withTempRepo("growing an exempt reference past its cap fails", (tempDir) => {
 });
 
 // Ceiling: a budget raised past its absolute ceiling must fail even though the
-// content fits — this is the 2-PR ratchet bypass guard. claude_legacy plan
+// content fits — this is the 2-PR ratchet bypass guard. claude plan
 // budget 20000 has ceiling 30000.
 withTempRepo("budget above its ceiling fails", (tempDir) => {
   replaceInFile(path.join(tempDir, PROJECTIONS), "    plan: 20000\n", "    plan: 40000\n");

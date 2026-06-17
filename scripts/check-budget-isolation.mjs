@@ -93,16 +93,25 @@ function parseSubcommandTokenBudgets(text) {
   return budgetsByRoot;
 }
 
+// Root key names are excluded from the comparison: a rename that carries the
+// same budget values to a different root name (e.g. claude_legacy -> claude) is
+// unrelated to the ratchet and must not count as a budget change. Each root's
+// command->value map is normalized and the maps are sorted, so adding,
+// removing, or modifying a value within a root is still detected. A wholesale
+// swap of two roots' complete maps is intentionally treated as a no-op: it is
+// zero-sum, and the binding ratchet is the frozen subcommand_token_ceilings
+// admission gate, not this per-PR isolation check.
 function canonicalBudgets(text) {
   const budgetsByRoot = parseSubcommandTokenBudgets(text);
-  const canonical = {};
-  for (const root of Object.keys(budgetsByRoot).sort()) {
-    canonical[root] = {};
+  const perRoot = Object.keys(budgetsByRoot).map((root) => {
+    const commands = {};
     for (const command of Object.keys(budgetsByRoot[root]).sort()) {
-      canonical[root][command] = budgetsByRoot[root][command];
+      commands[command] = budgetsByRoot[root][command];
     }
-  }
-  return JSON.stringify(canonical);
+    return JSON.stringify(commands);
+  });
+  perRoot.sort();
+  return JSON.stringify(perRoot);
 }
 
 const { base, head } = parseArgs(process.argv.slice(2));

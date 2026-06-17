@@ -4,7 +4,7 @@ Required by: `review`; post-PR review/fix loops after `start`/`ship`.
 Side effects: source-edit
 Do not use when: there is no PR/diff to review, or the task is a read-only local `check` that must not post comments or edit source.
 
-> Source of truth for legacy Claude Code ddalggak details. The always-loaded SKILL.md keeps only router/invariant anchors and points here for low-frequency detail.
+> Source of truth for Claude Code ddalggak details. The always-loaded SKILL.md keeps only router/invariant anchors and points here for low-frequency detail.
 
 ## Cross-Review Loop
 

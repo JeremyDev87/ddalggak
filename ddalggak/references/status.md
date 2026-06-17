@@ -5,7 +5,7 @@ Side effects: none
 Do not use when: the user asked to implement, ship, review, or mutate GitHub state rather than inspect current state.
 
 
-> Source of truth for legacy Claude Code ddalggak details. The always-loaded SKILL.md keeps only router/invariant anchors and points here for low-frequency detail.
+> Source of truth for Claude Code ddalggak details. The always-loaded SKILL.md keeps only router/invariant anchors and points here for low-frequency detail.
 
 ## Status
 

@@ -12,4 +12,4 @@ capabilities:
   local_skill_install: true
   show_doc: true
 loss_model:
-  - "Legacy Claude Code install may drift from source until setup/status verifies it."
+  - "Claude Code install may drift from source until setup/status verifies it."

@@ -6,7 +6,7 @@ projection_roots:
     runtime: codex
     generated: false
     verifier_required: true
-  claude_legacy:
+  claude:
     root: ddalggak
     runtime: claude
     generated: false
@@ -67,7 +67,7 @@ parity_ledger:
     class: must-match
   - path: references/pr-status-evidence-bundle.md
     class: root-specific
-    root: claude_legacy
+    root: claude
     reason: claude-runtime pr-status evidence bundle procedure
   - path: references/prompt-optimizer.md
     class: may-localize
@@ -134,11 +134,11 @@ parity_ledger:
 # #224 advisory warning to fail; --report alone stays advisory).
 # Budgets are root-specific because the root SKILL.md payloads differ in
 # size and language; a shared budget would either fail codex immediately or
-# force renumbering the claude_legacy baseline.
+# force renumbering the claude baseline.
 # All values: #266 recalibration (2026-06-12 measurement on master c7f35f2
 # with the multibyte-aware formula + 25% headroom, rounded up to 500).
 subcommand_token_budgets:
-  claude_legacy:
+  claude:
     start: 23000
     review: 26000
     status: 10000
@@ -213,7 +213,7 @@ reference_budget_exemptions:
 # separate, visible edit that exposes the ratchet. Roots differ for the same
 # reason as subcommand_token_budgets (SKILL.md payloads differ in size/language).
 subcommand_token_ceilings:
-  claude_legacy:
+  claude:
     start: 34500
     review: 39000
     status: 15000

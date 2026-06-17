@@ -5,7 +5,7 @@ Side effects: github-write
 Do not use when: there is no meaningful diff against the intended base or validation/scope evidence is missing.
 
 
-> Source of truth for legacy Claude Code ddalggak details. The always-loaded SKILL.md keeps only router/invariant anchors and points here for low-frequency detail.
+> Source of truth for Claude Code ddalggak details. The always-loaded SKILL.md keeps only router/invariant anchors and points here for low-frequency detail.
 
 ## Ship
 

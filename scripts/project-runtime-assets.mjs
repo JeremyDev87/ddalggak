@@ -142,7 +142,7 @@ function renderCodexCodePermissionTable() {
   return lines.join("\n");
 }
 
-function renderLegacyCodePermissionTable() {
+function renderClaudeCodePermissionTable() {
   const lines = [
     "| 서브커맨드 | 소스 코드 수정 | 작성 가능한 산출물 |",
     "|---|---|---|",
@@ -170,7 +170,7 @@ function renderCodexSubcommandTable() {
   return lines.join("\n");
 }
 
-function renderLegacySubcommandTable() {
+function renderClaudeSubcommandTable() {
   const lines = [
     "| subcommand | mode | show-doc heading | 목적 | side effects | stop condition | 상세 reference rule |",
     "|---|---|---|---|---|---|---|",
@@ -251,7 +251,7 @@ function completionSignalOf(doc) {
   return signal;
 }
 
-function renderLegacyCompletionSignalTable() {
+function renderClaudeCompletionSignalTable() {
   const lines = ["| 서브커맨드 | 완료 신호 |", "|---|---|"];
   for (const doc of commands) {
     lines.push(`| \`${doc.command}\` | \`${completionSignalOf(doc)}\` |`);
@@ -320,7 +320,7 @@ function fileSize(relativePath) {
 }
 
 const tokenBudgetRoots = [
-  { key: "claude_legacy", base: "ddalggak" },
+  { key: "claude", base: "ddalggak" },
   { key: "codex", base: ".codex/skills/ddalggak" },
 ];
 
@@ -602,10 +602,10 @@ const projections = [
   {
     path: "ddalggak/SKILL.md",
     blocks: [
-      ["code-permission-table", renderLegacyCodePermissionTable()],
-      ["subcommand-table", renderLegacySubcommandTable()],
+      ["code-permission-table", renderClaudeCodePermissionTable()],
+      ["subcommand-table", renderClaudeSubcommandTable()],
       ["required-reference-map", renderRequiredReferenceMap()],
-      ["completion-signal-table", renderLegacyCompletionSignalTable()],
+      ["completion-signal-table", renderClaudeCompletionSignalTable()],
     ],
   },
   {

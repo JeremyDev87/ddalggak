@@ -344,7 +344,7 @@ export const requiredSubcommands = [
   "getwiki",
   "setwiki",
 ];
-export const requiredLegacyHeadings = {
+export const requiredClaudeHeadings = {
   start: "Start Workflow",
   review: "Cross-Review Loop",
   status: "Status",
@@ -415,7 +415,7 @@ export const requiredSkillHotPathAnchors = [
   "no silent fallback",
   "raw UTF-8",
 ];
-export const requiredLegacySkillHotPathAnchors = [
+export const requiredClaudeSkillHotPathAnchors = [
   "URL beats cwd",
   "GitHub URL 처리 기준",
   "owner/repo/number",

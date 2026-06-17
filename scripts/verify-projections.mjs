@@ -187,7 +187,7 @@ function assertRuntimeProjectionContract(runtimeName, projectionsByRuntime) {
 const PARITY_LEDGER_CLASSES = new Set(["must-match", "may-localize", "root-specific"]);
 const PARITY_LEDGER_ENTRY_FIELDS = new Set(["class", "root", "reason"]);
 const parityRootsByKey = {
-  claude_legacy: sourceSkillRoot,
+  claude: sourceSkillRoot,
   codex: codexSkillRoot,
 };
 
@@ -268,7 +268,7 @@ function runParityLedgerCheck(projectionsText) {
     if (entry.class === "root-specific") {
       if (!Object.hasOwn(parityRootsByKey, entry.root ?? "")) {
         fail(
-          `core/projections.yaml line ${entry.line}: ${entry.path} root-specific entry needs root: codex or claude_legacy`,
+          `core/projections.yaml line ${entry.line}: ${entry.path} root-specific entry needs root: codex or claude`,
         );
       }
       if (!entry.reason) {
@@ -280,7 +280,7 @@ function runParityLedgerCheck(projectionsText) {
   }
 
   for (const entry of ledger.values()) {
-    const claudeFile = path.join(parityRootsByKey.claude_legacy, entry.path);
+    const claudeFile = path.join(parityRootsByKey.claude, entry.path);
     const codexFile = path.join(parityRootsByKey.codex, entry.path);
 
     if (entry.class === "must-match" || entry.class === "may-localize") {
@@ -303,7 +303,7 @@ function runParityLedgerCheck(projectionsText) {
     }
 
     if (entry.class === "root-specific" && Object.hasOwn(parityRootsByKey, entry.root ?? "")) {
-      const otherRootKey = entry.root === "codex" ? "claude_legacy" : "codex";
+      const otherRootKey = entry.root === "codex" ? "claude" : "codex";
       const ownRootFile = entry.root === "codex" ? codexFile : claudeFile;
       const otherRootFile = entry.root === "codex" ? claudeFile : codexFile;
       if (!exists(ownRootFile)) {

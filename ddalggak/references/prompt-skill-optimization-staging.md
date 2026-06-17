@@ -33,7 +33,7 @@ A candidate packet must include enough information for an independent reviewer t
 - **Regression replay**: commands or cases run against the old and proposed prompt.
 - **Failure cases**: examples that got worse, not only examples that improved.
 - **Risk / rollback note**: what can be reverted and how to detect harm after merge.
-- **Promotion target**: issue number, intended branch/PR, and whether the candidate affects legacy, Codex, or both payloads.
+- **Promotion target**: issue number, intended branch/PR, and whether the candidate affects Claude, Codex, or both payloads.
 
 If any required field is missing, treat the candidate as discovery evidence only. Do not promote it directly to a source edit.
 
@@ -45,7 +45,7 @@ Before a staged candidate can become a repository change:
 2. **Diff gate**: inspect the exact canonical diff that would be committed. Never rely on optimizer prose alone.
 3. **Lineage gate**: preserve enough trace context in the issue, PR body, or candidate packet for future maintainers to understand why the change exists.
 4. **Regression gate**: replay the relevant prompt, skill, CLI `--show-doc`, verifier, or smoke cases before claiming improvement.
-5. **Mirror parity gate**: when packaged skill surfaces are mirrored, update and verify both legacy and Codex payloads or explain why only one side is in scope.
+5. **Mirror parity gate**: when packaged skill surfaces are mirrored, update and verify both Claude and Codex payloads or explain why only one side is in scope.
 6. **Independent review gate**: a reviewer that did not generate the candidate must check scope, safety, prompt drift, stale wording, and rollback clarity.
 7. **Normal PR gate**: commit, push, PR body, checks, review conclusion, and manual merge policy remain unchanged.
 

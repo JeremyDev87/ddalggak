@@ -5,7 +5,7 @@ Side effects: github-write
 Do not use when: the user asked only for a plan/review, or the plan lacks enough detail to create automatable issues.
 
 
-> Source of truth for legacy Claude Code ddalggak details. The always-loaded SKILL.md keeps only router/invariant anchors and points here for low-frequency detail.
+> Source of truth for Claude Code ddalggak details. The always-loaded SKILL.md keeps only router/invariant anchors and points here for low-frequency detail.
 
 ## Plan to Issues
 
