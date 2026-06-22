@@ -73,6 +73,12 @@ parity_ledger:
     class: may-localize
   - path: references/prompt-skill-optimization-staging.md
     class: must-match
+  - path: references/tune-goal.md
+    class: must-match
+  - path: references/forge-goal.md
+    class: must-match
+  - path: references/spark-goal.md
+    class: must-match
   - path: references/quality-lens-router.md
     class: must-match
   - path: references/react-code-quality-harness.md
@@ -148,6 +154,9 @@ subcommand_token_budgets:
     ship: 8500
     retro: 14000
     prompt: 12500
+    tune: 11000
+    forge: 11000
+    spark: 11000
     check: 8500
     getwiki: 11000
     setwiki: 13000
@@ -161,6 +170,9 @@ subcommand_token_budgets:
     ship: 9500
     retro: 12500
     prompt: 12500
+    tune: 12000
+    forge: 12000
+    spark: 12000
     check: 9500
     getwiki: 11500
     setwiki: 13500
@@ -223,6 +235,9 @@ subcommand_token_ceilings:
     ship: 13000
     retro: 21000
     prompt: 19000
+    tune: 16500
+    forge: 16500
+    spark: 16500
     check: 13000
     getwiki: 16500
     setwiki: 19500
@@ -236,6 +251,9 @@ subcommand_token_ceilings:
     ship: 14500
     retro: 19000
     prompt: 19000
+    tune: 18000
+    forge: 18000
+    spark: 18000
     check: 14500
     getwiki: 17500
     setwiki: 20500

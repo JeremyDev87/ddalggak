@@ -10,9 +10,9 @@
  * budget inside the same PR that grows the content would neutralize
  * the admission gate's ratchet (#254).
  *
- * Allowed: budget-only PRs, content-only PRs, and calibration PRs that
- * change the budget together with non-measured files (e.g. the
- * estimation formula in scripts/).
+ * Allowed: budget-only PRs, content-only PRs, new-command PRs that add the
+ * command's initial budgets, and calibration PRs that change the budget
+ * together with non-measured files (e.g. the estimation formula in scripts/).
  *
  * Usage: node scripts/check-budget-isolation.mjs --base <ref> --head <ref>
  *
@@ -114,6 +114,34 @@ function canonicalBudgets(text) {
   return JSON.stringify(perRoot);
 }
 
+function budgetCommandValues(text) {
+  const budgetsByRoot = parseSubcommandTokenBudgets(text);
+  const byCommand = new Map();
+  for (const budgets of Object.values(budgetsByRoot)) {
+    for (const [command, value] of Object.entries(budgets)) {
+      if (!byCommand.has(command)) byCommand.set(command, []);
+      byCommand.get(command).push(value);
+    }
+  }
+  const canonical = new Map();
+  for (const [command, values] of byCommand.entries()) {
+    canonical.set(command, JSON.stringify(values.sort((left, right) => left - right)));
+  }
+  return canonical;
+}
+
+function changedBudgetCommands(baseText, headText) {
+  const before = budgetCommandValues(baseText);
+  const after = budgetCommandValues(headText);
+  const commands = new Set([...before.keys(), ...after.keys()]);
+  return [...commands].filter((command) => before.get(command) !== after.get(command)).sort();
+}
+
+function isNewCommand(command, mergeBase, head) {
+  const commandPath = `core/commands/${command}.yaml`;
+  return showFileAt(mergeBase, commandPath) === "" && showFileAt(head, commandPath) !== "";
+}
+
 const { base, head } = parseArgs(process.argv.slice(2));
 
 const mergeBase = git(["merge-base", base, head]).stdout.trim();
@@ -122,9 +150,12 @@ if (!mergeBase) {
   process.exit(2);
 }
 
-const budgetsChanged =
-  canonicalBudgets(showFileAt(mergeBase, PROJECTIONS_PATH)) !==
-  canonicalBudgets(showFileAt(head, PROJECTIONS_PATH));
+const baseProjectionText = showFileAt(mergeBase, PROJECTIONS_PATH);
+const headProjectionText = showFileAt(head, PROJECTIONS_PATH);
+const budgetsChanged = canonicalBudgets(baseProjectionText) !== canonicalBudgets(headProjectionText);
+const disallowedBudgetCommands = changedBudgetCommands(baseProjectionText, headProjectionText).filter(
+  (command) => !isNewCommand(command, mergeBase, head),
+);
 
 // --no-renames: a rename out of a measured path must list the measured
 // source path as deleted, not collapse into a destination-only rename entry.
@@ -136,7 +167,7 @@ const measuredChanges = changedFiles.filter((file) =>
   MEASURED_ASSET_PREFIXES.some((prefix) => file.startsWith(prefix)),
 );
 
-if (budgetsChanged && measuredChanges.length > 0) {
+if (budgetsChanged && measuredChanges.length > 0 && disallowedBudgetCommands.length > 0) {
   console.error(
     "[budget-isolation] fail: this PR changes core/projections.yaml subcommand_token_budgets together with measured skill content:",
   );
@@ -146,11 +177,16 @@ if (budgetsChanged && measuredChanges.length > 0) {
   console.error(
     "[budget-isolation] budget changes must ship in a separate budget-only PR (see README.md Progressive Disclosure Budget); calibration PRs may change budgets together with non-measured files only.",
   );
+  console.error(
+    `[budget-isolation] disallowed budget command(s): ${disallowedBudgetCommands.join(", ")}`,
+  );
   process.exit(1);
 }
 
 const classification = budgetsChanged
-  ? "budget-change without measured content"
+  ? measuredChanges.length > 0
+    ? "new-command initial budget with measured content"
+    : "budget-change without measured content"
   : measuredChanges.length > 0
     ? "measured content without budget change"
     : "neither budgets nor measured content changed";

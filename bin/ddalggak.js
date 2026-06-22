@@ -16,6 +16,9 @@ const SUBCOMMANDS = [
   "ship",
   "retro",
   "prompt",
+  "tune",
+  "forge",
+  "spark",
   "check",
   "getwiki",
   "setwiki",
@@ -43,6 +46,9 @@ Subcommands:
   ship                 Commit, push, and open a draft PR for existing lane changes
   retro                Write a workflow retrospective
   prompt               Improve lane or review briefs
+  tune                 Align intent into a goal-ready brief
+  forge                Convert done conditions into acceptance criteria
+  spark                Draft a copyable runtime goal sentence
   check                Run a local diff check
   getwiki              Delegate read-only wiki retrieval to /getwiki
   setwiki              Delegate approval-gated wiki write workflow to /setwiki
@@ -60,6 +66,7 @@ Options:
 Examples:
   ddalggak setup
   ddalggak plan --print "Split issue 22 into reviewable PR units"
+  ddalggak spark --print "Draft the next runtime goal"
   ddalggak getwiki --print "workflow routing"
   ddalggak setwiki --print "review this lesson"
   ddalggak profile hermes --dry-run

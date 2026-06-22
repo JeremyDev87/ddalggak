@@ -91,7 +91,7 @@ const skillBudgets = [
     maxChars: 35_000,
     principleHeadings: ["Global Guardrails"],
     maxPrincipleBullets: 25,
-    maxInlineSubcommandAnchors: 20,
+    maxInlineSubcommandAnchors: 23,
   },
   {
     label: "ddalggak/SKILL.md",

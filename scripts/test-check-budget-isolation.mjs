@@ -135,6 +135,33 @@ const tests = [
     },
   },
   {
+    name: "new command initial budget + measured command content passes",
+    run({ repoDir, baseSha }) {
+      git(repoDir, ["checkout", "-q", "-b", "case-new-command-initial-budget", baseSha]);
+      editRepoFile(
+        repoDir,
+        "core/projections.yaml",
+        "    review: 20000\n  codex:",
+        "    review: 20000\n    tune: 11000\n  codex:",
+      );
+      editRepoFile(
+        repoDir,
+        "core/projections.yaml",
+        "    review: 26500\n",
+        "    review: 26500\n    tune: 12000\n",
+      );
+      writeRepoFile(repoDir, "core/commands/tune.yaml", "command: tune\n");
+      writeRepoFile(repoDir, "ddalggak/references/tune-goal.md", "new command reference\n");
+      writeRepoFile(repoDir, ".codex/skills/ddalggak/references/tune-goal.md", "new command reference\n");
+      const headSha = commitAll(repoDir, "add new command and initial budget");
+      const result = runCheck(repoDir, baseSha, headSha);
+      assertExit(this.name, result, 0);
+      if (!result.stdout.includes("new-command initial budget")) {
+        throw new Error(`${this.name}: expected new-command classification:\n${result.stdout}`);
+      }
+    },
+  },
+  {
     name: "content-only PR passes",
     run({ repoDir, baseSha }) {
       git(repoDir, ["checkout", "-q", "-b", "case-content-only", baseSha]);

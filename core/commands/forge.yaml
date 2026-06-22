@@ -1,0 +1,17 @@
+# Canonical ddalggak command contract. Keep this file data-only; do not paste long procedure here.
+command: forge
+show_doc_heading: "Forge Acceptance Criteria"
+source_edit_allowed: false
+purpose: "Convert done conditions into objective acceptance checks."
+mode: "plan-only"
+write_side_effects: "Criteria only; no source, GitHub, or git mutation."
+stop_condition: "Stop after verifiable criteria or explicit gaps."
+required_references:
+  - forge-goal.md
+
+required_templates:
+  []
+
+output_contract:
+  completion_signal: "FORGE_DONE"
+  evidence_required: true
