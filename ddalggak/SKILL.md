@@ -1,17 +1,17 @@
 ---
 name: ddalggak
-description: "Use when 박정욱 invokes `/ddalggak` for the GitHub issue → plan → implementation → ship → review workflow, including plan, issue, start, ship, review, status, clean, retro, prompt, check, getwiki, and setwiki subcommands."
-argument-hint: "[start|review|status|plan|issue|clean|ship|retro|prompt|check|getwiki|setwiki] — no arg = start from GitHub issue"
+description: "Use when 박정욱 invokes `/ddalggak` for the GitHub issue → plan → implementation → ship → review workflow, including plan, issue, start, ship, review, status, clean, retro, prompt, tune, forge, spark, check, getwiki, and setwiki subcommands."
+argument-hint: "[start|review|status|plan|issue|clean|ship|retro|prompt|tune|forge|spark|check|getwiki|setwiki] — no arg = start from GitHub issue"
 user-invocable: true
 ---
 
 # ddalggak — 딸깍 워크플로우
 
-딸깍은 GitHub Issue → 계획 → 병렬 구현 → 교차 리뷰 → 자가 회복 → 회고의 한 사이클이다. 이 `SKILL.md`는 항상 로드되는 thin router이며, 긴 절차·템플릿·예시는 references/templates/scripts 쪽으로 이동한다.
+딸깍은 GitHub Issue → 계획 → 구현 → 리뷰 → 회고 thin router다. 긴 절차·템플릿은 references/templates/scripts에 둔다.
 
 ## 표준 워크플로우와 코드 수정 권한 (전역 invariant)
 
-표준 사이클: `prompt` → `plan` → `start` → `ship` → `review` → `retro`. `status`, `issue`, `clean`, `check`, `getwiki`, `setwiki`는 보조 명령이다.
+표준 사이클: `prompt` → `tune` → `forge` → `spark` → `plan` → `start` → `ship` → `review` → `retro`. `status`, `issue`, `clean`, `check`, `getwiki`, `setwiki`는 보조 명령이다.
 
 소스 코드(repo 내 파일, SKILL.md 포함)를 수정할 권한이 있는 서브커맨드는 `start`와 `review` 뿐이다. 다른 모든 서브커맨드는 자기 산출물 또는 GitHub 산출물만 작성한다.
 
@@ -27,6 +27,9 @@ user-invocable: true
 | `ship` | ❌ | commit, push, and draft PR for existing changes only |
 | `retro` | ❌ | retrospective notes and memory update request artifacts only |
 | `prompt` | ❌ | brief artifacts after explicit confirmation |
+| `tune` | ❌ | goal-alignment brief artifacts only |
+| `forge` | ❌ | acceptance-criteria artifacts only |
+| `spark` | ❌ | runtime-goal sentence artifacts only |
 | `check` | ❌ | local review notes only; no repository edits |
 | `getwiki` | ❌ | delegate to dedicated `/getwiki` read-only retrieval |
 | `setwiki` | ❌ | delegate to dedicated `/setwiki` approval-gated write workflow |
@@ -46,7 +49,7 @@ user-invocable: true
 2. 인수가 없으면 `start`로 route한다.
 3. 첫 단어가 issue 참조(GitHub issue/PR URL, `#<번호>`, 베어 issue 번호, `owner/repo#<번호>`)이면 `start`로 route하고 전체 인자를 issue context로 취급한다. issue 참조는 명령어가 아니라 인자다.
 4. 첫 단어가 CLI 전용 명령(`doctor`, `setup` 등 `bin/ddalggak.js`가 처리하는 명령)이면 route하지 않고 "터미널 CLI 명령입니다 — 셸에서 `ddalggak <명령>`을 실행하세요"로 안내한 뒤 멈춘다.
-5. 첫 단어가 지원 subcommand도, issue 참조도, CLI 전용 명령도 아니면(오타·미인식 단어) `start`로 자동 진입하지 않는다(fail-closed). `NEEDS_CLARIFICATION`으로 지원 subcommand 목록(`start|review|status|plan|issue|clean|ship|retro|prompt|check|getwiki|setwiki`)을 제시하고 의도를 되묻는다.
+5. 첫 단어가 지원 subcommand도, issue 참조도, CLI 전용 명령도 아니면(오타·미인식 단어) `start`로 자동 진입하지 않는다(fail-closed). `NEEDS_CLARIFICATION`으로 지원 subcommand 목록(`start|review|status|plan|issue|clean|ship|retro|prompt|tune|forge|spark|check|getwiki|setwiki`)을 제시하고 의도를 되묻는다.
 6. Route가 결정된 뒤 후속 인자는 절대 route를 바꾸지 않는다.
 7. 작업 전 정확히 한 줄 `-> <subcommand> 실행`을 출력한다.
 8. 선택된 subcommand는 코드 수정 권한 표를 넘지 않는다.
@@ -58,12 +61,12 @@ user-invocable: true
 - Issue comments matter: issue body와 comments는 모두 source-of-truth 후보이며 최신 명시 comment가 stale body보다 우선한다.
 - Issue-PRs by default: 독립 이슈는 기본적으로 issue PR 하나를 만든다. hard conflict만 single PR + serial commit fallback이 가능하다.
 - Manual merge only: 주인님 PR은 merge/auto-merge 금지. green + APPROVE도 ready for manual merge 보고까지만 허용한다.
-- approval-comment policy: formal approval이 부적절하면 current head SHA, review scope, validation evidence, blocking finding count, conclusion을 포함한 top-level PR comment를 사용한다. Top-level APPROVE comment는 GitHub formal approval과 다르므로 `CI/check`, `formal review/branch protection`, `merge blocker`, `human action`을 분리한다.
-- Runtime contract language: `references/agent-runtime-contract.md`가 Task Scope Contract, Context Assembly Manifest, Resume Snapshot, Control-flow ownership을 소유한다.
-- Quality Lens Router Output: `references/quality-lens-router.md`가 Applicable gate families, Skipped gates, Required references, Repo/product conventions, backend-only skip을 소유한다. Domain gate is a lens, not a mandate.
-- React Code Quality Harness: React/Next.js 코드 품질, AI-generated React diff, component/hook/state/fallback/rendering boundary가 걸리면 Quality Lens Router에서 `react-code-quality-harness`를 적용하고 `references/react-code-quality-harness.md`의 packaged SSOT를 읽는다. Gate 조건은 hot path에 복사하지 않는다.
-- Wiki Context First for plan/review: `references/wiki-context-preflight.md`를 실행하고 wiki-derived claim은 source path 또는 evidence gap을 남긴다. After Brain v0 migration/hardening, also apply `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`: broad `qmd://wiki` is discovery only; current-answer claims route through Brain P0/P1/domain/SSOT/control docs; raw/imported/hidden/index/log/redirect alias hits are evidence-only unless canonical/distilled.
-- Wiki Bridge: `getwiki`는 read-only retrieval, `setwiki`는 approval-gated write다. ddalggak은 `references/wiki-bridge.md`에서 admission/approval boundary만 소유하고 iCloud/QMD/wiki 상세 절차는 canonical wiki workflow로 위임한다.
+- approval-comment policy: top-level PR comment에 current head SHA, review scope, validation evidence, blocking finding count, conclusion을 담고 `CI/check`, `formal review/branch protection`, `merge blocker`, `human action`을 분리한다.
+- Runtime contract language: `references/agent-runtime-contract.md` owns Task Scope Contract, Context Assembly Manifest, Resume Snapshot, Control-flow ownership, tool capability boundary, task scope contract, out-of-scope diff, scope-expansion failure.
+- Quality Lens Router Output: `references/quality-lens-router.md` owns Applicable gate families, Skipped gates, Required references, Repo/product conventions, backend-only skip. Domain gate is a lens, not a mandate.
+- React Code Quality Harness: React/Next.js, AI-generated React diff, component/hook/state/fallback/rendering boundary면 `react-code-quality-harness`와 `references/react-code-quality-harness.md`; hot path에 gate 복사 금지.
+- Wiki Context First for plan/review: `references/wiki-context-preflight.md`; wiki-derived claim은 source path/evidence gap. `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`: broad `qmd://wiki` is discovery only; current-answer claims route through Brain P0/P1/domain/SSOT/control docs; raw/imported/hidden/index/log/redirect alias hits are evidence-only unless canonical/distilled.
+- Wiki Bridge: `getwiki` read-only retrieval, `setwiki` approval-gated write; `references/wiki-bridge.md` owns admission/approval boundary.
 - Evidence Contract: `references/evidence-contract.md` 기준이며 Blocking evidence gaps가 있으면 PR ready/APPROVE 금지다.
 - Simplicity / Deletability Gate: `references/simplicity-deletability-gate.md` 기준이며 small direct change first와 why is this abstraction necessary?를 우선한다.
 - Core Invariants Reference: `references/core-invariants.md`가 Counterargument Pass, scope expansion, privacy, knowledge extraction, rendered evidence, component methodology gate, raw UTF-8 같은 장문 guardrail rationale를 소유한다.
@@ -83,6 +86,9 @@ user-invocable: true
 | `ship` | github-write | Ship | Commit/push/open draft PR for existing scoped changes | Commit, push, and draft PR for already-existing scoped changes; no new source edits. | Stop after PR creation/current-head publication evidence or on no-diff/scope/validation blocker. | refs: `references/ship.md`; templates: - |
 | `retro` | repo-external-write | Retrospective | Extract reusable lessons after merge without transient memory | Repo-external writes only: the retrospective note under ~/workspace/retrospective/ (or the RETRO_DIR override) and memory files or memory-update request artifacts; skill/wiki changes stay proposal-only (wiki via the approval-gated setwiki bridge); no writes to any path inside the repository. | Stop after reusable lessons are separated from transient incident records. | refs: `references/retrospective.md`, `references/retrospective-workflow.md`, `references/wiki-growth-triage.md`; templates: - |
 | `prompt` | plan-only | Prompt Optimizer | Compile safer prompt briefs without source edits | Brief/review/fix artifacts only after explicit confirmation; no canonical source edits. | Stop with READY_FOR_BRIEF, NEEDS_CLARIFICATION, BLOCKED_UNSAFE, or DISCOVERY_ONLY. | refs: `references/prompt-optimizer.md`, `references/prompt-skill-optimization-staging.md`; templates: - |
+| `tune` | plan-only | Tune Goal Brief | Align rough intent into a source-grounded goal brief before implementation | Brief only; no source, GitHub, or git mutation. | Stop after a scoped brief or explicit blockers. | refs: `references/tune-goal.md`; templates: - |
+| `forge` | plan-only | Forge Acceptance Criteria | Convert done conditions into objective acceptance checks | Criteria only; no source, GitHub, or git mutation. | Stop after verifiable criteria or explicit gaps. | refs: `references/forge-goal.md`; templates: - |
+| `spark` | plan-only | Spark Runtime Goal | Draft a copyable runtime goal sentence with validation checklist | Goal text only; no source, GitHub, or git mutation. | Stop after goal text and validation checklist. | refs: `references/spark-goal.md`; templates: - |
 | `check` | read-only | Local Diff Check | Read-only local diff review | Local diff review notes only; no GitHub comments and no repository edits. | Stop after findings and exact validation gaps are reported. | refs: `references/local-diff-check.md`; templates: - |
 | `getwiki` | read-only | GetWiki Bridge | Wiki context retrieval bridge | Delegate to dedicated /getwiki retrieval; no wiki or repo mutation. | Stop after cited wiki sources or retrieval gaps are reported. | refs: `references/wiki-bridge.md`, `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`; templates: - |
 | `setwiki` | approval-gated-write | SetWiki Bridge | Wiki write workflow bridge | Delegate to dedicated /setwiki; wiki writes require explicit approval and verification. | Stop at review-only plan unless explicit approval is present; then stop after wiki write verification. | refs: `references/wiki-bridge.md`, `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`, `references/wiki-growth-triage.md`; templates: - |
@@ -92,14 +98,14 @@ user-invocable: true
 
 | mode | 정의 |
 |---|---|
-| `source-edit` | issue scope 안에서 repo 소스 수정 가능. |
-| `review-fix` | 수용된 리뷰 수정에 한해 소스 수정과 리뷰 대상 PR 브랜치 push 가능. |
-| `plan-only` | 계획/브리프 산출물만 생성. 소스·GitHub·로컬 git 상태 무변경. |
-| `read-only` | 보고만 한다. 소스·GitHub·로컬 git 상태 무변경. |
-| `repo-external-write` | repo 내부 경로는 무변경. 단, repo 외부(`~/workspace/retrospective/`, 메모리 파일 등)에 write할 수 있다. |
-| `local-destructive` | repo 소스/GitHub 무변경. 단, 로컬 git 상태(merge 검증된 브랜치/worktree)를 삭제할 수 있다. |
-| `github-write` | GitHub artifact(issue/PR/comment) 생성·수정. 로컬 commit/push도 허용(예: ship). repo 소스 무변경. |
-| `approval-gated-write` | 명시적 승인 후에만 외부(wiki) write. 승인 전에는 review-only. |
+| `source-edit` | issue scope 안에서만 repo 소스 수정 가능. |
+| `review-fix` | 수용된 리뷰 수정만 PR 브랜치에 edit/push 가능. |
+| `plan-only` | 계획/브리프만; source/GitHub/git 무변경. |
+| `read-only` | 보고만; source/GitHub/git 무변경. |
+| `repo-external-write` | repo 무변경; 외부 note/memory artifact만 허용. |
+| `local-destructive` | repo/GitHub 무변경; merge-검증 local cleanup만. |
+| `github-write` | GitHub artifact와 ship commit/push만; source edit 없음. |
+| `approval-gated-write` | 명시 승인 후 외부 wiki write만. |
 
 ## Required Reference Map
 
@@ -116,6 +122,9 @@ user-invocable: true
 | `ship` | `references/ship.md` | - | - | - |
 | `retro` | `references/retrospective.md`, `references/retrospective-workflow.md`, `references/wiki-growth-triage.md` | - | - | - |
 | `prompt` | `references/prompt-optimizer.md`, `references/prompt-skill-optimization-staging.md` | - | - | - |
+| `tune` | `references/tune-goal.md` | - | - | - |
+| `forge` | `references/forge-goal.md` | - | - | - |
+| `spark` | `references/spark-goal.md` | - | - | - |
 | `check` | `references/local-diff-check.md` | - | - | - |
 | `getwiki` | - | - | `references/wiki-bridge.md`, `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md` | - |
 | `setwiki` | `references/wiki-growth-triage.md` | - | `references/wiki-bridge.md`, `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md` | - |
@@ -221,6 +230,18 @@ Preserve `source_edit_allowed: false`; compile brief/review/fix artifacts only, 
 
 ---
 
+## Tune Goal Brief
+
+Full procedure: `references/tune-goal.md`; source-grounded goal brief with scope, non-goals, assumptions, open questions, validation surfaces, and no source edits.
+
+## Forge Acceptance Criteria
+
+Full procedure: `references/forge-goal.md`; objective command/observation plus expected-result acceptance criteria, with no source edits.
+
+## Spark Runtime Goal
+
+Full procedure: `references/spark-goal.md`; copyable runtime goal sentence, validation checklist, non-goals, next instruction, and no source edits.
+
 ## GetWiki Bridge
 
 Full procedure: `references/wiki-bridge.md`; Brain v0 authority: `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`.
@@ -277,6 +298,9 @@ Branches are purpose-centered with no generated date/time suffixes; commit/PR de
 | `ship` | `SHIP_DONE` |
 | `retro` | `RETRO_DONE` |
 | `prompt` | `PROMPT_DONE` |
+| `tune` | `TUNE_DONE` |
+| `forge` | `FORGE_DONE` |
+| `spark` | `SPARK_DONE` |
 | `check` | `CHECK_DONE` |
 | `getwiki` | `GETWIKI_DONE` |
 | `setwiki` | `SETWIKI_DONE` |

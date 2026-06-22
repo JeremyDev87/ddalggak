@@ -41,6 +41,9 @@ ddalggak supports these subcommands (the same set in both runtimes):
 - `ship`: commit, push, and open a draft PR for existing lane changes.
 - `retro`: write a retrospective for the completed workflow.
 - `prompt`: improve lane or review briefs.
+- `tune`: align rough intent into a goal-ready brief.
+- `forge`: convert done conditions into objective acceptance criteria.
+- `spark`: draft a copyable runtime goal sentence with validation guidance.
 - `check`: run a local diff check.
 - `getwiki`: retrieve related wiki pages as read-only context for plan/review work.
 - `setwiki`: save a source into the wiki through an approval-gated write workflow.
@@ -120,6 +123,8 @@ Examples:
 ```bash
 node bin/ddalggak.js prompt "Improve retry handling"
 node bin/ddalggak.js plan --print "Split issue 22 into reviewable PR units"
+node bin/ddalggak.js tune --print "Clarify this implementation goal"
+node bin/ddalggak.js spark --print "Draft the next runtime goal"
 node bin/ddalggak.js start 22
 node bin/ddalggak.js status
 node bin/ddalggak.js status --local --json
@@ -164,6 +169,12 @@ Common subcommand options:
 
 - `--print`: print only the `/ddalggak <subcommand> ...` slash command.
 - `--show-doc`: print the matching `SKILL.md` section for the subcommand.
+
+Goal-shaping subcommands:
+
+- `tune`: produce an intent/scope brief for a future runtime goal.
+- `forge`: turn a tuned brief into command/observation plus expected-result acceptance criteria.
+- `spark`: produce the copyable runtime goal sentence and validation checklist.
 
 `profile hermes` options:
 

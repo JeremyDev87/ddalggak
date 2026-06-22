@@ -1,0 +1,17 @@
+# Canonical ddalggak command contract. Keep this file data-only; do not paste long procedure here.
+command: spark
+show_doc_heading: "Spark Runtime Goal"
+source_edit_allowed: false
+purpose: "Draft a copyable runtime goal sentence with validation checklist."
+mode: "plan-only"
+write_side_effects: "Goal text only; no source, GitHub, or git mutation."
+stop_condition: "Stop after goal text and validation checklist."
+required_references:
+  - spark-goal.md
+
+required_templates:
+  []
+
+output_contract:
+  completion_signal: "SPARK_DONE"
+  evidence_required: true

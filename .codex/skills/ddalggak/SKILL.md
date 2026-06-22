@@ -5,35 +5,18 @@ description: "Use when the user wants a Codex App native GitHub issue to impleme
 
 # ddalggak - Codex App workflow
 
-Ddalggak is a thin-router skill for one repeated cycle: GitHub Issue -> plan -> parallel implementation -> independent review -> self-healing -> retrospective. The always-loaded `SKILL.md` must stay small enough to route safely; detailed procedure belongs in `references/`, reusable wording belongs in `templates/`, and mechanical regression protection belongs in `scripts/` or future `fixtures/` / `evals/`.
+Ddalggak is a thin-router skill for GitHub Issue -> plan -> implementation -> review -> recovery -> retrospective. Keep long procedure in `references/` and reusable wording in `templates/`.
 
 ## Subcommands
 
-Supported subcommands are: `start|review|status|plan|issue|clean|ship|retro|prompt|check|getwiki|setwiki`.
+Supported subcommands are: `start|review|status|plan|issue|clean|ship|retro|prompt|tune|forge|spark|check|getwiki|setwiki`.
 
-Standard cycle: `prompt` -> `plan` -> `start` -> `ship` -> `review` -> `retro`. `status`, `issue`, `clean`, `check`, `getwiki`, and `setwiki` are supporting commands.
+Standard cycle: `prompt` -> `tune` -> `forge` -> `spark` -> `plan` -> `start` -> `ship` -> `review` -> `retro`. `status`, `issue`, `clean`, `check`, `getwiki`, and `setwiki` are supporting commands.
 
 ## Hot-Path Target Architecture
 
-The hot path is frontmatter, overview, routing invariant, code modification invariant, global non-negotiable guardrails, subcommand dispatch table, required reference map, stop conditions, and verification checklist.
+The hot path is routing, code permissions, guardrails, subcommand contracts, reference map, stop conditions, and verification checklist.
 
-Current hot-path target is the semantic subcommand contract, not a stale #94/#95 line-count reminder: each command must expose mode, source-edit boundary, GitHub/write side effects, required references, and stop condition while long procedure stays in references/templates/scripts.
-
-
-## Reference And Template Map
-
-The hot path stays compact. Load these files only when the routed subcommand needs low-frequency detail. After Brain v0 migration/hardening, apply `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md` when ddalggak uses wiki context: broad `qmd://wiki` is discovery only, and current-answer claims route through Brain authority pages:
-
-| Area | References | Templates |
-| --- | --- | --- |
-| start | `references/start-workflow.md` | `templates/worker-brief.md`, `templates/conductor-state.md` |
-| review | `references/cross-review-loop.md` | `templates/review-brief.md`, `templates/fix-brief.md` |
-| plan | `references/issue-ready-plan.md` | - |
-| issue | `references/plan-to-issues.md` | `templates/issue-body.md`, `templates/epic-body.md` |
-| ship | `references/ship.md` | - |
-| clean/status/check/retro/prompt | matching `references/*.md` | as needed |
-
-Progressive disclosure rule: do not paste long BRIEF, REVIEW, FIX, issue, or conductor-state templates back into this always-loaded `SKILL.md`. Keep detailed procedure in `references/` and reusable body shapes in `templates/`.
 
 ## Routing Invariant
 
@@ -43,7 +26,7 @@ Parse only the first whitespace-separated word from the invocation arguments.
 2. If there are no arguments, route to `start`.
 3. If the first word is an issue reference (GitHub issue/PR URL, `#<number>`, a bare issue number, or `owner/repo#<number>`), route to `start` and treat the full argument string as issue context. An issue reference is an argument, not a command word.
 4. If the first word is a CLI-only command (`doctor`, `setup`, or any command handled by `bin/ddalggak.js`), do not route; reply that it is a terminal CLI command to run as `ddalggak <command>` in the shell, and stop.
-5. Otherwise, when the first word is neither a supported subcommand, an issue reference, nor a CLI-only command (a typo or unrecognized word), do not fall through to `start` (fail-closed). Return `NEEDS_CLARIFICATION` with the supported subcommand list (`start|review|status|plan|issue|clean|ship|retro|prompt|check|getwiki|setwiki`) and ask for intent.
+5. Otherwise, when the first word is neither a supported subcommand, an issue reference, nor a CLI-only command (a typo or unrecognized word), do not fall through to `start` (fail-closed). Return `NEEDS_CLARIFICATION` with the supported subcommand list (`start|review|status|plan|issue|clean|ship|retro|prompt|tune|forge|spark|check|getwiki|setwiki`) and ask for intent.
 6. Once a route is selected, later arguments must never reroute the request, even if they look like an implementation request.
 7. Immediately print exactly one route line before doing work: `-> <subcommand> 실행`.
 8. The routed subcommand must stay inside the code modification permissions in the table below.
@@ -65,6 +48,9 @@ Only `start` and `review` may authorize repository source file edits. All other 
 | `ship` | no | commit, push, and draft PR for existing changes only |
 | `retro` | no | retrospective notes and memory update request artifacts only |
 | `prompt` | no | brief artifacts after explicit confirmation |
+| `tune` | no | goal-alignment brief artifacts only |
+| `forge` | no | acceptance-criteria artifacts only |
+| `spark` | no | runtime-goal sentence artifacts only |
 | `check` | no | local review notes only; no repository edits |
 | `getwiki` | no | delegate to dedicated `/getwiki` read-only retrieval |
 | `setwiki` | no | delegate to dedicated `/setwiki` approval-gated write workflow |
@@ -85,6 +71,9 @@ If a non-writing subcommand would need a source edit to continue, report the nee
 | `ship` | github-write | Ship | Commit/push/open draft PR for existing scoped changes | Commit, push, and draft PR for already-existing scoped changes; no new source edits. | Stop after PR creation/current-head publication evidence or on no-diff/scope/validation blocker. | refs: `references/ship.md`; templates: - |
 | `retro` | repo-external-write | Retrospective | Extract reusable lessons after merge without transient memory | Repo-external writes only: the retrospective note under ~/workspace/retrospective/ (or the RETRO_DIR override) and memory files or memory-update request artifacts; skill/wiki changes stay proposal-only (wiki via the approval-gated setwiki bridge); no writes to any path inside the repository. | Stop after reusable lessons are separated from transient incident records. | refs: `references/retrospective.md`, `references/retrospective-workflow.md`, `references/wiki-growth-triage.md`; templates: - |
 | `prompt` | plan-only | Prompt Optimizer | Compile safer prompt briefs without source edits | Brief/review/fix artifacts only after explicit confirmation; no canonical source edits. | Stop with READY_FOR_BRIEF, NEEDS_CLARIFICATION, BLOCKED_UNSAFE, or DISCOVERY_ONLY. | refs: `references/prompt-optimizer.md`, `references/prompt-skill-optimization-staging.md`; templates: - |
+| `tune` | plan-only | Tune Goal Brief | Align rough intent into a source-grounded goal brief before implementation | Brief only; no source, GitHub, or git mutation. | Stop after a scoped brief or explicit blockers. | refs: `references/tune-goal.md`; templates: - |
+| `forge` | plan-only | Forge Acceptance Criteria | Convert done conditions into objective acceptance checks | Criteria only; no source, GitHub, or git mutation. | Stop after verifiable criteria or explicit gaps. | refs: `references/forge-goal.md`; templates: - |
+| `spark` | plan-only | Spark Runtime Goal | Draft a copyable runtime goal sentence with validation checklist | Goal text only; no source, GitHub, or git mutation. | Stop after goal text and validation checklist. | refs: `references/spark-goal.md`; templates: - |
 | `check` | read-only | Local Diff Check | Read-only local diff review | Local diff review notes only; no GitHub comments and no repository edits. | Stop after findings and exact validation gaps are reported. | refs: `references/local-diff-check.md`; templates: - |
 | `getwiki` | read-only | GetWiki Bridge | Wiki context retrieval bridge | Delegate to dedicated /getwiki retrieval; no wiki or repo mutation. | Stop after cited wiki sources or retrieval gaps are reported. | refs: `references/wiki-bridge.md`, `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`; templates: - |
 | `setwiki` | approval-gated-write | SetWiki Bridge | Wiki write workflow bridge | Delegate to dedicated /setwiki; wiki writes require explicit approval and verification. | Stop at review-only plan unless explicit approval is present; then stop after wiki write verification. | refs: `references/wiki-bridge.md`, `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`, `references/wiki-growth-triage.md`; templates: - |
@@ -94,14 +83,14 @@ If a non-writing subcommand would need a source edit to continue, report the nee
 
 | Mode | Definition |
 | --- | --- |
-| `source-edit` | May edit repo source files within the issue-owned scope. |
-| `review-fix` | May edit source and push to the reviewed PR branch only for accepted review fixes. |
-| `plan-only` | Produces plan/brief artifacts only; no source, GitHub, or local git state mutation. |
-| `read-only` | Report-only; no source, GitHub, or local git state mutation. |
-| `repo-external-write` | No writes to any path inside the repo, but may write repo-external paths (`~/workspace/retrospective/`, memory files). |
-| `local-destructive` | No repo source or GitHub mutation, but may delete merge-verified local git state (branches/worktrees). |
-| `github-write` | Creates or edits GitHub artifacts (issues, PRs, comments) and may perform local commit/push (e.g. ship); no repo source edits. |
-| `approval-gated-write` | External (wiki) writes only after explicit approval; review-only before approval. |
+| `source-edit` | Edit repo source only inside issue-owned scope. |
+| `review-fix` | Edit/push only accepted review fixes on the reviewed PR branch. |
+| `plan-only` | Plan/brief artifacts only; no source, GitHub, or git mutation. |
+| `read-only` | Report only; no source, GitHub, or git mutation. |
+| `repo-external-write` | Repo unchanged; repo-external notes/memory artifacts allowed. |
+| `local-destructive` | Repo/GitHub unchanged; merge-verified local cleanup only. |
+| `github-write` | GitHub artifacts plus ship commit/push only; no source edits. |
+| `approval-gated-write` | External wiki write only after explicit approval. |
 
 ## Codex App Primitives
 
@@ -139,6 +128,9 @@ Use Codex App native orchestration names in briefs and state records: `spawn_age
 | `ship` | `references/ship.md` | - | - | - |
 | `retro` | `references/retrospective.md`, `references/retrospective-workflow.md`, `references/wiki-growth-triage.md` | - | - | - |
 | `prompt` | `references/prompt-optimizer.md`, `references/prompt-skill-optimization-staging.md` | - | - | - |
+| `tune` | `references/tune-goal.md` | - | - | - |
+| `forge` | `references/forge-goal.md` | - | - | - |
+| `spark` | `references/spark-goal.md` | - | - | - |
 | `check` | `references/local-diff-check.md` | - | - | - |
 | `getwiki` | - | - | `references/wiki-bridge.md`, `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md` | - |
 | `setwiki` | `references/wiki-growth-triage.md` | - | `references/wiki-bridge.md`, `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md` | - |
@@ -204,6 +196,18 @@ Judgement labels: `READY_FOR_BRIEF | NEEDS_CLARIFICATION | BLOCKED_UNSAFE | DISC
 
 Preserve `source_edit_allowed: false`; compile brief/review/fix artifacts only, and end with `PROMPT_DONE`.
 
+## `tune` - Tune Goal Brief
+
+Full procedure: `references/tune-goal.md`; source-grounded goal brief with scope, non-goals, assumptions, open questions, validation surfaces, and no source edits.
+
+## `forge` - Forge Acceptance Criteria
+
+Full procedure: `references/forge-goal.md`; objective command/observation plus expected-result acceptance criteria, with no source edits.
+
+## `spark` - Spark Runtime Goal
+
+Full procedure: `references/spark-goal.md`; copyable runtime goal sentence, validation checklist, non-goals, next instruction, and no source edits.
+
 ## `check` - Local Diff Check
 
 Run a read-only local diff review. Capture base freshness, status, diff stat, ignored/local-only/generated paths, and findings. Use references/local-diff-check.md for details.
@@ -251,6 +255,9 @@ Per-subcommand completion signals come from each command contract's `output_cont
 | `ship` | `SHIP_DONE` |
 | `retro` | `RETRO_DONE` |
 | `prompt` | `PROMPT_DONE` |
+| `tune` | `TUNE_DONE` |
+| `forge` | `FORGE_DONE` |
+| `spark` | `SPARK_DONE` |
 | `check` | `CHECK_DONE` |
 | `getwiki` | `GETWIKI_DONE` |
 | `setwiki` | `SETWIKI_DONE` |

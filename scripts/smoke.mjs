@@ -896,6 +896,20 @@ const cases = [
     },
   },
   {
+    name: "goal-shaping subcommands --print emit slash commands",
+    run() {
+      for (const [subcommand, arg, expected] of [
+        ["tune", "Clarify goal", '/ddalggak tune "Clarify goal"\n'],
+        ["forge", "Make criteria", '/ddalggak forge "Make criteria"\n'],
+        ["spark", "Write runtime goal", '/ddalggak spark "Write runtime goal"\n'],
+      ]) {
+        const result = runCli([subcommand, "--print", arg]);
+        assertExit(result, 0);
+        assertStdout(result, expected);
+      }
+    },
+  },
+  {
     name: "getwiki --print delegates to dedicated slash command",
     run() {
       const result = runCli(["getwiki", "--print", "workflow routing"]);
@@ -1038,6 +1052,24 @@ const cases = [
             "source_edit_allowed: false",
           ],
           maxLines: 12,
+        },
+        tune: {
+          heading: "## Tune Goal Brief",
+          fullProcedure: "references/tune-goal.md",
+          assets: ["source-grounded goal brief", "no source edits"],
+          maxLines: 10,
+        },
+        forge: {
+          heading: "## Forge Acceptance Criteria",
+          fullProcedure: "references/forge-goal.md",
+          assets: ["expected-result", "no source edits"],
+          maxLines: 10,
+        },
+        spark: {
+          heading: "## Spark Runtime Goal",
+          fullProcedure: "references/spark-goal.md",
+          assets: ["copyable runtime goal sentence", "no source edits"],
+          maxLines: 10,
         },
         check: {
           heading: "## Local Diff Check",
