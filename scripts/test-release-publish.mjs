@@ -60,8 +60,13 @@ const tests = [
       const workflow = read(".github/workflows/release.yml");
       assertIncludes(
         workflow,
+        'node ./scripts/release-plan.mjs "$tag" >/dev/null',
+        "release helper should validate the selected tag before target checkout",
+      );
+      assertIncludes(
+        workflow,
         'node ./scripts/release-plan.mjs "${{ steps.target.outputs.tag }}" >> "$GITHUB_OUTPUT"',
-        "release helper should own semver tag validation",
+        "release helper should own release metadata after target checkout",
       );
       assert(
         !workflow.includes("=~ ^v(0|[1-9][0-9]*)"),
@@ -70,6 +75,14 @@ const tests = [
       assert(
         !workflow.includes("tag must be an existing v-prefixed semver tag"),
         "release workflow should use release-plan.mjs error text for tag policy",
+      );
+      const preCheckoutValidation = workflow.indexOf('node ./scripts/release-plan.mjs "$tag" >/dev/null');
+      const taggedCheckout = workflow.indexOf('ref: ${{ steps.target.outputs.tag }}');
+      assert(preCheckoutValidation !== -1, "pre-checkout helper validation should exist");
+      assert(taggedCheckout !== -1, "tagged checkout should exist");
+      assert(
+        preCheckoutValidation < taggedCheckout,
+        "release helper must validate workflow_dispatch tag input before checking out that ref",
       );
     },
   },

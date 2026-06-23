@@ -31,6 +31,16 @@ jobs:
       sha: ${{ steps.verified_ref.outputs.sha }}
 
     steps:
+      - name: Checkout workflow helper source
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
+        with:
+          node-version: 24
+
       - name: Resolve release tag
         id: target
         shell: bash
@@ -42,6 +52,7 @@ jobs:
             tag="$INPUT_TAG"
           fi
 
+          node ./scripts/release-plan.mjs "$tag" >/dev/null
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
 
       - name: Checkout tagged ref
@@ -50,11 +61,6 @@ jobs:
           ref: ${{ steps.target.outputs.tag }}
           fetch-depth: 0
           persist-credentials: false
-
-      - name: Setup Node.js
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
-        with:
-          node-version: 24
 
       - name: Resolve release metadata
         id: release
