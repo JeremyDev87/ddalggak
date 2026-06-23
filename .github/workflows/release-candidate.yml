@@ -153,40 +153,10 @@ jobs:
         if: ${{ steps.candidate.outputs.version_changed == 'true' }}
         run: npm run verify
 
-      - name: Pack release candidate
+      - name: Pack and smoke install release candidate
         if: ${{ steps.candidate.outputs.version_changed == 'true' }}
         id: pack
-        shell: bash
-        run: |
-          pack_json=$(npm pack --json)
-          tarball=$(printf '%s' "$pack_json" | node -e "let input=''; process.stdin.on('data', chunk => input += chunk); process.stdin.on('end', () => { const parsed = JSON.parse(input); console.log(parsed[0].filename); });")
-          tarball_path="$PWD/$tarball"
-
-          if [ ! -f "$tarball_path" ]; then
-            echo "Packed tarball was not created: $tarball_path"
-            exit 1
-          fi
-
-          {
-            echo "tarball=$tarball"
-            echo "tarball_path=$tarball_path"
-          } >> "$GITHUB_OUTPUT"
-
-      - name: Smoke install packed package
-        if: ${{ steps.candidate.outputs.version_changed == 'true' }}
-        shell: bash
-        run: |
-          smoke_dir=$(mktemp -d)
-          tarball_path="${{ steps.pack.outputs.tarball_path }}"
-
-          pushd "$smoke_dir" >/dev/null
-          npm init -y
-          npm install "$tarball_path"
-          npx ddalggak --help
-          npx ddalggak plan --show-doc
-          npx ddalggak setup --dry-run
-          npx ddalggak status --local --json
-          popd >/dev/null
+        run: node ./scripts/release-pack-smoke.mjs --github-output "$GITHUB_OUTPUT"
 
       - name: Verified summary
         if: ${{ steps.candidate.outputs.version_changed == 'true' }}
