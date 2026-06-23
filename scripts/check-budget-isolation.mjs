@@ -25,6 +25,7 @@
  */
 
 import { spawnSync } from "node:child_process";
+import { parseSubcommandTokenBudgets } from "./lib/token-budget-yaml.mjs";
 
 const PROJECTIONS_PATH = "core/projections.yaml";
 const MEASURED_ASSET_PREFIXES = ["ddalggak/", ".codex/", "core/commands/"];
@@ -69,30 +70,6 @@ function showFileAt(ref, filePath) {
   return result.status === 0 ? result.stdout : "";
 }
 
-// Mirrors parseSubcommandTokenBudgets in scripts/project-runtime-assets.mjs
-// (not imported because that module executes its projection check on import).
-function parseSubcommandTokenBudgets(text) {
-  const lines = text.split(/\r?\n/);
-  const start = lines.findIndex((line) => /^subcommand_token_budgets:\s*$/.test(line));
-  const budgetsByRoot = {};
-  if (start === -1) return budgetsByRoot;
-  let currentRoot;
-  for (let index = start + 1; index < lines.length; index += 1) {
-    const line = lines[index].replace(/\s+#.*$/, "");
-    if (!line.trim() || line.trimStart().startsWith("#")) continue;
-    const rootEntry = line.match(/^ {2}([A-Za-z0-9_-]+):\s*$/);
-    if (rootEntry) {
-      currentRoot = {};
-      budgetsByRoot[rootEntry[1]] = currentRoot;
-      continue;
-    }
-    const entry = line.match(/^ {4}([A-Za-z0-9_-]+):\s*(\d+)\s*$/);
-    if (!entry || !currentRoot) break;
-    currentRoot[entry[1]] = Number(entry[2]);
-  }
-  return budgetsByRoot;
-}
-
 // Root key names are excluded from the comparison: a rename that carries the
 // same budget values to a different root name (e.g. claude_legacy -> claude) is
 // unrelated to the ratchet and must not count as a budget change. Each root's
@@ -103,10 +80,10 @@ function parseSubcommandTokenBudgets(text) {
 // admission gate, not this per-PR isolation check.
 function canonicalBudgets(text) {
   const budgetsByRoot = parseSubcommandTokenBudgets(text);
-  const perRoot = Object.keys(budgetsByRoot).map((root) => {
+  const perRoot = [...budgetsByRoot.keys()].map((root) => {
     const commands = {};
-    for (const command of Object.keys(budgetsByRoot[root]).sort()) {
-      commands[command] = budgetsByRoot[root][command];
+    for (const command of [...budgetsByRoot.get(root).keys()].sort()) {
+      commands[command] = budgetsByRoot.get(root).get(command);
     }
     return JSON.stringify(commands);
   });
@@ -117,8 +94,8 @@ function canonicalBudgets(text) {
 function budgetCommandValues(text) {
   const budgetsByRoot = parseSubcommandTokenBudgets(text);
   const byCommand = new Map();
-  for (const budgets of Object.values(budgetsByRoot)) {
-    for (const [command, value] of Object.entries(budgets)) {
+  for (const budgets of budgetsByRoot.values()) {
+    for (const [command, value] of budgets.entries()) {
       if (!byCommand.has(command)) byCommand.set(command, []);
       byCommand.get(command).push(value);
     }
