@@ -6,33 +6,15 @@
 // SKILL.md naming section, runs `ddalggak doctor` there, and asserts the gate's
 // pass/fail — so a refactor that re-collapses the spellings is caught instead of
 // quietly degrading the registry check to a no-op.
-import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import os from "node:os";
+import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { spawnSync } from "node:child_process";
+
+import { runNodeScript } from "./test-lib/process.mjs";
+import { withTempRepo } from "./test-lib/repo-fixture.mjs";
 
 const rootDir = process.cwd();
-const nodeCommand = process.execPath;
-
-function copyRepo() {
-  const tempDir = mkdtempSync(path.join(os.tmpdir(), "ddalggak-doctor-signal-"));
-  cpSync(rootDir, tempDir, {
-    recursive: true,
-    filter: (source) => {
-      const relative = path.relative(rootDir, source);
-      return !relative.split(path.sep).some((part) => part === ".git" || part === "node_modules");
-    },
-  });
-  return tempDir;
-}
-
 function runDoctor(tempDir) {
-  return spawnSync(nodeCommand, ["bin/ddalggak.js", "doctor"], {
-    cwd: tempDir,
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "pipe"],
-    env: { ...process.env },
-  });
+  return runNodeScript("bin/ddalggak.js", ["doctor"], { cwd: tempDir, env: { ...process.env } });
 }
 
 function replaceInFile(filePath, from, to) {
@@ -63,15 +45,6 @@ function assertFail(name, result, expectedMessage) {
     );
   }
   console.log(`[PASS] ${name}`);
-}
-
-function withTempRepo(name, fn) {
-  const tempDir = copyRepo();
-  try {
-    fn(tempDir);
-  } finally {
-    rmSync(tempDir, { recursive: true, force: true });
-  }
 }
 
 const SKILL = "ddalggak/SKILL.md";

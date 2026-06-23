@@ -4,31 +4,17 @@
 // repo into a temp tree, mutates one input, runs the admission gate there, and
 // asserts it fails closed with the expected reason — so a future refactor that
 // drops a check is caught instead of silently degrading the gate to a no-op.
-import { appendFileSync, cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { appendFileSync, readFileSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { spawnSync } from "node:child_process";
+
+import { runNodeScript } from "./test-lib/process.mjs";
+import { withTempRepo } from "./test-lib/repo-fixture.mjs";
 
 const rootDir = process.cwd();
-const nodeCommand = process.execPath;
-
-function copyRepo() {
-  const tempDir = mkdtempSync(path.join(os.tmpdir(), "ddalggak-budget-coverage-"));
-  cpSync(rootDir, tempDir, {
-    recursive: true,
-    filter: (source) => {
-      const relative = path.relative(rootDir, source);
-      return !relative.split(path.sep).some((part) => part === ".git" || part === "node_modules");
-    },
-  });
-  return tempDir;
-}
-
 function runAdmission(tempDir) {
-  return spawnSync(nodeCommand, ["scripts/project-runtime-assets.mjs", "--report", "--admission"], {
+  return runNodeScript("scripts/project-runtime-assets.mjs", ["--report", "--admission"], {
     cwd: tempDir,
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "pipe"],
     env: {
       ...process.env,
       npm_config_cache: process.env.npm_config_cache || path.join(os.tmpdir(), "ddalggak-npm-cache"),
@@ -64,15 +50,6 @@ function assertFail(name, result, expectedMessage) {
     );
   }
   console.log(`[PASS] ${name}`);
-}
-
-function withTempRepo(name, fn) {
-  const tempDir = copyRepo();
-  try {
-    fn(tempDir);
-  } finally {
-    rmSync(tempDir, { recursive: true, force: true });
-  }
 }
 
 const PROJECTIONS = "core/projections.yaml";

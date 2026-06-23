@@ -31,13 +31,17 @@ export function makeTempDir(prefix) {
   return registerCleanup(mkdtempSync(path.join(os.tmpdir(), prefix)));
 }
 
+export function cleanupTempRoot(root) {
+  if (!tempRoots.delete(root)) return;
+  rmSync(root, { recursive: true, force: true });
+}
+
 export function cleanupTempRoots() {
   if (cleaning) return;
   cleaning = true;
   try {
     for (const root of Array.from(tempRoots).reverse()) {
-      tempRoots.delete(root);
-      rmSync(root, { recursive: true, force: true });
+      cleanupTempRoot(root);
     }
   } finally {
     cleaning = false;
