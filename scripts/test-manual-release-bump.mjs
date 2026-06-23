@@ -103,6 +103,36 @@ const tests = [
     },
   },
   {
+    name: "package.json-only diff checks use one shared script before and after package verification",
+    run() {
+      const workflow = read(".github/workflows/manual-release-bump.yml");
+      const verifier = read("scripts/verify-package-json-only-diff.mjs");
+      const beforeCall = "node ./scripts/verify-package-json-only-diff.mjs --label before";
+      const afterCall = "node ./scripts/verify-package-json-only-diff.mjs --label after";
+      const verifierCallCount = (workflow.match(/node \.\/scripts\/verify-package-json-only-diff\.mjs --label (before|after)/g) || []).length;
+      const beforeIndex = workflow.indexOf(beforeCall);
+      const verifyIndex = workflow.indexOf("npm run verify");
+      const afterIndex = workflow.indexOf(afterCall);
+
+      assertIncludes(workflow, beforeCall, "workflow should verify the bump diff before package verification with the shared script");
+      assertIncludes(workflow, afterCall, "workflow should verify the bump diff after package verification with the shared script");
+      assert(verifierCallCount === 2, "workflow should call the shared package.json-only diff verifier exactly twice");
+      assert(!workflow.includes("mapfile -t changed_files"), "workflow should not duplicate the changed-file bash implementation");
+      assert(beforeIndex !== -1 && verifyIndex !== -1 && afterIndex !== -1 && beforeIndex < verifyIndex && verifyIndex < afterIndex, "shared diff verifier should bracket package verification");
+      for (const expected of [
+        "--label before|after",
+        "git",
+        "diff",
+        "--name-only",
+        "package.json",
+        "Unexpected changed files before verification:",
+        "Unexpected changed files after package verification:",
+      ]) {
+        assertIncludes(verifier, expected, `shared verifier contract ${expected}`);
+      }
+    },
+  },
+  {
     name: "non-dry-run creates or reuses deterministic bump PR with labels",
     run() {
       const workflow = read(".github/workflows/manual-release-bump.yml");
