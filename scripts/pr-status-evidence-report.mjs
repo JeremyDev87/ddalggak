@@ -9,52 +9,8 @@ import { fileURLToPath } from "node:url";
 
 const __filename = fileURLToPath(import.meta.url);
 
-// ──────────────────────────────────────────────
-// Secret scrubbing (mirrors pr-check-evidence-report)
-// ──────────────────────────────────────────────
-const SECRET_PATTERNS = [
-  /gh[pousr]_[A-Za-z0-9_]{20,}/g,
-  /github_pat_[A-Za-z0-9_]{20,}/g,
-  /xox[baprs]-[A-Za-z0-9-]{10,}/g,
-  /sk-[A-Za-z0-9]{20,}/g,
-  /(?:bearer|token|secret|password|authorization)\s*[:=]\s*[^\s,)]+/gi,
-  /[A-Z0-9_]*(?:TOKEN|SECRET|PASSWORD|AUTHORIZATION)[A-Z0-9_]*\s*[:=]\s*[^\s,)]+/g,
-];
-const SECRET_QUERY_KEYS = /(?:token|secret|password|authorization|signature|sig|key|access_token|client_secret)/i;
-
-function sanitizeText(value) {
-  if (value === null || value === undefined) {
-    return null;
-  }
-  let text = String(value);
-  for (const pattern of SECRET_PATTERNS) {
-    text = text.replace(pattern, "[REDACTED]");
-  }
-  return text;
-}
-
-function sanitizeUrl(value) {
-  if (value === null || value === undefined) {
-    return null;
-  }
-  const original = String(value);
-  try {
-    const url = new URL(original);
-    url.username = sanitizeText(url.username) || "";
-    url.password = url.password ? "[REDACTED]" : "";
-    url.pathname = sanitizeText(url.pathname) || "";
-    for (const [key, paramValue] of [...url.searchParams.entries()]) {
-      if (SECRET_QUERY_KEYS.test(key)) {
-        url.searchParams.set(key, "[REDACTED]");
-      } else {
-        url.searchParams.set(key, sanitizeText(paramValue) || "");
-      }
-    }
-    return url.toString();
-  } catch {
-    return sanitizeText(original);
-  }
-}
+import { sanitizeText, sanitizeUrl } from "./lib/secret-scrub.mjs";
+import { normalizeChecks } from "./lib/check-evidence.mjs";
 
 // ──────────────────────────────────────────────
 // Arg parser
@@ -81,60 +37,16 @@ function parseArgs(argv) {
 }
 
 // ──────────────────────────────────────────────
-// Section 1: Check evidence (reuses pr-check-evidence-report logic inline)
+// Section 1: Check evidence
 // ──────────────────────────────────────────────
-function normalizeCheckState(check) {
-  const rawValues = [check.bucket, check.conclusion, check.state, check.status]
-    .filter(Boolean)
-    .map((v) => String(v).toLowerCase());
-  const raw = rawValues.join(" ");
-  if (/\b(success|successful|pass|passed|completed_success)\b/.test(raw)) return "success";
-  if (/\b(skip|skipped|neutral)\b/.test(raw)) return "skipped";
-  if (/\b(fail|failed|failure|error|timed_out|cancelled|canceled)\b/.test(raw)) return "failure";
-  if (/\b(pending|queued|in_progress|waiting|requested|expected|startup|action_required)\b/.test(raw)) return "pending";
-  return "unknown";
-}
-
-function classifyCheckFailure(check, state) {
-  if (state !== "failure") return "not-failure";
-  const haystack = [check.name, check.workflow, check.description, check.event]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase();
-  if (/\b(auth|permission|forbidden|403|unauthori[sz]ed|resource not accessible|approval required|action_required)\b/.test(haystack)) return "permission-auth-failure";
-  if (/\b(runner|billing|spending|quota|capacity|startup|no logs?|platform|infrastructure|infra)\b/.test(haystack)) return "infra-failure";
-  if (/\b(test|spec|lint|typecheck|build|verify|package|compile)\b/.test(haystack)) return "test-failure";
-  return "unknown-failure";
-}
-
 function parseCheckEvidence(data) {
-  const rawChecks = Array.isArray(data?.checks)
-    ? data.checks
-    : Array.isArray(data?.check_runs)
-      ? data.check_runs
-      : Array.isArray(data?.statusCheckRollup)
-        ? data.statusCheckRollup
-        : Array.isArray(data?.nodes)
-          ? data.nodes
-          : Array.isArray(data)
-            ? data
-            : [];
-
-  const checks = rawChecks.map((check, index) => {
-    const state = normalizeCheckState(check);
-    const name = sanitizeText(check.name || check.context || `check-${index + 1}`);
-    const workflow = sanitizeText(check.workflow || check.workflowName || check.app?.name || null);
-    const detailsUrl = sanitizeUrl(
-      check.link || check.detailsUrl || check.details_url || check.targetUrl || check.target_url || check.html_url || check.url || null,
-    );
-    return {
-      name,
-      workflow,
-      state,
-      failureType: classifyCheckFailure({ ...check, name, workflow }, state),
-      detailsUrl,
-    };
-  });
+  const checks = normalizeChecks(data).map(({ name, workflow, state, failureType, detailsUrl }) => ({
+    name,
+    workflow,
+    state,
+    failureType,
+    detailsUrl,
+  }));
 
   const counts = { success: 0, failure: 0, pending: 0, skipped: 0, unknown: 0 };
   for (const c of checks) {
