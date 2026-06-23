@@ -18,8 +18,6 @@
 - Existing patterns:
 - Failure semantics:
 - Evidence Contract:
-- RALPLAN critic consensus:
-- Artifact manifest / live evidence match:
 - Domain-specific gates if applicable:
 
 ## Output

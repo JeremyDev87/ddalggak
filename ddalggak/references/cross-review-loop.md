@@ -8,7 +8,7 @@ Do not use when: there is no PR/diff to review, or the task is a read-only local
 
 ## Cross-Review Loop
 
-`review`는 AI code quality gate다. PR diff/files/checks, issue contract, Quality Lens Router Output, Evidence Contract, Diff Footprint / Scope Expansion Review, RALPLAN Critic Consensus, Simplicity / Deletability Gate, Frontend Design Review Gate, React Code Quality Harness(React/Next.js 표면일 때만), Vercel Agent Skills Gate, Continuous Regression Library를 사용한다. one-off abstraction, human readability, generic AI/template, screenshot/manual verification, Vercel deploy safety, component API quality, animation meaning, React Native/Expo, Regression Library Candidate, references/regression-library.md를 확인한다. Artifact manifest는 재개/리뷰 보조 증거로 읽되, live PR/diff/check evidence가 항상 우선한다.
+`review`는 PR diff/checks, issue, Quality/Evidence, scope, critic consensus, simplicity, UI/React/Vercel, regression을 검증한다. Live evidence가 우선이다.
 
 ## Accepted finding authority
 

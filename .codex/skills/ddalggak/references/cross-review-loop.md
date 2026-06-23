@@ -1,39 +1,36 @@
-# Cross-Review Loop Reference
+# Cross-Review Loop 상세 절차
 Use when: a `review` run must judge a live PR/diff, verify current-head evidence, or decide whether blocker findings prevent APPROVE/ready.
 Required by: `review`; post-PR review/fix loops after `start`/`ship`.
 Side effects: source-edit
 Do not use when: there is no PR/diff to review, or the task is a read-only local `check` that must not post comments or edit source.
 
-Use this when `review` needs full adversarial review details beyond the hot path.
+> Source of truth for Claude Code ddalggak details. The always-loaded SKILL.md keeps only router/invariant anchors and points here for low-frequency detail.
 
-## Required flow
-1. Re-read PR metadata, diff, files, commits, checks, linked issues, and comments from GitHub.
-2. Do not let implementation context pollute review. Review from `gh pr view`/`gh pr diff` first; use an isolated temporary checkout only when local reproduction is necessary.
-3. Treat CI/check failures as Critical unless proven unrelated.
-4. Compare the diff against the Task Scope Contract, Evidence Contract, RALPLAN Critic Consensus, and artifact manifest. Out-of-scope diff is a scope-expansion failure; manifest evidence is resumability context and live PR/diff/check evidence wins.
-5. Findings must include severity, confidence, evidence, impact, suggested fix, file/line when available, and test/repro idea.
-6. Critical/High or required evidence gaps block APPROVE and ready state.
-7. If formal approval is inappropriate, post a top-level approval-comment policy body with head SHA, review scope, validation evidence, blocking finding count, and conclusion.
+## Cross-Review Loop
+
+`review`는 PR diff/checks, issue, Quality/Evidence, scope, critic consensus, simplicity, UI/React/Vercel, regression을 검증한다. Live evidence가 우선이다.
 
 ## Accepted finding authority
 
-A finding is **accepted** for a fix iteration only when the authority is explicit:
+A review finding is only **accepted** for a fix iteration when one of these authorities records it:
 
-1. 박정욱 directly accepts or orders the fix.
-2. The conductor accepts it after checking live diff, linked issue contract, and Evidence Contract.
-3. A reviewer/subagent reports it and the conductor promotes it with severity and evidence.
+1. 박정욱의 직접 지시 또는 PR/issue comment.
+2. The conductor running `review`, after validating the finding against the live diff, linked issue contract, and Evidence Contract.
+3. A reviewer/subagent finding that the conductor explicitly promotes with severity and evidence.
 
-Reviewer completion text is not acceptance by itself. Medium/Low findings stay advisory unless they are required to satisfy issue evidence, scope control, or current-head readiness.
+A reviewer/subagent cannot accept its own finding by completion text alone. Low/Medium findings are not automatically accepted unless they block issue evidence, scope control, or current-head readiness.
 
 ## Fix iteration loop
 
+Use a bounded loop so review does not become open-ended implementation:
+
 1. Record accepted findings by severity before editing.
-2. Apply only the smallest in-scope fix; no speculative cleanup or broad rewrite.
-3. Run focused validation for the changed surface plus the repo-required verifier when claiming readiness.
-4. Emit or record `FIX_DONE PR#<num> iter<N>: critical_fixed=N high_fixed=N medium_fixed=N low_fixed=N` after validation passes.
+2. Apply the smallest in-scope fix only; do not broaden the PR or touch unrelated cleanup.
+3. Run focused validation for the changed surface, then the repo-required verifier when readiness is claimed.
+4. Emit or record `FIX_DONE PR#<num> iter<N>: critical_fixed=N high_fixed=N medium_fixed=N low_fixed=N` after the fix validation passes.
 5. Re-run review on the new current head before any `approve`/ready conclusion.
 
-Default automated limit: **2 fix iterations per PR review run**. A third loop needs a new user instruction or a fresh conductor decision explaining why the remaining accepted blocker is still in-scope. Critical security/privacy/secret-exposure blockers stop approval immediately; they do not grant unlimited edit authority.
+Default automated limit: **2 fix iterations per PR review run**. A third loop requires a new user instruction or a fresh conductor decision explaining why the remaining accepted blocker is still in-scope and safe to continue. Critical security/privacy/secret-exposure blockers still stop approval immediately; they do not grant unlimited editing authority.
 
 ## Human review feedback loop
 
@@ -45,12 +42,12 @@ When current-head checks are pending or failing, apply `references/ci-failure-tr
 
 ## Current-head and stale-review rule
 
-Verdicts and fix results are valid only for the named PR head SHA.
+Every review verdict and every fix result is tied to a concrete PR head SHA.
 
-- A head change makes the prior verdict stale until review re-reads metadata, diff, files, checks, linked issue, and comments.
-- Pending/failing checks block `approve`/ready unless the missing evidence is explicitly not applicable.
-- Fix commits that touch outside accepted scope reopen scope-expansion review.
-- If formal approval is self-review or otherwise inappropriate, use a top-level `approve`/`change request` comment naming head SHA, scope, validation, blocker count, and human merge boundary.
+- If the PR head changes after a verdict, the verdict is stale until `review` re-reads metadata, diff, files, checks, and linked issue/comments for the new head.
+- If CI/checks are pending or failed on the current head, do not conclude `approve` or ready unless the missing check is explicitly proven not applicable.
+- If a fix commit changes files outside the accepted finding scope, treat the review as reopened and run scope-expansion review again.
+- If formal GitHub approval is self-review or otherwise inappropriate, use a top-level `approve`/`change request` comment that names the current head SHA, scope, validation, blocker count, and human merge boundary.
 
 ## Wiki Review Context Preflight
 
