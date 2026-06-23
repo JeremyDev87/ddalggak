@@ -48,6 +48,14 @@ branch:
   base_sha: "<origin/base sha used to start/rebase>"
   head_sha: "<current branch head sha or empty before commit>"
 
+artifacts:
+  plan: "<path-or-url-or-not-applicable>"
+  lane_state: "<path-or-url-or-not-applicable>"
+  evidence_dir: "<path-or-url-or-not-applicable>"
+  review_brief: "<path-or-url-or-not-applicable>"
+  compact_handoff: "<path-or-url-or-not-applicable>"
+  pending_user_input: "<path-or-url-or-not-applicable>"
+
 pull_request:
   url: "<PR URL or empty>"
   number: <pr-number-or-null>
@@ -92,6 +100,8 @@ next_gate:
   exit_condition: "<observable completion signal>"
 ```
 
+`artifacts.pending_user_input` is the durable queue for questions that block progress. If it is non-empty, `next_gate.owner` must be `human` or the plan must explain how the answer will be obtained without guessing.
+
 ## Manual Replay Checklist
 
 ### Stale head/review 확인
@@ -117,6 +127,12 @@ next_gate:
 - [ ] 실제 diff가 `scope.allowed_files` 안에 들어가는가?
 - [ ] `forbidden_files` 또는 secret/local-only 파일이 diff에 포함되지 않았는가?
 - [ ] 범위 밖 변경이 있으면 `blocked` 또는 `fix_pending`으로 기록했는가?
+
+### Artifact manifest 확인
+
+- [ ] plan, lane_state, evidence_dir, review_brief, compact_handoff의 경로 또는 URL이 기록됐는가?
+- [ ] 사용자 답변이 필요한 경우 `pending_user_input` 경로/URL과 질문 ID가 기록됐는가?
+- [ ] `not-applicable` 항목은 이유가 있어 재개자가 같은 결론에 도달할 수 있는가?
 
 ## Compact Handoff Summary
 

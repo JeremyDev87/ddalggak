@@ -16,6 +16,8 @@ Use this when `start` needs full issue implementation detail beyond the hot path
 6. Use isolated worktrees. Independent issue lanes must create their own issue PR; hard-conflict fallback lanes hand off patch/commit evidence to one fallback PR.
 7. Completion is not test pass. Require commit, push, PR URL/evidence, validation evidence, and review gate state.
 
+Gajae-Code `team` pattern, minimized for ddalggak: before running a worker lane, fill the Worker Brief `Artifact Path Manifest` and the Lane State `artifacts` block. This is a resumability/compact/review manifest, not a durable engine or database. If a lane needs a user answer, record a question ID and question in `pending_user_input`, then stop at the human gate instead of guessing.
+
 ## Stale base / conflict refresh rule
 
 If `start` detects that the lane base is stale or conflicts with the live base, it must not stop at a vague stale-base warning. The conductor owns the refresh decision:

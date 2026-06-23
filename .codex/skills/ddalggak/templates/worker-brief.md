@@ -11,6 +11,16 @@
 - Required references:
 - Assumptions / known blockers:
 
+## Artifact Path Manifest
+- Worktree:
+- Branch:
+- Plan artifact:
+- Lane state artifact:
+- Evidence directory:
+- Review brief:
+- Handoff / compact note:
+- User-question queue (`pending_user_input.md` or issue/PR comment URL):
+
 ## Task Scope Contract
 - Tool capability boundary:
 - Authorized files:
@@ -36,3 +46,5 @@
 ## Completion Signal
 Independent issue PR: `ISSUE_PR_READY: #<issue> <PR URL> <commit> <validation>`
 Conflict fallback: `LANE_READY: <lane> <patch-or-commit> <validation>`
+
+Before completion, every non-empty artifact path above must either exist/be linked or be explicitly marked `not-applicable: <reason>`. Do not report `ISSUE_PR_READY` from memory only; cite validation and artifact evidence.
