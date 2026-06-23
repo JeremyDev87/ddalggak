@@ -1,34 +1,11 @@
-import { readFileSync } from "node:fs";
-
 import { resolveReleasePlan } from "./lib/release.mjs";
-
-function read(path) {
-  return readFileSync(path, "utf8");
-}
-
-function assert(condition, message) {
-  if (!condition) {
-    throw new Error(message);
-  }
-}
-
-function assertIncludes(text, expected, message) {
-  assert(text.includes(expected), `${message}: expected to include ${JSON.stringify(expected)}`);
-}
-
-function assertMatches(text, pattern, message) {
-  assert(pattern.test(text), `${message}: expected to match ${pattern}`);
-}
-
-function readJson(path) {
-  return JSON.parse(read(path));
-}
+import { assert, assertBefore, assertIncludes, assertMatches, readJson, readText, readWorkflow } from "./test-lib/workflow-assert.mjs";
 
 const tests = [
   {
     name: "release-drafter config defines changelog categories and skip label",
     run() {
-      const config = read(".github/release-drafter.yml");
+      const config = readText(".github/release-drafter.yml");
       for (const expected of [
         "exclude-labels:",
         "- \"skip-changelog\"",
@@ -59,7 +36,7 @@ const tests = [
   {
     name: "release-drafter workflow supports push and manual dry-run inputs",
     run() {
-      const workflow = read(".github/workflows/release-drafter.yml");
+      const workflow = readWorkflow("release-drafter");
       for (const expected of [
         "name: Release Drafter",
         "push:",
@@ -97,8 +74,10 @@ const tests = [
         !/^\s*dry-run:/m.test(workflow),
         "workflow must not pass unsupported dry-run input to release-drafter action"
       );
-      assert(
-        workflow.indexOf("Guard live draft updates to master") < workflow.indexOf("Checkout repository"),
+      assertBefore(
+        workflow,
+        "Guard live draft updates to master",
+        "Checkout repository",
         "manual non-dry-run master guard should run before checkout"
       );
     },

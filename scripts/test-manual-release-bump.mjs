@@ -1,24 +1,5 @@
-import { readFileSync } from "node:fs";
-
 import { createManualBumpBranchName, resolveReleasePlan } from "./lib/release.mjs";
-
-function read(path) {
-  return readFileSync(path, "utf8");
-}
-
-function assert(condition, message) {
-  if (!condition) {
-    throw new Error(message);
-  }
-}
-
-function assertIncludes(text, expected, message) {
-  assert(text.includes(expected), `${message}: expected to include ${JSON.stringify(expected)}`);
-}
-
-function assertMatches(text, pattern, message) {
-  assert(pattern.test(text), `${message}: expected to match ${pattern}`);
-}
+import { assert, assertBefore, assertIncludes, assertMatches, readJson, readText, readWorkflow } from "./test-lib/workflow-assert.mjs";
 
 const tests = [
   {
@@ -34,7 +15,7 @@ const tests = [
   {
     name: "manual release bump workflow has required dispatch inputs and permissions",
     run() {
-      const workflow = read(".github/workflows/manual-release-bump.yml");
+      const workflow = readWorkflow("manual-release-bump");
       for (const expected of [
         "name: Manual Release Bump",
         "workflow_dispatch:",
@@ -61,7 +42,7 @@ const tests = [
   {
     name: "dry-run validates the bump without branch or PR mutation",
     run() {
-      const workflow = read(".github/workflows/manual-release-bump.yml");
+      const workflow = readWorkflow("manual-release-bump");
       for (const expected of [
         "node ./scripts/release-plan.mjs \"$tag\" >> \"$GITHUB_OUTPUT\"",
         "node ./scripts/bump-release-version.mjs \"${{ steps.meta.outputs.tag }}\"",
@@ -105,8 +86,8 @@ const tests = [
   {
     name: "package.json-only diff checks use one shared script before and after package verification",
     run() {
-      const workflow = read(".github/workflows/manual-release-bump.yml");
-      const verifier = read("scripts/verify-package-json-only-diff.mjs");
+      const workflow = readWorkflow("manual-release-bump");
+      const verifier = readText("scripts/verify-package-json-only-diff.mjs");
       const beforeCall = "node ./scripts/verify-package-json-only-diff.mjs --label before";
       const afterCall = "node ./scripts/verify-package-json-only-diff.mjs --label after";
       const verifierCallCount = (workflow.match(/node \.\/scripts\/verify-package-json-only-diff\.mjs --label (before|after)/g) || []).length;
@@ -118,7 +99,8 @@ const tests = [
       assertIncludes(workflow, afterCall, "workflow should verify the bump diff after package verification with the shared script");
       assert(verifierCallCount === 2, "workflow should call the shared package.json-only diff verifier exactly twice");
       assert(!workflow.includes("mapfile -t changed_files"), "workflow should not duplicate the changed-file bash implementation");
-      assert(beforeIndex !== -1 && verifyIndex !== -1 && afterIndex !== -1 && beforeIndex < verifyIndex && verifyIndex < afterIndex, "shared diff verifier should bracket package verification");
+      assertBefore(workflow, beforeCall, "npm run verify", "shared diff verifier should run before package verification");
+      assertBefore(workflow, "npm run verify", afterCall, "shared diff verifier should run after package verification");
       for (const expected of [
         "--label before|after",
         "git",
@@ -135,7 +117,7 @@ const tests = [
   {
     name: "non-dry-run creates or reuses deterministic bump PR with labels",
     run() {
-      const workflow = read(".github/workflows/manual-release-bump.yml");
+      const workflow = readWorkflow("manual-release-bump");
       for (const expected of [
         "createManualBumpBranchName",
         "gh pr list",
@@ -157,7 +139,7 @@ const tests = [
   {
     name: "bump PR body explains candidate verification before tag creation before publish approval",
     run() {
-      const workflow = read(".github/workflows/manual-release-bump.yml");
+      const workflow = readWorkflow("manual-release-bump");
       const candidate = workflow.indexOf("candidate verification");
       const tag = workflow.indexOf("tag creation");
       const publish = workflow.indexOf("publish approval");
@@ -170,7 +152,7 @@ const tests = [
   {
     name: "current package version can still resolve release metadata",
     run() {
-      const pkg = JSON.parse(read("package.json"));
+      const pkg = readJson("package.json");
       const plan = resolveReleasePlan(`v${pkg.version}`);
       assert(plan.version === pkg.version, "package version should resolve through release helper");
     },
