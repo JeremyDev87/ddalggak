@@ -192,6 +192,47 @@ const tests = [
       assertEqual(classifyNpmPublishError("npm ERR! code EOTP"), "unknown", "unknown publish");
     },
   },
+  {
+    name: "npm error classifier CLI supports lookup and publish modes",
+    run() {
+      const dir = makeTempDir();
+      const stderrPath = path.join(dir, "npm-stderr.txt");
+
+      writeFileSync(stderrPath, "npm ERR! code E404\n404 Not Found", "utf8");
+      let result = runScript("scripts/classify-npm-error.mjs", ["--mode", "lookup", stderrPath]);
+      assertExit(result, 0, "classify lookup");
+      assertEqual(result.stdout.trim(), "not-found", "lookup classifier stdout");
+
+      writeFileSync(stderrPath, "You cannot publish over the previously published versions", "utf8");
+      result = runScript("scripts/classify-npm-error.mjs", ["--mode=publish", stderrPath]);
+      assertExit(result, 0, "classify publish");
+      assertEqual(result.stdout.trim(), "already-published", "publish classifier stdout");
+    },
+  },
+  {
+    name: "legacy npm classifier wrappers delegate to the shared CLI",
+    run() {
+      const dir = makeTempDir();
+      const stderrPath = path.join(dir, "npm-stderr.txt");
+
+      writeFileSync(stderrPath, "npm ERR! code E404\n404 Not Found", "utf8");
+      let result = runScript("scripts/classify-npm-lookup-error.mjs", [stderrPath]);
+      assertExit(result, 0, "legacy lookup wrapper");
+      assertEqual(result.stdout.trim(), "not-found", "legacy lookup stdout");
+
+      writeFileSync(stderrPath, "You cannot publish over the previously published versions", "utf8");
+      result = runScript("scripts/classify-npm-publish-error.mjs", [stderrPath]);
+      assertExit(result, 0, "legacy publish wrapper");
+      assertEqual(result.stdout.trim(), "already-published", "legacy publish stdout");
+
+      result = runScript("scripts/classify-npm-lookup-error.mjs", [path.join(dir, "missing.txt")]);
+      assertExit(result, 1, "legacy lookup missing file");
+      assert(
+        result.stderr.includes("Usage: node scripts/classify-npm-error.mjs"),
+        `missing file usage: stderr did not include shared usage\n${result.stderr}`,
+      );
+    },
+  },
 ];
 
 let passed = 0;
