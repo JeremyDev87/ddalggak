@@ -53,6 +53,26 @@ const tests = [
       );
     },
   },
+
+  {
+    name: "release workflow delegates semver tag validation to release helper",
+    run() {
+      const workflow = read(".github/workflows/release.yml");
+      assertIncludes(
+        workflow,
+        'node ./scripts/release-plan.mjs "${{ steps.target.outputs.tag }}" >> "$GITHUB_OUTPUT"',
+        "release helper should own semver tag validation",
+      );
+      assert(
+        !workflow.includes("=~ ^v(0|[1-9][0-9]*)"),
+        "release workflow must not duplicate the JS semver regex in bash",
+      );
+      assert(
+        !workflow.includes("tag must be an existing v-prefixed semver tag"),
+        "release workflow should use release-plan.mjs error text for tag policy",
+      );
+    },
+  },
   {
     name: "release workflow verifies tagged ref before publish",
     run() {
