@@ -129,7 +129,6 @@ export const subcommandExecutionContracts = {
       "simplicity-deletability-gate.md",
       "core-invariants.md",
       "regression-library.md",
-      "ralplan-critic-consensus.md",
       "cross-review-loop.md",
       "human-review-feedback-loop.md",
       "ci-failure-triage-loop.md",
