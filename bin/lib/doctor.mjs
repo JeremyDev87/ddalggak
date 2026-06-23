@@ -9,6 +9,7 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { extractDocLinks, extractMarkdownSection } from "../../scripts/lib/markdown-links.mjs";
 import { parseSimpleYaml } from "../../scripts/lib/parse-simple-yaml.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -63,10 +64,6 @@ const CHECK_ORDER = [
   "signal-registry",
   "root-parity",
 ];
-
-// Matches doc pointers like `references/start-workflow.md` and
-// `templates/worker-brief.md` inside markdown bodies.
-const DOC_LINK_PATTERN = /\b(references|templates)\/[A-Za-z0-9][A-Za-z0-9._-]*\.md\b/g;
 
 // Matches completion-signal tokens in both spellings: the canonical underscore
 // form ("ISSUE_PR_READY") and the legacy spaced form ("REVIEW DONE"). Both
@@ -134,14 +131,6 @@ function listMdFiles(dirPath) {
     .sort();
 }
 
-function extractDocLinks(text) {
-  const links = new Set();
-  for (const match of text.matchAll(DOC_LINK_PATTERN)) {
-    links.add(match[0]);
-  }
-  return [...links].sort();
-}
-
 function extractSignals(text) {
   // Key on the raw spelling so "REVIEW DONE" and "REVIEW_DONE" stay distinct;
   // collapsing them hid spelling drift the registry should flag (#280).
@@ -155,27 +144,8 @@ function extractSignals(text) {
   return [...byRaw.values()];
 }
 
-// Extracts the body of the first "## <title>" section up to the next H2.
 function extractSection(markdown, title) {
-  const lines = markdown.split("\n");
-  let startIdx = -1;
-  for (let i = 0; i < lines.length; i++) {
-    if (lines[i].startsWith("## ") && lines[i].slice(3).trim() === title) {
-      startIdx = i;
-      break;
-    }
-  }
-  if (startIdx === -1) {
-    return null;
-  }
-  let endIdx = lines.length;
-  for (let j = startIdx + 1; j < lines.length; j++) {
-    if (lines[j].startsWith("## ")) {
-      endIdx = j;
-      break;
-    }
-  }
-  return lines.slice(startIdx, endIdx).join("\n");
+  return extractMarkdownSection(markdown, title, { level: 2 });
 }
 
 // Minimal reader for core/projections.yaml: source_root, name/root pairs under

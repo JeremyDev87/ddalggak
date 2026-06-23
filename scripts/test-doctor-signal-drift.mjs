@@ -9,6 +9,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
+import { extractDocLinks, extractMarkdownSection } from "./lib/markdown-links.mjs";
 import { runNodeScript } from "./test-lib/process.mjs";
 import { withTempRepo } from "./test-lib/repo-fixture.mjs";
 
@@ -48,6 +49,23 @@ function assertFail(name, result, expectedMessage) {
 }
 
 const SKILL = "ddalggak/SKILL.md";
+
+{
+  const links = extractDocLinks([
+    "See `references/start-workflow.md` and templates/worker-brief.md.",
+    "Duplicate references/start-workflow.md should be deduped.",
+    "Ignore references/not-md.txt while matching nested/path/references/nope.md basename-style.",
+  ].join("\n"));
+  const expected = ["references/nope.md", "references/start-workflow.md", "templates/worker-brief.md"];
+  if (JSON.stringify(links) !== JSON.stringify(expected)) {
+    throw new Error(`markdown link extractor drifted: expected ${JSON.stringify(expected)}, got ${JSON.stringify(links)}`);
+  }
+  const section = extractMarkdownSection("# Root\n\n## 명명 규칙\nbody\n\n### keep\nnested\n\n## Next\nstop", "명명 규칙");
+  if (section !== "## 명명 규칙\nbody\n\n### keep\nnested\n") {
+    throw new Error(`markdown section extractor drifted: ${JSON.stringify(section)}`);
+  }
+  console.log("[PASS] markdown doc link and section helpers are shared and deterministic");
+}
 
 // Baseline: an unmutated copy must pass so the failing case proves the mutation,
 // not a broken temp tree.
