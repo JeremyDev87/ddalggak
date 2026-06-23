@@ -3,12 +3,18 @@
 // core/state/session-state.schema.json.
 // Read-only diagnostics; never mutates the installed Claude skill.
 
-import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
-import { readdir, readFile, stat } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
-import { dirname, join, relative, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  listPayloadFiles,
+  pathExists,
+  payloadChecksum,
+  readInstalledManifest,
+  readInstalledVersion,
+  readPackageVersion,
+} from "./local-payload.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PKG_ROOT = resolve(__dirname, "..", "..");
@@ -70,10 +76,6 @@ function parseArgs(args) {
     }
   }
   return { opts };
-}
-
-function readPackageVersion() {
-  return JSON.parse(readFileSync(PKG_JSON, "utf8")).version;
 }
 
 function resolveClaudeHome() {
@@ -247,101 +249,6 @@ async function collectSessionStateEvidence() {
   return evidence;
 }
 
-async function pathExists(path) {
-  try {
-    await stat(path);
-    return true;
-  } catch (error) {
-    if (error && error.code === "ENOENT") return false;
-    throw error;
-  }
-}
-
-async function listFiles(root) {
-  const files = [];
-  async function visit(dir) {
-    let entries;
-    try {
-      entries = await readdir(dir, { withFileTypes: true });
-    } catch (error) {
-      if (error && error.code === "ENOENT") return;
-      throw error;
-    }
-    entries.sort((a, b) => a.name.localeCompare(b.name));
-    for (const entry of entries) {
-      const abs = join(dir, entry.name);
-      if (entry.isDirectory()) {
-        await visit(abs);
-      } else if (entry.isFile()) {
-        files.push(relative(root, abs).replaceAll("\\", "/"));
-      }
-    }
-  }
-  await visit(root);
-  return files;
-}
-
-async function payloadChecksum(root, expectedFiles = null) {
-  if (!(await pathExists(root))) return null;
-  const files = expectedFiles || (await listFiles(root));
-  const aggregate = createHash("sha256");
-  for (const relPath of files) {
-    let fileHash;
-    try {
-      const bytes = await readFile(join(root, relPath));
-      fileHash = createHash("sha256").update(bytes).digest("hex");
-    } catch (error) {
-      if (error && error.code === "ENOENT") {
-        fileHash = "MISSING";
-      } else {
-        throw error;
-      }
-    }
-    aggregate.update(relPath);
-    aggregate.update("\0");
-    aggregate.update(fileHash);
-    aggregate.update("\0");
-  }
-  return { sha256: aggregate.digest("hex"), files };
-}
-
-async function readInstalledVersion(installedRoot) {
-  try {
-    return (
-      (
-        await readFile(join(installedRoot, ".installed-version"), "utf8")
-      ).trim() || null
-    );
-  } catch (error) {
-    if (error && error.code === "ENOENT") return null;
-    throw error;
-  }
-}
-
-async function readInstalledManifest(installedRoot) {
-  try {
-    const manifest = JSON.parse(
-      await readFile(join(installedRoot, ".installed-manifest.json"), "utf8"),
-    );
-    if (
-      !manifest ||
-      typeof manifest !== "object" ||
-      !Array.isArray(manifest.files)
-    ) {
-      return { manifest: null, parseError: "unexpected manifest shape" };
-    }
-    return { manifest, parseError: null };
-  } catch (error) {
-    if (error && error.code === "ENOENT") {
-      return { manifest: null, parseError: null };
-    }
-    return {
-      manifest: null,
-      parseError: error && error.message ? error.message : String(error),
-    };
-  }
-}
-
 function requiredReferencePaths(sourceFiles) {
   return sourceFiles.filter(
     (file) =>
@@ -504,7 +411,7 @@ function buildEvidence({
 }
 
 export async function collectStatus() {
-  const packageVersion = readPackageVersion();
+  const packageVersion = readPackageVersion(PKG_JSON);
   const claudeHome = resolveClaudeHome();
   const sessionState = await collectSessionStateEvidence();
   const installedClaudeSkillPath = join(claudeHome, "skills", "ddalggak");
@@ -513,7 +420,7 @@ export async function collectStatus() {
   const sourceFiles = sourceChecksum ? sourceChecksum.files : [];
   const codexChecksum = await payloadChecksum(CODEX_PAYLOAD_ROOT, sourceFiles);
   const installedFiles = installedExists
-    ? await listFiles(installedClaudeSkillPath)
+    ? await listPayloadFiles(installedClaudeSkillPath, { missingRoot: "empty" })
     : [];
   const installedManifestResult = installedExists
     ? await readInstalledManifest(installedClaudeSkillPath)
