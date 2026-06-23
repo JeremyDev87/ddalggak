@@ -192,20 +192,6 @@ const ACTION_PIN_EXCEPTION_LEDGER = {
       status: "compliant",
     },
     {
-      action: "actions/checkout",
-      currentRef: "93cb6efe18208431cddfb8368fd83d5badbf9bfd",
-      pinClass: "sha-pinned",
-      reason: "Official GitHub-maintained action pinned to the reviewed v5 tag commit for release-capable workflow admission",
-      status: "compliant",
-    },
-    {
-      action: "actions/setup-node",
-      currentRef: "48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e",
-      pinClass: "sha-pinned",
-      reason: "Official GitHub-maintained action pinned to the reviewed v6 tag commit for release-capable workflow admission",
-      status: "compliant",
-    },
-    {
       action: "actions/upload-artifact",
       currentRef: "ea165f8d65b6e75b540449e92b4886f43607fa02",
       pinClass: "sha-pinned",
@@ -235,6 +221,27 @@ const WRITE_PERMISSION_EXCEPTION_LEDGER = [
 
 const RISKY_TRIGGER_EXCEPTION_LEDGER = [];
 
+function actionPinExceptionKey(entry) {
+  return `${entry.action}@${entry.currentRef}`;
+}
+
+function validateActionPinExceptionLedger(ledger = ACTION_PIN_EXCEPTION_LEDGER) {
+  const seen = new Set();
+  const duplicates = [];
+  for (const entry of ledger.explicitExceptions) {
+    const key = actionPinExceptionKey(entry);
+    if (seen.has(key)) {
+      duplicates.push(key);
+      continue;
+    }
+    seen.add(key);
+  }
+
+  if (duplicates.length > 0) {
+    throw new Error(`duplicate action pin exception ledger key(s): ${duplicates.join(", ")}`);
+  }
+}
+
 function findActionException(actionName, ref) {
   return ACTION_PIN_EXCEPTION_LEDGER.explicitExceptions.find(
     (entry) => entry.action === actionName && entry.currentRef === ref,
@@ -261,6 +268,7 @@ function resolveExceptionStatus(actionName, ref, pinClass) {
 }
 
 function buildActionPinPolicy(workflows) {
+  validateActionPinExceptionLedger();
   const findings = [];
   for (const workflow of workflows) {
     for (const action of workflow.actions) {
@@ -797,4 +805,4 @@ if (process.argv[1] && path.resolve(process.argv[1]) === __filename) {
   }
 }
 
-export { analyzeWorkflows, buildActionPinPolicy, classifyActionRef, detectRiskyTriggers, detectUntrustedInterpolations, detectWorkflowCommandWrites, evaluateAdmission, formatMarkdown, resolveExceptionStatus };
+export { analyzeWorkflows, buildActionPinPolicy, classifyActionRef, detectRiskyTriggers, detectUntrustedInterpolations, detectWorkflowCommandWrites, evaluateAdmission, formatMarkdown, resolveExceptionStatus, validateActionPinExceptionLedger };

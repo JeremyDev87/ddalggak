@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { analyzeWorkflows, buildActionPinPolicy, classifyActionRef, detectWorkflowCommandWrites, resolveExceptionStatus } from "./security-posture-report.mjs";
+import { analyzeWorkflows, classifyActionRef, detectWorkflowCommandWrites, resolveExceptionStatus, validateActionPinExceptionLedger } from "./security-posture-report.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -20,6 +20,19 @@ function assertEqual(actual, expected, message) {
   if (actual !== expected) {
     throw new Error(`${message}: expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`);
   }
+}
+
+function assertThrows(fn, pattern, message) {
+  try {
+    fn();
+  } catch (error) {
+    const text = error instanceof Error ? error.message : String(error);
+    if (!pattern.test(text)) {
+      throw new Error(`${message}: expected error to match ${pattern}, got ${JSON.stringify(text)}`);
+    }
+    return;
+  }
+  throw new Error(`${message}: expected function to throw`);
 }
 
 function makeFixture(files) {
@@ -190,6 +203,23 @@ const tests = [
         "sha-pinned",
       );
       assertEqual(exceptionStatus, "compliant", "registered SHA-pinned action should be compliant");
+    },
+  },
+  {
+    name: "action pin policy: duplicate explicit exception keys are rejected",
+    run() {
+      const duplicateLedger = {
+        explicitExceptions: [
+          { action: "actions/checkout", currentRef: "93cb6efe18208431cddfb8368fd83d5badbf9bfd" },
+          { action: "actions/setup-node", currentRef: "48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e" },
+          { action: "actions/checkout", currentRef: "93cb6efe18208431cddfb8368fd83d5badbf9bfd" },
+        ],
+      };
+      assertThrows(
+        () => validateActionPinExceptionLedger(duplicateLedger),
+        /duplicate action pin exception ledger key\(s\): actions\/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd/,
+        "duplicate action/ref keys must fail validation",
+      );
     },
   },
   {
