@@ -16,23 +16,25 @@
 //   - Exit codes: 0 success/no-op, 1 IO failure, 2 argv error or safety failure.
 //   - Zero external dependencies; ESM; Node standard library only.
 
-import { readFileSync } from "node:fs";
-import { createHash, randomBytes } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import {
   cp,
   mkdtemp,
   rename,
   rm,
   realpath,
-  stat,
   mkdir,
   writeFile,
-  readFile,
-  readdir,
 } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, join, resolve, relative, isAbsolute } from "node:path";
 import { homedir } from "node:os";
+import {
+  buildInstalledManifest,
+  pathExists,
+  readInstalledVersion,
+  readPackageVersion,
+} from "./local-payload.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PKG_ROOT = resolve(__dirname, "..", "..");
@@ -232,73 +234,12 @@ function timestamp(date = new Date()) {
   );
 }
 
-async function pathExists(p) {
-  try {
-    await stat(p);
-    return true;
-  } catch (e) {
-    if (e && e.code === "ENOENT") return false;
-    throw e;
-  }
-}
-
 async function chooseBackupName(dstDir) {
   const base = `${dstDir}.bak.${timestamp()}`;
   if (!(await pathExists(base))) return base;
   // collision → append random suffix
   const suffix = randomBytes(3).toString("hex"); // 6 hex chars
   return `${base}-${suffix}`;
-}
-
-function readPackageVersion() {
-  const pkg = JSON.parse(readFileSync(PKG_JSON, "utf8"));
-  return pkg.version;
-}
-
-async function readInstalledVersion(dstDir) {
-  try {
-    const raw = await readFile(join(dstDir, ".installed-version"), "utf8");
-    return raw.trim();
-  } catch (e) {
-    if (e && e.code === "ENOENT") return null;
-    throw e;
-  }
-}
-
-async function listPayloadFiles(root) {
-  const files = [];
-  async function visit(dir) {
-    const entries = await readdir(dir, { withFileTypes: true });
-    entries.sort((a, b) => a.name.localeCompare(b.name));
-    for (const entry of entries) {
-      const abs = join(dir, entry.name);
-      if (entry.isDirectory()) {
-        await visit(abs);
-      } else if (entry.isFile()) {
-        files.push(relative(root, abs).replaceAll("\\", "/"));
-      }
-    }
-  }
-  await visit(root);
-  return files;
-}
-
-async function buildInstalledManifest({ sourceRoot, installedRoot, version }) {
-  const sourceFiles = await listPayloadFiles(sourceRoot);
-  const files = [];
-  for (const relPath of sourceFiles) {
-    const bytes = await readFile(join(installedRoot, relPath));
-    files.push({
-      path: relPath,
-      sha256: createHash("sha256").update(bytes).digest("hex"),
-    });
-  }
-  return {
-    packageVersion: version,
-    installedAt: new Date().toISOString(),
-    sourceRoot,
-    files,
-  };
 }
 
 // --- main flow ------------------------------------------------------------
@@ -337,7 +278,7 @@ export async function run(args) {
 
   let version;
   try {
-    version = readPackageVersion();
+    version = readPackageVersion(PKG_JSON);
   } catch (e) {
     err(`failed to read package.json: ${e && e.message ? e.message : e}`);
     return 1;
