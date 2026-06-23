@@ -194,6 +194,8 @@ const gateReferences = new Set([
   "evidence-contract.md",
   "simplicity-deletability-gate.md",
   "core-invariants.md",
+  "deep-interview-readiness-gate.md",
+  "ralplan-critic-consensus.md",
   "regression-library.md",
 ]);
 

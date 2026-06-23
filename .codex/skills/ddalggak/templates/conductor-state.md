@@ -13,6 +13,7 @@ schema is the single source of truth. Section -> schema field mapping:
   Validation Evidence     -> validation_evidence[] (per lane: lanes[].validation)
   Blocking Gaps           -> blocking_gaps[] (per lane: lanes[].validation.blocking_gaps)
   Next Gate               -> next_gate (per lane: lanes[].next_gate)
+  Artifact Manifest       -> lanes[].artifact_manifest
 templates/lane-state.md Event Record maps to one lanes[] entry
 (recorded_at -> updated_at). `ddalggak status --local` validates
 .ddalggak/session-state.json against the schema and judges staleness from
@@ -22,11 +23,13 @@ updated_at (x-ddalggak.staleAfterHours).
 ## Phase
 
 ## Issues / PRs / Branches
-| Issue | Branch | Worktree | PR | State |
-|---|---|---|---|---|
+| Issue | Branch | Worktree | PR | State | Artifact Manifest |
+|---|---|---|---|---|---|
 
 ## Validation Evidence
 
 ## Blocking Gaps
+
+## Artifact Manifests
 
 ## Next Gate

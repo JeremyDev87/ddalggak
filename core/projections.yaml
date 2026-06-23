@@ -47,6 +47,8 @@ parity_ledger:
     class: must-match
   - path: references/cross-review-loop.md
     class: may-localize
+  - path: references/deep-interview-readiness-gate.md
+    class: must-match
   - path: references/evidence-contract.md
     class: may-localize
   - path: references/failure-prevention.md
@@ -80,6 +82,8 @@ parity_ledger:
   - path: references/spark-goal.md
     class: must-match
   - path: references/quality-lens-router.md
+    class: must-match
+  - path: references/ralplan-critic-consensus.md
     class: must-match
   - path: references/react-code-quality-harness.md
     class: must-match
@@ -117,6 +121,8 @@ parity_ledger:
     reason: generated codex agent manifest owned by project-runtime-assets
   - path: templates/conductor-state.md
     class: must-match
+  - path: templates/artifact-manifest.md
+    class: must-match
   - path: templates/epic-body.md
     class: must-match
   - path: templates/fix-brief.md
@@ -146,7 +152,7 @@ parity_ledger:
 subcommand_token_budgets:
   claude:
     start: 23000
-    review: 26000
+    review: 27500
     status: 10000
     plan: 20000
     issue: 9000
@@ -162,7 +168,7 @@ subcommand_token_budgets:
     setwiki: 13000
   codex:
     start: 24000
-    review: 26500
+    review: 28000
     status: 10000
     plan: 21000
     issue: 10000
