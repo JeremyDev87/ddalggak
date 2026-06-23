@@ -7,9 +7,10 @@
  * verify-package.mjs is a cwd-based orchestration script, so these tests build
  * a temporary fixture package, copy the verifier into it verbatim, stub every
  * npm step it invokes with no-op scripts, and run it end-to-end against a real
- * `npm pack --dry-run`. The requiredArtifactPaths list and the npm run step
- * names are extracted from the verifier source so the fixture keeps following
- * the verifier when those lists change.
+ * `npm pack --dry-run`. The requiredArtifactPaths list still comes from the
+ * verifier source, while the pipeline step names come from the shared verify
+ * pipeline manifest so fixture stubs and the package.json ordering check stay
+ * aligned with the same contract.
  */
 
 import { spawnSync } from "node:child_process";
@@ -24,6 +25,11 @@ import {
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+
+import {
+  verifyPipelineNpmScriptNames,
+  verifyPipelineSteps,
+} from "../core/verification/verify-pipeline.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, "..");
@@ -60,14 +66,12 @@ function extractRequiredArtifactPaths(source) {
   return entries;
 }
 
-function extractRunStepNames(source) {
-  const names = [...source.matchAll(/"run",\s*"([^"]+)"/g)].map((m) => m[1]);
-  assert(names.length > 0, "no npm run steps found in verify-package.mjs");
-  return [...new Set(names)];
-}
-
 const requiredArtifactPaths = extractRequiredArtifactPaths(verifierSource);
-const runStepNames = extractRunStepNames(verifierSource);
+const runStepNames = verifyPipelineNpmScriptNames;
+const manifestStepLabels = verifyPipelineSteps.map((step) => step.label);
+const manifestScriptCount = verifyPipelineSteps.filter((step) => step.npmScript).length;
+const manifestStepCount = verifyPipelineSteps.length;
+const manifestScriptNameSet = new Set(verifyPipelineNpmScriptNames);
 const manifestExtraPath = "manifest-extra/asset.txt";
 
 /**
@@ -87,6 +91,13 @@ function makePackageFixture() {
 
   // The verifier under test is the real file, copied verbatim.
   copyFileSync(verifierPath, path.join(root, "scripts", "verify-package.mjs"));
+
+  // Copy the shared pipeline manifest so the fixture exercises the same step
+  // ordering contract as the real repository.
+  copyFileSync(
+    path.join(rootDir, "core", "verification", "verify-pipeline.mjs"),
+    path.join(root, "core", "verification", "verify-pipeline.mjs"),
+  );
 
   // Stub for the relative manifest import; one path beyond the static list
   // exercises the requiredArtifactPaths ∪ requiredPackageFiles union.
@@ -163,8 +174,20 @@ const tests = [
         requiredArtifactPaths.length > 10,
         `expected a substantial required path list, got ${requiredArtifactPaths.length}`,
       );
-      assertIncludes(runStepNames, "verify:issue-forms", "runStepNames");
-      assertIncludes(runStepNames, "verify:workflow-boundary", "runStepNames");
+      const pkg = JSON.parse(readFileSync(path.join(rootDir, "package.json"), "utf8"));
+      const packageScriptNames = Object.keys(pkg.scripts || {}).filter((name) =>
+        manifestScriptNameSet.has(name),
+      );
+      assert(
+        JSON.stringify(packageScriptNames) === JSON.stringify(runStepNames),
+        `expected package.json verify-script order to match the manifest\nmanifest: ${JSON.stringify(runStepNames)}\npackage: ${JSON.stringify(packageScriptNames)}`,
+      );
+      assert(
+        manifestStepCount === manifestScriptCount + 3,
+        `expected three direct-node verifier steps, got ${manifestStepCount - manifestScriptCount}`,
+      );
+      assertIncludes(manifestStepLabels, "workflow boundary fail-closed rejection tests", "manifestStepLabels");
+      assertIncludes(manifestStepLabels, "test coverage meta-test (no orphan test scripts)", "manifestStepLabels");
     },
   },
 
