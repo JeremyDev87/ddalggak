@@ -22,6 +22,13 @@ import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import {
+  classifyDuplicateRunPolicy,
+  classifyNextGate,
+  classifyQueueHangNextGate,
+  classifyWriteEscalation,
+} from "./lib/workflow-boundary-rules.mjs";
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const defaultRoot = path.resolve(__dirname, "..");
@@ -368,92 +375,6 @@ function classifyTrustedRefPolicy(events, allText) {
     return "manual_dispatch_input_ref";
   }
   return "unknown";
-}
-
-/**
- * Determine write escalation reason.
- */
-function classifyWriteEscalation(workflowPerms, jobPermsMap, filePath) {
-  const allPerms = { ...(workflowPerms || {}) };
-  if (jobPermsMap) {
-    for (const perms of Object.values(jobPermsMap)) {
-      Object.assign(allPerms, perms);
-    }
-  }
-
-  const writePerms = Object.entries(allPerms)
-    .filter(([, v]) => v === "write")
-    .map(([k]) => k);
-
-  if (writePerms.length === 0) return null;
-
-  const filename = path.basename(filePath);
-  const reasons = {
-    "codeql.yml":
-      "analyze job: security-events:write required to upload CodeQL SARIF results to code scanning",
-    "release-drafter.yml":
-      "contents:write and pull-requests:write required for release draft creation/update",
-    "manual-release-bump.yml":
-      "contents:write for branch push, issues:write and pull-requests:write for bump PR lifecycle",
-    "release.yml":
-      "publish_to_npm job: id-token:write required for OIDC-based trusted npm provenance publishing",
-  };
-
-  if (reasons[filename]) return reasons[filename];
-  return `WARN: write permissions detected (${writePerms.join(", ")}) — explicit reason not documented in inventory`;
-}
-
-/**
- * Classify duplicate run policy.
- */
-function classifyDuplicateRunPolicy(concurrency, events) {
-  if (!concurrency) return "no_concurrency_declared_parallel_allowed";
-
-  const cancelInProgress = concurrency.cancel_in_progress;
-  const isReleaseLane =
-    events.includes("release") ||
-    (concurrency.group && concurrency.group.includes("release-publish"));
-
-  if (cancelInProgress === true) {
-    if (isReleaseLane) {
-      return "WARN: cancel_in_progress=true on release lane — may cancel active evidence run";
-    }
-    return "cancel_stale_runs";
-  }
-
-  if (cancelInProgress === false) return "serialize_runs";
-
-  return "unknown";
-}
-
-/**
- * Determine queue/hang next gate.
- */
-function classifyQueueHangNextGate(concurrency, events, duplicateRunPolicy) {
-  if (typeof duplicateRunPolicy === "string" && duplicateRunPolicy.startsWith("WARN:")) {
-    return "human_approval";
-  }
-  if (!concurrency) return "rerun";
-  if (concurrency.cancel_in_progress === true) return "cancel_stale_then_rerun";
-  if (concurrency.cancel_in_progress === false) {
-    const isRelease =
-      events.includes("release") ||
-      (concurrency.group && concurrency.group.includes("release"));
-    if (isRelease) return "serialize_wait_for_prior_run";
-    return "wait_for_prior_run";
-  }
-  return "rerun";
-}
-
-/**
- * Determine the overall next_gate.
- */
-function classifyNextGate(writeEscalation, duplicateRunPolicy, allPerms, hasJobLevelIdToken) {
-  if (typeof writeEscalation === "string" && writeEscalation.startsWith("WARN:")) return "warn";
-  if (typeof duplicateRunPolicy === "string" && duplicateRunPolicy.startsWith("WARN:")) return "warn";
-  if (hasJobLevelIdToken) return "human-review";
-  if (allPerms && allPerms["id-token"] === "write") return "human-review";
-  return "allow";
 }
 
 /**

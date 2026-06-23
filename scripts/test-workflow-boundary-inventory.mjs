@@ -16,6 +16,13 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import {
+  classifyDuplicateRunPolicy,
+  classifyNextGate,
+  classifyQueueHangNextGate,
+  classifyWriteEscalation,
+} from "./lib/workflow-boundary-rules.mjs";
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, "..");
 const scriptPath = path.join(rootDir, "scripts", "workflow-boundary-inventory.mjs");
@@ -104,6 +111,36 @@ const TRUSTED_PUSH_CI = [
 ].join("\n") + "\n";
 
 const tests = [
+  {
+    name: "workflow boundary classifier rules are table-driven and exported",
+    run() {
+      assertEqual(
+        classifyWriteEscalation({ contents: "write" }, {}, ".github/workflows/custom.yml"),
+        "WARN: write permissions detected (contents) — explicit reason not documented in inventory",
+        "undocumented write warning",
+      );
+      assertEqual(
+        classifyWriteEscalation({}, { publish: { "id-token": "write" } }, ".github/workflows/release.yml"),
+        "publish_to_npm job: id-token:write required for OIDC-based trusted npm provenance publishing",
+        "release write reason",
+      );
+      assertEqual(
+        classifyDuplicateRunPolicy({ cancel_in_progress: true, group: "release-publish-main" }, ["push"]),
+        "WARN: cancel_in_progress=true on release lane — may cancel active evidence run",
+        "release cancellation warning",
+      );
+      assertEqual(
+        classifyQueueHangNextGate({ cancel_in_progress: false, group: "release-publish-main" }, ["push"], "serialize_runs"),
+        "serialize_wait_for_prior_run",
+        "release queue policy",
+      );
+      assertEqual(
+        classifyNextGate(null, "serialize_runs", { "id-token": "write" }, false),
+        "human-review",
+        "id-token next gate",
+      );
+    },
+  },
   {
     name: "classifies a read-only push-to-branch workflow as trusted and allow",
     run() {
