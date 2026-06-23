@@ -4,6 +4,11 @@ import path from "node:path";
 
 import { escapeRegExp } from "./lib/escape-regexp.mjs";
 import { parseSimpleYaml } from "./lib/parse-simple-yaml.mjs";
+import {
+  parseReferenceBudgetExemptions,
+  parseSubcommandTokenBudgets,
+  parseSubcommandTokenCeilings,
+} from "./lib/token-budget-yaml.mjs";
 
 const rootDir = process.cwd();
 
@@ -398,73 +403,24 @@ function fileTokenEstimate(relativePath) {
   return asciiChars / 4 + multibyteChars * 1.5;
 }
 
-// Parse a `<blockName>:` mapping of `<root>: { <command>: <int> }` from
-// projections.yaml. Shared by subcommand_token_budgets and
-// subcommand_token_ceilings; both blocks have identical shape (#283).
-function parseRootKeyedIntBlock(blockName) {
-  const lines = readText("core/projections.yaml").split(/\r?\n/);
-  const start = lines.indexOf(`${blockName}:`);
-  const byRoot = new Map();
-  if (start === -1) return byRoot;
-  let currentRoot;
-  for (let index = start + 1; index < lines.length; index += 1) {
-    const line = lines[index].replace(/\s+#.*$/, "");
-    if (!line.trim() || line.trimStart().startsWith("#")) continue;
-    const rootEntry = line.match(/^ {2}([A-Za-z0-9_-]+):\s*$/);
-    if (rootEntry) {
-      currentRoot = new Map();
-      byRoot.set(rootEntry[1], currentRoot);
-      continue;
-    }
-    const entry = line.match(/^ {4}([A-Za-z0-9_-]+):\s*(\d+)\s*$/);
-    if (!entry || !currentRoot) break;
-    currentRoot.set(entry[1], Number(entry[2]));
-  }
-  return byRoot;
+function readProjectionsText() {
+  return readText("core/projections.yaml");
 }
 
-function parseSubcommandTokenBudgets() {
-  return parseRootKeyedIntBlock("subcommand_token_budgets");
+function readSubcommandTokenBudgets() {
+  return parseSubcommandTokenBudgets(readProjectionsText());
 }
 
-function parseSubcommandTokenCeilings() {
-  return parseRootKeyedIntBlock("subcommand_token_ceilings");
+function readSubcommandTokenCeilings() {
+  return parseSubcommandTokenCeilings(readProjectionsText());
 }
 
-// Parse the `reference_budget_exemptions:` list of
-// `{ reference, max_tokens, reason }` items. The list ends at the next
-// column-0 line (the following comment block / key), so list items at 2-space
-// indent and their 4-space fields are the only lines consumed (#283).
-function parseReferenceBudgetExemptions() {
-  const lines = readText("core/projections.yaml").split(/\r?\n/);
-  const start = lines.indexOf("reference_budget_exemptions:");
-  const exemptions = [];
-  if (start === -1) return exemptions;
-  let current = null;
-  for (let index = start + 1; index < lines.length; index += 1) {
-    const raw = lines[index];
-    if (!raw.trim()) continue;
-    if (/^\S/.test(raw)) break; // next column-0 line (comment or key) ends the list
-    const item = raw.match(/^ {2}- reference:\s*(.+?)\s*$/);
-    if (item) {
-      current = { reference: item[1], maxTokens: undefined, reason: "" };
-      exemptions.push(current);
-      continue;
-    }
-    if (!current) continue;
-    const maxTokens = raw.match(/^ {4}max_tokens:\s*(\d+)\s*$/);
-    if (maxTokens) {
-      current.maxTokens = Number(maxTokens[1]);
-      continue;
-    }
-    const reason = raw.match(/^ {4}reason:\s*(.+?)\s*$/);
-    if (reason) current.reason = reason[1];
-  }
-  return exemptions;
+function readReferenceBudgetExemptions() {
+  return parseReferenceBudgetExemptions(readProjectionsText());
 }
 
 function runTokenBudgetReport() {
-  const budgetsByRoot = parseSubcommandTokenBudgets();
+  const budgetsByRoot = readSubcommandTokenBudgets();
   const warnings = [];
   const allRows = [];
   for (const { key, base } of tokenBudgetRoots) {
@@ -549,7 +505,7 @@ function runReferenceCoverageChecks() {
     for (const ref of doc.required_references || []) measured.add(ref);
   }
 
-  const exemptions = parseReferenceBudgetExemptions();
+  const exemptions = readReferenceBudgetExemptions();
   const exemptByRef = new Map();
   for (const exemption of exemptions) {
     if (exemptByRef.has(exemption.reference)) {
@@ -615,8 +571,8 @@ function runReferenceCoverageChecks() {
 // frozen constant that caps how high the working budget may go.
 function runCeilingChecks() {
   const failures = [];
-  const budgetsByRoot = parseSubcommandTokenBudgets();
-  const ceilingsByRoot = parseSubcommandTokenCeilings();
+  const budgetsByRoot = readSubcommandTokenBudgets();
+  const ceilingsByRoot = readSubcommandTokenCeilings();
   for (const { key } of tokenBudgetRoots) {
     const budgets = budgetsByRoot.get(key) ?? new Map();
     const ceilings = ceilingsByRoot.get(key) ?? new Map();
