@@ -11,6 +11,8 @@ Do not use when: the user asked only for `plan`, `status`, `check`, `prompt`, or
 
 `start`는 이슈 기반 구현만 수행한다. 먼저 repo URL/issue URL을 해석하고 `git fetch --prune`, branch, ahead/behind, worktree 상태를 확인한다. issue body와 comments를 모두 읽고, Quality Lens Router Output, Evidence Contract, Simplicity / Deletability Gate, Frontend Design Gate, React Code Quality Harness(React/Next.js 표면일 때만), Vercel Agent Skills Gate, Task Scope Contract를 brief에 넣는다. Default PR shape: one PR per issue; conflict fallback only when issue conflicts require it. Issue-PR Strategy with Conflict Fallback, Parallelization Decision, Integration commit, PR CREATE — 독립 이슈는 기본 생성, small direct change first, aesthetic direction, screenshot/viewport/manual evidence, server/client boundary, token source without printing secrets, preview-first, references/regression-library.md, 유용한 범위, class-level risk를 필요한 만큼 명시한다.
 
+Gajae-Code `team` 패턴에서 차용한 최소 계약: worker lane을 실행하기 전에 `templates/worker-brief.md`의 `Artifact Path Manifest`와 `templates/lane-state.md`의 `artifacts` 블록을 채운다. 이것은 durable engine/database가 아니라 재개·compact·review를 위한 경로 manifest다. 사용자 답변이 필요하면 `pending_user_input`에 질문 ID와 질문을 기록하고, 추측으로 진행하지 말고 human gate에서 멈춘다.
+
 ## Stale base / conflict refresh rule
 
 If `start` detects that the lane base is stale or conflicts with the live base, it must not stop at a vague stale-base warning. The conductor owns the refresh decision:
