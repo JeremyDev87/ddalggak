@@ -68,19 +68,33 @@ const tests = [
         "package_version=$(node -p \"require('./package.json').version\")",
         'node ./scripts/release-plan.mjs "${{ steps.target.outputs.tag }}" >> "$GITHUB_OUTPUT"',
         "npm run verify",
-        "npm pack --json",
-        "npm init -y",
-        'npm install "$tarball_path"',
-        "npx ddalggak --help",
-        "npx ddalggak plan --show-doc",
-        "npx ddalggak setup --dry-run",
-        "npx ddalggak status --local --json",
+        "Pack and smoke install release artifact",
+        'node ./scripts/release-pack-smoke.mjs --github-output "$GITHUB_OUTPUT" --sha256',
       ]) {
         assertIncludes(
           workflow,
           expected,
           `tagged ref verification contract ${expected}`,
         );
+      }
+    },
+  },
+  {
+    name: "release pack/smoke script owns package smoke commands and sha output",
+    run() {
+      const script = read("scripts/release-pack-smoke.mjs");
+      for (const expected of [
+        'execFileSync("npm", ["pack", "--json"]',
+        'run("npm", ["init", "-y"]',
+        'run("npm", ["install", tarballPath]',
+        '["ddalggak", "--help"]',
+        '["ddalggak", "plan", "--show-doc"]',
+        '["ddalggak", "setup", "--dry-run"]',
+        '["ddalggak", "status", "--local", "--json"]',
+        "tarball_sha256",
+        "--github-output",
+      ]) {
+        assertIncludes(script, expected, `release pack/smoke script contract ${expected}`);
       }
     },
   },

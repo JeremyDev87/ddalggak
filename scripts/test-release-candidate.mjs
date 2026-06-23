@@ -102,12 +102,12 @@ const tests = [
     run() {
       const workflow = read(".github/workflows/release-candidate.yml");
       const tagCheck = workflow.indexOf("Check release tag availability");
-      const smoke = workflow.indexOf("Smoke install packed package");
+      const smoke = workflow.indexOf("Pack and smoke install release candidate");
       assert(
         tagCheck !== -1,
         "workflow should check whether the release tag already exists",
       );
-      assert(smoke !== -1, "workflow should smoke install the packed package");
+      assert(smoke !== -1, "workflow should pack and smoke install the package");
       assert(
         tagCheck < smoke,
         "tag existence check should happen before smoke install",
@@ -120,20 +120,27 @@ const tests = [
     },
   },
   {
-    name: "candidate verification packs, smoke-installs, and exercises CLI help",
+    name: "candidate verification delegates pack/smoke to the shared release script",
     run() {
       const workflow = read(".github/workflows/release-candidate.yml");
+      const script = read("scripts/release-pack-smoke.mjs");
       for (const expected of [
         "npm run verify",
-        "npm pack --json",
-        "npm init -y",
-        'npm install "$tarball_path"',
-        "npx ddalggak --help",
-        "npx ddalggak plan --show-doc",
-        "npx ddalggak setup --dry-run",
-        "npx ddalggak status --local --json",
+        "Pack and smoke install release candidate",
+        'node ./scripts/release-pack-smoke.mjs --github-output "$GITHUB_OUTPUT"',
       ]) {
-        assertIncludes(workflow, expected, `pack/smoke contract ${expected}`);
+        assertIncludes(workflow, expected, `pack/smoke workflow contract ${expected}`);
+      }
+      for (const expected of [
+        'execFileSync("npm", ["pack", "--json"]',
+        'run("npm", ["init", "-y"]',
+        'run("npm", ["install", tarballPath]',
+        '["ddalggak", "--help"]',
+        '["ddalggak", "plan", "--show-doc"]',
+        '["ddalggak", "setup", "--dry-run"]',
+        '["ddalggak", "status", "--local", "--json"]',
+      ]) {
+        assertIncludes(script, expected, `pack/smoke script contract ${expected}`);
       }
     },
   },
