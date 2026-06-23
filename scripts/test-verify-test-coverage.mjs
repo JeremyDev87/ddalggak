@@ -20,6 +20,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 
 import { escapeRegExp } from "./lib/escape-regexp.mjs";
+import { verifyPipelineNpmScriptNames } from "../core/verification/verify-pipeline.mjs";
 
 const rootDir = process.cwd();
 const scriptsDir = path.join(rootDir, "scripts");
@@ -30,7 +31,7 @@ function read(relativePath) {
 }
 
 function buildCorpus() {
-  const parts = [read("scripts/verify-package.mjs")];
+  const parts = [read("scripts/verify-package.mjs"), read("core/verification/verify-pipeline.mjs")];
   let workflowNames = [];
   try {
     workflowNames = readdirSync(workflowsDir).filter((name) => /\.ya?ml$/.test(name));
@@ -70,6 +71,24 @@ if (testFiles.length === 0) {
 const pkg = JSON.parse(read("package.json"));
 const npmScripts = pkg.scripts || {};
 const corpus = buildCorpus();
+const manifestScriptNames = verifyPipelineNpmScriptNames;
+const packageScriptNames = Object.keys(npmScripts).filter((name) =>
+  manifestScriptNames.includes(name),
+);
+const missingPackageScripts = manifestScriptNames.filter((name) => !(name in npmScripts));
+const packageScriptOrderMismatch =
+  JSON.stringify(packageScriptNames) !== JSON.stringify(manifestScriptNames);
+if (missingPackageScripts.length > 0 || packageScriptOrderMismatch) {
+  failures.push(
+    `verify pipeline manifest/package.json script drift detected:\n` +
+      (missingPackageScripts.length > 0
+        ? `  missing from package.json:\n${missingPackageScripts.map((name) => `    - ${name}`).join("\n")}\n`
+        : "") +
+      (packageScriptOrderMismatch
+        ? `  order mismatch:\n    manifest: ${JSON.stringify(manifestScriptNames)}\n    package:  ${JSON.stringify(packageScriptNames)}`
+        : ""),
+  );
+}
 
 // file basename -> npm script names whose command references it
 const scriptNamesByFile = new Map();

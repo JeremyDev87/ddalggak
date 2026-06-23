@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 
 import { requiredPackageFiles } from "../core/verification/skill-contract-manifest.mjs";
+import { verifyPipelineStages } from "../core/verification/verify-pipeline.mjs";
 
 const rootDir = process.cwd();
 const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
@@ -208,117 +209,31 @@ function verifyArtifactContents() {
 }
 
 try {
-  runStep("npm test", npmCommand, ["test"]);
-  runStep("verify pipeline entrypoint unit tests", npmCommand, [
-    "run",
-    "test:verify-package",
-  ]);
-  runStep("ddalggak doctor diagnostics gate", process.execPath, [
-    "bin/ddalggak.js",
-    "doctor",
-  ]);
-  runStep("codex skill verifier", npmCommand, ["run", "verify:codex-skill"]);
-  runStep("projection verifier", npmCommand, ["run", "verify:projections"]);
-  const tokenBudgetReport = runStep(
-    "subcommand token budget admission gate",
-    process.execPath,
-    ["scripts/project-runtime-assets.mjs", "--report", "--admission"],
-    { capture: true },
-  );
-  for (const line of tokenBudgetReport.stdout.split("\n")) {
-    if (
-      line.startsWith("[token-budget] warning:") ||
-      line.startsWith("[token-budget] summary:") ||
-      line.startsWith("[token-budget] admission gate:")
-    ) {
-      console.log(line);
+  for (const stage of verifyPipelineStages) {
+    console.log(`\n[verify-package] stage: ${stage.title}`);
+    for (const step of stage.steps) {
+      const result = runStep(
+        step.label,
+        step.command === "npm" ? npmCommand : step.command,
+        step.args,
+        step.options || {},
+      );
+      if (
+        step.label === "subcommand token budget admission gate" &&
+        step.command === process.execPath
+      ) {
+        for (const line of (result.stdout || "").split("\n")) {
+          if (
+            line.startsWith("[token-budget] warning:") ||
+            line.startsWith("[token-budget] summary:") ||
+            line.startsWith("[token-budget] admission gate:")
+          ) {
+            console.log(line);
+          }
+        }
+      }
     }
   }
-  runStep("token budget coverage/cap/ceiling rejection tests", npmCommand, [
-    "run",
-    "test:token-budget-coverage",
-  ]);
-  runStep("doctor signal-registry drift rejection tests", npmCommand, [
-    "run",
-    "test:doctor-signal-drift",
-  ]);
-  runStep("verification robustness regression tests", npmCommand, [
-    "run",
-    "test:verify-robustness",
-  ]);
-  runStep("runtime asset generated-block drift check", process.execPath, [
-    "scripts/project-runtime-assets.mjs",
-    "--check",
-  ]);
-  runStep("reference-aware skill anchor tests", npmCommand, [
-    "run",
-    "test:reference-aware-skill-anchors",
-  ]);
-  runStep("ddalggak readiness eval", npmCommand, [
-    "run",
-    "eval:ddalggak-readiness",
-  ]);
-  runStep("release helper tests", npmCommand, ["run", "test:release-helpers"]);
-  runStep("release drafter tests", npmCommand, ["run", "test:release-drafter"]);
-  runStep("manual release bump tests", npmCommand, [
-    "run",
-    "test:manual-release-bump",
-  ]);
-  runStep("release candidate tests", npmCommand, [
-    "run",
-    "test:release-candidate",
-  ]);
-  runStep("release publish tests", npmCommand, ["run", "test:release-publish"]);
-  runStep("security posture report tests", npmCommand, [
-    "run",
-    "test:security-posture",
-  ]);
-  runStep("security posture admission gate", npmCommand, [
-    "run",
-    "verify:security-posture",
-    "--",
-    "--admission",
-  ]);
-  runStep("workflow lint tests", npmCommand, [
-    "run",
-    "test:workflow-lint",
-  ]);
-  runStep("development control-plane tests", npmCommand, [
-    "run",
-    "test:development-control-plane",
-  ]);
-  runStep("workflow static lint evidence report", npmCommand, [
-    "run",
-    "verify:workflow-lint",
-  ]);
-  runStep("PR check evidence report tests", npmCommand, [
-    "run",
-    "test:pr-check-evidence",
-  ]);
-  runStep("PR status evidence report tests", npmCommand, [
-    "run",
-    "test:pr-status-evidence",
-  ]);
-  runStep("issue forms admission schema verifier", npmCommand, [
-    "run",
-    "verify:issue-forms",
-  ]);
-  runStep("issue forms fail-closed rejection tests", npmCommand, [
-    "run",
-    "test:issue-forms",
-  ]);
-  runStep("workflow boundary inventory verification", npmCommand, [
-    "run",
-    "verify:workflow-boundary",
-  ]);
-  runStep("workflow boundary fail-closed rejection tests", npmCommand, [
-    "run",
-    "test:workflow-boundary",
-  ]);
-  runStep("test coverage meta-test (no orphan test scripts)", npmCommand, [
-    "run",
-    "test:test-coverage",
-  ]);
   verifyArtifactContents();
   console.log("\n[verify-package] passed");
 } catch (error) {
