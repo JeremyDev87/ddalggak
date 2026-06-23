@@ -1,16 +1,13 @@
 #!/usr/bin/env node
-import { spawnSync } from "node:child_process";
-import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import os from "node:os";
+import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import { escapeRegExp } from "./lib/escape-regexp.mjs";
+import { runNodeScript } from "./test-lib/process.mjs";
+import { copyRepoWithoutGitAndNodeModules } from "./test-lib/repo-fixture.mjs";
 
 const rootDir = process.cwd();
 const fixtureDir = path.join(rootDir, "tests", "fixtures", "verify-robustness");
-const nodeCommand = process.execPath;
-const tempRoots = [];
-
 function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
@@ -21,19 +18,11 @@ function assertMatch(name, pattern, text, expected) {
 }
 
 function runProjectionVerifier(cwd) {
-  return spawnSync(nodeCommand, ["scripts/verify-projections.mjs"], {
-    cwd,
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "pipe"],
-  });
+  return runNodeScript("scripts/verify-projections.mjs", [], { cwd });
 }
 
 function runProjectRuntimeAssets(cwd, args = []) {
-  return spawnSync(nodeCommand, ["scripts/project-runtime-assets.mjs", ...args], {
-    cwd,
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "pipe"],
-  });
+  return runNodeScript("scripts/project-runtime-assets.mjs", args, { cwd });
 }
 
 function runRuntimeAssetGenerator(cwd) {
@@ -41,30 +30,12 @@ function runRuntimeAssetGenerator(cwd) {
 }
 
 function runTokenBudgetReport(cwd, extraArgs = []) {
-  return spawnSync(nodeCommand, ["scripts/project-runtime-assets.mjs", "--report", ...extraArgs], {
-    cwd,
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "pipe"],
-  });
+  return runNodeScript("scripts/project-runtime-assets.mjs", ["--report", ...extraArgs], { cwd });
 }
 
 function copyRepo() {
-  const tempDir = mkdtempSync(path.join(os.tmpdir(), "ddalggak-verify-robustness-"));
-  tempRoots.push(tempDir);
-  cpSync(rootDir, tempDir, {
-    recursive: true,
-    filter: (source) => {
-      const relative = path.relative(rootDir, source);
-      return !relative.split(path.sep).some((part) => part === ".git" || part === "node_modules");
-    },
-  });
-  return tempDir;
+  return copyRepoWithoutGitAndNodeModules({ rootDir, prefix: "ddalggak-verify-robustness-" });
 }
-
-function cleanup() {
-  while (tempRoots.length > 0) rmSync(tempRoots.pop(), { recursive: true, force: true });
-}
-process.on("exit", cleanup);
 
 const specialInputs = JSON.parse(readFileSync(path.join(fixtureDir, "special-regexp-inputs.json"), "utf8"));
 
