@@ -3,6 +3,33 @@ function parseScalar(value) {
   return value.replace(/^"|"$/g, "");
 }
 
+export const SIMPLE_YAML_SUPPORTED_FORMS = Object.freeze([
+  {
+    id: "top-level-scalar",
+    description: "top-level key with scalar string/boolean value",
+    sample: "command: start\nsource_edit: false\n",
+    expected: { command: "start", source_edit: false },
+  },
+  {
+    id: "empty-top-level-list",
+    description: "top-level key with empty block value or [] becomes an empty list",
+    sample: "required_references:\noptional_templates: []\n",
+    expected: { required_references: [], optional_templates: [] },
+  },
+  {
+    id: "two-space-list",
+    description: "top-level list items use exactly two spaces and scalar values",
+    sample: "required_references:\n  - wiki-context-preflight.md\n  - evidence-contract.md\n",
+    expected: { required_references: ["wiki-context-preflight.md", "evidence-contract.md"] },
+  },
+  {
+    id: "two-space-nested-mapping",
+    description: "one-level nested scalar mapping under a top-level key",
+    sample: "output_contract:\n  completion_signal: REVIEW_DONE\n  mutates: false\n",
+    expected: { output_contract: { completion_signal: "REVIEW_DONE", mutates: false } },
+  },
+]);
+
 // Fail-closed simple-YAML parser shared by the generator and the verifier (#240/#242).
 // Without onError, any parse error throws so callers cannot silently consume a
 // misread document; with onError, every error is delegated (the verifier collects
