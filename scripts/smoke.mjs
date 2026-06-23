@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
   existsSync,
+  chmodSync,
   mkdirSync,
   mkdtempSync,
   readdirSync,
@@ -12,6 +13,8 @@ import {
 } from "node:fs";
 import os from "node:os";
 import path from "node:path";
+
+import { executableCandidates, resolveExecutable } from "../bin/lib/process/resolve-executable.mjs";
 
 const rootDir = process.cwd();
 const cliPath = path.join(rootDir, "bin", "ddalggak.js");
@@ -87,6 +90,32 @@ function assertShowDocIncludes(subcommand, output, asset) {
   assert(
     output.includes(asset),
     `missing ${subcommand} --show-doc disclosure asset: ${asset}`,
+  );
+}
+
+async function assertResolveExecutableHelper() {
+  const first = makeTempHome();
+  const second = makeTempHome();
+  const executable = path.join(second, "claude");
+  writeFileSync(executable, "#!/bin/sh\nexit 0\n", "utf8");
+  chmodSync(executable, 0o755);
+
+  const resolved = await resolveExecutable("claude", {
+    pathValue: ["", first, second].join(path.delimiter),
+    pathSeparator: path.delimiter,
+  });
+  assert(resolved === executable, `expected resolver to find executable in second PATH dir, got ${resolved}`);
+
+  const missing = await resolveExecutable("claude", {
+    pathValue: first,
+    pathSeparator: path.delimiter,
+  });
+  assert(missing === null, `expected resolver to return null for missing executable, got ${missing}`);
+
+  const windowsCandidates = executableCandidates("claude", { platform: "win32" });
+  assert(
+    windowsCandidates.join(",") === "claude.exe,claude.cmd,claude",
+    `unexpected Windows candidates: ${windowsCandidates.join(",")}`,
   );
 }
 
@@ -293,6 +322,12 @@ function runStatusWithSessionState(workspaceRoot) {
 }
 
 const cases = [
+  {
+    name: "resolveExecutable finds executable, misses absent command, and keeps Windows candidates",
+    async run() {
+      await assertResolveExecutableHelper();
+    },
+  },
   {
     name: "--version prints package version",
     run() {
@@ -1640,7 +1675,7 @@ const failures = [];
 
 for (const testCase of cases) {
   try {
-    testCase.run();
+    await testCase.run();
     passed += 1;
     console.log(`[PASS] ${testCase.name}`);
   } catch (error) {
