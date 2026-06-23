@@ -103,83 +103,13 @@ jobs:
         run: node ./scripts/bump-release-version.mjs "${{ steps.meta.outputs.tag }}"
 
       - name: Verify changed files before package verification
-        shell: bash
-        run: |
-          mapfile -t changed_files < <(git diff --name-only)
-          missing_files=()
-          unexpected_files=()
-
-          for required_file in package.json; do
-            found=false
-            for changed_file in "${changed_files[@]}"; do
-              if [ "$changed_file" = "$required_file" ]; then
-                found=true
-                break
-              fi
-            done
-            if [ "$found" != "true" ]; then
-              missing_files+=("$required_file")
-            fi
-          done
-
-          for changed_file in "${changed_files[@]}"; do
-            case "$changed_file" in
-              package.json) ;;
-              *) unexpected_files+=("$changed_file") ;;
-            esac
-          done
-
-          if [ "${#missing_files[@]}" -gt 0 ] || [ "${#unexpected_files[@]}" -gt 0 ]; then
-            echo "Unexpected changed files before verification:"
-            printf 'Changed files:\n'
-            printf '%s\n' "${changed_files[@]}"
-            printf 'Missing required files:\n'
-            printf '%s\n' "${missing_files[@]}"
-            printf 'Unexpected files:\n'
-            printf '%s\n' "${unexpected_files[@]}"
-            exit 1
-          fi
+        run: node ./scripts/verify-package-json-only-diff.mjs --label before
 
       - name: Verify package
         run: npm run verify
 
       - name: Verify changed files after package verification
-        shell: bash
-        run: |
-          mapfile -t changed_files < <(git diff --name-only)
-          missing_files=()
-          unexpected_files=()
-
-          for required_file in package.json; do
-            found=false
-            for changed_file in "${changed_files[@]}"; do
-              if [ "$changed_file" = "$required_file" ]; then
-                found=true
-                break
-              fi
-            done
-            if [ "$found" != "true" ]; then
-              missing_files+=("$required_file")
-            fi
-          done
-
-          for changed_file in "${changed_files[@]}"; do
-            case "$changed_file" in
-              package.json) ;;
-              *) unexpected_files+=("$changed_file") ;;
-            esac
-          done
-
-          if [ "${#missing_files[@]}" -gt 0 ] || [ "${#unexpected_files[@]}" -gt 0 ]; then
-            echo "Unexpected changed files after package verification:"
-            printf 'Changed files:\n'
-            printf '%s\n' "${changed_files[@]}"
-            printf 'Missing required files:\n'
-            printf '%s\n' "${missing_files[@]}"
-            printf 'Unexpected files:\n'
-            printf '%s\n' "${unexpected_files[@]}"
-            exit 1
-          fi
+        run: node ./scripts/verify-package-json-only-diff.mjs --label after
 
       - name: Dry-run summary
         if: ${{ inputs.dry_run }}
