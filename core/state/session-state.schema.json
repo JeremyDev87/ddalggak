@@ -11,7 +11,8 @@
         "Issues / PRs / Branches": "lanes[] (Issue -> lanes[].issue, Branch -> lanes[].branch.name, Worktree -> lanes[].branch.worktree, PR -> lanes[].pull_request.url, State -> lanes[].state)",
         "Validation Evidence": "validation_evidence[] (per lane: lanes[].validation)",
         "Blocking Gaps": "blocking_gaps[] (per lane: lanes[].validation.blocking_gaps)",
-        "Next Gate": "next_gate (per lane: lanes[].next_gate)"
+        "Next Gate": "next_gate (per lane: lanes[].next_gate)",
+        "Artifact Manifest": "lanes[].artifact_manifest"
       },
       "templates/lane-state.md": {
         "recorded_at": "updated_at",
@@ -26,7 +27,9 @@
         "scope": "lanes[].scope",
         "validation": "lanes[].validation",
         "review": "lanes[].review",
-        "next_gate": "lanes[].next_gate"
+        "next_gate": "lanes[].next_gate",
+        "artifacts": "lanes[].artifacts",
+        "artifact_manifest": "lanes[].artifact_manifest"
       }
     }
   },
@@ -102,6 +105,28 @@
               "is_draft": { "type": "boolean" },
               "base_ref": { "type": "string" },
               "head_ref": { "type": "string" }
+            }
+          },
+          "artifact_manifest": {
+            "type": "object",
+            "properties": {
+              "path": { "type": "string" },
+              "updated_at": { "type": "string", "format": "date-time" },
+              "head_sha": { "type": "string" },
+              "artifact_count": { "type": "integer" },
+              "blocking_gaps": { "type": "array", "items": { "type": "string" } }
+            }
+          },
+          "artifacts": {
+            "type": "object",
+            "properties": {
+              "plan": { "type": "string" },
+              "lane_state": { "type": "string" },
+              "artifact_manifest": { "type": "string" },
+              "evidence_dir": { "type": "string" },
+              "review_brief": { "type": "string" },
+              "compact_handoff": { "type": "string" },
+              "pending_user_input": { "type": "string" }
             }
           },
           "scope": {

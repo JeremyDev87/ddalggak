@@ -14,6 +14,8 @@ required_references:
   - evidence-contract.md
   - simplicity-deletability-gate.md
   - core-invariants.md
+  - deep-interview-readiness-gate.md
+  - ralplan-critic-consensus.md
   - issue-ready-plan.md
 
 required_templates:
