@@ -4,76 +4,13 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
+import { buildHelpText, loadSubcommands } from "./lib/command-contracts.mjs";
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
+const rootDir = join(__dirname, "..");
 
-const SUBCOMMANDS = [
-  "start",
-  "review",
-  "status",
-  "plan",
-  "issue",
-  "clean",
-  "ship",
-  "retro",
-  "prompt",
-  "tune",
-  "forge",
-  "spark",
-  "check",
-  "getwiki",
-  "setwiki",
-];
-
-const HELP_TEXT = `ddalggak - workflow skill for Codex App and Claude Code legacy
-
-Usage:
-  ddalggak <subcommand> [args]
-
-Codex App:
-  Skill source path: .codex/skills/ddalggak/
-  Invocation name: ddalggak
-
-Subcommands:
-  setup                Install legacy Claude Code skill to ~/.claude/skills/ddalggak/
-  doctor               Run repo-source health checks (reachability, dead pointers, signals, root parity)
-  start                Run issue-based implementation lanes
-  review               Run independent review and accepted-fix loops
-  status               Inspect current lane, worktree, and PR state
-  status --local        Inspect local source/Codex/installed skill parity
-  plan                 Create an issue-ready implementation plan
-  issue                Convert a plan into GitHub issues
-  clean                Clean local state after merge verification
-  ship                 Commit, push, and open a draft PR for existing lane changes
-  retro                Write a workflow retrospective
-  prompt               Improve lane or review briefs
-  tune                 Align intent into a goal-ready brief
-  forge                Convert done conditions into acceptance criteria
-  spark                Draft a copyable runtime goal sentence
-  check                Run a local diff check
-  getwiki              Delegate read-only wiki retrieval to /getwiki
-  setwiki              Delegate approval-gated wiki write workflow to /setwiki
-  profile hermes       Propose a Hermes-style Claude global profile patch (dry-run only)
-
-Claude Code legacy:
-  Non-setup subcommands dispatch to claude CLI as /ddalggak <subcommand>.
-  getwiki/setwiki delegate directly to /getwiki and /setwiki.
-  Use --print to print the slash command without spawning claude CLI.
-
-Options:
-  --help, -h           Show this help
-  --version, -v        Print version
-
-Examples:
-  ddalggak setup
-  ddalggak plan --print "Split issue 22 into reviewable PR units"
-  ddalggak spark --print "Draft the next runtime goal"
-  ddalggak getwiki --print "workflow routing"
-  ddalggak setwiki --print "review this lesson"
-  ddalggak profile hermes --dry-run
-  ddalggak status
-
-More info: https://github.com/JeremyDev87/ddalggak
-`;
+const SUBCOMMANDS = loadSubcommands(rootDir);
+const HELP_TEXT = buildHelpText(rootDir);
 
 function printHelp() {
   process.stdout.write(HELP_TEXT);

@@ -151,13 +151,29 @@ function getFrontmatterValue(frontmatter, key) {
   return match[1].replace(/^["']|["']$/g, "");
 }
 
-function extractStringArray(text, constName) {
-  const pattern = new RegExp(String.raw`const ${escapeRegExp(constName)} = \[([\s\S]*?)\];`);
-  const match = text.match(pattern);
-  if (!match) {
-    return null;
+function extractCliHelpSubcommands(text) {
+  const commands = [];
+  let inSubcommands = false;
+  for (const line of text.split("\n")) {
+    if (line.trim() === "Subcommands:") {
+      inSubcommands = true;
+      continue;
+    }
+    if (inSubcommands && line.trim() === "") {
+      break;
+    }
+    if (!inSubcommands) {
+      continue;
+    }
+    const match = line.match(/^  ([a-z][a-z-]*)(?:\s|$)/);
+    if (line.includes("--local")) {
+      continue;
+    }
+    if (match && !["setup", "doctor", "profile"].includes(match[1])) {
+      commands.push(match[1]);
+    }
   }
-  return [...match[1].matchAll(/"([^"]+)"/g)].map((item) => item[1]);
+  return commands;
 }
 
 function extractDocSectionMap(text) {
@@ -1210,12 +1226,18 @@ if (!packageFiles.includes(".codex/")) {
 }
 
 const cliText = readText(cliPath);
-const cliSubcommands = extractStringArray(cliText, "SUBCOMMANDS");
-if (!cliSubcommands) {
-  fail("bin/ddalggak.js must define SUBCOMMANDS.");
-} else if (!arraysEqual(cliSubcommands, requiredSubcommands)) {
+const helpResult = spawnSync(process.execPath, [cliPath, "--help"], {
+  cwd: rootDir,
+  encoding: "utf8",
+  stdio: ["ignore", "pipe", "pipe"],
+});
+if (helpResult.status !== 0) {
+  fail(`bin/ddalggak.js --help must run successfully. stderr:\n${helpResult.stderr}`);
+}
+const cliSubcommands = extractCliHelpSubcommands(helpResult.stdout);
+if (!arraysEqual(cliSubcommands, requiredSubcommands)) {
   fail(
-    `SUBCOMMANDS drifted. Expected ${requiredSubcommands.join(", ")}; got ${cliSubcommands.join(", ")}`
+    `CLI help subcommands drifted. Expected ${requiredSubcommands.join(", ")}; got ${cliSubcommands.join(", ")}`
   );
 }
 

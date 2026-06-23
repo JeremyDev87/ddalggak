@@ -15,6 +15,7 @@ import os from "node:os";
 import path from "node:path";
 
 import { executableCandidates, resolveExecutable } from "../bin/lib/process/resolve-executable.mjs";
+import { loadCommandContracts } from "../bin/lib/command-contracts.mjs";
 
 const rootDir = process.cwd();
 const cliPath = path.join(rootDir, "bin", "ddalggak.js");
@@ -342,6 +343,28 @@ const cases = [
       const result = runCli(["--help"]);
       assertExit(result, 0);
       assertIncludes(result.stdout, "Usage", "stdout");
+    },
+  },
+  {
+    name: "--help derives subcommands from command contracts",
+    run() {
+      const result = runCli(["--help"]);
+      assertExit(result, 0);
+      const contracts = loadCommandContracts(rootDir);
+      for (const contract of contracts) {
+        const purpose = String(contract.purpose).replace(/\.$/, "");
+        assertIncludes(
+          result.stdout,
+          `  ${contract.command.padEnd(20)} ${purpose}`,
+          "stdout",
+        );
+      }
+      assert(
+        !result.stdout.includes("Run issue-based implementation lanes"),
+        "help should use core/commands purpose text, not the old hand-written start description",
+      );
+      assertIncludes(result.stdout, "  setup                Install legacy Claude Code skill", "stdout");
+      assertIncludes(result.stdout, "  status --local       Inspect local source/Codex/installed skill parity", "stdout");
     },
   },
   {
