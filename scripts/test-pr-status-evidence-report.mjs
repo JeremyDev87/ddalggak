@@ -1,8 +1,6 @@
 #!/usr/bin/env node
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import os from "node:os";
+import { writeFileSync } from "node:fs";
 import path from "node:path";
-import { spawnSync } from "node:child_process";
 
 import {
   buildBundle,
@@ -15,18 +13,11 @@ import {
   sanitizeText,
   sanitizeUrl,
 } from "./pr-status-evidence-report.mjs";
+import { runNodeScript } from "./test-lib/process.mjs";
+import { makeTempDir } from "./test-lib/temp.mjs";
 
 const rootDir = process.cwd();
 const scriptPath = path.join(rootDir, "scripts", "pr-status-evidence-report.mjs");
-const tempRoots = [];
-
-function cleanup() {
-  while (tempRoots.length > 0) {
-    rmSync(tempRoots.pop(), { recursive: true, force: true });
-  }
-}
-process.on("exit", cleanup);
-
 function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
@@ -46,15 +37,10 @@ function assertNotIncludes(value, needle, label = "value") {
 }
 
 function runCli(input, args = []) {
-  const dir = mkdtempSync(path.join(os.tmpdir(), "ddalggak-pr-status-evidence-"));
-  tempRoots.push(dir);
+  const dir = makeTempDir("ddalggak-pr-status-evidence-");
   const filePath = path.join(dir, "pr-status.json");
   writeFileSync(filePath, JSON.stringify(input, null, 2), "utf8");
-  return spawnSync(process.execPath, [scriptPath, "--input", filePath, ...args], {
-    cwd: rootDir,
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "pipe"],
-  });
+  return runNodeScript(scriptPath, ["--input", filePath, ...args], { cwd: rootDir });
 }
 
 // ──────────────────────────────────────────────

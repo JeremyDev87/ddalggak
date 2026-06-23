@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import os from "node:os";
+import { chmodSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
+
+import { makeTempDir } from "./test-lib/temp.mjs";
 
 import {
   buildDdalggakDevelopmentPacket,
@@ -14,18 +15,9 @@ import {
   runDdalggakDispatchWithApproval,
 } from "../core/development-control-plane.mjs";
 
-const tempRoots = [];
 function makeTempRoot() {
-  const root = mkdtempSync(path.join(os.tmpdir(), "ddalggak-dev-control-plane-"));
-  tempRoots.push(root);
-  return root;
+  return makeTempDir("ddalggak-dev-control-plane-");
 }
-function cleanup() {
-  for (const root of tempRoots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-}
-process.on("exit", cleanup);
 
 function issue(overrides = {}) {
   return {
