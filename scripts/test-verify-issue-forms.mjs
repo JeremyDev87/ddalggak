@@ -182,11 +182,7 @@ const tests = [
   },
 
   {
-    // Known gap, pinned on purpose: `labelsMatch[1] || labelsMatch[0]` falls
-    // back to the full match for an empty inline list, and the "labels:" text
-    // itself satisfies the non-empty check. Reported on issue #216; do not
-    // "fix" this test without fixing the verifier in its own lane.
-    name: "known gap: empty inline labels/assignees arrays currently pass",
+    name: "empty inline labels/assignees arrays fail",
     run() {
       const root = makeFixture({
         forms: {
@@ -197,12 +193,8 @@ const tests = [
         },
       });
       const result = runVerifier(root);
-      assert(
-        result.status === 0,
-        `expected current behavior exit 0, got ${result.status}\nstdout:\n${result.stdout}\nstderr:\n${result.stderr}`,
-      );
-      assertIncludes(result.stdout, "labels array is non-empty", "stdout");
-      assertIncludes(result.stdout, "assignees array is non-empty", "stdout");
+      expectFailure(result, "labels field is missing or empty", this.name);
+      assertIncludes(result.stderr, "assignees field is missing or empty", "stderr");
     },
   },
 
