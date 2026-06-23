@@ -178,6 +178,60 @@ async function loadLib(relPath, missingHint) {
   }
 }
 
+function normalizeExitCode(code) {
+  return typeof code === "number" ? code : 0;
+}
+
+async function runModule(route, first, rest) {
+  const mod = await loadLib(route.module, route.missingHint(first));
+  const args = route.argsTransform ? route.argsTransform(first, rest) : rest;
+  const code = await mod.run(...args);
+  return normalizeExitCode(code);
+}
+
+const COMMAND_ROUTES = [
+  {
+    name: "setup",
+    module: "./lib/setup.mjs",
+    matches: (first) => first === "setup",
+    argsTransform: (_first, rest) => [rest],
+    missingHint: () =>
+      "ddalggak setup: implementation not installed yet.\n(./bin/lib/setup.mjs is missing - this CLI is in active development.)",
+  },
+  {
+    name: "doctor",
+    module: "./lib/doctor.mjs",
+    matches: (first) => first === "doctor",
+    argsTransform: (_first, rest) => [rest],
+    missingHint: () =>
+      "ddalggak doctor: implementation not installed yet.\n(./bin/lib/doctor.mjs is missing - this CLI is in active development.)",
+  },
+  {
+    name: "status-local",
+    module: "./lib/status.mjs",
+    matches: (first, rest) => first === "status" && hasLocalStatusFlag(rest),
+    argsTransform: (_first, rest) => [removeFirstLocalStatusFlag(rest)],
+    missingHint: () =>
+      "ddalggak status --local: implementation not installed yet.\n(./bin/lib/status.mjs is missing - this CLI is in active development.)",
+  },
+  {
+    name: "profile",
+    module: "./lib/profile.mjs",
+    matches: (first) => first === "profile",
+    argsTransform: (_first, rest) => [rest],
+    missingHint: () =>
+      "ddalggak profile: implementation not installed yet.\n(./bin/lib/profile.mjs is missing - this CLI is in active development.)",
+  },
+  {
+    name: "slash-dispatch",
+    module: "./lib/dispatch.mjs",
+    matches: (first) => SUBCOMMANDS.includes(first),
+    argsTransform: (first, rest) => [first, rest],
+    missingHint: (first) =>
+      `ddalggak ${first}: dispatch implementation not installed yet.\n(./bin/lib/dispatch.mjs is missing - this CLI is in active development.)`,
+  },
+];
+
 async function main() {
   const argv = process.argv.slice(2);
 
@@ -203,49 +257,9 @@ async function main() {
     return 0;
   }
 
-  if (first === "setup") {
-    const mod = await loadLib(
-      "./lib/setup.mjs",
-      "ddalggak setup: implementation not installed yet.\n(./bin/lib/setup.mjs is missing - this CLI is in active development.)"
-    );
-    const code = await mod.run(rest);
-    return typeof code === "number" ? code : 0;
-  }
-
-  if (first === "doctor") {
-    const mod = await loadLib(
-      "./lib/doctor.mjs",
-      "ddalggak doctor: implementation not installed yet.\n(./bin/lib/doctor.mjs is missing - this CLI is in active development.)"
-    );
-    const code = await mod.run(rest);
-    return typeof code === "number" ? code : 0;
-  }
-
-  if (first === "status" && hasLocalStatusFlag(rest)) {
-    const mod = await loadLib(
-      "./lib/status.mjs",
-      "ddalggak status --local: implementation not installed yet.\n(./bin/lib/status.mjs is missing - this CLI is in active development.)"
-    );
-    const code = await mod.run(removeFirstLocalStatusFlag(rest));
-    return typeof code === "number" ? code : 0;
-  }
-
-  if (first === "profile") {
-    const mod = await loadLib(
-      "./lib/profile.mjs",
-      "ddalggak profile: implementation not installed yet.\n(./bin/lib/profile.mjs is missing - this CLI is in active development.)"
-    );
-    const code = await mod.run(rest);
-    return typeof code === "number" ? code : 0;
-  }
-
-  if (SUBCOMMANDS.includes(first)) {
-    const mod = await loadLib(
-      "./lib/dispatch.mjs",
-      `ddalggak ${first}: dispatch implementation not installed yet.\n(./bin/lib/dispatch.mjs is missing - this CLI is in active development.)`
-    );
-    const code = await mod.run(first, rest);
-    return typeof code === "number" ? code : 0;
+  const route = COMMAND_ROUTES.find((candidate) => candidate.matches(first, rest));
+  if (route) {
+    return runModule(route, first, rest);
   }
 
   // Unknown command
