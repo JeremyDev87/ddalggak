@@ -4,13 +4,13 @@
 
 import { spawn } from "node:child_process";
 import { readFileSync } from "node:fs";
-import { access, constants } from "node:fs/promises";
 import path from "node:path";
 import {
   prepareDdalggakDispatchFromLiveGithubIssue,
   runDdalggakDispatchWithApproval,
 } from "../../core/development-control-plane.mjs";
 import { fileURLToPath } from "node:url";
+import { resolveExecutable } from "./process/resolve-executable.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -58,27 +58,8 @@ function buildSlashString(subcmd, parts) {
   return `${slashCommand} ` + parts.map(quoteIfNeeded).join(" ");
 }
 
-// claude CLI를 PATH에서 검색 (which 인라인).
 async function findClaude() {
-  const PATH = process.env.PATH || "";
-  const sep = process.platform === "win32" ? ";" : ":";
-  const candidates =
-    process.platform === "win32"
-      ? ["claude.exe", "claude.cmd", "claude"]
-      : ["claude"];
-  for (const dir of PATH.split(sep)) {
-    if (!dir) continue;
-    for (const name of candidates) {
-      const full = path.join(dir, name);
-      try {
-        await access(full, constants.X_OK);
-        return full;
-      } catch {
-        /* not executable / not found */
-      }
-    }
-  }
-  return null;
+  return resolveExecutable("claude");
 }
 
 // SKILL.md에서 첫 매칭 H2 섹션부터 다음 H2 직전까지 추출.
