@@ -1,31 +1,10 @@
-import { readFileSync } from "node:fs";
-
-function read(path) {
-  return readFileSync(path, "utf8");
-}
-
-function assert(condition, message) {
-  if (!condition) {
-    throw new Error(message);
-  }
-}
-
-function assertIncludes(text, expected, message) {
-  assert(
-    text.includes(expected),
-    `${message}: expected to include ${JSON.stringify(expected)}`,
-  );
-}
-
-function assertMatches(text, pattern, message) {
-  assert(pattern.test(text), `${message}: expected to match ${pattern}`);
-}
+import { assert, assertBefore, assertIncludes, assertMatches, readText, readWorkflow } from "./test-lib/workflow-assert.mjs";
 
 const tests = [
   {
     name: "release workflow runs for semver tags and manual existing tags",
     run() {
-      const workflow = read(".github/workflows/release.yml");
+      const workflow = readWorkflow("release");
       for (const expected of [
         "name: Release Publish",
         "push:",
@@ -57,7 +36,7 @@ const tests = [
   {
     name: "release workflow delegates semver tag validation to release helper",
     run() {
-      const workflow = read(".github/workflows/release.yml");
+      const workflow = readWorkflow("release");
       assertIncludes(
         workflow,
         'node ./scripts/release-plan.mjs "$tag" >/dev/null',
@@ -76,12 +55,10 @@ const tests = [
         !workflow.includes("tag must be an existing v-prefixed semver tag"),
         "release workflow should use release-plan.mjs error text for tag policy",
       );
-      const preCheckoutValidation = workflow.indexOf('node ./scripts/release-plan.mjs "$tag" >/dev/null');
-      const taggedCheckout = workflow.indexOf('ref: ${{ steps.target.outputs.tag }}');
-      assert(preCheckoutValidation !== -1, "pre-checkout helper validation should exist");
-      assert(taggedCheckout !== -1, "tagged checkout should exist");
-      assert(
-        preCheckoutValidation < taggedCheckout,
+      assertBefore(
+        workflow,
+        'node ./scripts/release-plan.mjs "$tag" >/dev/null',
+        'ref: ${{ steps.target.outputs.tag }}',
         "release helper must validate workflow_dispatch tag input before checking out that ref",
       );
     },
@@ -89,12 +66,13 @@ const tests = [
   {
     name: "release workflow verifies tagged ref before publish",
     run() {
-      const workflow = read(".github/workflows/release.yml");
-      const verify = workflow.indexOf("verify_tagged_ref:");
-      const publish = workflow.indexOf("publish_to_npm:");
-      assert(verify !== -1, "verify job should exist");
-      assert(publish !== -1, "publish job should exist");
-      assert(verify < publish, "verify job should run before publish job");
+      const workflow = readWorkflow("release");
+      assertBefore(
+        workflow,
+        "verify_tagged_ref:",
+        "publish_to_npm:",
+        "verify job should run before publish job",
+      );
       for (const expected of [
         'expected_ref="refs/tags/${{ steps.release.outputs.tag }}"',
         "actual_ref=$(git describe --tags --exact-match HEAD)",
@@ -115,7 +93,7 @@ const tests = [
   {
     name: "release pack/smoke script owns package smoke commands and sha output",
     run() {
-      const script = read("scripts/release-pack-smoke.mjs");
+      const script = readText("scripts/release-pack-smoke.mjs");
       for (const expected of [
         'execFileSync("npm", ["pack", "--json"]',
         'run("npm", ["init", "-y"]',
@@ -134,7 +112,7 @@ const tests = [
   {
     name: "publish job uses the verified SHA and verified tarball after environment approval",
     run() {
-      const workflow = read(".github/workflows/release.yml");
+      const workflow = readWorkflow("release");
       for (const expected of [
         "sha: ${{ steps.verified_ref.outputs.sha }}",
         "verified_sha=$(git rev-parse HEAD)",
@@ -159,20 +137,16 @@ const tests = [
   {
     name: "publish job is environment-gated and uses trusted publishing before token fallback",
     run() {
-      const workflow = read(".github/workflows/release.yml");
+      const workflow = readWorkflow("release");
       assertMatches(
         workflow,
         /publish_to_npm:[\s\S]*?needs: verify_tagged_ref[\s\S]*?environment:\s*\n\s+name: release[\s\S]*?permissions:[\s\S]*?contents: read[\s\S]*?id-token: write/,
         "publish job must need verification, require release environment, and request id-token for trusted publishing",
       );
-      const trusted = workflow.indexOf(
+      assertBefore(
+        workflow,
         "Publish package with trusted publishing",
-      );
-      const token = workflow.indexOf("Publish package with NPM_TOKEN fallback");
-      assert(trusted !== -1, "trusted publishing step should exist");
-      assert(token !== -1, "NPM_TOKEN fallback step should exist");
-      assert(
-        trusted < token,
+        "Publish package with NPM_TOKEN fallback",
         "trusted publishing should be attempted before NPM_TOKEN fallback",
       );
       for (const expected of [
@@ -187,7 +161,7 @@ const tests = [
   {
     name: "publish workflow maps stable and prerelease dist-tags and skips already published exact version",
     run() {
-      const workflow = read(".github/workflows/release.yml");
+      const workflow = readWorkflow("release");
       for (const expected of [
         "npmDistTag",
         "classifyNpmPublishError",
@@ -207,9 +181,7 @@ const tests = [
   {
     name: "follow-up audit checks GitHub release and npm registry metadata",
     run() {
-      const workflow = read(
-        ".github/workflows/release-published-follow-up.yml",
-      );
+      const workflow = readWorkflow("release-published-follow-up");
       for (const expected of [
         "name: Release Published Follow-up Audit",
         "release:",
@@ -238,9 +210,7 @@ const tests = [
   {
     name: "follow-up audit contains content-light provenance/signature evidence step",
     run() {
-      const workflow = read(
-        ".github/workflows/release-published-follow-up.yml",
-      );
+      const workflow = readWorkflow("release-published-follow-up");
       for (const expected of [
         "Post-publish provenance/signature evidence",
         "npm audit signatures",
@@ -282,9 +252,7 @@ const tests = [
   {
     name: "follow-up audit contains tarball artifact integrity/retention evidence step",
     run() {
-      const workflow = read(
-        ".github/workflows/release-published-follow-up.yml",
-      );
+      const workflow = readWorkflow("release-published-follow-up");
       for (const expected of [
         "Tarball artifact integrity/retention evidence",
         "release_tarball_artifact_name",
@@ -321,7 +289,7 @@ const tests = [
   {
     name: "README documents approval gate, trusted publishing, fallback, dist-tags, and audit",
     run() {
-      const readme = read("README.md");
+      const readme = readText("README.md");
       for (const expected of [
         "## Release Publish",
         "protected `release` environment approval",
@@ -344,7 +312,7 @@ const tests = [
   {
     name: "README Follow-up Audit section documents provenance evidence and semantic-safety caveat",
     run() {
-      const readme = read("README.md");
+      const readme = readText("README.md");
       for (const expected of [
         "provenance",
         "semantic safety",

@@ -1,31 +1,10 @@
-import { readFileSync } from "node:fs";
-
-function read(path) {
-  return readFileSync(path, "utf8");
-}
-
-function assert(condition, message) {
-  if (!condition) {
-    throw new Error(message);
-  }
-}
-
-function assertIncludes(text, expected, message) {
-  assert(
-    text.includes(expected),
-    `${message}: expected to include ${JSON.stringify(expected)}`,
-  );
-}
-
-function assertMatches(text, pattern, message) {
-  assert(pattern.test(text), `${message}: expected to match ${pattern}`);
-}
+import { assert, assertBefore, assertIncludes, assertMatches, readText, readWorkflow } from "./test-lib/workflow-assert.mjs";
 
 const tests = [
   {
     name: "release candidate workflow has push and manual exact-SHA triggers",
     run() {
-      const workflow = read(".github/workflows/release-candidate.yml");
+      const workflow = readWorkflow("release-candidate");
       for (const expected of [
         "name: Release Candidate Verification",
         "push:",
@@ -53,7 +32,7 @@ const tests = [
   {
     name: "manual dispatch validates and checks out the exact target SHA",
     run() {
-      const workflow = read(".github/workflows/release-candidate.yml");
+      const workflow = readWorkflow("release-candidate");
       assertMatches(
         workflow,
         /Validate manual target SHA[\s\S]*?INPUT_TARGET_SHA: \$\{\{ inputs\.target_sha \}\}[\s\S]*?\^\[0-9a-fA-F\]\{40\}\$/,
@@ -79,7 +58,7 @@ const tests = [
   {
     name: "package.json version change detection skips unchanged package edits with summary",
     run() {
-      const workflow = read(".github/workflows/release-candidate.yml");
+      const workflow = readWorkflow("release-candidate");
       for (const expected of [
         'base_version=$(git show "$before_sha:package.json"',
         "candidate_version=$(node -p \"require('./package.json').version\")",
@@ -100,16 +79,11 @@ const tests = [
   {
     name: "existing release tag fails before package smoke verification",
     run() {
-      const workflow = read(".github/workflows/release-candidate.yml");
-      const tagCheck = workflow.indexOf("Check release tag availability");
-      const smoke = workflow.indexOf("Pack and smoke install release candidate");
-      assert(
-        tagCheck !== -1,
-        "workflow should check whether the release tag already exists",
-      );
-      assert(smoke !== -1, "workflow should pack and smoke install the package");
-      assert(
-        tagCheck < smoke,
+      const workflow = readWorkflow("release-candidate");
+      assertBefore(
+        workflow,
+        "Check release tag availability",
+        "Pack and smoke install release candidate",
         "tag existence check should happen before smoke install",
       );
       assertMatches(
@@ -122,8 +96,8 @@ const tests = [
   {
     name: "candidate verification delegates pack/smoke to the shared release script",
     run() {
-      const workflow = read(".github/workflows/release-candidate.yml");
-      const script = read("scripts/release-pack-smoke.mjs");
+      const workflow = readWorkflow("release-candidate");
+      const script = readText("scripts/release-pack-smoke.mjs");
       for (const expected of [
         "npm run verify",
         "Pack and smoke install release candidate",
@@ -147,7 +121,7 @@ const tests = [
   {
     name: "summary records verified SHA, version, next tag, and tarball",
     run() {
-      const workflow = read(".github/workflows/release-candidate.yml");
+      const workflow = readWorkflow("release-candidate");
       for (const expected of [
         "Release candidate verified",
         "verified SHA",
