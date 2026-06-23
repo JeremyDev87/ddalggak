@@ -6,11 +6,58 @@ import { escapeRegExp } from "./lib/escape-regexp.mjs";
 import { parseSimpleYaml } from "./lib/parse-simple-yaml.mjs";
 
 const rootDir = process.cwd();
-const args = new Set(process.argv.slice(2));
-const writeMode = args.has("--write");
-const reportMode = args.has("--report");
-const admissionMode = args.has("--admission");
-const checkMode = args.has("--check") || !writeMode;
+
+const usage = `Usage: node scripts/project-runtime-assets.mjs [--check|--write] [--report [--admission]]
+
+Options:
+  --check      Check generated runtime assets for drift (default unless --write is set).
+  --write      Update generated runtime asset blocks.
+  --report     Print token budget report instead of checking generated blocks.
+  --admission  With --report, fail if token budget admission findings exist.
+  --help       Show this help message.`;
+
+function parseArgs(argv) {
+  const options = {
+    writeMode: false,
+    reportMode: false,
+    admissionMode: false,
+    checkRequested: false,
+  };
+
+  for (const arg of argv) {
+    if (arg === "--help") {
+      console.log(usage);
+      process.exit(0);
+    } else if (arg === "--write") {
+      options.writeMode = true;
+    } else if (arg === "--report") {
+      options.reportMode = true;
+    } else if (arg === "--admission") {
+      options.admissionMode = true;
+    } else if (arg === "--check") {
+      options.checkRequested = true;
+    } else {
+      console.error(`[project-runtime-assets] unknown option: ${arg}`);
+      console.error(usage);
+      process.exit(1);
+    }
+  }
+
+  if (options.writeMode && options.checkRequested) {
+    console.error("[project-runtime-assets] --write and --check cannot be used together");
+    console.error(usage);
+    process.exit(1);
+  }
+
+  return {
+    writeMode: options.writeMode,
+    reportMode: options.reportMode,
+    admissionMode: options.admissionMode,
+    checkMode: options.checkRequested || !options.writeMode,
+  };
+}
+
+const { writeMode, reportMode, admissionMode, checkMode } = parseArgs(process.argv.slice(2));
 
 const commandOrder = [
   "start",

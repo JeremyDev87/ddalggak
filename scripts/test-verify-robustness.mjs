@@ -28,12 +28,16 @@ function runProjectionVerifier(cwd) {
   });
 }
 
-function runRuntimeAssetGenerator(cwd) {
-  return spawnSync(nodeCommand, ["scripts/project-runtime-assets.mjs", "--check"], {
+function runProjectRuntimeAssets(cwd, args = []) {
+  return spawnSync(nodeCommand, ["scripts/project-runtime-assets.mjs", ...args], {
     cwd,
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
   });
+}
+
+function runRuntimeAssetGenerator(cwd) {
+  return runProjectRuntimeAssets(cwd, ["--check"]);
 }
 
 function runTokenBudgetReport(cwd, extraArgs = []) {
@@ -115,6 +119,24 @@ const specialInputs = JSON.parse(readFileSync(path.join(fixtureDir, "special-reg
     result.status === 0,
     `generator --check on clean copy: expected exit 0, got ${result.status}\n${result.stdout}\n${result.stderr}`,
   );
+}
+
+{
+  const tempDir = copyRepo();
+  const result = runProjectRuntimeAssets(tempDir, ["--bogus"]);
+  const output = `${result.stdout}\n${result.stderr}`;
+  assert(result.status !== 0, `unknown option must fail closed, got exit ${result.status}\n${output}`);
+  assert(output.includes("unknown option: --bogus"), `unknown option diagnostic missing\n${output}`);
+  assert(output.includes("Usage: node scripts/project-runtime-assets.mjs"), `usage output missing\n${output}`);
+}
+
+{
+  const tempDir = copyRepo();
+  const result = runProjectRuntimeAssets(tempDir, ["--write", "--check"]);
+  const output = `${result.stdout}\n${result.stderr}`;
+  assert(result.status !== 0, `ambiguous --write --check must fail closed, got exit ${result.status}\n${output}`);
+  assert(output.includes("--write and --check cannot be used together"), `ambiguous option diagnostic missing\n${output}`);
+  assert(output.includes("Usage: node scripts/project-runtime-assets.mjs"), `usage output missing\n${output}`);
 }
 
 for (const [fixtureName, expectedMessage] of [
