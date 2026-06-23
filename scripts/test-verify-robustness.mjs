@@ -3,6 +3,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import { escapeRegExp } from "./lib/escape-regexp.mjs";
+import { parseSimpleYaml, SIMPLE_YAML_SUPPORTED_FORMS } from "./lib/parse-simple-yaml.mjs";
 import { runNodeScript } from "./test-lib/process.mjs";
 import { copyRepoWithoutGitAndNodeModules } from "./test-lib/repo-fixture.mjs";
 
@@ -10,6 +11,12 @@ const rootDir = process.cwd();
 const fixtureDir = path.join(rootDir, "tests", "fixtures", "verify-robustness");
 function assert(condition, message) {
   if (!condition) throw new Error(message);
+}
+
+function assertJsonEqual(actual, expected, message) {
+  const actualJson = JSON.stringify(actual);
+  const expectedJson = JSON.stringify(expected);
+  assert(actualJson === expectedJson, `${message}: expected ${expectedJson}, got ${actualJson}`);
 }
 
 function assertMatch(name, pattern, text, expected) {
@@ -38,6 +45,24 @@ function copyRepo() {
 }
 
 const specialInputs = JSON.parse(readFileSync(path.join(fixtureDir, "special-regexp-inputs.json"), "utf8"));
+
+{
+  const expectedIds = [
+    "top-level-scalar",
+    "empty-top-level-list",
+    "two-space-list",
+    "two-space-nested-mapping",
+  ];
+  assertJsonEqual(
+    SIMPLE_YAML_SUPPORTED_FORMS.map((entry) => entry.id),
+    expectedIds,
+    "simple YAML supported-form matrix ids",
+  );
+  for (const entry of SIMPLE_YAML_SUPPORTED_FORMS) {
+    assert(entry.description.length > 0, `${entry.id}: description is required`);
+    assertJsonEqual(parseSimpleYaml(entry.sample, entry.id), entry.expected, `${entry.id}: sample parse`);
+  }
+}
 
 {
   const frontmatter = `${specialInputs.frontmatterKey}: ddalggak\nnameXwithYspecial: wrong\n`;
