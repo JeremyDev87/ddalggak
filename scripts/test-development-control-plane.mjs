@@ -77,6 +77,49 @@ const cases = [
       assert.equal(evidence.rawPromptStored, false);
       assert.equal(evidence.rawTranscriptStored, false);
       assert.deepEqual(prepared.invocation.environmentKeys, ["DDALGGAK_CONTROL_PLANE_PACKET"]);
+      assert.deepEqual(packet.stateGates, {
+        defaultDispatch: "non-executing",
+        executionRequiresApproval: true,
+        fulfilledRequiresPassingVerification: true,
+        contentLightEvidenceOnly: true,
+      });
+      assert.deepEqual(packet.taskScope.forbiddenActions, [
+        "merge",
+        "auto-merge",
+        "force-push without explicit current-turn approval",
+        "raw prompt or transcript persistence",
+        "secret or private log persistence",
+        "GitHub mutation payload persistence",
+      ]);
+    },
+  },
+  {
+    name: "declared state gates and forbidden actions fail closed on drift",
+    run() {
+      const defaultDispatchDrift = packetFixture();
+      defaultDispatchDrift.stateGates.defaultDispatch = "execute-immediately";
+      assert.throws(
+        () => prepareDdalggakWorkerDispatch(defaultDispatchDrift),
+        /state gate drift/,
+      );
+
+      const contentLightDrift = packetFixture();
+      contentLightDrift.stateGates.contentLightEvidenceOnly = false;
+      assert.throws(() => prepareDdalggakWorkerDispatch(contentLightDrift), /state gate drift/);
+
+      const forbiddenActionDrift = packetFixture();
+      forbiddenActionDrift.taskScope.forbiddenActions = forbiddenActionDrift.taskScope.forbiddenActions.filter(
+        (action) => action !== "merge",
+      );
+      assert.throws(
+        () => prepareDdalggakWorkerDispatch(forbiddenActionDrift),
+        /forbiddenActions drift/,
+      );
+
+      const executionGateDrift = packetFixture();
+      const prepared = prepareDdalggakWorkerDispatch(executionGateDrift);
+      prepared.packet.stateGates.executionRequiresApproval = false;
+      assert.throws(() => executePreparedWorkerDispatch(prepared, null), /state gate drift/);
     },
   },
   {
