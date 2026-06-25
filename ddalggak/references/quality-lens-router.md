@@ -7,7 +7,7 @@ Do not use when: the command is purely `status`, `clean`, `ship`, `check`, or is
 
 Use this reference when `ddalggak plan`, `start`, or `review` must decide which quality gates apply to a request, issue, PR, or diff.
 
-The router is intentionally a small predicate table, not a rule engine. It prevents gate over-application by recording both applied and skipped gates with reasons. Domain gate is a lens, not a mandate: a routed gate adds focused questions and required references only for the surfaces it actually touches, and it must not overwrite explicit user scope or repository/product convention.
+The router is intentionally a small predicate table, not a rule engine. It prevents gate over-application by recording both applied and skipped gates with reasons. Domain gate is a lens, not a mandate: a routed gate adds focused questions and required references only for the surfaces it actually touches, and it must not overwrite explicit user scope or repository/product convention. The Gate Families table is a routing digest; verifier-owned activation keyword contracts keep its `Activate when` cells aligned with each gate reference's `## Activation` section so a router summary cannot silently drift from the detailed gate.
 
 ## Inputs
 

@@ -25,6 +25,7 @@ import {
   requiredSimplicityReferenceAnchors,
   requiredFrontendDesignReferenceAnchors,
   requiredVercelAgentSkillsReferenceAnchors,
+  gateActivationKeywordContracts,
   requiredRegressionLibraryReferenceAnchors,
   requiredRegressionLibraryClasses,
   requiredRegressionLibraryFields,
@@ -705,6 +706,46 @@ function parseMarkdownTableRows(block) {
     .map((line) => line.trim());
 }
 
+function extractRouterActivateCell(routerText, gateFamily) {
+  const gateFamiliesSection = extractMarkdownSection(routerText, "Gate Families");
+  for (const line of parseMarkdownTableRows(gateFamiliesSection)) {
+    const cells = line.split("|").slice(1, -1).map((cell) => cell.trim());
+    const family = cells[0]?.match(/`([^`]+)`/)?.[1];
+    if (family === gateFamily) {
+      return cells[1] || "";
+    }
+  }
+  return "";
+}
+
+function assertGateActivationKeywordContract({ gateFamily, contract, routerText, gateReferenceText }) {
+  const routerActivateCell = extractRouterActivateCell(routerText, gateFamily);
+  if (!routerActivateCell) {
+    fail(`Quality Lens Router must keep an Activate when row for ${gateFamily}.`);
+    return;
+  }
+
+  const activationSection = extractMarkdownSection(gateReferenceText, "Activation");
+  if (!activationSection) {
+    fail(`${contract.referenceFile} must keep a ## Activation section for ${gateFamily}.`);
+    return;
+  }
+
+  const missingFromRouter = contract.keywords.filter((keyword) => !routerActivateCell.includes(keyword));
+  const missingFromGate = contract.keywords.filter((keyword) => !activationSection.includes(keyword));
+
+  if (missingFromRouter.length > 0) {
+    fail(
+      `Quality Lens Router Activate when cell for ${gateFamily} is missing gate activation contract keyword(s):\n${formatAnchorList(missingFromRouter)}`,
+    );
+  }
+  if (missingFromGate.length > 0) {
+    fail(
+      `${contract.referenceFile} ## Activation for ${gateFamily} is missing router activation contract keyword(s):\n${formatAnchorList(missingFromGate)}`,
+    );
+  }
+}
+
 function parseCodePermissionRows(block) {
   const rows = new Map();
   for (const line of parseMarkdownTableRows(block)) {
@@ -1023,6 +1064,30 @@ if (codexVercelAgentSkillsExists && claudeVercelAgentSkillsExists) {
         .map((anchor) => `  - ${anchor}`)
         .join("\n")}`,
     );
+  }
+}
+
+const gateActivationReferencePathsByFile = new Map([
+  ["frontend-design-gate.md", frontendDesignReferencePaths],
+  ["vercel-agent-skills-gates.md", vercelAgentSkillsReferencePaths],
+]);
+for (const [gateFamily, contract] of Object.entries(gateActivationKeywordContracts)) {
+  const gateReferencePaths = gateActivationReferencePathsByFile.get(contract.referenceFile) || [];
+  for (const [index, routerReferencePath] of routerReferencePaths.entries()) {
+    const gateReferencePath = gateReferencePaths[index];
+    if (
+      !gateReferencePath ||
+      !statSync(routerReferencePath, { throwIfNoEntry: false })?.isFile() ||
+      !statSync(gateReferencePath, { throwIfNoEntry: false })?.isFile()
+    ) {
+      continue;
+    }
+    assertGateActivationKeywordContract({
+      gateFamily,
+      contract,
+      routerText: readText(routerReferencePath),
+      gateReferenceText: readText(gateReferencePath),
+    });
   }
 }
 
