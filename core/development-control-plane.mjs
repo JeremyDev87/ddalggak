@@ -13,6 +13,20 @@ const APPROVAL_BRAND = Symbol("ddalggak.normalized-approval");
 const GITHUB_LOGIN_PATTERN = /^[A-Za-z0-9-]+$/;
 const AUTHORIZED_COLLABORATOR_PERMISSIONS = new Set(["admin", "write"]);
 const AUTHORIZED_COLLABORATOR_ROLES = new Set(["admin", "maintain", "write"]);
+const DEVELOPMENT_CONTROL_PLANE_STATE_GATES = Object.freeze({
+  defaultDispatch: "non-executing",
+  executionRequiresApproval: true,
+  fulfilledRequiresPassingVerification: true,
+  contentLightEvidenceOnly: true,
+});
+const DEVELOPMENT_CONTROL_PLANE_FORBIDDEN_ACTIONS = Object.freeze([
+  "merge",
+  "auto-merge",
+  "force-push without explicit current-turn approval",
+  "raw prompt or transcript persistence",
+  "secret or private log persistence",
+  "GitHub mutation payload persistence",
+]);
 
 function failClosed(message, details = {}) {
   const error = new Error(message);
@@ -30,6 +44,43 @@ function asArray(value, fieldName) {
     throw failClosed(`live GitHub issue field ${fieldName} must be an array`, { fieldName });
   }
   return value;
+}
+
+function requireStateGate(packet, gateName, expectedValue) {
+  const actualValue = packet?.stateGates?.[gateName];
+  if (actualValue !== expectedValue) {
+    throw failClosed("development control-plane state gate drift", {
+      gateName,
+      expectedValue,
+      actualValue,
+    });
+  }
+  return actualValue;
+}
+
+function requireForbiddenActions(packet) {
+  const forbiddenActions = packet?.taskScope?.forbiddenActions;
+  if (!Array.isArray(forbiddenActions)) {
+    throw failClosed("development control-plane forbiddenActions must be declared", {
+      forbiddenActions,
+    });
+  }
+  const missing = DEVELOPMENT_CONTROL_PLANE_FORBIDDEN_ACTIONS.filter(
+    (action) => !forbiddenActions.includes(action),
+  );
+  if (missing.length > 0) {
+    throw failClosed("development control-plane forbiddenActions drift", { missing });
+  }
+  return forbiddenActions;
+}
+
+function requireControlPlaneSafetyContract(packet) {
+  requireStateGate(
+    packet,
+    "contentLightEvidenceOnly",
+    DEVELOPMENT_CONTROL_PLANE_STATE_GATES.contentLightEvidenceOnly,
+  );
+  requireForbiddenActions(packet);
 }
 
 function normalizeLabels(labels) {
@@ -165,26 +216,15 @@ export function buildDdalggakDevelopmentPacket({
     issue: issueContext,
     taskScope: {
       authorizedFiles: plannedFiles.map(String),
-      forbiddenActions: [
-        "merge",
-        "auto-merge",
-        "force-push without explicit current-turn approval",
-        "raw prompt or transcript persistence",
-        "secret or private log persistence",
-        "GitHub mutation payload persistence",
-      ],
+      forbiddenActions: [...DEVELOPMENT_CONTROL_PLANE_FORBIDDEN_ACTIONS],
       validationCommands: validationCommands.map(String),
     },
-    stateGates: {
-      defaultDispatch: "non-executing",
-      executionRequiresApproval: true,
-      fulfilledRequiresPassingVerification: true,
-      contentLightEvidenceOnly: true,
-    },
+    stateGates: { ...DEVELOPMENT_CONTROL_PLANE_STATE_GATES },
   };
 }
 
 function makeEvidence(packet, overrides = {}) {
+  requireControlPlaneSafetyContract(packet);
   return {
     schema: "ddalggak.development_run_evidence.v1",
     runId: packet.runId,
@@ -217,6 +257,12 @@ function isInsideRepoRoot(repoRoot, file) {
 }
 
 export function prepareDdalggakWorkerDispatch(packet) {
+  requireStateGate(
+    packet,
+    "defaultDispatch",
+    DEVELOPMENT_CONTROL_PLANE_STATE_GATES.defaultDispatch,
+  );
+  requireControlPlaneSafetyContract(packet);
   for (const file of packet.taskScope.authorizedFiles) {
     if (!isInsideRepoRoot(packet.repoRoot, file)) {
       throw failClosed("authorized file must stay inside repoRoot", { file, repoRoot: packet.repoRoot });
@@ -378,7 +424,13 @@ export function normalizeApprovalSource({
 }
 
 export function executePreparedWorkerDispatch(prepared, approval, { runner } = {}) {
-  if (!approval?.approved || !approval.approvedBy || !approval.reason) {
+  const approvalRequired = requireStateGate(
+    prepared.packet,
+    "executionRequiresApproval",
+    DEVELOPMENT_CONTROL_PLANE_STATE_GATES.executionRequiresApproval,
+  );
+  requireControlPlaneSafetyContract(prepared.packet);
+  if (approvalRequired && (!approval?.approved || !approval.approvedBy || !approval.reason)) {
     const evidence = makeEvidence(prepared.packet, {
       status: "blocked",
       approved: false,
@@ -416,7 +468,12 @@ export function executePreparedWorkerDispatch(prepared, approval, { runner } = {
 
   const result = runner(prepared.invocation);
   const exitCode = typeof result.status === "number" ? result.status : 1;
-  const verificationPassed = result.verificationPassed === true;
+  const verificationRequired = requireStateGate(
+    prepared.packet,
+    "fulfilledRequiresPassingVerification",
+    DEVELOPMENT_CONTROL_PLANE_STATE_GATES.fulfilledRequiresPassingVerification,
+  );
+  const verificationPassed = verificationRequired ? result.verificationPassed === true : true;
   const fulfilled = exitCode === 0 && verificationPassed;
   const evidence = makeEvidence(prepared.packet, {
     status: fulfilled ? "fulfilled" : "blocked",
