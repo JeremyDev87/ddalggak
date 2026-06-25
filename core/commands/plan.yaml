@@ -2,6 +2,7 @@
 command: plan
 show_doc_heading: "Issue-Ready Plan"
 source_edit_allowed: false
+github_write_allowed: false
 purpose: "Issue-ready implementation plan from issue/wiki/code evidence."
 mode: "plan-only"
 write_side_effects: "No source edits; no GitHub writes unless the user separately requests issue creation."

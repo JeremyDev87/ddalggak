@@ -2,6 +2,7 @@
 command: issue
 show_doc_heading: "Plan to Issues"
 source_edit_allowed: false
+github_write_allowed: true
 purpose: "Create GitHub issues from an approved plan."
 mode: "github-write"
 write_side_effects: "Create/edit GitHub issues and comments only; no repository source edits."

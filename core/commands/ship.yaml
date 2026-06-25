@@ -2,6 +2,7 @@
 command: ship
 show_doc_heading: "Ship"
 source_edit_allowed: false
+github_write_allowed: true
 purpose: "Commit/push/open draft PR for existing scoped changes."
 mode: "github-write"
 write_side_effects: "Commit, push, and draft PR for already-existing scoped changes; no new source edits."

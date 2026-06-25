@@ -2,6 +2,7 @@
 command: forge
 show_doc_heading: "Forge Acceptance Criteria"
 source_edit_allowed: false
+github_write_allowed: false
 purpose: "Convert done conditions into objective acceptance checks."
 mode: "plan-only"
 write_side_effects: "Criteria only; no source, GitHub, or git mutation."

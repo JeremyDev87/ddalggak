@@ -410,6 +410,10 @@ for (const command of requiredCommands) {
     fail(`core/commands/${command}.yaml must define source_edit_allowed`);
   }
 
+  if (!Object.hasOwn(doc, "github_write_allowed")) {
+    fail(`core/commands/${command}.yaml must define github_write_allowed`);
+  }
+
   const expectedHeading = dispatchSections.get(command);
   if (!expectedHeading) {
     fail(`bin/lib/dispatch.mjs DOC_SECTION lacks ${command}`);

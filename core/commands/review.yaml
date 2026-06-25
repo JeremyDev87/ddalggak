@@ -2,6 +2,7 @@
 command: review
 show_doc_heading: "Cross-Review Loop"
 source_edit_allowed: true
+github_write_allowed: true
 purpose: "Independent current-head review and accepted fix loop."
 mode: "review-fix"
 write_side_effects: "Top-level review comment; accepted Critical/High fixes may edit source and push to the reviewed PR branch."

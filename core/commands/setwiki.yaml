@@ -2,6 +2,7 @@
 command: setwiki
 show_doc_heading: "SetWiki Bridge"
 source_edit_allowed: false
+github_write_allowed: false
 purpose: "Wiki write workflow bridge."
 mode: "approval-gated-write"
 write_side_effects: "Delegate to dedicated /setwiki; wiki writes require explicit approval and verification."

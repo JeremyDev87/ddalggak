@@ -28,6 +28,10 @@ function runProjectionVerifier(cwd) {
   return runNodeScript("scripts/verify-projections.mjs", [], { cwd });
 }
 
+function runCodexSkillVerifier(cwd) {
+  return runNodeScript("scripts/verify-codex-skill.mjs", [], { cwd });
+}
+
 function runProjectRuntimeAssets(cwd, args = []) {
   return runNodeScript("scripts/project-runtime-assets.mjs", args, { cwd });
 }
@@ -114,6 +118,63 @@ const specialInputs = JSON.parse(readFileSync(path.join(fixtureDir, "special-reg
   assert(
     result.status === 0,
     `generator --check on clean copy: expected exit 0, got ${result.status}\n${result.stdout}\n${result.stderr}`,
+  );
+}
+
+{
+  const tempDir = copyRepo();
+  const manifestPath = path.join(tempDir, "core", "verification", "skill-contract-manifest.mjs");
+  const manifest = readFileSync(manifestPath, "utf8");
+  const drifted = manifest.replace(
+    'githubWriteAllowed: false,\n    requiredReferences: ["status.md", "pr-check-evidence-bundle.md"],',
+    'githubWriteAllowed: true,\n    requiredReferences: ["status.md", "pr-check-evidence-bundle.md"],',
+  );
+  assert(drifted !== manifest, "fixture setup: expected to drift status githubWriteAllowed");
+  writeFileSync(manifestPath, drifted, "utf8");
+
+  const result = runCodexSkillVerifier(tempDir);
+  const output = `${result.stdout}\n${result.stderr}`;
+  assert(result.status === 1, `manifest permission drift must fail, got exit ${result.status}\n${output}`);
+  assert(
+    output.includes("subcommandExecutionContracts.status.githubWriteAllowed must derive from modePermissionProfiles['read-only']=false"),
+    `expected mode permission profile drift diagnostic\n${output}`,
+  );
+}
+
+{
+  const tempDir = copyRepo();
+  const startPath = path.join(tempDir, "core", "commands", "start.yaml");
+  const start = readFileSync(startPath, "utf8");
+  const drifted = start.replace(
+    "stop_condition: \"Stop on stale base, missing issue body/comments, duplicate PR, or required files outside the issue-owned scope.\"",
+    "stop_condition: \"Stop on stale base only.\"",
+  );
+  assert(drifted !== start, "fixture setup: expected to drift start stop_condition");
+  writeFileSync(startPath, drifted, "utf8");
+
+  const result = runCodexSkillVerifier(tempDir);
+  const output = `${result.stdout}\n${result.stderr}`;
+  assert(result.status === 1, `yaml/manifest stop_condition drift must fail, got exit ${result.status}\n${output}`);
+  assert(
+    output.includes("subcommandExecutionContracts.start.stopCondition drifted from core/commands/start.yaml stop_condition"),
+    `expected yaml/manifest stop condition drift diagnostic\n${output}`,
+  );
+}
+
+{
+  const tempDir = copyRepo();
+  const issuePath = path.join(tempDir, "core", "commands", "issue.yaml");
+  const issue = readFileSync(issuePath, "utf8");
+  const drifted = issue.replace("github_write_allowed: true", "github_write_allowed: false");
+  assert(drifted !== issue, "fixture setup: expected to drift issue github_write_allowed");
+  writeFileSync(issuePath, drifted, "utf8");
+
+  const result = runCodexSkillVerifier(tempDir);
+  const output = `${result.stdout}\n${result.stderr}`;
+  assert(result.status === 1, `yaml github_write_allowed drift must fail, got exit ${result.status}\n${output}`);
+  assert(
+    output.includes("subcommandExecutionContracts.issue.githubWriteAllowed drifted from core/commands/issue.yaml github_write_allowed=false"),
+    `expected yaml github_write_allowed drift diagnostic\n${output}`,
   );
 }
 

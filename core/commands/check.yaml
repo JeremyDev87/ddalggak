@@ -2,6 +2,7 @@
 command: check
 show_doc_heading: "Local Diff Check"
 source_edit_allowed: false
+github_write_allowed: false
 purpose: "Read-only local diff review."
 mode: "read-only"
 write_side_effects: "Local diff review notes only; no GitHub comments and no repository edits."
