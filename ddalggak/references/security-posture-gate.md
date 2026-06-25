@@ -80,14 +80,7 @@ The gate tracks three distinct concerns for action references:
 
 ### Pin classes
 
-| class | description |
-|---|---|
-| `sha-pinned` | Full 40-character hex commit SHA — immutability evidence |
-| `version-tag` | `vX.Y.Z` or `vX.Y` — floating within patch/minor series |
-| `major-tag` | `vX` only — floating within major series |
-| `branch-or-floating` | Named branch ref — fully floating |
-| `local-or-docker` | `./` relative or `docker://` — local action or Docker image |
-| `missing-ref` | No `@ref` present — inventory gap |
+Classes: `sha-pinned` (full 40-hex immutable ref), `version-tag`, `major-tag`, `branch-or-floating`, `local-or-docker`, and `missing-ref`.
 
 ### Policy: admission-fail for unregistered refs
 
@@ -102,20 +95,7 @@ To convert a finding from `needs-review` to `compliant`, register it in the `ACT
 
 ### Current exception ledger
 
-| action | currentRef | pinClass | reason | status |
-|---|---|---|---|---|
-| `actions/checkout` | `93cb6efe18208431cddfb8368fd83d5badbf9bfd` | `sha-pinned` | Current baseline CI/security checkout pin | compliant |
-| `actions/setup-node` | `48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e` | `sha-pinned` | Current baseline CI checkout pin | compliant |
-| `github/codeql-action/init` | `8aad20d150bbac5944a9f9d289da16a4b0d87c1e` | `sha-pinned` | Current baseline CodeQL init pin | compliant |
-| `github/codeql-action/analyze` | `8aad20d150bbac5944a9f9d289da16a4b0d87c1e` | `sha-pinned` | Current baseline CodeQL analyze pin | compliant |
-| `actions/dependency-review-action` | `a1d282b36b6f3519aa1f3fc636f609c47dddb294` | `sha-pinned` | Current baseline Dependency Review pin | compliant |
-| `release-drafter/release-drafter` | `6db134d15f3909ccc9eefd369f02bd1e9cffdf97` | `sha-pinned` | Third-party; already SHA-pinned | compliant |
-| `actions/checkout` | `v5` | `major-tag` | Official GitHub-maintained action used by current baseline workflows | compliant |
-| `actions/setup-node` | `v6` | `major-tag` | Official GitHub-maintained action used by current baseline workflows | compliant |
-| `actions/upload-artifact` | `v4` | `major-tag` | Official GitHub-maintained action used by current baseline release workflow | compliant |
-| `actions/download-artifact` | `v5` | `major-tag` | Official GitHub-maintained action used by current baseline release workflow | compliant |
-
-Unregistered action refs in `.github/workflows/*.yml` are admission failures. Register current or intentional exceptions with narrow rationale; do not weaken the fail mode.
+The source-of-truth ledger lives in `scripts/security-posture-report.mjs`; the generated `actionPinPolicy` report is the review evidence. Unregistered action refs in `.github/workflows/*.yml` are admission failures. Register current or intentional exceptions with narrow rationale; do not weaken the fail mode.
 
 ### SHA pinning caveat
 
@@ -175,16 +155,7 @@ npm run test:workflow-lint
 
 ### Evidence fields
 
-| Field | Description |
-|---|---|
-| `lintTool` | `actionlint` (preferred) or `javascript-native` (fallback) |
-| `toolVersion` | Tool version string |
-| `checkedWorkflows` | List of `.github/workflows/*.yml` relative paths |
-| `categorySummary` | Per-category pass/finding-count status |
-| `findings` | Content-light list: workflow path, category, line, bounded summary, severity |
-| `allowedWarnings` | Explicit false-positive ledger (empty = zero-warning policy) |
-| `warningPolicy` | Zero-warning policy statement when allowedWarnings is empty |
-| `caveat` | Non-overclaiming statement (always present) |
+The report records lint tool/version, checked workflows, category summary, content-light findings, allowed warnings or zero-warning policy, and a non-overclaiming caveat.
 
 ### Allowed warnings / false-positive policy
 
@@ -202,25 +173,17 @@ Static lint green does **not** imply semantic safety, secret safety, or provenan
 - Verdict: `PASS` when tag verification, tarball checksum handoff, and publish-context re-verify remain intact; `BLOCK` if an unverified checkout/tarball can publish, checksum evidence can be empty/mismatched, or YAML is claimed to prove environment protection; `N/A` outside release/publish integrity scope.
 - Evidence: release workflow diff plus relevant release verifier tests; this lane never authorizes release, tag, npm publish, or registry mutation.
 
-`.github/workflows/release.yml` separates verification (`verify_tagged_ref`) from publication (`publish_to_npm`). Publishing a tarball with `npm publish <tarball>` does not run the package's `prepublishOnly` hook, so the publish context gets no verification for free. The workflow closes that gap with an explicit chain:
-
-1. `verify_tagged_ref` checks out the tag, verifies tag/version consistency, runs `npm run verify`, packs the tarball, and records its sha256 as a job output alongside the verified commit SHA.
-2. `publish_to_npm` re-checks out the verified SHA, re-asserts SHA and package version, and re-runs `npm run verify` in the publish context (against the approved checkout, not the extracted tarball — the tarball omits `.github/workflows`, which would let the workflow lint and posture lanes pass vacuously).
-3. Before `npm publish`, the downloaded artifact's sha256 is compared against the `verify_tagged_ref` job output. An empty or mismatched checksum fails the job.
+`.github/workflows/release.yml` separates verification (`verify_tagged_ref`) from publication (`publish_to_npm`). Because `npm publish <tarball>` does not run the package `prepublishOnly` hook, `verify_tagged_ref` verifies the tag/version, runs `npm run verify`, packs the tarball, and records sha256 + verified SHA; `publish_to_npm` re-checks out that SHA, re-runs verification in the publish context, and compares the downloaded tarball sha256 before publish.
 
 ### Boundary
 
-- The checksum handoff relies on the integrity of GitHub Actions job outputs and artifact storage. It defends against artifact substitution between jobs; it does not defend against a compromised Actions backend, which could alter outputs and artifacts consistently.
-- The `environment: release` approval gate is enforced by GitHub environment protection rules (required reviewers) in repository settings. Workflow YAML cannot enforce or prove that configuration; treat it as outside file-based evidence.
-- The chain covers source-to-tarball integrity up to `npm publish`. Registry-side transformations, account compromise, and provenance/attestation are owned by the release provenance gate and the post-publish follow-up audit, not this chain.
+- Checksum handoff relies on GitHub Actions job-output/artifact integrity and does not defend against a compromised Actions backend.
+- `environment: release` approval is repository-settings evidence; workflow YAML cannot prove required reviewers.
+- Registry-side transformations, account compromise, provenance/attestation, and post-publish audit are adjacent gates.
 
 ## Review checklist
 
-- Does the report avoid printing secrets or credential values?
-- Are official scan absences described as missing evidence rather than a pass?
-- Are action pinning findings separated from remediation requirements?
-- If a PR changes workflows, does it explain whether posture findings are in scope or intentionally deferred?
-- If a PR changes the release workflow, do the tarball checksum chain (pack-time sha256 output → publish-time comparison) and the publish-context re-verify step remain intact?
-- Is `release-drafter/release-drafter@6db134d15f3909ccc9eefd369f02bd1e9cffdf97` still recognized as `sha-pinned` and `compliant`?
-- Are `actions/checkout@v5` and similar current official major-tag refs registered as compliant, while new unregistered refs fail admission mode?
-- Does the `actionPinPolicy.caveat` field distinguish immutability evidence from semantic safety?
+- Never print secrets or credential values; describe official scan absences as missing evidence, not pass.
+- Keep action pinning findings separate from remediation requirements and semantic-safety claims.
+- For workflow/release changes, state which sub-gates are in scope and preserve checksum + publish-context re-verify.
+- Confirm `actionPinPolicy.caveat` still separates immutability evidence from semantic safety.
