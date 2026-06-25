@@ -66,6 +66,39 @@ const knownOutputSections = new Set([
   "Wiki search failures or gaps",
 ]);
 
+
+const READINESS_DECISIONS = Object.freeze({
+  ready_for_issue_pr: { outcomeClass: "ready", readyAllowed: true, approveAllowed: true, meaning: "Issue context is eligible for an independent issue PR." },
+  repo_mismatch_blocked: { outcomeClass: "blocked", readyAllowed: false, approveAllowed: false, meaning: "Target repository does not match the current repository or target URL." },
+  no_work: { outcomeClass: "blocked", readyAllowed: false, approveAllowed: false, meaning: "No open issue exists for a start run, so no PR work may be invented." },
+  source_edit_blocked: { outcomeClass: "blocked", readyAllowed: false, approveAllowed: false, meaning: "Requested command is not allowed to edit repository source." },
+  output_contract_blocked: { outcomeClass: "blocked", readyAllowed: false, approveAllowed: false, meaning: "Required output sections are missing." },
+  reference_contract_blocked: { outcomeClass: "blocked", readyAllowed: false, approveAllowed: false, meaning: "Required references from the command contract were not loaded." },
+  clean_unmerged_blocked: { outcomeClass: "blocked", readyAllowed: false, approveAllowed: false, meaning: "Clean attempted to delete an unmerged target covered by the clean stop condition." },
+  clean_local_cleanup_allowed: { outcomeClass: "local_only", readyAllowed: false, approveAllowed: false, meaning: "Only local cleanup is allowed; no PR readiness or approval outcome applies." },
+  parity_claim_blocked: { outcomeClass: "blocked", readyAllowed: false, approveAllowed: false, meaning: "Installed/source/Codex parity evidence is incomplete." },
+  wiki_readonly_violation: { outcomeClass: "violation", readyAllowed: false, approveAllowed: false, meaning: "getwiki attempted a wiki mutation despite read-only routing." },
+  wiki_readonly_delegate: { outcomeClass: "delegate", readyAllowed: true, approveAllowed: true, meaning: "getwiki delegates to the read-only wiki retrieval workflow." },
+  wiki_write_approval_required: { outcomeClass: "approval_required", readyAllowed: false, approveAllowed: false, meaning: "setwiki cannot write until explicit user approval exists." },
+  profile_dry_run_only: { outcomeClass: "dry_run", readyAllowed: true, approveAllowed: true, meaning: "Profile proposal is dry-run only; mutation is not part of the default outcome." },
+  projection_drift_blocked: { outcomeClass: "blocked", readyAllowed: false, approveAllowed: false, meaning: "Projection drift blocks approval or ready transition." },
+  no_authority_escalation: { outcomeClass: "blocked", readyAllowed: false, approveAllowed: false, meaning: "Issue or PR prose cannot escalate runtime authority." },
+  retention_boundary_violation: { outcomeClass: "violation", readyAllowed: false, approveAllowed: false, meaning: "Raw/private payload retention violates the retention boundary." },
+  parser_fail_closed: { outcomeClass: "blocked", readyAllowed: false, approveAllowed: false, meaning: "Malformed or ambiguous structured evidence must fail closed." },
+  duplicate_suppressed: { outcomeClass: "suppressed", readyAllowed: false, approveAllowed: false, meaning: "An existing issue PR or parsed marker suppresses duplicate work." },
+  hard_conflict_blocked: { outcomeClass: "blocked", readyAllowed: false, approveAllowed: false, meaning: "Hard conflict requires blocked/fallback classification instead of default PR creation." },
+  evidence_gap_blocked: { outcomeClass: "blocked", readyAllowed: false, approveAllowed: false, meaning: "Required evidence is missing, so readiness and approval are blocked." },
+});
+
+function decisionOutcome(decision, outcomeOverride = {}) {
+  const registered = READINESS_DECISIONS[decision];
+  if (!registered) {
+    console.error(`[eval:ddalggak-readiness] unregistered decision code: ${decision}`);
+    process.exit(1);
+  }
+  return { ...registered, ...outcomeOverride };
+}
+
 function readJson(filePath) {
   return JSON.parse(readFileSync(filePath, "utf8"));
 }
@@ -248,16 +281,16 @@ function expectedRequiredOutputSections(scenario) {
 function result({
   decision,
   prStrategy,
-  readyAllowed,
-  approveAllowed,
+  outcomeOverride,
   allowedMutations,
   reasons,
 }) {
+  const outcome = decisionOutcome(decision, outcomeOverride);
   return {
     decision,
     prStrategy,
-    readyAllowed,
-    approveAllowed,
+    readyAllowed: outcome.readyAllowed,
+    approveAllowed: outcome.approveAllowed,
     allowedMutations: [...allowedMutations],
     reasons,
   };
@@ -268,15 +301,11 @@ function decideScenario(scenario) {
   const allowedMutations = new Set(mutationKinds);
   let decision = "ready_for_issue_pr";
   let prStrategy = "independent_issue_pr";
-  let readyAllowed = true;
-  let approveAllowed = true;
   const reasons = [];
 
   if (!sameRepo(state)) {
     decision = "repo_mismatch_blocked";
     prStrategy = "blocked";
-    readyAllowed = false;
-    approveAllowed = false;
     allowedMutations.clear();
     const urlRepo = repoFromGitHubUrl(state.targetUrl);
     reasons.push(
@@ -285,8 +314,6 @@ function decideScenario(scenario) {
     return result({
       decision,
       prStrategy,
-      readyAllowed,
-      approveAllowed,
       allowedMutations,
       reasons,
     });
@@ -298,8 +325,6 @@ function decideScenario(scenario) {
   ) {
     decision = "no_work";
     prStrategy = "none";
-    readyAllowed = false;
-    approveAllowed = false;
     allowedMutations.clear();
     reasons.push(
       "No open issue exists, so start must not invent work or mutate GitHub state.",
@@ -307,8 +332,6 @@ function decideScenario(scenario) {
     return result({
       decision,
       prStrategy,
-      readyAllowed,
-      approveAllowed,
       allowedMutations,
       reasons,
     });
@@ -321,8 +344,6 @@ function decideScenario(scenario) {
   ) {
     decision = "source_edit_blocked";
     prStrategy = "blocked";
-    readyAllowed = false;
-    approveAllowed = false;
     allowedMutations.delete("edit_source");
     allowedMutations.delete("approve_pr");
     allowedMutations.delete("mark_ready");
@@ -332,8 +353,6 @@ function decideScenario(scenario) {
     return result({
       decision,
       prStrategy,
-      readyAllowed,
-      approveAllowed,
       allowedMutations,
       reasons,
     });
@@ -346,8 +365,6 @@ function decideScenario(scenario) {
   if (outputSectionGaps.length > 0) {
     decision = "output_contract_blocked";
     prStrategy = "blocked";
-    readyAllowed = false;
-    approveAllowed = false;
     allowedMutations.delete("approve_pr");
     allowedMutations.delete("mark_ready");
     reasons.push(
@@ -356,8 +373,6 @@ function decideScenario(scenario) {
     return result({
       decision,
       prStrategy,
-      readyAllowed,
-      approveAllowed,
       allowedMutations,
       reasons,
     });
@@ -374,8 +389,6 @@ function decideScenario(scenario) {
     if (missingReferences.length > 0) {
       decision = "reference_contract_blocked";
       prStrategy = "blocked";
-      readyAllowed = false;
-      approveAllowed = false;
       allowedMutations.delete("approve_pr");
       allowedMutations.delete("mark_ready");
       reasons.push(
@@ -384,8 +397,6 @@ function decideScenario(scenario) {
       return result({
         decision,
         prStrategy,
-        readyAllowed,
-        approveAllowed,
         allowedMutations,
         reasons,
       });
@@ -404,8 +415,6 @@ function decideScenario(scenario) {
     const unmergedTargets = deletionTargets.filter(
       (target) => target?.merged !== true,
     );
-    readyAllowed = false;
-    approveAllowed = false;
     allowedMutations.clear();
     if (unmergedTargets.length > 0 && contractStopsOnUnmerged) {
       decision = "clean_unmerged_blocked";
@@ -431,8 +440,6 @@ function decideScenario(scenario) {
     return result({
       decision,
       prStrategy,
-      readyAllowed,
-      approveAllowed,
       allowedMutations,
       reasons,
     });
@@ -449,8 +456,6 @@ function decideScenario(scenario) {
   ) {
     decision = "parity_claim_blocked";
     prStrategy = "blocked";
-    readyAllowed = false;
-    approveAllowed = false;
     allowedMutations.clear();
     reasons.push(
       "Installed/source/Codex skill parity claim requires all status values to be ok.",
@@ -458,8 +463,6 @@ function decideScenario(scenario) {
     return result({
       decision,
       prStrategy,
-      readyAllowed,
-      approveAllowed,
       allowedMutations,
       reasons,
     });
@@ -471,8 +474,6 @@ function decideScenario(scenario) {
       state.wikiOperation?.mode === "write"
     ) {
       decision = "wiki_readonly_violation";
-      readyAllowed = false;
-      approveAllowed = false;
       allowedMutations.delete("write_wiki");
       reasons.push(
         "getwiki is read-only retrieval and must not mutate wiki files.",
@@ -487,8 +488,6 @@ function decideScenario(scenario) {
     return result({
       decision,
       prStrategy,
-      readyAllowed,
-      approveAllowed,
       allowedMutations,
       reasons,
     });
@@ -500,8 +499,6 @@ function decideScenario(scenario) {
   ) {
     decision = "wiki_write_approval_required";
     prStrategy = "blocked";
-    readyAllowed = false;
-    approveAllowed = false;
     allowedMutations.delete("write_wiki");
     reasons.push(
       "setwiki write workflow requires explicit approval before wiki mutation.",
@@ -509,8 +506,6 @@ function decideScenario(scenario) {
     return result({
       decision,
       prStrategy,
-      readyAllowed,
-      approveAllowed,
       allowedMutations,
       reasons,
     });
@@ -519,9 +514,10 @@ function decideScenario(scenario) {
   if (state.claudeProfileProposal?.dryRun === true) {
     decision = "profile_dry_run_only";
     allowedMutations.delete("edit_claude_profile");
+    const outcomeOverride = {};
     if (state.claudeProfileProposal.attemptedMutation === true) {
-      readyAllowed = false;
-      approveAllowed = false;
+      outcomeOverride.readyAllowed = false;
+      outcomeOverride.approveAllowed = false;
       reasons.push(
         "Claude profile dry-run proposal must not mutate ~/.claude/CLAUDE.md.",
       );
@@ -533,8 +529,7 @@ function decideScenario(scenario) {
     return result({
       decision,
       prStrategy,
-      readyAllowed,
-      approveAllowed,
+      outcomeOverride,
       allowedMutations,
       reasons,
     });
@@ -543,8 +538,6 @@ function decideScenario(scenario) {
   if (state.projectionCheck?.status === "drift") {
     decision = "projection_drift_blocked";
     prStrategy = "blocked";
-    readyAllowed = false;
-    approveAllowed = false;
     allowedMutations.delete("approve_pr");
     allowedMutations.delete("mark_ready");
     reasons.push(
@@ -553,8 +546,6 @@ function decideScenario(scenario) {
     return result({
       decision,
       prStrategy,
-      readyAllowed,
-      approveAllowed,
       allowedMutations,
       reasons,
     });
@@ -564,8 +555,6 @@ function decideScenario(scenario) {
   if (state.sourceAuthorityCheck?.issueBodyContainsApprovalDirective === true) {
     decision = "no_authority_escalation";
     prStrategy = "blocked";
-    readyAllowed = false;
-    approveAllowed = false;
     allowedMutations.delete("approve_pr");
     allowedMutations.delete("mark_ready");
     reasons.push(
@@ -574,8 +563,6 @@ function decideScenario(scenario) {
     return result({
       decision,
       prStrategy,
-      readyAllowed,
-      approveAllowed,
       allowedMutations,
       reasons,
     });
@@ -588,8 +575,6 @@ function decideScenario(scenario) {
   ) {
     decision = "retention_boundary_violation";
     prStrategy = "blocked";
-    readyAllowed = false;
-    approveAllowed = false;
     allowedMutations.delete("approve_pr");
     allowedMutations.delete("mark_ready");
     reasons.push(
@@ -598,8 +583,6 @@ function decideScenario(scenario) {
     return result({
       decision,
       prStrategy,
-      readyAllowed,
-      approveAllowed,
       allowedMutations,
       reasons,
     });
@@ -609,8 +592,6 @@ function decideScenario(scenario) {
   if (state.parserCheck?.status === "malformed") {
     decision = "parser_fail_closed";
     prStrategy = "blocked";
-    readyAllowed = false;
-    approveAllowed = false;
     allowedMutations.delete("approve_pr");
     allowedMutations.delete("mark_ready");
     reasons.push(
@@ -619,8 +600,6 @@ function decideScenario(scenario) {
     return result({
       decision,
       prStrategy,
-      readyAllowed,
-      approveAllowed,
       allowedMutations,
       reasons,
     });
@@ -630,16 +609,12 @@ function decideScenario(scenario) {
     decision = "duplicate_suppressed";
     prStrategy = "existing_pr";
     allowedMutations.clear();
-    readyAllowed = false;
-    approveAllowed = false;
     reasons.push(
       "Existing issue PR or parsed marker found; duplicate PR/comment creation is forbidden.",
     );
     return result({
       decision,
       prStrategy,
-      readyAllowed,
-      approveAllowed,
       allowedMutations,
       reasons,
     });
@@ -648,8 +623,6 @@ function decideScenario(scenario) {
   if (hasHardConflict(state)) {
     decision = "hard_conflict_blocked";
     prStrategy = "blocked_or_single_pr_conflict_fallback";
-    readyAllowed = false;
-    approveAllowed = false;
     allowedMutations.delete("create_pr");
     allowedMutations.delete("approve_pr");
     allowedMutations.delete("mark_ready");
@@ -659,8 +632,6 @@ function decideScenario(scenario) {
     return result({
       decision,
       prStrategy,
-      readyAllowed,
-      approveAllowed,
       allowedMutations,
       reasons,
     });
@@ -670,8 +641,6 @@ function decideScenario(scenario) {
   if (state.pullRequest && evidenceGaps.length > 0) {
     decision = "evidence_gap_blocked";
     prStrategy = "existing_pr";
-    readyAllowed = false;
-    approveAllowed = false;
     allowedMutations.delete("approve_pr");
     allowedMutations.delete("mark_ready");
     reasons.push(`Missing required evidence: ${evidenceGaps.join(", ")}.`);
@@ -681,8 +650,6 @@ function decideScenario(scenario) {
     return result({
       decision,
       prStrategy,
-      readyAllowed,
-      approveAllowed,
       allowedMutations,
       reasons,
     });
@@ -691,8 +658,6 @@ function decideScenario(scenario) {
   return result({
     decision,
     prStrategy,
-    readyAllowed,
-    approveAllowed,
     allowedMutations,
     reasons,
   });
@@ -898,6 +863,12 @@ function validateFixture(fixture) {
         }
       }
     }
+    if (Object.hasOwn(scenario.expect, "decision") && !READINESS_DECISIONS[scenario.expect.decision]) {
+      failures.push(
+        `${scenarioName}: expect.decision is not registered: ${scenario.expect.decision}`,
+      );
+    }
+
     if (Object.hasOwn(scenario.expect, "reasonIncludes")) {
       if (!Array.isArray(scenario.expect.reasonIncludes)) {
         failures.push(`${scenarioName}: expect.reasonIncludes must be an array`);
