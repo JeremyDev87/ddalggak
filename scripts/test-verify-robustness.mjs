@@ -168,6 +168,28 @@ const specialInputs = JSON.parse(readFileSync(path.join(fixtureDir, "special-reg
 
 {
   const tempDir = copyRepo();
+  const manifestPath = path.join(tempDir, "core", "verification", "skill-contract-manifest.mjs");
+  const manifest = readFileSync(manifestPath, "utf8");
+  const drifted = manifest.replace(
+    '  start: {\n    templates: ["worker-brief.md"],',
+    '  start: {\n    references: ["start-workflow.md"],\n    templates: ["worker-brief.md"],',
+  );
+  assert(drifted !== manifest, "fixture setup: expected to add manual start references");
+  writeFileSync(manifestPath, drifted, "utf8");
+
+  const result = runCodexSkillVerifier(tempDir);
+  const output = `${result.stdout}\n${result.stderr}`;
+  assert(result.status === 1, `manual disclosure references must fail, got exit ${result.status}\n${output}`);
+  assert(
+    output.includes(
+      "requiredDisclosureAssetsBySubcommand.start.references must not be manually curated; derive reference assets from subcommandExecutionContracts.start.requiredReferences",
+    ),
+    `expected manual reference disclosure diagnostic\n${output}`,
+  );
+}
+
+{
+  const tempDir = copyRepo();
   const startPath = path.join(tempDir, "core", "commands", "start.yaml");
   const start = readFileSync(startPath, "utf8");
   const drifted = start.replace(

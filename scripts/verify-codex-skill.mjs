@@ -333,12 +333,21 @@ function requiredDisclosureAssetPaths() {
     if (!requiredSubcommands.includes(subcommand)) {
       fail(`requiredDisclosureAssetsBySubcommand contains unknown subcommand '${subcommand}'.`);
     }
-    for (const reference of groups.references) {
+    if (Object.hasOwn(groups, "references")) {
+      fail(
+        `requiredDisclosureAssetsBySubcommand.${subcommand}.references must not be manually curated; derive reference assets from subcommandExecutionContracts.${subcommand}.requiredReferences.`,
+      );
+    }
+    if (!Array.isArray(groups.templates)) {
+      fail(`requiredDisclosureAssetsBySubcommand.${subcommand}.templates must be an array.`);
+    }
+    const contractReferences = subcommandExecutionContracts[subcommand]?.requiredReferences || [];
+    for (const reference of contractReferences) {
       for (const root of skillPayloadRoots) {
         assets.add(`${root}/references/${reference}`);
       }
     }
-    for (const template of groups.templates) {
+    for (const template of groups.templates || []) {
       for (const root of skillPayloadRoots) {
         assets.add(`${root}/templates/${template}`);
       }
