@@ -1,13 +1,11 @@
 # Quality Lens Router
-Use when: `plan`, `start`, or `review` must decide which quality gates apply and which gates are explicitly skipped for the current issue, PR, or diff.
+Use when: `plan`, `start`, or `review` routes quality gates for the current issue, PR, or diff.
 Required by: `plan`, `start`, `review`; gate-family routing.
 Side effects: none
-Do not use when: the command is purely `status`, `clean`, `ship`, `check`, or issue metadata work with no quality-gate decision.
+Do not use when: pure `status`, `clean`, `ship`, `check`, or issue metadata work has no quality-gate decision.
 
 
-Use this reference when `ddalggak plan`, `start`, or `review` must decide which quality gates apply to a request, issue, PR, or diff.
-
-The router is intentionally a small predicate table, not a rule engine. It prevents gate over-application by recording both applied and skipped gates with reasons. Domain gate is a lens, not a mandate: a routed gate adds focused questions and required references only for the surfaces it actually touches, and it must not overwrite explicit user scope or repository/product convention. The Gate Families table is a routing digest; verifier-owned activation keyword contracts keep its `Activate when` cells aligned with each gate reference's `## Activation` section so a router summary cannot silently drift from the detailed gate.
+The router is a small predicate table, not a rule engine. It records applied/skipped gates with reasons. Domain gate is a lens, not a mandate: a gate adds focused questions and required references only for touched surfaces, without overriding explicit scope or repo/product convention. The Gate Families table is a routing digest; verifier-owned activation keyword contracts keep its `Activate when` cells aligned with each gate reference's `## Activation` section so a router summary cannot silently drift.
 
 ## Inputs
 
@@ -77,12 +75,19 @@ After choosing applicable gate families, attach only the matching references:
 | --- | --- |
 | `frontend-design` | `references/frontend-design-gate.md` |
 | `react-code-quality-harness` | `references/react-code-quality-harness.md` |
-| `vercel-agent-skills`, `react-next-boundary-performance`, `composition-api`, `motion-meaning`, `web-design-a11y-evidence`, `deploy-token-safety`, `react-native-expo` | `references/vercel-agent-skills-gates.md` |
+| `vercel-agent-skills` | `references/vercel-agent-skills-gates.md` |
+| `react-next-boundary-performance` | `references/vercel-agent-skills-gates.md` |
+| `composition-api` | `references/vercel-agent-skills-gates.md` |
+| `motion-meaning` | `references/vercel-agent-skills-gates.md` |
+| `web-design-a11y-evidence` | `references/vercel-agent-skills-gates.md` |
+| `deploy-token-safety` | `references/vercel-agent-skills-gates.md` |
+| `react-native-expo` | `references/vercel-agent-skills-gates.md` |
+| `tdd-systematic-debugging` | `references/evidence-contract.md` |
 | `simplicity-deletability` | `references/simplicity-deletability-gate.md` |
 | `evidence-contract` | `references/evidence-contract.md` |
 | `regression-library` | `references/regression-library.md` |
 
-`tdd-systematic-debugging` currently routes to the Evidence Contract bugfix/regression template and existing repository testing/debugging conventions. `regression-library` applies only when a review finds a repeated Medium/High pattern or a retrospective generalizes a failure class; one-off incidents without a generalized detection signal stay skipped.
+`tdd-systematic-debugging` routes to the Evidence Contract bugfix/regression template and existing repository testing/debugging conventions. `regression-library` applies only when a review finds a repeated Medium/High pattern or a retrospective generalizes a failure class; one-off incidents without a generalized detection signal stay skipped.
 
 `react-code-quality-harness` routes to the React Code Quality Harness reference. It uses `PASS`, `FAIL`, `NEEDS_EVIDENCE`, or `N_A` verdicts and includes Rendered evidence plus Rendering/performance boundary checks only when those surfaces are actually in scope.
 
