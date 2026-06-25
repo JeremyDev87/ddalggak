@@ -123,6 +123,31 @@ const specialInputs = JSON.parse(readFileSync(path.join(fixtureDir, "special-reg
 
 {
   const tempDir = copyRepo();
+  const result = runProjectRuntimeAssets(tempDir, ["--write"]);
+  assert(
+    result.status === 0,
+    `generator --write for reference grouping regression: expected exit 0, got ${result.status}\n${result.stdout}\n${result.stderr}`,
+  );
+  const skill = readFileSync(path.join(tempDir, "ddalggak", "SKILL.md"), "utf8");
+  const requiredMap = skill.split("<!-- ddalggak:generated:start required-reference-map -->")[1]?.split("<!-- ddalggak:generated:end required-reference-map -->")[0];
+  assert(requiredMap, "expected generated required-reference-map block");
+  const reviewRow = requiredMap
+    .split("\n")
+    .find((line) => line.startsWith("| `review` |") && line.includes("cross-review-loop.md"));
+  assert(reviewRow, "expected generated required-reference review row");
+  const columns = reviewRow.split("|").map((part) => part.trim());
+  assert(
+    columns[2].includes("cross-review-loop.md") && !columns[2].includes("security-posture-gate.md"),
+    `security posture gate must not be rendered as a workflow reference\n${reviewRow}`,
+  );
+  assert(
+    columns[3].includes("security-posture-gate.md"),
+    `security posture gate must be rendered as a gate reference\n${reviewRow}`,
+  );
+}
+
+{
+  const tempDir = copyRepo();
   const manifestPath = path.join(tempDir, "core", "verification", "skill-contract-manifest.mjs");
   const manifest = readFileSync(manifestPath, "utf8");
   const drifted = manifest.replace(

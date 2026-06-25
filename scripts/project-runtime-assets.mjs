@@ -241,53 +241,66 @@ function renderClaudeSubcommandTable() {
   return lines.join("\n");
 }
 
-const gateReferences = new Set([
-  "quality-lens-router.md",
-  "evidence-contract.md",
-  "simplicity-deletability-gate.md",
-  "core-invariants.md",
-  "deep-interview-readiness-gate.md",
-  "ralplan-critic-consensus.md",
-  "regression-library.md",
+// Canonical grouping for the generated Required Reference Map (#379).
+// The group is semantic, not filename-derived:
+// - gates: preflight/admission/review/checklist gates that can block readiness or approval.
+// - wiki: wiki/getwiki/setwiki authority and retrieval/write-boundary references.
+// - workflow: procedural command workflows, shipping/status/cleanup/reporting steps, or support loops.
+// Keep each reference in exactly one group so generated tables cannot classify the
+// same reference differently across runtime surfaces.
+const referenceGroupByName = new Map([
+  ["agent-runtime-contract.md", "workflow"],
+  ["ci-failure-triage-loop.md", "workflow"],
+  ["core-invariants.md", "gates"],
+  ["cross-review-loop.md", "workflow"],
+  ["deep-interview-readiness-gate.md", "gates"],
+  ["evidence-contract.md", "gates"],
+  ["forge-goal.md", "workflow"],
+  ["human-review-feedback-loop.md", "workflow"],
+  ["issue-ready-plan.md", "workflow"],
+  ["local-diff-check.md", "workflow"],
+  ["merge-cleanup.md", "workflow"],
+  ["plan-to-issues.md", "workflow"],
+  ["pr-check-evidence-bundle.md", "workflow"],
+  ["prompt-optimizer.md", "workflow"],
+  ["prompt-skill-optimization-staging.md", "workflow"],
+  ["quality-lens-router.md", "gates"],
+  ["ralplan-critic-consensus.md", "gates"],
+  ["regression-library.md", "gates"],
+  ["retrospective-workflow.md", "workflow"],
+  ["retrospective.md", "workflow"],
+  ["security-posture-gate.md", "gates"],
+  ["ship.md", "workflow"],
+  ["simplicity-deletability-gate.md", "gates"],
+  ["spark-goal.md", "workflow"],
+  ["start-workflow.md", "workflow"],
+  ["status.md", "workflow"],
+  ["tune-goal.md", "workflow"],
+  ["wiki-bridge.md", "wiki"],
+  ["wiki-context-preflight.md", "wiki"],
+  ["wiki-growth-triage.md", "workflow"],
+  ["2026-06-04-brain-v0-wiki-authority-in-ddalggak.md", "wiki"],
 ]);
 
-const wikiReferences = new Set(["wiki-context-preflight.md", "wiki-bridge.md", "2026-06-04-brain-v0-wiki-authority-in-ddalggak.md"]);
+const referenceGroups = new Set(["workflow", "gates", "wiki"]);
 
-const workflowReferences = new Set([
-  "agent-runtime-contract.md",
-  "tune-goal.md",
-  "forge-goal.md",
-  "spark-goal.md",
-  "ci-failure-triage-loop.md",
-  "cross-review-loop.md",
-  "human-review-feedback-loop.md",
-  "issue-ready-plan.md",
-  "local-diff-check.md",
-  "merge-cleanup.md",
-  "plan-to-issues.md",
-  "pr-check-evidence-bundle.md",
-  "prompt-optimizer.md",
-  "prompt-skill-optimization-staging.md",
-  "retrospective-workflow.md",
-  "retrospective.md",
-  "security-posture-gate.md",
-  "ship.md",
-  "start-workflow.md",
-  "status.md",
-  "wiki-growth-triage.md",
-]);
+function referenceGroupOf(ref) {
+  const group = referenceGroupByName.get(ref);
+  if (!group) {
+    throw new Error(
+      `unclassified required reference: ${ref}; add it to referenceGroupByName in scripts/project-runtime-assets.mjs`,
+    );
+  }
+  if (!referenceGroups.has(group)) {
+    throw new Error(`invalid reference group for ${ref}: ${group}`);
+  }
+  return group;
+}
 
 function splitReferencesByGroup(refs) {
   const groups = { workflow: [], gates: [], wiki: [] };
   for (const ref of refs || []) {
-    if (gateReferences.has(ref)) groups.gates.push(ref);
-    else if (wikiReferences.has(ref)) groups.wiki.push(ref);
-    else if (workflowReferences.has(ref)) groups.workflow.push(ref);
-    else {
-      throw new Error(
-        `unclassified required reference: ${ref}; add it to gateReferences, wikiReferences, or workflowReferences in scripts/project-runtime-assets.mjs`,
-      );
-    }
+    groups[referenceGroupOf(ref)].push(ref);
   }
   return groups;
 }
