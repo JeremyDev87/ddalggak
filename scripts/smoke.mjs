@@ -1660,6 +1660,34 @@ const cases = [
     },
   },
   {
+    name: "status --local --json validates next_gate through local schema ref",
+    run() {
+      const broken = validSessionState();
+      broken.lanes[0].next_gate.owner = "robot";
+      broken.next_gate.owner = "robot";
+      const workspaceRoot = writeSessionStateFixture(
+        `${JSON.stringify(broken, null, 2)}\n`,
+      );
+      const status = runStatusWithSessionState(workspaceRoot);
+      assert(
+        status.sessionState.status === "invalid",
+        `expected invalid session state, got ${status.sessionState.status}`,
+      );
+      assert(
+        status.sessionState.violations.some((violation) =>
+          violation.startsWith("$.lanes[0].next_gate.owner"),
+        ),
+        `expected lane next_gate owner violation, got ${status.sessionState.violations.join("; ")}`,
+      );
+      assert(
+        status.sessionState.violations.some((violation) =>
+          violation.startsWith("$.next_gate.owner"),
+        ),
+        `expected session next_gate owner violation, got ${status.sessionState.violations.join("; ")}`,
+      );
+    },
+  },
+  {
     name: "status --local --json reports stale session state by updated_at",
     run() {
       const workspaceRoot = writeSessionStateFixture(

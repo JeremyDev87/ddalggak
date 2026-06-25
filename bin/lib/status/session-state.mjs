@@ -30,10 +30,46 @@ function matchesType(value, expected) {
 }
 
 // Minimal zero-dependency JSON Schema subset validator. Supports exactly the
-// keywords core/state/session-state.schema.json uses: type, const, enum,
-// required, properties, items, and format "date-time". Unknown keywords are
-// ignored, matching JSON Schema annotation semantics.
-function collectSchemaViolations(schema, value, path, violations) {
+// keywords core/state/session-state.schema.json uses: local $ref, type, const,
+// enum, required, properties, items, and format "date-time". Unknown keywords
+// are ignored, matching JSON Schema annotation semantics.
+function resolveLocalRef(rootSchema, ref) {
+  if (typeof ref !== "string" || !ref.startsWith("#/")) return null;
+  return ref
+    .slice(2)
+    .split("/")
+    .reduce((node, segment) => {
+      if (!node || typeOfValue(node) !== "object") return undefined;
+      const key = segment.replace(/~1/g, "/").replace(/~0/g, "~");
+      return node[key];
+    }, rootSchema);
+}
+
+function collectSchemaViolations(
+  schema,
+  value,
+  path,
+  violations,
+  rootSchema = schema,
+  refStack = [],
+) {
+  if (schema && Object.hasOwn(schema, "$ref")) {
+    const ref = schema.$ref;
+    if (refStack.includes(ref)) {
+      violations.push(`${path}: circular schema $ref ${ref}`);
+      return;
+    }
+    const resolvedSchema = resolveLocalRef(rootSchema, ref);
+    if (!resolvedSchema) {
+      violations.push(`${path}: unsupported or unresolved schema $ref ${ref}`);
+      return;
+    }
+    collectSchemaViolations(resolvedSchema, value, path, violations, rootSchema, [
+      ...refStack,
+      ref,
+    ]);
+    return;
+  }
   if (Object.hasOwn(schema, "const") && value !== schema.const) {
     violations.push(
       `${path}: expected ${JSON.stringify(schema.const)}, got ${JSON.stringify(value)}`,
@@ -78,6 +114,8 @@ function collectSchemaViolations(schema, value, path, violations) {
           value[key],
           `${path}.${key}`,
           violations,
+          rootSchema,
+          refStack,
         );
       }
     }
@@ -89,6 +127,8 @@ function collectSchemaViolations(schema, value, path, violations) {
         value[index],
         `${path}[${index}]`,
         violations,
+        rootSchema,
+        refStack,
       );
     }
   }
