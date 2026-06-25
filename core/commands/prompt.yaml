@@ -2,6 +2,7 @@
 command: prompt
 show_doc_heading: "Prompt Optimizer"
 source_edit_allowed: false
+github_write_allowed: false
 purpose: "Compile safer prompt briefs without source edits."
 mode: "plan-only"
 write_side_effects: "Brief/review/fix artifacts only after explicit confirmation; no canonical source edits."

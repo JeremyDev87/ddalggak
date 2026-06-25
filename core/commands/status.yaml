@@ -2,6 +2,7 @@
 command: status
 show_doc_heading: "Status"
 source_edit_allowed: false
+github_write_allowed: false
 purpose: "Read-only live git/GitHub/session state snapshot."
 mode: "read-only"
 write_side_effects: "No source, GitHub, or local cleanup mutation; report live git/GitHub/session state only."

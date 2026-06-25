@@ -2,6 +2,7 @@
 command: clean
 show_doc_heading: "Merge Cleanup"
 source_edit_allowed: false
+github_write_allowed: false
 purpose: "Post-merge local cleanup after live merge evidence."
 mode: "local-destructive"
 write_side_effects: "Local branch/worktree cleanup only after live merge evidence; no GitHub mutation."

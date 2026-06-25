@@ -2,6 +2,7 @@
 command: spark
 show_doc_heading: "Spark Runtime Goal"
 source_edit_allowed: false
+github_write_allowed: false
 purpose: "Draft a copyable runtime goal sentence with validation checklist."
 mode: "plan-only"
 write_side_effects: "Goal text only; no source, GitHub, or git mutation."

@@ -2,6 +2,7 @@
 command: getwiki
 show_doc_heading: "GetWiki Bridge"
 source_edit_allowed: false
+github_write_allowed: false
 purpose: "Wiki context retrieval bridge."
 mode: "read-only"
 write_side_effects: "Delegate to dedicated /getwiki retrieval; no wiki or repo mutation."

@@ -2,6 +2,7 @@
 command: start
 show_doc_heading: "Start Workflow"
 source_edit_allowed: true
+github_write_allowed: false
 purpose: "Issue implementation from live issue body/comments; one issue PR by default."
 mode: "source-edit"
 write_side_effects: "Repo source edits in issue scope; start publishes the issue PR via the ship procedure (ship.md); cross-review comments come through the review gate."

@@ -2,6 +2,7 @@
 command: tune
 show_doc_heading: "Tune Goal Brief"
 source_edit_allowed: false
+github_write_allowed: false
 purpose: "Align rough intent into a source-grounded goal brief before implementation."
 mode: "plan-only"
 write_side_effects: "Brief only; no source, GitHub, or git mutation."

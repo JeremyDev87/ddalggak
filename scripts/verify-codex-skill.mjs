@@ -11,6 +11,7 @@ import {
   skillPayloadRoots,
   requiredPackageFiles,
   requiredReferenceAdmissionHeaderFields,
+  modePermissionProfiles,
   subcommandExecutionContracts,
   forbiddenHotPathTemplateSentinels,
   requiredSubcommands,
@@ -356,13 +357,29 @@ function assertRequiredDisclosureAssetsExist() {
 
 // Header enforcement targets are derived from the canonical command contracts so a new
 // required reference can never land without an admission header (fail-closed coverage; #264).
-function requiredReferenceUnionFromCommandContracts() {
+function commandContractDocsBySubcommand() {
   const commandDir = path.join(rootDir, "core", "commands");
-  const references = new Set();
+  const docs = new Map();
   for (const name of readdirSync(commandDir).filter((entry) => entry.endsWith(".yaml")).sort()) {
     const doc = parseSimpleYaml(readText(path.join(commandDir, name)), `core/commands/${name}`, {
       onError: fail,
     });
+    if (typeof doc.command !== "string" || doc.command.trim().length === 0) {
+      fail(`core/commands/${name} must define a non-empty command field.`);
+      continue;
+    }
+    if (docs.has(doc.command)) {
+      fail(`duplicate core command contract for '${doc.command}'.`);
+      continue;
+    }
+    docs.set(doc.command, doc);
+  }
+  return docs;
+}
+
+function requiredReferenceUnionFromCommandContracts() {
+  const references = new Set();
+  for (const doc of commandContractDocsBySubcommand().values()) {
     for (const reference of doc.required_references || []) {
       references.add(reference);
     }
@@ -404,16 +421,20 @@ function assertSubcommandExecutionContracts() {
     );
   }
 
-  const allowedSourceEditors = new Set(["start", "review"]);
-  const allowedGithubWriters = new Set(["review", "issue", "ship"]);
+  const commandDocs = commandContractDocsBySubcommand();
   for (const subcommand of requiredSubcommands) {
     const contract = subcommandExecutionContracts[subcommand];
+    const commandDoc = commandDocs.get(subcommand);
     if (!contract || typeof contract !== "object") {
       fail(`subcommandExecutionContracts.${subcommand} must be an object.`);
       continue;
     }
+    if (!commandDoc) {
+      fail(`core/commands/${subcommand}.yaml missing or lacks command: ${subcommand}.`);
+      continue;
+    }
 
-    for (const field of ["mode", "stopCondition"]) {
+    for (const field of ["mode", "stopCondition", "completionSignal"]) {
       if (typeof contract[field] !== "string" || contract[field].trim().length === 0) {
         fail(`subcommandExecutionContracts.${subcommand}.${field} must be a non-empty string.`);
       }
@@ -440,14 +461,42 @@ function assertSubcommandExecutionContracts() {
       }
     }
 
-    if (contract.sourceEditAllowed !== allowedSourceEditors.has(subcommand)) {
+    const profile = modePermissionProfiles[contract.mode];
+    if (!profile) {
+      fail(`subcommandExecutionContracts.${subcommand}.mode '${contract.mode}' has no modePermissionProfiles entry.`);
+    } else {
+      for (const field of ["sourceEditAllowed", "githubWriteAllowed"]) {
+        if (contract[field] !== profile[field]) {
+          fail(
+            `subcommandExecutionContracts.${subcommand}.${field} must derive from modePermissionProfiles['${contract.mode}']=${profile[field]}.`,
+          );
+        }
+      }
+    }
+
+    if (contract.mode !== commandDoc.mode) {
       fail(
-        `subcommandExecutionContracts.${subcommand}.sourceEditAllowed must be ${allowedSourceEditors.has(subcommand)}; only start/review may modify source files.`,
+        `subcommandExecutionContracts.${subcommand}.mode drifted from core/commands/${subcommand}.yaml mode='${commandDoc.mode}'.`,
       );
     }
-    if (contract.githubWriteAllowed !== allowedGithubWriters.has(subcommand)) {
+    if (contract.sourceEditAllowed !== commandDoc.source_edit_allowed) {
       fail(
-        `subcommandExecutionContracts.${subcommand}.githubWriteAllowed must be ${allowedGithubWriters.has(subcommand)}; only review/issue/ship may directly write GitHub artifacts.`,
+        `subcommandExecutionContracts.${subcommand}.sourceEditAllowed drifted from core/commands/${subcommand}.yaml source_edit_allowed=${commandDoc.source_edit_allowed}.`,
+      );
+    }
+    if (contract.githubWriteAllowed !== commandDoc.github_write_allowed) {
+      fail(
+        `subcommandExecutionContracts.${subcommand}.githubWriteAllowed drifted from core/commands/${subcommand}.yaml github_write_allowed=${commandDoc.github_write_allowed}.`,
+      );
+    }
+    if (contract.stopCondition !== commandDoc.stop_condition) {
+      fail(
+        `subcommandExecutionContracts.${subcommand}.stopCondition drifted from core/commands/${subcommand}.yaml stop_condition.`,
+      );
+    }
+    if (contract.completionSignal !== commandDoc.output_contract?.completion_signal) {
+      fail(
+        `subcommandExecutionContracts.${subcommand}.completionSignal drifted from core/commands/${subcommand}.yaml output_contract.completion_signal.`,
       );
     }
   }
@@ -490,6 +539,10 @@ function assertRenderedSubcommandContracts({ label, text }) {
     }
     if (!renderedContract.stopCondition) {
       fail(`${label} subcommand table stop condition for '${subcommand}' must be non-empty.`);
+    } else if (renderedContract.stopCondition !== manifestContract.stopCondition) {
+      fail(
+        `${label} subcommand table stop condition for '${subcommand}' drifted. Expected '${manifestContract.stopCondition}', got '${renderedContract.stopCondition}'.`,
+      );
     }
     for (const reference of manifestContract.requiredReferences) {
       if (!renderedContract.requiredReferences.includes(reference)) {
