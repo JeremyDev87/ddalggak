@@ -674,6 +674,37 @@ export const requiredVercelAgentSkillsReferenceAnchors = [
   "token values",
   "file/line/screenshot/viewport evidence",
 ];
+export const gateActivationKeywordContracts = {
+  "frontend-design": {
+    referenceFile: "frontend-design-gate.md",
+    keywords: [
+      "UI",
+      "frontend",
+      "design",
+      "page",
+      "component",
+      "layout",
+      "polish",
+      "responsive",
+      "screenshot",
+    ],
+  },
+  "vercel-agent-skills": {
+    referenceFile: "vercel-agent-skills-gates.md",
+    keywords: [
+      "React",
+      "Next.js",
+      "component",
+      "animation",
+      "Vercel",
+      "deploy",
+      "env",
+      "token",
+      "React Native",
+      "mobile performance",
+    ],
+  },
+};
 export const requiredRegressionLibraryReferenceAnchors = [
   "Continuous Regression Library",
   "durable reference material, not session memory",

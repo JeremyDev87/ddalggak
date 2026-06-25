@@ -213,4 +213,29 @@ withTempRepo("anchor moved to an unrelated section must fail", (tempDir) => {
   );
 });
 
+withTempRepo("router activation keywords must stay aligned with gate references", (tempDir) => {
+  for (const referenceRelativePath of routerReferenceRelativePaths) {
+    replaceInFile(path.join(tempDir, referenceRelativePath), "responsive, screenshot,", "responsive,");
+  }
+  assertFail(
+    "router activation keywords must stay aligned with gate references",
+    runVerifier(tempDir),
+    "Quality Lens Router Activate when cell for frontend-design is missing gate activation contract keyword(s)",
+  );
+});
+
+withTempRepo("gate Activation sections must keep router contract keywords", (tempDir) => {
+  for (const referenceRelativePath of [
+    ".codex/skills/ddalggak/references/vercel-agent-skills-gates.md",
+    "ddalggak/references/vercel-agent-skills-gates.md",
+  ]) {
+    replaceInFile(path.join(tempDir, referenceRelativePath), "React Native/Expo/mobile performance", "React Native/Expo/native performance");
+  }
+  assertFail(
+    "gate Activation sections must keep router contract keywords",
+    runVerifier(tempDir),
+    "vercel-agent-skills-gates.md ## Activation for vercel-agent-skills is missing router activation contract keyword(s)",
+  );
+});
+
 console.log("\n[test:reference-aware-skill-anchors] passed");
