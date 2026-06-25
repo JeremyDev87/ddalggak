@@ -1114,80 +1114,54 @@ for (const contract of gateStageHeadingReferenceContracts) {
   }
 }
 
-const [codexSimplicityPath, claudeSimplicityPath] = simplicityReferencePaths;
-const codexSimplicityExists = statSync(codexSimplicityPath, { throwIfNoEntry: false })?.isFile();
-const claudeSimplicityExists = statSync(claudeSimplicityPath, { throwIfNoEntry: false })?.isFile();
-if (!codexSimplicityExists) {
-  fail(`${path.relative(rootDir, codexSimplicityPath)} must exist for Simplicity / Deletability Gate parity.`);
-}
-if (!claudeSimplicityExists) {
-  fail(`${path.relative(rootDir, claudeSimplicityPath)} must exist for Simplicity / Deletability Gate parity.`);
-}
-if (codexSimplicityExists && claudeSimplicityExists) {
-  const codexSimplicityText = readText(codexSimplicityPath);
-  const claudeSimplicityText = readText(claudeSimplicityPath);
-  if (codexSimplicityText !== claudeSimplicityText) {
-    fail("Simplicity / Deletability Gate references must match between .codex and ddalggak directories.");
+// Must-match projection parity is intentionally not checked here. The single
+// source of authority for codex↔claude byte parity is core/projections.yaml's
+// parity_ledger, enforced by scripts/verify-projections.mjs. This verifier only
+// inspects the source-root reference payload for semantic/anchor contracts.
+function readSourceRootReference(referencePaths, contractLabel) {
+  const sourceRootReferencePath = referencePaths[1];
+  const label = path.relative(rootDir, sourceRootReferencePath);
+  if (!statSync(sourceRootReferencePath, { throwIfNoEntry: false })?.isFile()) {
+    fail(`${label} must exist for ${contractLabel} contract verification.`);
+    return null;
   }
+  return { label, text: readText(sourceRootReferencePath) };
+}
+
+const simplicityReference = readSourceRootReference(
+  simplicityReferencePaths,
+  "Simplicity / Deletability Gate",
+);
+if (simplicityReference) {
   assertReferenceAnchors({
     label: "Simplicity / Deletability Gate anchors missing",
-    text: codexSimplicityText,
+    text: simplicityReference.text,
     anchors: requiredSimplicityReferenceAnchors,
   });
 }
 
-const [codexFrontendDesignPath, claudeFrontendDesignPath] = frontendDesignReferencePaths;
-const codexFrontendDesignExists = statSync(codexFrontendDesignPath, { throwIfNoEntry: false })?.isFile();
-const claudeFrontendDesignExists = statSync(claudeFrontendDesignPath, { throwIfNoEntry: false })?.isFile();
-if (!codexFrontendDesignExists) {
-  fail(`${path.relative(rootDir, codexFrontendDesignPath)} must exist for Frontend Design Gate parity.`);
-}
-if (!claudeFrontendDesignExists) {
-  fail(`${path.relative(rootDir, claudeFrontendDesignPath)} must exist for Frontend Design Gate parity.`);
-}
-if (codexFrontendDesignExists && claudeFrontendDesignExists) {
-  const codexFrontendDesignText = readText(codexFrontendDesignPath);
-  const claudeFrontendDesignText = readText(claudeFrontendDesignPath);
-  if (codexFrontendDesignText !== claudeFrontendDesignText) {
-    fail("Frontend Design Gate references must match between .codex and ddalggak directories.");
-  }
-  const missingFrontendDesignAnchors = requiredFrontendDesignReferenceAnchors.filter(
-    (anchor) => !codexFrontendDesignText.includes(anchor),
-  );
-  if (missingFrontendDesignAnchors.length > 0) {
-    fail(
-      `Frontend Design Gate anchors missing:\n${missingFrontendDesignAnchors
-        .map((anchor) => `  - ${anchor}`)
-        .join("\n")}`,
-    );
-  }
+const frontendDesignReference = readSourceRootReference(
+  frontendDesignReferencePaths,
+  "Frontend Design Gate",
+);
+if (frontendDesignReference) {
+  assertReferenceAnchors({
+    label: "Frontend Design Gate anchors missing",
+    text: frontendDesignReference.text,
+    anchors: requiredFrontendDesignReferenceAnchors,
+  });
 }
 
-const [codexVercelAgentSkillsPath, claudeVercelAgentSkillsPath] = vercelAgentSkillsReferencePaths;
-const codexVercelAgentSkillsExists = statSync(codexVercelAgentSkillsPath, { throwIfNoEntry: false })?.isFile();
-const claudeVercelAgentSkillsExists = statSync(claudeVercelAgentSkillsPath, { throwIfNoEntry: false })?.isFile();
-if (!codexVercelAgentSkillsExists) {
-  fail(`${path.relative(rootDir, codexVercelAgentSkillsPath)} must exist for Vercel Agent Skills Gate parity.`);
-}
-if (!claudeVercelAgentSkillsExists) {
-  fail(`${path.relative(rootDir, claudeVercelAgentSkillsPath)} must exist for Vercel Agent Skills Gate parity.`);
-}
-if (codexVercelAgentSkillsExists && claudeVercelAgentSkillsExists) {
-  const codexVercelAgentSkillsText = readText(codexVercelAgentSkillsPath);
-  const claudeVercelAgentSkillsText = readText(claudeVercelAgentSkillsPath);
-  if (codexVercelAgentSkillsText !== claudeVercelAgentSkillsText) {
-    fail("Vercel Agent Skills Gate references must match between .codex and ddalggak directories.");
-  }
-  const missingVercelAgentSkillsAnchors = requiredVercelAgentSkillsReferenceAnchors.filter(
-    (anchor) => !codexVercelAgentSkillsText.includes(anchor),
-  );
-  if (missingVercelAgentSkillsAnchors.length > 0) {
-    fail(
-      `Vercel Agent Skills Gate anchors missing:\n${missingVercelAgentSkillsAnchors
-        .map((anchor) => `  - ${anchor}`)
-        .join("\n")}`,
-    );
-  }
+const vercelAgentSkillsReference = readSourceRootReference(
+  vercelAgentSkillsReferencePaths,
+  "Vercel Agent Skills Gate",
+);
+if (vercelAgentSkillsReference) {
+  assertReferenceAnchors({
+    label: "Vercel Agent Skills Gate anchors missing",
+    text: vercelAgentSkillsReference.text,
+    anchors: requiredVercelAgentSkillsReferenceAnchors,
+  });
 }
 
 const gateActivationReferencePathsByFile = new Map([
@@ -1214,33 +1188,18 @@ for (const [gateFamily, contract] of Object.entries(gateActivationKeywordContrac
   }
 }
 
-const [codexRegressionLibraryPath, claudeRegressionLibraryPath] = regressionLibraryReferencePaths;
-const codexRegressionLibraryExists = statSync(codexRegressionLibraryPath, { throwIfNoEntry: false })?.isFile();
-const claudeRegressionLibraryExists = statSync(claudeRegressionLibraryPath, { throwIfNoEntry: false })?.isFile();
-if (!codexRegressionLibraryExists) {
-  fail(`${path.relative(rootDir, codexRegressionLibraryPath)} must exist for Continuous Regression Library parity.`);
-}
-if (!claudeRegressionLibraryExists) {
-  fail(`${path.relative(rootDir, claudeRegressionLibraryPath)} must exist for Continuous Regression Library parity.`);
-}
-if (codexRegressionLibraryExists && claudeRegressionLibraryExists) {
-  const codexRegressionLibraryText = readText(codexRegressionLibraryPath);
-  const claudeRegressionLibraryText = readText(claudeRegressionLibraryPath);
-  if (codexRegressionLibraryText !== claudeRegressionLibraryText) {
-    fail("Continuous Regression Library references must match between .codex and ddalggak directories.");
-  }
-  const missingRegressionLibraryAnchors = requiredRegressionLibraryReferenceAnchors.filter(
-    (anchor) => !codexRegressionLibraryText.includes(anchor),
-  );
-  if (missingRegressionLibraryAnchors.length > 0) {
-    fail(
-      `Continuous Regression Library anchors missing:\n${missingRegressionLibraryAnchors
-        .map((anchor) => `  - ${anchor}`)
-        .join("\n")}`,
-    );
-  }
+const regressionLibraryReference = readSourceRootReference(
+  regressionLibraryReferencePaths,
+  "Continuous Regression Library",
+);
+if (regressionLibraryReference) {
+  assertReferenceAnchors({
+    label: "Continuous Regression Library anchors missing",
+    text: regressionLibraryReference.text,
+    anchors: requiredRegressionLibraryReferenceAnchors,
+  });
   for (const className of requiredRegressionLibraryClasses) {
-    const section = extractMarkdownSection(codexRegressionLibraryText, className);
+    const section = extractMarkdownSection(regressionLibraryReference.text, className);
     if (!section) {
       fail(`Continuous Regression Library class missing: ${className}`);
       continue;
@@ -1258,51 +1217,23 @@ if (codexRegressionLibraryExists && claudeRegressionLibraryExists) {
   }
 }
 
-const [codexAgentRuntimePath, claudeAgentRuntimePath] = agentRuntimeContractReferencePaths;
-const codexAgentRuntimeExists = statSync(codexAgentRuntimePath, { throwIfNoEntry: false })?.isFile();
-const claudeAgentRuntimeExists = statSync(claudeAgentRuntimePath, { throwIfNoEntry: false })?.isFile();
-if (!codexAgentRuntimeExists) {
-  fail(`${path.relative(rootDir, codexAgentRuntimePath)} must exist for Agent Runtime Contract parity.`);
-}
-if (!claudeAgentRuntimeExists) {
-  fail(`${path.relative(rootDir, claudeAgentRuntimePath)} must exist for Agent Runtime Contract parity.`);
-}
-if (codexAgentRuntimeExists && claudeAgentRuntimeExists) {
-  const codexAgentRuntimeText = readText(codexAgentRuntimePath);
-  const claudeAgentRuntimeText = readText(claudeAgentRuntimePath);
-  if (codexAgentRuntimeText !== claudeAgentRuntimeText) {
-    fail("Agent Runtime Contract references must match between .codex and ddalggak directories.");
-  }
-  const missingAgentRuntimeAnchors = requiredAgentRuntimeContractAnchors.filter(
-    (anchor) => !codexAgentRuntimeText.includes(anchor),
-  );
-  if (missingAgentRuntimeAnchors.length > 0) {
-    fail(
-      `Agent Runtime Contract anchors missing:\n${missingAgentRuntimeAnchors
-        .map((anchor) => `  - ${anchor}`)
-        .join("\n")}`,
-    );
-  }
+const agentRuntimeReference = readSourceRootReference(
+  agentRuntimeContractReferencePaths,
+  "Agent Runtime Contract",
+);
+if (agentRuntimeReference) {
+  assertReferenceAnchors({
+    label: "Agent Runtime Contract anchors missing",
+    text: agentRuntimeReference.text,
+    anchors: requiredAgentRuntimeContractAnchors,
+  });
 }
 
-const [codexCoreInvariantPath, claudeCoreInvariantPath] = coreInvariantReferencePaths;
-const codexCoreInvariantExists = statSync(codexCoreInvariantPath, { throwIfNoEntry: false })?.isFile();
-const claudeCoreInvariantExists = statSync(claudeCoreInvariantPath, { throwIfNoEntry: false })?.isFile();
-if (!codexCoreInvariantExists) {
-  fail(`${path.relative(rootDir, codexCoreInvariantPath)} must exist for Core Invariants parity.`);
-}
-if (!claudeCoreInvariantExists) {
-  fail(`${path.relative(rootDir, claudeCoreInvariantPath)} must exist for Core Invariants parity.`);
-}
-if (codexCoreInvariantExists && claudeCoreInvariantExists) {
-  const codexCoreInvariantText = readText(codexCoreInvariantPath);
-  const claudeCoreInvariantText = readText(claudeCoreInvariantPath);
-  if (codexCoreInvariantText !== claudeCoreInvariantText) {
-    fail("Core Invariants references must match between .codex and ddalggak directories.");
-  }
+const coreInvariantReference = readSourceRootReference(coreInvariantReferencePaths, "Core Invariants");
+if (coreInvariantReference) {
   assertReferenceAnchors({
     label: "Core Invariants anchors missing",
-    text: codexCoreInvariantText,
+    text: coreInvariantReference.text,
     anchors: requiredCoreInvariantReferenceAnchors,
   });
 }
@@ -1322,24 +1253,11 @@ for (const referencePath of promptOptimizerReferencePaths) {
   });
 }
 
-const [codexWikiBridgePath, claudeWikiBridgePath] = wikiBridgeReferencePaths;
-const codexWikiBridgeExists = statSync(codexWikiBridgePath, { throwIfNoEntry: false })?.isFile();
-const claudeWikiBridgeExists = statSync(claudeWikiBridgePath, { throwIfNoEntry: false })?.isFile();
-if (!codexWikiBridgeExists) {
-  fail(`${path.relative(rootDir, codexWikiBridgePath)} must exist for Wiki Bridge parity.`);
-}
-if (!claudeWikiBridgeExists) {
-  fail(`${path.relative(rootDir, claudeWikiBridgePath)} must exist for Wiki Bridge parity.`);
-}
-if (codexWikiBridgeExists && claudeWikiBridgeExists) {
-  const codexWikiBridgeText = readText(codexWikiBridgePath);
-  const claudeWikiBridgeText = readText(claudeWikiBridgePath);
-  if (codexWikiBridgeText !== claudeWikiBridgeText) {
-    fail("Wiki Bridge references must match between .codex and ddalggak directories.");
-  }
+const wikiBridgeReference = readSourceRootReference(wikiBridgeReferencePaths, "Wiki Bridge");
+if (wikiBridgeReference) {
   assertReferenceAnchors({
     label: "Wiki Bridge anchors missing",
-    text: codexWikiBridgeText,
+    text: wikiBridgeReference.text,
     anchors: requiredWikiBridgeReferenceAnchors,
   });
 }

@@ -365,6 +365,48 @@ for (const [fixtureName, expectedMessage] of [
 
 {
   const tempDir = copyRepo();
+  const referencePath = path.join(
+    tempDir,
+    ".codex",
+    "skills",
+    "ddalggak",
+    "references",
+    "simplicity-deletability-gate.md",
+  );
+  const reference = readFileSync(referencePath, "utf8");
+  writeFileSync(referencePath, `${reference}\n<!-- parity drift fixture: codex-only -->\n`, "utf8");
+
+  const codexResult = runCodexSkillVerifier(tempDir);
+  const codexOutput = `${codexResult.stdout}\n${codexResult.stderr}`;
+  assert(
+    codexResult.status === 1,
+    `verify-codex-skill must still fail via the projection-aware verifier, got exit ${codexResult.status}\n${codexOutput}`,
+  );
+  assert(
+    codexOutput.includes("projection-aware verifier failed with exit 1"),
+    `expected verify-codex-skill to delegate parity failure to verify-projections\n${codexOutput}`,
+  );
+  assert(
+    !codexOutput.includes("Simplicity / Deletability Gate references must match between .codex and ddalggak directories."),
+    `direct duplicate Simplicity parity diagnostic must not return\n${codexOutput}`,
+  );
+
+  const projectionResult = runProjectionVerifier(tempDir);
+  const projectionOutput = `${projectionResult.stdout}\n${projectionResult.stderr}`;
+  assert(
+    projectionResult.status === 1,
+    `must-match parity drift must fail in verify-projections, got exit ${projectionResult.status}\n${projectionOutput}`,
+  );
+  assert(
+    projectionOutput.includes(
+      "parity ledger (must-match): references/simplicity-deletability-gate.md differs between ddalggak/ and .codex/skills/ddalggak/",
+    ),
+    `expected parity-ledger diagnostic\n${projectionOutput}`,
+  );
+}
+
+{
+  const tempDir = copyRepo();
   const referencePath = path.join(tempDir, "ddalggak", "references", "frontend-design-gate.md");
   const reference = readFileSync(referencePath, "utf8");
   const drifted = reference.replace("## review", "## Frontend Design Review Gate");
