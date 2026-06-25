@@ -17,6 +17,7 @@ Keep these as short pointers in `SKILL.md`, then load the named references when 
 - Issue-PRs by default: one issue PR per independent issue; hard conflict is the only reason to use a single PR with separate commits.
 - Runtime contract language: `references/agent-runtime-contract.md` owns Task Scope Contract, Context Assembly Manifest, Resume Snapshot, and Control-flow ownership.
 - Quality Lens Router: `references/quality-lens-router.md` owns Applicable gate families, Skipped gates, Required references, Lightweight or limited gates, backend-only skip, and Repo/product conventions.
+- Gate Verdict Vocabulary Index: `references/gate-verdict-vocabulary.md` maps gate terms to common axes.
 - Evidence Contract: `references/evidence-contract.md` owns Blocking evidence gaps and the rule No evidence, no readiness or approval.
 - Simplicity / Deletability Gate: `references/simplicity-deletability-gate.md` owns small direct change first and why any proposed abstraction is necessary.
 

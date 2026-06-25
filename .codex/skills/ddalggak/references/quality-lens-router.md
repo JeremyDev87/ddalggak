@@ -5,7 +5,9 @@ Side effects: none
 Do not use when: pure `status`, `clean`, `ship`, `check`, or issue metadata work has no quality-gate decision.
 
 
-The router is a small predicate table, not a rule engine. It records applied/skipped gates with reasons. Domain gate is a lens, not a mandate: a gate adds focused questions and required references only for touched surfaces, without overriding explicit scope or repo/product convention. The Gate Families table is a routing digest; verifier-owned activation keyword contracts keep its `Activate when` cells aligned with each gate reference's `## Activation` section so a router summary cannot silently drift.
+Router records applied/skipped gates. Domain gate is a lens, not a mandate: gates add questions/references for touched surfaces and never override scope or repo/product convention. Activation contracts align each `Activate when` cell with its gate reference.
+
+Combined outcomes use `references/gate-verdict-vocabulary.md` shared result-axis index; keep original terms.
 
 ## Inputs
 
