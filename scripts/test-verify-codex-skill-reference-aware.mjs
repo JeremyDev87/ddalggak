@@ -148,7 +148,7 @@ withTempRepo("core invariants reference must exist in both payload roots", (temp
   assertFail(
     "core invariants reference must exist in both payload roots",
     runVerifier(tempDir),
-    "must exist for Core Invariants parity",
+    "ddalggak/references/core-invariants.md must exist for Core Invariants contract verification.",
   );
 });
 
