@@ -515,21 +515,97 @@ export const requiredClaudeSkillHotPathAnchors = [
   "raw UTF-8",
 ];
 
-export const requiredRouterGateFamilies = [
-  "frontend-design",
-  "react-code-quality-harness",
-  "vercel-agent-skills",
-  "react-next-boundary-performance",
-  "composition-api",
-  "motion-meaning",
-  "web-design-a11y-evidence",
-  "deploy-token-safety",
-  "react-native-expo",
-  "tdd-systematic-debugging",
-  "simplicity-deletability",
-  "evidence-contract",
-  "regression-library",
+export const routerGateFamilies = [
+  {
+    name: "frontend-design",
+    activateWhen:
+      "UI, frontend, design, page, component, layout, polish, responsive, screenshot, or frontend primitives are in scope.",
+    skipWhen: "Backend/API-only, test-only, or narrow non-visual bugfixes.",
+    reference: "references/frontend-design-gate.md",
+  },
+  {
+    name: "react-code-quality-harness",
+    activateWhen:
+      "React/Next.js code quality, AI-generated React diff review, component responsibility, hooks/effects, state/fallback behavior, runtime UI type boundary, rendered evidence, or React rendering/performance boundary is in scope.",
+    skipWhen:
+      "Non-React work, backend/API-only work with no rendered contract, docs-only work with no runtime/frontend quality claim, or tests unrelated to React behavior.",
+    reference: "references/react-code-quality-harness.md",
+  },
+  {
+    name: "vercel-agent-skills",
+    activateWhen:
+      "React, Next.js, component API, animation, Vercel deploy/env/token, React Native, or mobile performance is in scope.",
+    skipWhen: "No React/frontend/deploy/mobile surface is touched.",
+    reference: "references/vercel-agent-skills-gates.md",
+  },
+  {
+    name: "react-next-boundary-performance",
+    activateWhen:
+      "React/Next server-client boundary, data fetching, hydration, caching, bundle, or performance claims are in scope.",
+    skipWhen: "Non-React work or documentation-only work with no runtime claim.",
+    reference: "references/vercel-agent-skills-gates.md",
+  },
+  {
+    name: "composition-api",
+    activateWhen:
+      "Component API, variants, slots, compound components, render props, context, wrapper abstractions, or component methodology gate concerns are proposed; require behavior/type tests or concrete usage evidence. For UI/component work, route the worker and review packet to the `frontend-design` component methodology gate covering main component only assembles, `ComponentName.parts.tsx`, `ComponentName.utils.ts`, `satisfies Record<...>`, public visual-contract tests, and no silent fallback.",
+    skipWhen: "Local one-off rendering with no reusable API change.",
+    reference: "references/vercel-agent-skills-gates.md",
+  },
+  {
+    name: "motion-meaning",
+    activateWhen:
+      "View transitions, page transitions, shared element motion, enter/exit animation, or list reorder animation is proposed; pair with `frontend-design` and `web-design-a11y-evidence` unless the change is purely internal plumbing.",
+    skipWhen: "No animation or only existing motion is preserved.",
+    reference: "references/vercel-agent-skills-gates.md",
+  },
+  {
+    name: "web-design-a11y-evidence",
+    activateWhen:
+      "UI review, accessibility, keyboard/focus, contrast, responsive behavior, or screenshot/viewport acceptance is relevant.",
+    skipWhen: "Non-rendered backend work.",
+    reference: "references/vercel-agent-skills-gates.md",
+  },
+  {
+    name: "deploy-token-safety",
+    activateWhen:
+      "Vercel deploy, preview URL, production deploy, env vars, project linking, or token CLI usage is in scope.",
+    skipWhen: "No deploy or environment mutation occurs.",
+    reference: "references/vercel-agent-skills-gates.md",
+  },
+  {
+    name: "react-native-expo",
+    activateWhen: "React Native, Expo, native modules, mobile lists, gestures, or device behavior is in scope.",
+    skipWhen: "Web-only or backend-only work.",
+    reference: "references/vercel-agent-skills-gates.md",
+  },
+  {
+    name: "tdd-systematic-debugging",
+    activateWhen: "Bugfix, regression, flaky behavior, incident recovery, or root-cause analysis is requested.",
+    skipWhen: "Pure documentation or planning with no code change.",
+    reference: "references/evidence-contract.md",
+    note: "Routes to the Evidence Contract bugfix/regression template and existing repository testing/debugging conventions.",
+  },
+  {
+    name: "simplicity-deletability",
+    activateWhen: "Any implementation or review may add code, abstractions, helpers, wrappers, providers, fallbacks, or patterns.",
+    skipWhen: "Almost never; if skipped, record why the work is read-only.",
+    reference: "references/simplicity-deletability-gate.md",
+  },
+  {
+    name: "evidence-contract",
+    activateWhen: "Any work claims completion, readiness, review approval, performance, deploy, UI, security, or data behavior.",
+    skipWhen: "Almost never; if skipped, record why no completion claim is being made.",
+    reference: "references/evidence-contract.md",
+  },
+  {
+    name: "regression-library",
+    activateWhen: "A review finds a repeated Medium/High failure pattern or a retrospective generalizes a failure class.",
+    skipWhen: "One-off incident with no generalized detection signal.",
+    reference: "references/regression-library.md",
+  },
 ];
+export const requiredRouterGateFamilies = routerGateFamilies.map((family) => family.name);
 export const requiredRouterReferenceAnchors = [
   "behavior/type tests",
   "concrete usage evidence",

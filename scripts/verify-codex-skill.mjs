@@ -19,6 +19,7 @@ import {
   bannedTerms,
   requiredSkillHotPathAnchors,
   requiredClaudeSkillHotPathAnchors,
+  routerGateFamilies,
   requiredRouterGateFamilies,
   requiredRouterReferenceAnchors,
   requiredEvidenceReferenceAnchors,
@@ -716,16 +717,94 @@ function parseMarkdownTableRows(block) {
     .map((line) => line.trim());
 }
 
-function extractRouterActivateCell(routerText, gateFamily) {
+function splitMarkdownTableCells(line) {
+  return line.split("|").slice(1, -1).map((cell) => cell.trim());
+}
+
+function parseRouterGateFamilyRows(routerText) {
+  const rows = new Map();
   const gateFamiliesSection = extractMarkdownSection(routerText, "Gate Families");
   for (const line of parseMarkdownTableRows(gateFamiliesSection)) {
-    const cells = line.split("|").slice(1, -1).map((cell) => cell.trim());
+    const cells = splitMarkdownTableCells(line);
     const family = cells[0]?.match(/`([^`]+)`/)?.[1];
-    if (family === gateFamily) {
-      return cells[1] || "";
+    if (!family) continue;
+    rows.set(family, {
+      family,
+      activateWhen: cells[1] || "",
+      skipWhen: cells[2] || "",
+    });
+  }
+  return rows;
+}
+
+function parseRouterRequiredReferenceRows(routerText) {
+  const rows = new Map();
+  const referenceSection = extractMarkdownSection(routerText, "Required Reference Mapping");
+  for (const line of parseMarkdownTableRows(referenceSection)) {
+    const cells = splitMarkdownTableCells(line);
+    const family = cells[0]?.match(/`([^`]+)`/)?.[1];
+    const reference = cells[1]?.match(/`([^`]+)`/)?.[1];
+    if (!family || !reference) continue;
+    rows.set(family, { family, reference });
+  }
+  return rows;
+}
+
+function assertRouterGateFamilyManifestContract({ label, routerText, rootReferenceDir }) {
+  const gateRows = parseRouterGateFamilyRows(routerText);
+  const referenceRows = parseRouterRequiredReferenceRows(routerText);
+  const expectedNames = new Set(routerGateFamilies.map((family) => family.name));
+
+  if (gateRows.size !== routerGateFamilies.length) {
+    fail(
+      `${label} Gate Families row count must match routerGateFamilies (${routerGateFamilies.length}); found ${gateRows.size}.`,
+    );
+  }
+  if (referenceRows.size !== routerGateFamilies.length) {
+    fail(
+      `${label} Required Reference Mapping row count must match routerGateFamilies (${routerGateFamilies.length}); found ${referenceRows.size}.`,
+    );
+  }
+
+  for (const foundName of [...gateRows.keys(), ...referenceRows.keys()]) {
+    if (!expectedNames.has(foundName)) {
+      fail(`${label} contains unknown Quality Lens Router gate family row: ${foundName}.`);
     }
   }
-  return "";
+
+  for (const family of routerGateFamilies) {
+    const gateRow = gateRows.get(family.name);
+    if (!gateRow) {
+      fail(`${label} Gate Families table missing manifest family: ${family.name}.`);
+    } else {
+      if (gateRow.activateWhen !== family.activateWhen) {
+        fail(`${label} Activate when cell drift for ${family.name}.`);
+      }
+      if (gateRow.skipWhen !== family.skipWhen) {
+        fail(`${label} Skip when cell drift for ${family.name}.`);
+      }
+    }
+
+    const referenceRow = referenceRows.get(family.name);
+    if (!referenceRow) {
+      fail(`${label} Required Reference Mapping table missing manifest family: ${family.name}.`);
+    } else if (referenceRow.reference !== family.reference) {
+      fail(
+        `${label} Required Reference Mapping drift for ${family.name}: expected ${family.reference}, found ${referenceRow.reference}.`,
+      );
+    }
+
+    const relativeReference = family.reference.replace(/^references\//, "");
+    const referencePath = path.join(rootReferenceDir, relativeReference);
+    if (!statSync(referencePath, { throwIfNoEntry: false })?.isFile()) {
+      fail(`${label} mapped reference for ${family.name} does not exist: ${family.reference}.`);
+    }
+  }
+}
+
+function extractRouterActivateCell(routerText, gateFamily) {
+  const gateRows = parseRouterGateFamilyRows(routerText);
+  return gateRows.get(gateFamily)?.activateWhen || "";
 }
 
 function assertGateActivationKeywordContract({ gateFamily, contract, routerText, gateReferenceText }) {
@@ -982,6 +1061,11 @@ for (const referencePath of routerReferencePaths) {
   }
 
   const referenceText = readText(referencePath);
+  assertRouterGateFamilyManifestContract({
+    label,
+    routerText: referenceText,
+    rootReferenceDir: path.dirname(referencePath),
+  });
   const missingGateFamilies = requiredRouterGateFamilies.filter(
     (gateFamily) => !referenceText.includes(`\`${gateFamily}\``),
   );
@@ -1306,14 +1390,7 @@ const referenceSectionAnchorContracts = [
       },
       {
         heading: "Required Reference Mapping",
-        anchors: [
-          "`references/frontend-design-gate.md`",
-          "`references/react-code-quality-harness.md`",
-          "`references/vercel-agent-skills-gates.md`",
-          "`references/simplicity-deletability-gate.md`",
-          "`references/evidence-contract.md`",
-          "`references/regression-library.md`",
-        ],
+        anchors: [...new Set(routerGateFamilies.map((family) => `\`${family.reference}\``))],
       },
       {
         heading: "Priority Order",
