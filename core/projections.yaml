@@ -152,7 +152,7 @@ parity_ledger:
 subcommand_token_budgets:
   claude:
     start: 23000
-    review: 26000
+    review: 27000
     status: 10000
     plan: 20000
     issue: 9000
@@ -168,7 +168,7 @@ subcommand_token_budgets:
     setwiki: 13000
   codex:
     start: 24000
-    review: 26500
+    review: 27500
     status: 10000
     plan: 21000
     issue: 10000

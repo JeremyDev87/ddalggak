@@ -4,13 +4,30 @@ Required by: `review`; maintainer verification and release/readiness reviews whe
 Side effects: none; the gate is read-only unless a separate issue explicitly owns remediation.
 Do not use when: the task is only an application code change with no workflow, package, release, or repository-posture evidence requirement.
 
-## Purpose
+## Sub-gate map
+
+This single reference contains four evidence lanes. Keep verdicts separate: one green lane does not approve another.
+
+| Sub-gate | Activation | Verdict evidence |
+|---|---|---|
+| Repository posture inventory/admission | repository/workflow posture or package verification review | `verify:security-posture -- --admission` + reviewer judgement |
+| Action pinning policy | action refs, pinning, or exception-ledger claims | `actionPinPolicy` evidence + ledger review |
+| Workflow static lint | workflow YAML, reusable contracts, action I/O, or script-interpolation structure | `verify:workflow-lint` evidence + reviewer judgement |
+| Release publish integrity chain | release workflow, tag/version, tarball checksum, or publish-context verification | release workflow diff/tests + no-publish boundary |
+
+## Repository posture inventory/admission sub-gate
+
+- Activation: inspect workflow permissions, reusable action refs, risky triggers, environment-file writes, or posture report/admission claims.
+- Verdict: `PASS` only when admission has no unregistered findings and the issue-scope review has no blocking posture gap; `BLOCK` on admission failure or repository-settings/secrets evidence gaps; `N/A` outside workflow/package/release posture scope.
+- Evidence: `verify:security-posture` report/admission output and changed-file review; repository settings, branch protection, environments, and secrets remain outside file-based proof.
+
+### Purpose
 
 The security posture gate records file-based evidence about the repository's GitHub Actions posture. It complements, but does not replace, release provenance and external repository settings review.
 
 The gate must not overclaim safety. A green local report means only that the scanner completed and recorded its inventory, and a green admission run means the configured file-based admission checks found no unregistered deltas. It is not approval to run hooks, MCP servers, install scripts, repository settings changes, or credentialed operations.
 
-## Evidence surfaces
+### Evidence surfaces
 
 - Workflow `permissions:` blocks at workflow and nested job scope.
 - Reusable action references and whether they use a full SHA, version tag, major tag, floating branch, local action, or Docker action.
@@ -18,7 +35,7 @@ The gate must not overclaim safety. A green local report means only that the sca
 - Presence or absence of official CodeQL, Dependency Review, and OpenSSF Scorecard workflow/action evidence.
 - **Workflow command/environment-file channel writes**: line-level inventory of writes to `GITHUB_OUTPUT`, `GITHUB_STATE`, `GITHUB_ENV`, and `GITHUB_STEP_SUMMARY`. Each finding records `channel`, `line`, `sourceKind` (literal, repo-script-output, github-context, external-command-output, unknown), `encodingGuard`, and `riskNote` (non-null only when an untrusted context expression is interpolated directly into the channel write).
 
-## Boundary
+### Boundary
 
 - Repository settings, branch protection, environment protection, and secret values are outside file-based proof.
 - The `environment: release` gate in `.github/workflows/release.yml` depends on GitHub environment protection rules (required reviewers) configured in repository settings. The presence of `environment: release` in workflow YAML is not evidence that an approval gate is enforced; only the repository settings page can prove that.
@@ -28,7 +45,7 @@ The gate must not overclaim safety. A green local report means only that the sca
 - Environment-file channel transition (using `>> "$GITHUB_OUTPUT"` instead of deprecated `::set-output::`) reduces the deprecated stdout command-injection class but does not eliminate downstream authority risks when untrusted values flow into later steps or release decisions. This gate records the evidence; it does not certify that any specific workflow is safe.
 - The `workflowCommandWrites` detector operates on individual lines. Multi-line heredoc or brace-group blocks where the variable reference appears on a different line from `>>` may not be classified; treat `sourceKind: unknown` findings as requiring manual review if precision matters.
 
-## Commands
+### Commands
 
 ```bash
 npm run verify:security-posture
@@ -39,7 +56,7 @@ npm run test:security-posture
 
 `npm run verify` includes this gate in admission/fail mode so package verification fails on unregistered action refs, unreported write permissions, or risky triggers.
 
-## Admission/fail policy
+### Admission/fail policy
 
 Normal report mode remains an evidence report. Admission mode (`--admission`, also accepted as `--fail` or `--fail-on-findings`) exits non-zero when any of these are present:
 
@@ -50,6 +67,10 @@ Normal report mode remains an evidence report. Admission mode (`--admission`, al
 Current workflows are the baseline and must stay green without changing `.github/workflows/*.yml`. If a workflow change intentionally introduces one of these findings, the same change must add the narrow ledger registration with a rationale and review/update expectation. Otherwise admission mode must fail.
 
 ## Action pinning policy
+
+- Activation: workflow action references, pinning/provenance exception claims, or exception-ledger entries change or are reviewed.
+- Verdict: `PASS` when refs are SHA-pinned or narrowly registered and no text equates immutability with semantic safety; `BLOCK` on unregistered refs, broad/stale ledger entries, or semantic-safety overclaims; `N/A` when no action-ref/pinning surface is in scope.
+- Evidence: `actionPinPolicy` report section, `ACTION_PIN_EXCEPTION_LEDGER`, and workflow diff; this lane does not approve release provenance or repository settings.
 
 The gate tracks three distinct concerns for action references:
 
@@ -116,6 +137,10 @@ Action pinning evidence (this section) is distinct from:
 
 ## Workflow Static Lint Gate (Issue #182)
 
+- Activation: workflow YAML, reusable workflow contracts, action I/O references, script interpolation, or workflow lint verifier/report changes are in scope.
+- Verdict: `PASS` when lint is zero-warning and the static report covers the changed surface; `BLOCK` on lint failure, unsuppressed warning, contract mismatch, or semantic/secret-safety overclaim; `N/A` outside workflow lint/YAML structure scope.
+- Evidence: `verify:workflow-lint`, `test:workflow-lint`, and changed workflow/verifier files; static lint green records structural evidence only.
+
 `scripts/verify-workflow-lint.mjs` is a separate, independent admission evidence lane.
 
 ### Scope
@@ -172,6 +197,10 @@ Static lint green does **not** imply semantic safety, secret safety, or provenan
 ---
 
 ## Release publish integrity chain (Issue #219)
+
+- Activation: release workflow, tag/version checks, tarball packing, checksum handoff, or publish-context re-verification changes are in scope.
+- Verdict: `PASS` when tag verification, tarball checksum handoff, and publish-context re-verify remain intact; `BLOCK` if an unverified checkout/tarball can publish, checksum evidence can be empty/mismatched, or YAML is claimed to prove environment protection; `N/A` outside release/publish integrity scope.
+- Evidence: release workflow diff plus relevant release verifier tests; this lane never authorizes release, tag, npm publish, or registry mutation.
 
 `.github/workflows/release.yml` separates verification (`verify_tagged_ref`) from publication (`publish_to_npm`). Publishing a tarball with `npm publish <tarball>` does not run the package's `prepublishOnly` hook, so the publish context gets no verification for free. The workflow closes that gap with an explicit chain:
 
