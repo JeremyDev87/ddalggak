@@ -84,6 +84,80 @@ const wikiBridgeReferencePaths = [
   path.join(skillDir, "references", "wiki-bridge.md"),
   path.join(rootDir, "ddalggak", "references", "wiki-bridge.md"),
 ];
+const referenceAnchorContracts = [
+  {
+    verificationMode: "all-copies",
+    contractLabel: "Quality Lens Router",
+    referencePaths: routerReferencePaths,
+    anchors: requiredRouterReferenceAnchors,
+    missingAnchorsLabel: ({ label }) => `Quality Lens Router acceptance anchors missing from ${label}`,
+    extraValidate: assertRouterReferenceContract,
+  },
+  {
+    verificationMode: "all-copies",
+    contractLabel: "Evidence Contract",
+    referencePaths: evidenceReferencePaths,
+    anchors: requiredEvidenceReferenceAnchors,
+    missingAnchorsLabel: ({ label }) => `Evidence Contract anchors missing from ${label}`,
+  },
+  {
+    verificationMode: "source-root",
+    contractLabel: "Simplicity / Deletability Gate",
+    referencePaths: simplicityReferencePaths,
+    anchors: requiredSimplicityReferenceAnchors,
+    missingAnchorsLabel: () => "Simplicity / Deletability Gate anchors missing",
+  },
+  {
+    verificationMode: "source-root",
+    contractLabel: "Frontend Design Gate",
+    referencePaths: frontendDesignReferencePaths,
+    anchors: requiredFrontendDesignReferenceAnchors,
+    missingAnchorsLabel: () => "Frontend Design Gate anchors missing",
+  },
+  {
+    verificationMode: "source-root",
+    contractLabel: "Vercel Agent Skills Gate",
+    referencePaths: vercelAgentSkillsReferencePaths,
+    anchors: requiredVercelAgentSkillsReferenceAnchors,
+    missingAnchorsLabel: () => "Vercel Agent Skills Gate anchors missing",
+  },
+  {
+    verificationMode: "source-root",
+    contractLabel: "Continuous Regression Library",
+    referencePaths: regressionLibraryReferencePaths,
+    anchors: requiredRegressionLibraryReferenceAnchors,
+    missingAnchorsLabel: () => "Continuous Regression Library anchors missing",
+    extraValidate: assertRegressionLibraryClassFields,
+  },
+  {
+    verificationMode: "source-root",
+    contractLabel: "Agent Runtime Contract",
+    referencePaths: agentRuntimeContractReferencePaths,
+    anchors: requiredAgentRuntimeContractAnchors,
+    missingAnchorsLabel: () => "Agent Runtime Contract anchors missing",
+  },
+  {
+    verificationMode: "source-root",
+    contractLabel: "Core Invariants",
+    referencePaths: coreInvariantReferencePaths,
+    anchors: requiredCoreInvariantReferenceAnchors,
+    missingAnchorsLabel: () => "Core Invariants anchors missing",
+  },
+  {
+    verificationMode: "all-copies",
+    contractLabel: "Prompt Safety / Brief Compiler",
+    referencePaths: promptOptimizerReferencePaths,
+    anchors: requiredPromptSafetyReferenceAnchors,
+    missingAnchorsLabel: ({ label }) => `Prompt Safety / Brief Compiler anchors missing from ${label}`,
+  },
+  {
+    verificationMode: "source-root",
+    contractLabel: "Wiki Bridge",
+    referencePaths: wikiBridgeReferencePaths,
+    anchors: requiredWikiBridgeReferenceAnchors,
+    missingAnchorsLabel: () => "Wiki Bridge anchors missing",
+  },
+];
 const packagePath = path.join(rootDir, "package.json");
 const readmePath = path.join(rootDir, "README.md");
 const cliPath = path.join(rootDir, "bin", "ddalggak.js");
@@ -1013,6 +1087,85 @@ function assertSectionScopedAnchors({ label, parsedSections, heading, anchors })
   }
 }
 
+function assertRouterReferenceContract({ label, text, referencePath }) {
+  assertRouterGateFamilyManifestContract({
+    label,
+    routerText: text,
+    rootReferenceDir: path.dirname(referencePath),
+  });
+  const missingGateFamilies = requiredRouterGateFamilies.filter(
+    (gateFamily) => !text.includes(`\`${gateFamily}\``),
+  );
+  if (missingGateFamilies.length > 0) {
+    fail(
+      `Quality Lens Router gate families missing from ${label}:\n${missingGateFamilies
+        .map((gateFamily) => `  - ${gateFamily}`)
+        .join("\n")}`,
+    );
+  }
+}
+
+function assertRegressionLibraryClassFields({ text }) {
+  for (const className of requiredRegressionLibraryClasses) {
+    const section = extractMarkdownSection(text, className);
+    if (!section) {
+      fail(`Continuous Regression Library class missing: ${className}`);
+      continue;
+    }
+    const missingFields = requiredRegressionLibraryFields.filter(
+      (field) => !section.includes(`- ${field}`),
+    );
+    if (missingFields.length > 0) {
+      fail(
+        `Continuous Regression Library class ${className} missing fields:\n${missingFields
+          .map((field) => `  - ${field}`)
+          .join("\n")}`,
+      );
+    }
+  }
+}
+
+function verifyAllReferenceCopiesAnchors(contract) {
+  for (const referencePath of contract.referencePaths) {
+    const label = path.relative(rootDir, referencePath);
+    if (!statSync(referencePath, { throwIfNoEntry: false })?.isFile()) {
+      fail(`${label} must exist for ${contract.contractLabel} parity.`);
+      continue;
+    }
+
+    const text = readText(referencePath);
+    assertReferenceAnchors({
+      label: contract.missingAnchorsLabel({ label }),
+      text,
+      anchors: contract.anchors,
+    });
+    contract.extraValidate?.({ label, text, referencePath });
+  }
+}
+
+function verifySourceRootReferenceAnchors(contract) {
+  const sourceRootReference = readSourceRootReference(contract.referencePaths, contract.contractLabel);
+  if (!sourceRootReference) {
+    return;
+  }
+  assertReferenceAnchors({
+    label: contract.missingAnchorsLabel({ label: sourceRootReference.label }),
+    text: sourceRootReference.text,
+    anchors: contract.anchors,
+  });
+  contract.extraValidate?.(sourceRootReference);
+}
+
+function verifyReferenceAnchorContract(contract) {
+  if (contract.verificationMode === "all-copies") {
+    verifyAllReferenceCopiesAnchors(contract);
+  } else if (contract.verificationMode === "source-root") {
+    verifySourceRootReferenceAnchors(contract);
+  } else {
+    fail(`${contract.contractLabel} has unknown reference anchor verification mode: ${contract.verificationMode}`);
+  }
+}
+
 for (const budget of skillBudgets) {
   assertSkillBudget(budget);
 }
@@ -1053,50 +1206,8 @@ assertForbiddenHotPathTemplateSentinels({
   text: readText(claudeSkillPath),
 });
 
-for (const referencePath of routerReferencePaths) {
-  const label = path.relative(rootDir, referencePath);
-  if (!statSync(referencePath, { throwIfNoEntry: false })?.isFile()) {
-    fail(`${label} must exist for Quality Lens Router parity.`);
-    continue;
-  }
-
-  const referenceText = readText(referencePath);
-  assertRouterGateFamilyManifestContract({
-    label,
-    routerText: referenceText,
-    rootReferenceDir: path.dirname(referencePath),
-  });
-  const missingGateFamilies = requiredRouterGateFamilies.filter(
-    (gateFamily) => !referenceText.includes(`\`${gateFamily}\``),
-  );
-  if (missingGateFamilies.length > 0) {
-    fail(
-      `Quality Lens Router gate families missing from ${label}:\n${missingGateFamilies
-        .map((gateFamily) => `  - ${gateFamily}`)
-        .join("\n")}`,
-    );
-  }
-
-  assertReferenceAnchors({
-    label: `Quality Lens Router acceptance anchors missing from ${label}`,
-    text: referenceText,
-    anchors: requiredRouterReferenceAnchors,
-  });
-}
-
-for (const referencePath of evidenceReferencePaths) {
-  const label = path.relative(rootDir, referencePath);
-  if (!statSync(referencePath, { throwIfNoEntry: false })?.isFile()) {
-    fail(`${label} must exist for Evidence Contract parity.`);
-    continue;
-  }
-
-  const referenceText = readText(referencePath);
-  assertReferenceAnchors({
-    label: `Evidence Contract anchors missing from ${label}`,
-    text: referenceText,
-    anchors: requiredEvidenceReferenceAnchors,
-  });
+for (const contract of referenceAnchorContracts) {
+  verifyReferenceAnchorContract(contract);
 }
 
 for (const contract of gateStageHeadingReferenceContracts) {
@@ -1128,42 +1239,6 @@ function readSourceRootReference(referencePaths, contractLabel) {
   return { label, text: readText(sourceRootReferencePath) };
 }
 
-const simplicityReference = readSourceRootReference(
-  simplicityReferencePaths,
-  "Simplicity / Deletability Gate",
-);
-if (simplicityReference) {
-  assertReferenceAnchors({
-    label: "Simplicity / Deletability Gate anchors missing",
-    text: simplicityReference.text,
-    anchors: requiredSimplicityReferenceAnchors,
-  });
-}
-
-const frontendDesignReference = readSourceRootReference(
-  frontendDesignReferencePaths,
-  "Frontend Design Gate",
-);
-if (frontendDesignReference) {
-  assertReferenceAnchors({
-    label: "Frontend Design Gate anchors missing",
-    text: frontendDesignReference.text,
-    anchors: requiredFrontendDesignReferenceAnchors,
-  });
-}
-
-const vercelAgentSkillsReference = readSourceRootReference(
-  vercelAgentSkillsReferencePaths,
-  "Vercel Agent Skills Gate",
-);
-if (vercelAgentSkillsReference) {
-  assertReferenceAnchors({
-    label: "Vercel Agent Skills Gate anchors missing",
-    text: vercelAgentSkillsReference.text,
-    anchors: requiredVercelAgentSkillsReferenceAnchors,
-  });
-}
-
 const gateActivationReferencePathsByFile = new Map([
   ["frontend-design-gate.md", frontendDesignReferencePaths],
   ["vercel-agent-skills-gates.md", vercelAgentSkillsReferencePaths],
@@ -1188,80 +1263,6 @@ for (const [gateFamily, contract] of Object.entries(gateActivationKeywordContrac
   }
 }
 
-const regressionLibraryReference = readSourceRootReference(
-  regressionLibraryReferencePaths,
-  "Continuous Regression Library",
-);
-if (regressionLibraryReference) {
-  assertReferenceAnchors({
-    label: "Continuous Regression Library anchors missing",
-    text: regressionLibraryReference.text,
-    anchors: requiredRegressionLibraryReferenceAnchors,
-  });
-  for (const className of requiredRegressionLibraryClasses) {
-    const section = extractMarkdownSection(regressionLibraryReference.text, className);
-    if (!section) {
-      fail(`Continuous Regression Library class missing: ${className}`);
-      continue;
-    }
-    const missingFields = requiredRegressionLibraryFields.filter(
-      (field) => !section.includes(`- ${field}`),
-    );
-    if (missingFields.length > 0) {
-      fail(
-        `Continuous Regression Library class ${className} missing fields:\n${missingFields
-          .map((field) => `  - ${field}`)
-          .join("\n")}`,
-      );
-    }
-  }
-}
-
-const agentRuntimeReference = readSourceRootReference(
-  agentRuntimeContractReferencePaths,
-  "Agent Runtime Contract",
-);
-if (agentRuntimeReference) {
-  assertReferenceAnchors({
-    label: "Agent Runtime Contract anchors missing",
-    text: agentRuntimeReference.text,
-    anchors: requiredAgentRuntimeContractAnchors,
-  });
-}
-
-const coreInvariantReference = readSourceRootReference(coreInvariantReferencePaths, "Core Invariants");
-if (coreInvariantReference) {
-  assertReferenceAnchors({
-    label: "Core Invariants anchors missing",
-    text: coreInvariantReference.text,
-    anchors: requiredCoreInvariantReferenceAnchors,
-  });
-}
-
-for (const referencePath of promptOptimizerReferencePaths) {
-  const label = path.relative(rootDir, referencePath);
-  if (!statSync(referencePath, { throwIfNoEntry: false })?.isFile()) {
-    fail(`${label} must exist for Prompt Safety / Brief Compiler parity.`);
-    continue;
-  }
-
-  const referenceText = readText(referencePath);
-  assertReferenceAnchors({
-    label: `Prompt Safety / Brief Compiler anchors missing from ${label}`,
-    text: referenceText,
-    anchors: requiredPromptSafetyReferenceAnchors,
-  });
-}
-
-const wikiBridgeReference = readSourceRootReference(wikiBridgeReferencePaths, "Wiki Bridge");
-if (wikiBridgeReference) {
-  assertReferenceAnchors({
-    label: "Wiki Bridge anchors missing",
-    text: wikiBridgeReference.text,
-    anchors: requiredWikiBridgeReferenceAnchors,
-  });
-}
-
 const minSubstantiveSectionBodyChars = 40;
 // Known pre-existing index-style heading with an intentionally empty body (#214 audit finding).
 // The document itself is must-not-touch in #214; do not extend this list without an issue reference.
@@ -1271,16 +1272,7 @@ const substantiveSectionReferencePaths = [
     ...requiredDisclosureAssetPaths()
       .filter((assetPath) => assetPath.includes("/references/"))
       .map((assetPath) => path.join(rootDir, assetPath)),
-    ...routerReferencePaths,
-    ...evidenceReferencePaths,
-    ...simplicityReferencePaths,
-    ...frontendDesignReferencePaths,
-    ...vercelAgentSkillsReferencePaths,
-    ...regressionLibraryReferencePaths,
-    ...agentRuntimeContractReferencePaths,
-    ...coreInvariantReferencePaths,
-    ...promptOptimizerReferencePaths,
-    ...wikiBridgeReferencePaths,
+    ...referenceAnchorContracts.flatMap((contract) => contract.referencePaths),
   ]),
 ];
 for (const referencePath of substantiveSectionReferencePaths) {
