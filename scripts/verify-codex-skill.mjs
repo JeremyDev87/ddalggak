@@ -25,6 +25,7 @@ import {
   requiredSimplicityReferenceAnchors,
   requiredFrontendDesignReferenceAnchors,
   requiredVercelAgentSkillsReferenceAnchors,
+  gateStageHeadingReferenceContracts,
   gateActivationKeywordContracts,
   requiredRegressionLibraryReferenceAnchors,
   requiredRegressionLibraryClasses,
@@ -851,6 +852,20 @@ function assertReferenceAnchors({ label, text, anchors }) {
   }
 }
 
+function assertStageHeadings({ label, text, stages }) {
+  const sections = parseMarkdownSections(text);
+  const missingStages = stages.filter(
+    (stage) => !sections.some((section) => section.level === 2 && section.heading === stage),
+  );
+  if (missingStages.length > 0) {
+    fail(
+      `${label} must use canonical stage headings for gate applicability:\n${formatAnchorList(
+        missingStages.map((stage) => `## ${stage}`),
+      )}`,
+    );
+  }
+}
+
 function parseMarkdownSections(text) {
   const lines = text.split("\n");
   const headings = [];
@@ -998,6 +1013,21 @@ for (const referencePath of evidenceReferencePaths) {
     text: referenceText,
     anchors: requiredEvidenceReferenceAnchors,
   });
+}
+
+for (const contract of gateStageHeadingReferenceContracts) {
+  const referencePaths = [
+    path.join(skillDir, contract.reference),
+    path.join(rootDir, "ddalggak", contract.reference),
+  ];
+  for (const referencePath of referencePaths) {
+    const label = path.relative(rootDir, referencePath);
+    if (!statSync(referencePath, { throwIfNoEntry: false })?.isFile()) {
+      fail(`${label} must exist for canonical gate stage-heading verification.`);
+      continue;
+    }
+    assertStageHeadings({ label, text: readText(referencePath), stages: contract.stages });
+  }
 }
 
 const [codexSimplicityPath, claudeSimplicityPath] = simplicityReferencePaths;

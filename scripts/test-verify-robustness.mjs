@@ -363,4 +363,22 @@ for (const [fixtureName, expectedMessage] of [
   );
 }
 
+{
+  const tempDir = copyRepo();
+  const referencePath = path.join(tempDir, "ddalggak", "references", "frontend-design-gate.md");
+  const reference = readFileSync(referencePath, "utf8");
+  const drifted = reference.replace("## review", "## Frontend Design Review Gate");
+  assert(drifted !== reference, "fixture setup: expected to drift a canonical gate stage heading");
+  writeFileSync(referencePath, drifted, "utf8");
+
+  const result = runCodexSkillVerifier(tempDir);
+  const output = `${result.stdout}\n${result.stderr}`;
+  assert(result.status === 1, `gate stage-heading drift must fail, got exit ${result.status}\n${output}`);
+  assert(
+    output.includes("ddalggak/references/frontend-design-gate.md must use canonical stage headings"),
+    `expected gate stage-heading diagnostic\n${output}`,
+  );
+  assert(output.includes("## review"), `expected missing canonical stage in diagnostic\n${output}`);
+}
+
 console.log("[test:verify-robustness] passed");

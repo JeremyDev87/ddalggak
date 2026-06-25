@@ -17,7 +17,9 @@ This gate does not ban abstraction and does not abandon SOLID. It protects human
 - If SOLID or a named pattern makes the code harder for a human maintainer to read, the human-readable design wins.
 - Simplicity is not an excuse to collapse real domain, server, request, auth, data, or security boundaries.
 
-## Plan Gate
+## plan
+
+Plan Gate:
 
 Before proposing a helper, provider, wrapper, component, module, pattern, interface, registry, fallback, or shared layer, answer:
 
@@ -29,13 +31,17 @@ Before proposing a helper, provider, wrapper, component, module, pattern, interf
 
 If these answers are weak, plan the direct change or boundary clarification instead of a new abstraction.
 
-## Start Brief Gate
+## start
+
+Start Brief Gate:
 
 Every implementation brief should state: **small direct change first**.
 
 Worker instructions should prefer deleting, inlining, or clarifying boundaries before adding helpers, providers, wrappers, fallback branches, or generalized component layers. A new abstraction must include concrete reuse or boundary-clarification evidence in the final output.
 
-## Review Gate
+## review
+
+Review Gate:
 
 Reviewers should treat the following as blocking targets:
 

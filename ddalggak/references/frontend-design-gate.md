@@ -14,7 +14,9 @@ Apply this gate when any source signal matches one or more of these surfaces:
 
 Keep the gate lightweight or skip it when the task is backend/API-only, test-only, or a narrow functional bugfix where redesign would expand scope. Record the skip reason in Quality Lens Router Output.
 
-## `plan`: Frontend Design Brief
+## plan
+
+Frontend Design Brief:
 
 For UI work, the plan must include a `Frontend Design Brief` before implementation units:
 
@@ -34,7 +36,9 @@ Anti-goals should prevent generic AI/template layouts, unjustified default typog
 
 Product-specific constraints outrank novelty. The brief should preserve existing grid rhythm, breakpoints, density, copy tone, data boundaries, and design conventions unless the issue explicitly asks to change them.
 
-## `start`: Implementation Handoff
+## start
+
+Implementation Handoff:
 
 For frontend implementation lanes, the worker brief must require the implementer to restate before coding:
 
@@ -61,7 +65,9 @@ For UI/component work, treat these rules as a quality gate, worker brief, and re
 
 Recommended naming/role split when a component outgrows a small single-file implementation: `ComponentName/ComponentName.tsx`, `ComponentName.types.ts`, `ComponentName.parts.tsx`, `ComponentName.utils.ts`, `ComponentName.spec.tsx`, `ComponentName.stories.tsx`, and `index.ts`. Create only the files that have a real role, size, or verification need; do not require empty companion files.
 
-## `review`: Frontend Design Review Gate
+## review
+
+Frontend Design Review Gate:
 
 For UI PRs, the review packet must include a `Frontend Design Review Gate` that checks:
 

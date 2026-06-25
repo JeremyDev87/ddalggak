@@ -15,6 +15,18 @@ This single reference contains four evidence lanes. Keep verdicts separate: one 
 | Workflow static lint | workflow YAML, reusable contracts, action I/O, or script-interpolation structure | `verify:workflow-lint` evidence + reviewer judgement |
 | Release publish integrity chain | release workflow, tag/version, tarball checksum, or publish-context verification | release workflow diff/tests + no-publish boundary |
 
+## plan
+
+If planned, name posture sub-gates/file limits.
+
+## start
+
+If changed, keep posture admission/evidence.
+
+## review
+
+Apply each sub-gate separately; no spillover.
+
 ## Repository posture inventory/admission sub-gate
 
 - Activation: inspect workflow permissions, reusable action refs, risky triggers, environment-file writes, or posture report/admission claims.
