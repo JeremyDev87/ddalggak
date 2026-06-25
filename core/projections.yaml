@@ -55,6 +55,8 @@ parity_ledger:
     class: may-localize
   - path: references/frontend-design-gate.md
     class: must-match
+  - path: references/gate-verdict-vocabulary.md
+    class: must-match
   - path: references/human-review-feedback-loop.md
     class: must-match
   - path: references/issue-ready-plan.md
@@ -197,6 +199,9 @@ reference_budget_exemptions:
   - reference: frontend-design-gate.md
     max_tokens: 2100
     reason: conditional gate reachable only via quality-lens-router; not in any base required_references
+  - reference: gate-verdict-vocabulary.md
+    max_tokens: 2500
+    reason: shared result-axis index reachable via quality-lens-router/core-invariants pointers; not in any base required_references
   - reference: react-code-quality-harness.md
     max_tokens: 1200
     reason: conditional gate reachable only via quality-lens-router; not in any base required_references

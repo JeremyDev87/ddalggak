@@ -22,6 +22,7 @@ import {
   routerGateFamilies,
   requiredRouterGateFamilies,
   requiredRouterReferenceAnchors,
+  requiredGateVerdictVocabularyReferenceAnchors,
   requiredEvidenceReferenceAnchors,
   requiredSimplicityReferenceAnchors,
   requiredFrontendDesignReferenceAnchors,
@@ -47,6 +48,10 @@ const claudeSkillPath = path.join(rootDir, "ddalggak", "SKILL.md");
 const routerReferencePaths = [
   path.join(skillDir, "references", "quality-lens-router.md"),
   path.join(rootDir, "ddalggak", "references", "quality-lens-router.md"),
+];
+const gateVerdictVocabularyReferencePaths = [
+  path.join(skillDir, "references", "gate-verdict-vocabulary.md"),
+  path.join(rootDir, "ddalggak", "references", "gate-verdict-vocabulary.md"),
 ];
 const evidenceReferencePaths = [
   path.join(skillDir, "references", "evidence-contract.md"),
@@ -92,6 +97,13 @@ const referenceAnchorContracts = [
     anchors: requiredRouterReferenceAnchors,
     missingAnchorsLabel: ({ label }) => `Quality Lens Router acceptance anchors missing from ${label}`,
     extraValidate: assertRouterReferenceContract,
+  },
+  {
+    verificationMode: "all-copies",
+    contractLabel: "Gate Verdict Vocabulary Index",
+    referencePaths: gateVerdictVocabularyReferencePaths,
+    anchors: requiredGateVerdictVocabularyReferenceAnchors,
+    missingAnchorsLabel: ({ label }) => `Gate Verdict Vocabulary Index anchors missing from ${label}`,
   },
   {
     verificationMode: "all-copies",
