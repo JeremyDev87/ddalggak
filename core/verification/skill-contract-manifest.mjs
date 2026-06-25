@@ -1,71 +1,53 @@
 // Data-only contract registry for scripts/verify-codex-skill.mjs.
 // Keep path-free verifier expectations here so the executable verifier remains orchestration, not a long inline manifest.
 
+// Progressive-disclosure template subset only. Reference disclosure assets are
+// derived from subcommandExecutionContracts[*].requiredReferences so command
+// reference requirements have a single manifest authority.
 export const requiredDisclosureAssetsBySubcommand = {
   start: {
-    references: ["start-workflow.md", "core-invariants.md", "2026-06-04-brain-v0-wiki-authority-in-ddalggak.md"],
     templates: ["worker-brief.md"],
   },
   review: {
-    references: [
-      "cross-review-loop.md",
-      "ci-failure-triage-loop.md",
-      "human-review-feedback-loop.md",
-      "core-invariants.md",
-      "2026-06-04-brain-v0-wiki-authority-in-ddalggak.md",
-    ],
     templates: ["review-brief.md", "fix-brief.md"],
   },
   status: {
-    references: ["status.md"],
     templates: [],
   },
   plan: {
-    references: ["issue-ready-plan.md", "core-invariants.md", "wiki-bridge.md", "2026-06-04-brain-v0-wiki-authority-in-ddalggak.md"],
     templates: [],
   },
   issue: {
-    references: ["plan-to-issues.md"],
     templates: ["issue-body.md", "epic-body.md"],
   },
   clean: {
-    references: ["merge-cleanup.md"],
     templates: [],
   },
   ship: {
-    references: ["ship.md"],
     templates: [],
   },
   retro: {
-    references: ["retrospective.md", "retrospective-workflow.md"],
     templates: [],
   },
   prompt: {
-    references: ["prompt-optimizer.md"],
     templates: [],
   },
   tune: {
-    references: ["tune-goal.md"],
     templates: [],
   },
   forge: {
-    references: ["forge-goal.md"],
     templates: [],
   },
   spark: {
-    references: ["spark-goal.md"],
     templates: [],
   },
   check: {
-    references: ["local-diff-check.md"],
     templates: [],
   },
   getwiki: {
-    references: ["wiki-bridge.md", "2026-06-04-brain-v0-wiki-authority-in-ddalggak.md"],
     templates: [],
   },
   setwiki: {
-    references: ["wiki-bridge.md", "2026-06-04-brain-v0-wiki-authority-in-ddalggak.md"],
     templates: [],
   },
 };
