@@ -95,9 +95,9 @@ ready_transition:
 
 next_gate:
   owner: "conductor|worker|reviewer|human"
-  action: "<exact next action>"
-  command: "<exact command if applicable>"
-  exit_condition: "<observable completion signal>"
+  action: "<short stable gate action, e.g. create_pr|wait_for_checks|run_review|fix_blockers|request_human_decision|merge_manual_only>"
+  command: "<exact command if applicable; empty for human/manual gates>"
+  exit_condition: "<observable completion signal, e.g. PR URL read back|checks terminal success/skipped|APPROVE evidence at current head|human answer posted|manual merge verified>"
 ```
 
 `artifacts.pending_user_input` is the durable queue for questions that block progress. If it is non-empty, `next_gate.owner` must be `human` or the plan must explain how the answer will be obtained without guessing.
