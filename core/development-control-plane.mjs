@@ -2,6 +2,8 @@ import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
+import { sideEffectBoundaryControlPlaneForbiddenActions } from "./verification/side-effect-boundary-policy.mjs";
+
 const REQUIRED_ISSUE_FIELDS = ["body", "labels", "comments", "title", "url"];
 const APPROVAL_SOURCES = new Set(["direct", "discord", "workcell", "github-issue-comment"]);
 // Module-private brand stamped only by normalizeApprovalSource. Raw object
@@ -19,14 +21,7 @@ const DEVELOPMENT_CONTROL_PLANE_STATE_GATES = Object.freeze({
   fulfilledRequiresPassingVerification: true,
   contentLightEvidenceOnly: true,
 });
-const DEVELOPMENT_CONTROL_PLANE_FORBIDDEN_ACTIONS = Object.freeze([
-  "merge",
-  "auto-merge",
-  "force-push without explicit current-turn approval",
-  "raw prompt or transcript persistence",
-  "secret or private log persistence",
-  "GitHub mutation payload persistence",
-]);
+const DEVELOPMENT_CONTROL_PLANE_FORBIDDEN_ACTIONS = sideEffectBoundaryControlPlaneForbiddenActions;
 
 function failClosed(message, details = {}) {
   const error = new Error(message);

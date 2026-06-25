@@ -4,6 +4,8 @@ import path from "node:path";
 
 import { makeTempDir } from "./test-lib/temp.mjs";
 
+import { sideEffectBoundaryControlPlaneForbiddenActions } from "../core/verification/side-effect-boundary-policy.mjs";
+
 import {
   buildDdalggakDevelopmentPacket,
   ddalggakIssueContextFromGhJson,
@@ -84,12 +86,7 @@ const cases = [
         contentLightEvidenceOnly: true,
       });
       assert.deepEqual(packet.taskScope.forbiddenActions, [
-        "merge",
-        "auto-merge",
-        "force-push without explicit current-turn approval",
-        "raw prompt or transcript persistence",
-        "secret or private log persistence",
-        "GitHub mutation payload persistence",
+        ...sideEffectBoundaryControlPlaneForbiddenActions,
       ]);
     },
   },

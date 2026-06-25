@@ -19,6 +19,7 @@ const requiredArtifactPaths = [
   "bin/lib/setup.mjs",
   "bin/lib/status.mjs",
   "core/development-control-plane.mjs",
+  "core/verification/side-effect-boundary-policy.mjs",
   "scripts/project-runtime-assets.mjs",
   "scripts/smoke.mjs",
   "scripts/verify-codex-skill.mjs",
