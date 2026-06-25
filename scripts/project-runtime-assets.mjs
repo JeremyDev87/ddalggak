@@ -344,6 +344,7 @@ function requiredPackageFiles() {
     ".codex/skills/ddalggak/SKILL.md",
     ".codex/skills/ddalggak/agents/openai.yaml",
     "scripts/project-runtime-assets.mjs",
+    "core/verification/side-effect-boundary-policy.mjs",
     "core/verification/skill-contract-manifest.mjs",
     "ddalggak/SKILL.md",
     "bin/ddalggak.js",

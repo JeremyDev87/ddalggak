@@ -3,6 +3,7 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
+import { sideEffectBoundarySkillSemanticAnchorGuards } from "../core/verification/side-effect-boundary-policy.mjs";
 import {
   requiredDisclosureAssetsBySubcommand,
   requiredIssueTemplateFields,
@@ -107,13 +108,7 @@ const skillBudgetMetrics = [];
 
 const failures = [];
 
-const semanticAnchorGuards = [
-  {
-    anchor: "Manual merge only",
-    description: "manual merge only must not be inverted into auto-merge permission",
-    invalidLinePattern: /\b(?:auto-?merge|merge)\b.*\b(?:ok|okay|allowed|enabled|permitted|허용|가능|켜도|해도)|\b(?:not|no longer|아니|아님|폐기|제거)\b/i,
-  },
-];
+const semanticAnchorGuards = sideEffectBoundarySkillSemanticAnchorGuards;
 
 function fail(message) {
   failures.push(message);

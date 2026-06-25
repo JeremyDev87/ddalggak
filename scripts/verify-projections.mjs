@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 
+import { sideEffectBoundaryAgentsForbiddenSentinels } from "../core/verification/side-effect-boundary-policy.mjs";
 import { requiredReferenceAdmissionHeaderFields } from "../core/verification/skill-contract-manifest.mjs";
 import { parseSimpleYaml } from "./lib/parse-simple-yaml.mjs";
 
@@ -12,19 +13,7 @@ const AGENTS_MD_REQUIRED_ANCHORS = [
   "npm run verify",
 ];
 
-// These sentinels are patterns that indicate granting prohibited authority or leaking secrets.
-// They are precise enough to avoid false positives on boundary-description phrases in AGENTS.md itself.
-const AGENTS_MD_FORBIDDEN_SENTINELS = [
-  "enable auto-merge",
-  "allow auto-merge",
-  "auto-merge allowed",
-  "force-push bypass",
-  "force-push allowed",
-  "ghp_",
-  "npm_",
-  "GITHUB_TOKEN =",
-  "NPM_TOKEN =",
-];
+const AGENTS_MD_FORBIDDEN_SENTINELS = sideEffectBoundaryAgentsForbiddenSentinels;
 
 const AGENTS_MD_MAX_LINES = 100;
 

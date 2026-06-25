@@ -287,6 +287,7 @@ export const requiredPackageFiles = [
   "bin/ddalggak.js",
   "bin/lib/dispatch.mjs",
   "bin/lib/setup.mjs",
+  "core/verification/side-effect-boundary-policy.mjs",
   "core/verification/skill-contract-manifest.mjs",
   "ddalggak/SKILL.md",
   "ddalggak/references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md",
