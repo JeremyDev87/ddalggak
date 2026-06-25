@@ -38,13 +38,17 @@ For each applicable gate, cite the smallest concrete evidence available:
 - rendered route, DOM query, screenshot, viewport, or a11y role/name evidence when UI readiness is claimed;
 - explicit reason for `N_A` or `NEEDS_EVIDENCE`.
 
-## ddalggak integration
+## plan
 
-1. Add `react-code-quality-harness` to `Quality Lens Router Output > Applicable gate families` with the concrete reason.
-2. Add `references/react-code-quality-harness.md` to `Required references`.
-3. Apply only the gates touched by the diff; do not run all ten as heavyweight checks for unrelated work.
-4. Treat `FAIL` or blocking `NEEDS_EVIDENCE` as a PR-ready/APPROVE blocker when the changed surface requires rendered/runtime evidence.
-5. Keep Evidence Contract authoritative: React harness PASS does not replace current-head CI, issue scope checks, validation commands, or manual-merge boundaries.
+ddalggak integration: add `react-code-quality-harness`; name only touched gates.
+
+## start
+
+ddalggak integration: apply touched gates; cite smallest file/route/test/rendered proof.
+
+## review
+
+ddalggak integration: `FAIL`/blocking `NEEDS_EVIDENCE` blocks PR-ready/APPROVE; Evidence Contract/CI/scope/validation still apply.
 
 ## Report addendum
 

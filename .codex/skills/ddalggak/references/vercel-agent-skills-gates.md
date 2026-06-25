@@ -29,7 +29,9 @@ Apply one or more gates when the repo or issue indicates:
 
 Skip or keep lightweight for backend-only code with no frontend, deployment, or mobile surface.
 
-## `ddalggak plan` Requirements
+## plan
+
+`ddalggak plan` requirements:
 
 For applicable work, add a compact `Vercel Agent Skills Gate` section to the plan:
 
@@ -55,7 +57,9 @@ Planning rules:
 - For Vercel deploy work, default to preview deploy unless the user explicitly requests production; always gather git remote, existing Vercel link, package manager/build command, and token/project state before mutating deploy state.
 - For React Native/Expo work, record list virtualization, JS thread pressure, animation performance, native module boundary, and platform API risks before implementation.
 
-## `ddalggak start` Handoff Additions
+## start
+
+`ddalggak start` handoff additions:
 
 Implementation briefs should include the applicable gate bullets:
 
@@ -66,7 +70,9 @@ Implementation briefs should include the applicable gate bullets:
 - Vercel deploy/token: identify token source without printing secrets; preview-first; verify live deployment URL or env state after mutation; record verified URL/env state; require explicit production deploy intent before production mutation.
 - React Native/Expo: optimize lists/animations/platform boundaries with mobile performance evidence, including list virtualization, animation performance, and platform boundary evidence.
 
-## `ddalggak review` Gate
+## review
+
+`ddalggak review` gate:
 
 For affected PRs, reviewers must check:
 

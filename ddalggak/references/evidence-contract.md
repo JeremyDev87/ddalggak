@@ -44,11 +44,17 @@ Classify every unavailable evidence item:
 - Medium when evidence is useful but not required to prove the explicit acceptance criteria or critical path.
 - High when evidence covers an explicit acceptance criterion, a user-visible critical path, deploy/readiness, performance claim, security/privacy/auth behavior, data/API contract, or fallback that could hide broken data.
 
-## Subcommand Responsibilities
+## plan
 
-- `plan`: define required evidence before implementation units, including templates that apply and exact commands/artifacts expected when known.
-- `start`: include the Evidence Contract in every worker brief and require the worker's final output and PR body to list provided evidence and evidence gaps.
-- `review`: treat missing required evidence as a High blocking finding. Do not leave an APPROVE, ready-for-review, or PR-ready conclusion when required evidence is missing.
+Subcommand Responsibilities — `plan`: define required evidence, templates, commands, and artifacts.
+
+## start
+
+Subcommand Responsibilities — `start`: include Evidence Contract in briefs, final output, and PR body.
+
+## review
+
+Subcommand Responsibilities — `review`: missing required evidence is High and blocks APPROVE/ready claims.
 
 ## Approval Rule
 

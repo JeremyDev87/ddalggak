@@ -9,6 +9,18 @@ Do not use when: the command is status/check/clean or an already-approved execut
 
 Before implementation or `PLAN_DONE`, inventory ambiguity instead of guessing.
 
+## plan
+
+Before `PLAN_DONE`, include the `Deep-Interview Readiness` block below.
+
+## start
+
+Re-check live evidence. If not `READY`, do not mutate; ask the smallest unlocking question or report the blocker.
+
+## review
+
+Not required as standalone `review`; cite only to audit unresolved readiness gaps.
+
 Required output block:
 
 ```md

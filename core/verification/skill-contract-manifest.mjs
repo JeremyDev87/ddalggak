@@ -656,6 +656,15 @@ export const requiredVercelAgentSkillsReferenceAnchors = [
   "token values",
   "file/line/screenshot/viewport evidence",
 ];
+export const gateStageHeadingReferenceContracts = [
+  { reference: "references/deep-interview-readiness-gate.md", stages: ["plan", "start", "review"] },
+  { reference: "references/evidence-contract.md", stages: ["plan", "start", "review"] },
+  { reference: "references/frontend-design-gate.md", stages: ["plan", "start", "review"] },
+  { reference: "references/react-code-quality-harness.md", stages: ["plan", "start", "review"] },
+  { reference: "references/security-posture-gate.md", stages: ["plan", "start", "review"] },
+  { reference: "references/simplicity-deletability-gate.md", stages: ["plan", "start", "review"] },
+  { reference: "references/vercel-agent-skills-gates.md", stages: ["plan", "start", "review"] },
+];
 export const gateActivationKeywordContracts = {
   "frontend-design": {
     referenceFile: "frontend-design-gate.md",
