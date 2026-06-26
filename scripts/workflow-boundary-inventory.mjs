@@ -18,9 +18,12 @@
  *   - #182 workflow static lint
  */
 
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+
+import { collectWorkflowFiles } from "./lib/workflow-files.mjs";
+import { extractTopLevelBlocks, indentOf } from "./lib/yaml-lines.mjs";
 
 import {
   classifyDuplicateRunPolicy,
@@ -60,48 +63,6 @@ function parseArgs(argv) {
   }
 
   return options;
-}
-
-// ---------------------------------------------------------------------------
-// Line-by-line YAML structure scanner (no external deps, no catastrophic regex)
-// ---------------------------------------------------------------------------
-
-/**
- * Returns the indent level (number of leading spaces) of a line.
- */
-function indentOf(line) {
-  let count = 0;
-  for (const ch of line) {
-    if (ch === " ") count += 1;
-    else if (ch === "\t") count += 2;
-    else break;
-  }
-  return count;
-}
-
-/**
- * Extract all top-level keys and their sub-lines from YAML text.
- * Returns Map<string, string[]> of topLevelKey -> indented lines below it.
- */
-function extractTopLevelBlocks(lines) {
-  const blocks = new Map();
-  let currentKey = null;
-  let currentLines = [];
-
-  for (const line of lines) {
-    if (!line.trim() || line.trim().startsWith("#")) continue;
-    const indent = indentOf(line);
-    const keyMatch = line.match(/^([a-zA-Z0-9_-]+):\s*(.*)?$/);
-    if (indent === 0 && keyMatch) {
-      if (currentKey !== null) blocks.set(currentKey, currentLines);
-      currentKey = keyMatch[1];
-      currentLines = [];
-    } else if (currentKey !== null) {
-      currentLines.push(line);
-    }
-  }
-  if (currentKey !== null) blocks.set(currentKey, currentLines);
-  return blocks;
 }
 
 /**
@@ -554,25 +515,19 @@ function run() {
   const options = parseArgs(process.argv.slice(2));
   const workflowsDir = path.join(options.rootDir, ".github", "workflows");
 
-  let files;
-  try {
-    files = readdirSync(workflowsDir).filter(
-      (f) => f.endsWith(".yml") || f.endsWith(".yaml")
-    );
-  } catch (err) {
-    process.stderr.write(
-      `Cannot read workflows directory: ${workflowsDir}\n${err.message}\n`
-    );
+  if (!existsSync(workflowsDir)) {
+    process.stderr.write(`Cannot read workflows directory: ${workflowsDir}\n`);
     process.exit(1);
   }
 
-  if (files.length === 0) {
+  const workflowFiles = collectWorkflowFiles(options.rootDir);
+
+  if (workflowFiles.length === 0) {
     process.stderr.write(`No workflow files found in ${workflowsDir}\n`);
     process.exit(1);
   }
 
-  const workflows = files.sort().map((file) => {
-    const filePath = path.join(workflowsDir, file);
+  const workflows = workflowFiles.map((filePath) => {
     const content = readFileSync(filePath, "utf8");
     return parseWorkflowBoundary(content, filePath);
   });

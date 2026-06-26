@@ -1,7 +1,10 @@
 #!/usr/bin/env node
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+
+import { walkYamlFiles } from "./lib/workflow-files.mjs";
+import { collectBlock, lineIndent, stripComment } from "./lib/yaml-lines.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -60,52 +63,6 @@ function parseArgs(argv) {
   }
 
   return options;
-}
-
-function walkYamlFiles(dir) {
-  if (!existsSync(dir)) {
-    return [];
-  }
-
-  const entries = readdirSync(dir, { withFileTypes: true });
-  const files = [];
-  for (const entry of entries) {
-    const entryPath = path.join(dir, entry.name);
-    if (entry.isDirectory()) {
-      files.push(...walkYamlFiles(entryPath));
-    } else if (/\.ya?ml$/i.test(entry.name)) {
-      files.push(entryPath);
-    }
-  }
-  return files.sort();
-}
-
-function lineIndent(line) {
-  const match = line.match(/^(\s*)/);
-  return match ? match[1].length : 0;
-}
-
-function stripComment(line) {
-  const hashIndex = line.indexOf("#");
-  return hashIndex === -1 ? line : line.slice(0, hashIndex);
-}
-
-function collectBlock(lines, startIndex) {
-  const startIndent = lineIndent(lines[startIndex]);
-  const entries = [];
-  for (let index = startIndex + 1; index < lines.length; index += 1) {
-    const line = lines[index];
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith("#")) {
-      continue;
-    }
-    const indent = lineIndent(line);
-    if (indent <= startIndent) {
-      break;
-    }
-    entries.push({ line: index + 1, text: trimmed });
-  }
-  return entries;
 }
 
 function detectPermissions(lines) {
