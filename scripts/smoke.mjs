@@ -14,6 +14,7 @@ import {
 import os from "node:os";
 import path from "node:path";
 
+import { buildSlashString, quoteIfNeeded } from "../bin/lib/dispatch/slash.mjs";
 import { executableCandidates, resolveExecutable } from "../bin/lib/process/resolve-executable.mjs";
 import { loadCommandContracts } from "../bin/lib/command-contracts.mjs";
 import { COMMAND_CONTRACT_UNKNOWN_KEY_POLICY, validateCommandContract } from "./lib/command-contract-schema.mjs";
@@ -92,6 +93,34 @@ function assertShowDocIncludes(subcommand, output, asset) {
   assert(
     output.includes(asset),
     `missing ${subcommand} --show-doc disclosure asset: ${asset}`,
+  );
+}
+
+function assertDispatchSlashHelpers() {
+  assert(
+    quoteIfNeeded("plain-token") === "plain-token",
+    "plain slash arguments should not be quoted",
+  );
+  assert(
+    quoteIfNeeded("hello world") === '"hello world"',
+    "whitespace slash arguments should use JSON string quoting",
+  );
+  assert(
+    quoteIfNeeded('quote"and\\slash') === '"quote\\"and\\\\slash"',
+    "quotes and backslashes should be escaped by JSON string quoting",
+  );
+  assert(
+    quoteIfNeeded("line\nbreak") === '"line\\nbreak"',
+    "control characters should be escaped by JSON string quoting",
+  );
+  assert(
+    buildSlashString("start", ["hello world", "plain-token"]) ===
+      '/ddalggak start "hello world" plain-token',
+    "ddalggak subcommands should build the expected slash command string",
+  );
+  assert(
+    buildSlashString("getwiki", ["하린 정보"]) === '/getwiki "하린 정보"',
+    "getwiki should keep its standalone slash command prefix",
   );
 }
 
@@ -324,6 +353,12 @@ function runStatusWithSessionState(workspaceRoot) {
 }
 
 const cases = [
+  {
+    name: "dispatch slash helpers quote ambiguous arguments without changing prefixes",
+    run() {
+      assertDispatchSlashHelpers();
+    },
+  },
   {
     name: "resolveExecutable finds executable, misses absent command, and keeps Windows candidates",
     async run() {
