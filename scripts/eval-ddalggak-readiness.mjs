@@ -11,12 +11,12 @@
 // - Real LLM behavior, prompt quality, or live GitHub/CI side effects.
 // - That an actual skill run loaded the references it claims; scenario state
 //   is mock input, not a recorded run.
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import path from "node:path";
 import process from "node:process";
 
+import { loadCommandContracts as loadCoreCommandContracts } from "../bin/lib/command-contracts.mjs";
 import { escapeRegExp } from "./lib/escape-regexp.mjs";
-import { parseSimpleYaml } from "./lib/parse-simple-yaml.mjs";
 
 const rootDir = process.cwd();
 const defaultFixturePath = path.join(
@@ -113,73 +113,30 @@ function isObject(value) {
 
 
 // Load canonical command contracts so fixture expectations derive from the
-// real artifacts instead of values hardcoded in this eval (fail-closed).
+// real artifacts instead of values hardcoded in this eval (fail-closed). The
+// shared loader owns YAML parsing and schema validation so eval/projection/
+// runtime-asset surfaces cannot drift on command contract shape.
 function loadCommandContracts() {
-  const contractsDir = path.join(rootDir, "core", "commands");
-  const contracts = new Map();
-  let contractFiles;
+  let docs;
   try {
-    contractFiles = readdirSync(contractsDir).filter((entry) =>
-      entry.endsWith(".yaml"),
-    );
-  } catch {
-    console.error(
-      `[eval:ddalggak-readiness] cannot read command contracts at ${contractsDir}; run from the repository root`,
-    );
+    docs = loadCoreCommandContracts(rootDir);
+  } catch (error) {
+    console.error(`[eval:ddalggak-readiness] ${error.message}`);
     process.exit(1);
   }
-  for (const name of contractFiles) {
-    const doc = parseSimpleYaml(
-      readFileSync(path.join(contractsDir, name), "utf8"),
-      `core/commands/${name}`,
-    );
-    const contractFailures = [];
-    if (typeof doc.command !== "string" || doc.command.length === 0) {
-      contractFailures.push("missing command key");
-    }
-    if (typeof doc.source_edit_allowed !== "boolean") {
-      contractFailures.push("source_edit_allowed must be a boolean");
-    }
-    if (typeof doc.mode !== "string" || doc.mode.length === 0) {
-      contractFailures.push("mode must be a non-empty string");
-    }
-    if (typeof doc.stop_condition !== "string" || doc.stop_condition.length === 0) {
-      contractFailures.push("stop_condition must be a non-empty string");
-    }
-    if (
-      !Array.isArray(doc.required_references) ||
-      doc.required_references.some(
-        (reference) => typeof reference !== "string" || reference.length === 0,
-      )
-    ) {
-      contractFailures.push(
-        "required_references must be a list of non-empty strings",
-      );
-    }
-    if (contractFailures.length > 0) {
-      console.error(
-        `[eval:ddalggak-readiness] invalid command contract core/commands/${name}:`,
-      );
-      for (const failure of contractFailures) {
-        console.error(`- ${failure}`);
-      }
-      process.exit(1);
-    }
-    if (contracts.has(doc.command)) {
-      console.error(
-        `[eval:ddalggak-readiness] duplicate command contract: ${doc.command}`,
-      );
-      process.exit(1);
-    }
+
+  const contracts = new Map();
+  for (const doc of docs) {
     contracts.set(doc.command, {
       command: doc.command,
-      file: `core/commands/${name}`,
+      file: `core/commands/${doc.command}.yaml`,
       sourceEditAllowed: doc.source_edit_allowed,
       mode: doc.mode,
       stopCondition: doc.stop_condition,
       requiredReferences: doc.required_references,
     });
   }
+
   if (contracts.size === 0) {
     console.error(
       "[eval:ddalggak-readiness] no command contracts found in core/commands",

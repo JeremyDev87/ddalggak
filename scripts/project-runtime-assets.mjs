@@ -2,8 +2,8 @@
 import { readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
+import { COMMAND_ORDER, loadCommandContracts as loadCoreCommandContracts } from "../bin/lib/command-contracts.mjs";
 import { escapeRegExp } from "./lib/escape-regexp.mjs";
-import { parseSimpleYaml } from "./lib/parse-simple-yaml.mjs";
 import {
   parseReferenceBudgetExemptions,
   parseSubcommandTokenBudgets,
@@ -64,23 +64,7 @@ function parseArgs(argv) {
 
 const { writeMode, reportMode, admissionMode, checkMode } = parseArgs(process.argv.slice(2));
 
-const commandOrder = [
-  "start",
-  "review",
-  "status",
-  "plan",
-  "issue",
-  "clean",
-  "ship",
-  "retro",
-  "prompt",
-  "tune",
-  "forge",
-  "spark",
-  "check",
-  "getwiki",
-  "setwiki",
-];
+const commandOrder = COMMAND_ORDER;
 
 const allowedArtifactByCommand = {
   start: "worker agents may edit only files named in their brief",
@@ -124,31 +108,11 @@ function writeText(relativePath, text) {
 }
 
 function loadCommands() {
-  const commandDir = path.join(rootDir, "core", "commands");
-  const docs = new Map();
-  let names;
   try {
-    names = readdirSync(commandDir).filter((entry) => entry.endsWith(".yaml"));
+    return loadCoreCommandContracts(rootDir);
   } catch (error) {
-    fatal(`cannot list core/commands: ${error.message}`);
+    fatal(`cannot load command contracts: ${error.message}`);
   }
-  for (const name of names) {
-    let doc;
-    try {
-      doc = parseSimpleYaml(
-        readFileSync(path.join(commandDir, name), "utf8"),
-        `core/commands/${name}`,
-      );
-    } catch (error) {
-      fatal(`cannot load command contract: ${error.message}`);
-    }
-    if (doc.command) docs.set(doc.command, doc);
-  }
-  return commandOrder.map((command) => {
-    const doc = docs.get(command);
-    if (!doc) fatal(`core command contract missing: ${command}`);
-    return doc;
-  });
 }
 
 const commands = loadCommands();

@@ -4,6 +4,7 @@ import path from "node:path";
 
 import { sideEffectBoundaryAgentsForbiddenSentinels } from "../core/verification/side-effect-boundary-policy.mjs";
 import { requiredReferenceAdmissionHeaderFields } from "../core/verification/skill-contract-manifest.mjs";
+import { assertValidCommandContract } from "./lib/command-contract-schema.mjs";
 import { parseSimpleYaml } from "./lib/parse-simple-yaml.mjs";
 
 const AGENTS_MD_REQUIRED_ANCHORS = [
@@ -395,6 +396,7 @@ for (const name of commandFiles) {
     `core/commands/${name}`,
     { onError: fail },
   );
+  assertValidCommandContract(doc, `core/commands/${name}`, { onError: fail });
   if (doc.command) commandDocs.set(doc.command, doc);
 }
 

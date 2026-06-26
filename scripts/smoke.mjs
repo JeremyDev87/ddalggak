@@ -16,6 +16,7 @@ import path from "node:path";
 
 import { executableCandidates, resolveExecutable } from "../bin/lib/process/resolve-executable.mjs";
 import { loadCommandContracts } from "../bin/lib/command-contracts.mjs";
+import { COMMAND_CONTRACT_UNKNOWN_KEY_POLICY, validateCommandContract } from "./lib/command-contract-schema.mjs";
 
 const rootDir = process.cwd();
 const cliPath = path.join(rootDir, "bin", "ddalggak.js");
@@ -365,6 +366,61 @@ const cases = [
       );
       assertIncludes(result.stdout, "  setup                Install legacy Claude Code skill", "stdout");
       assertIncludes(result.stdout, "  status --local       Inspect local source/Codex/installed skill parity", "stdout");
+    },
+  },
+  {
+    name: "command contract schema validates shared required fields and allows unknown keys",
+    run() {
+      const failures = validateCommandContract(
+        {
+          command: "demo",
+          show_doc_heading: "Demo",
+          source_edit_allowed: false,
+          github_write_allowed: false,
+          purpose: "Demonstrate shared schema validation.",
+          mode: "read-only",
+          write_side_effects: "No writes.",
+          stop_condition: "Stop after reporting.",
+          required_references: [],
+          required_templates: [],
+          output_contract: {
+            completion_signal: "DEMO_DONE",
+            evidence_required: true,
+          },
+          future_metadata: "allowed by policy",
+        },
+        "core/commands/demo.yaml",
+      );
+      assert(failures.length === 0, `expected valid contract, got ${failures.join("; ")}`);
+      assertIncludes(COMMAND_CONTRACT_UNKNOWN_KEY_POLICY, "unknown top-level keys are allowed", "unknown key policy");
+    },
+  },
+  {
+    name: "command contract schema reports shared list and output_contract failures",
+    run() {
+      const failures = validateCommandContract(
+        {
+          command: "demo",
+          show_doc_heading: "Demo",
+          source_edit_allowed: "false",
+          github_write_allowed: false,
+          purpose: "Demonstrate shared schema validation.",
+          mode: "read-only",
+          write_side_effects: "No writes.",
+          stop_condition: "Stop after reporting.",
+          required_references: "alpha.md",
+          required_templates: [],
+          output_contract: {
+            completion_signal: "",
+            evidence_required: "true",
+          },
+        },
+        "core/commands/demo.yaml",
+      );
+      assertIncludes(failures.join("\n"), "core/commands/demo.yaml: source_edit_allowed must be a boolean", "schema failures");
+      assertIncludes(failures.join("\n"), "core/commands/demo.yaml: required_references must be a list", "schema failures");
+      assertIncludes(failures.join("\n"), "core/commands/demo.yaml: output_contract.completion_signal must be a non-empty string", "schema failures");
+      assertIncludes(failures.join("\n"), "core/commands/demo.yaml: output_contract.evidence_required must be a boolean", "schema failures");
     },
   },
   {
