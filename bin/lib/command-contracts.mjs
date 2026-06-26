@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 
+import { assertValidCommandContract } from "../../scripts/lib/command-contract-schema.mjs";
 import { parseSimpleYaml } from "../../scripts/lib/parse-simple-yaml.mjs";
 
 // Keep the human-facing order stable while reading the command metadata from
@@ -49,11 +50,13 @@ export function loadCommandContracts(rootDir) {
     } catch (error) {
       throw new Error(formatContractError(error.message));
     }
-    if (!doc.command) {
-      throw new Error(formatContractError(`${relativePath} missing command`));
+    try {
+      assertValidCommandContract(doc, relativePath);
+    } catch (error) {
+      throw new Error(formatContractError(error.message));
     }
-    if (!doc.purpose) {
-      throw new Error(formatContractError(`${relativePath} missing purpose`));
+    if (docs.has(doc.command)) {
+      throw new Error(formatContractError(`duplicate command contract: ${doc.command}`));
     }
     docs.set(doc.command, doc);
   }
