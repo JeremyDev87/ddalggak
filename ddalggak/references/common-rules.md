@@ -1,4 +1,8 @@
 # 공통 규칙 상세 절차
+Use when: any ddalggak command needs shared safety, GitHub, Markdown, review-boundary, or validation rules not duplicated in SKILL.md.
+Required by: all ddalggak commands.
+Side effects: none.
+Do not use when: the task is outside ddalggak workflow execution and does not need ddalggak shared rules.
 
 > Source of truth for Claude Code ddalggak details. The always-loaded SKILL.md keeps only router/invariant anchors and points here for low-frequency detail.
 

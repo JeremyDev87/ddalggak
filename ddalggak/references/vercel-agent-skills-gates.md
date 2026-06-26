@@ -1,4 +1,8 @@
 # Vercel Agent Skills Quality Gates
+Use when: `ddalggak plan`, `ddalggak start`, or `ddalggak review` involves React, Next.js, frontend architecture, Vercel deployment, React Native/Expo, animations, or UI/web design review.
+Required by: Quality Lens Router gate family `vercel-agent-skills`.
+Side effects: none.
+Do not use when: the work is backend-only, non-frontend infrastructure-only, docs-only, or unrelated to React/Next/Vercel/mobile/UI quality gates.
 
 Use this reference when `ddalggak plan`, `ddalggak start`, or `ddalggak review` involves React, Next.js, frontend architecture, Vercel deployment, React Native/Expo, animations, or UI/web design review.
 

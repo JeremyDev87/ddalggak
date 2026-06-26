@@ -1,4 +1,8 @@
 # 실패 모드 예방 상세 절차
+Use when: ddalggak work needs guardrails against stale state, unsafe writes, duplicate PRs, or invalid readiness/completion claims.
+Required by: plan, start, review, ship, status.
+Side effects: none.
+Do not use when: a narrower gate fully covers the risk and no shared failure-prevention rule applies.
 
 > Source of truth for Claude Code ddalggak details. The always-loaded SKILL.md keeps only router/invariant anchors and points here for low-frequency detail.
 

@@ -1,4 +1,8 @@
 # Failure Prevention Reference
+Use when: ddalggak work needs guardrails against stale state, unsafe writes, duplicate PRs, or invalid readiness/completion claims.
+Required by: plan, start, review, ship, status.
+Side effects: none.
+Do not use when: a narrower gate fully covers the risk and no shared failure-prevention rule applies.
 
 Guard against stale repo judgments, hallucinated dependencies, unsafe force pushes, ignored/local-only file inclusion, Markdown surgery regressions, missing handoff evidence, and duplicate PRs.
 

@@ -1,4 +1,8 @@
 # Context 관리 — Compact 실행 포인트
+Use when: ddalggak must preserve resume state before compaction or a long wait.
+Required by: plan, start, review, ship, status across compaction/wait boundaries.
+Side effects: may write ignored local session/conductor state.
+Do not use when: the command can finish now with no resume state.
 
 Long-running ddalggak sessions must preserve recoverable state before context compaction or long waits.
 

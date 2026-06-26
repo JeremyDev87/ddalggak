@@ -1,4 +1,8 @@
 # Common Rules Reference
+Use when: any ddalggak command needs shared safety, GitHub, Markdown, review-boundary, or validation rules not duplicated in SKILL.md.
+Required by: all ddalggak commands.
+Side effects: none.
+Do not use when: the task is outside ddalggak workflow execution and does not need ddalggak shared rules.
 
 Korean responses by default, no AI trailers, no secrets, no merge/auto-merge without explicit current-turn request, raw UTF-8 GitHub metadata, issue comments as source-of-truth candidates, and exact validation evidence.
 
