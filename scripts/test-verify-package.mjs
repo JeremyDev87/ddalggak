@@ -7,10 +7,9 @@
  * verify-package.mjs is a cwd-based orchestration script, so these tests build
  * a temporary fixture package, copy the verifier into it verbatim, stub every
  * npm step it invokes with no-op scripts, and run it end-to-end against a real
- * `npm pack --dry-run`. The requiredArtifactPaths list still comes from the
- * verifier source, while the pipeline step names come from the shared verify
- * pipeline manifest so fixture stubs and the package.json ordering check stay
- * aligned with the same contract.
+ * `npm pack --dry-run`. Package artifact paths and pipeline step names come
+ * from shared verification manifests so fixture stubs and package.json ordering
+ * checks stay aligned with explicit contracts instead of verifier source text.
  */
 
 import { spawnSync } from "node:child_process";
@@ -30,11 +29,11 @@ import {
   verifyPipelineNpmScriptNames,
   verifyPipelineSteps,
 } from "../core/verification/verify-pipeline.mjs";
+import { requiredPackageArtifactPaths } from "../core/verification/skill-contract-manifest.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, "..");
 const verifierPath = path.join(rootDir, "scripts", "verify-package.mjs");
-const verifierSource = readFileSync(verifierPath, "utf8");
 
 const tempRoots = [];
 
@@ -58,15 +57,7 @@ function assertIncludes(value, needle, label = "value") {
   );
 }
 
-function extractRequiredArtifactPaths(source) {
-  const match = source.match(/const requiredArtifactPaths = \[([\s\S]*?)\];/);
-  assert(match, "could not locate requiredArtifactPaths array in verify-package.mjs");
-  const entries = [...match[1].matchAll(/"([^"]+)"/g)].map((m) => m[1]);
-  assert(entries.length > 0, "requiredArtifactPaths parsed as empty");
-  return entries;
-}
-
-const requiredArtifactPaths = extractRequiredArtifactPaths(verifierSource);
+const requiredArtifactPaths = requiredPackageArtifactPaths;
 const runStepNames = verifyPipelineNpmScriptNames;
 const manifestStepLabels = verifyPipelineSteps.map((step) => step.label);
 const manifestScriptCount = verifyPipelineSteps.filter((step) => step.npmScript).length;
@@ -99,11 +90,12 @@ function makePackageFixture() {
     path.join(root, "core", "verification", "verify-pipeline.mjs"),
   );
 
-  // Stub for the relative manifest import; one path beyond the static list
-  // exercises the requiredArtifactPaths ∪ requiredPackageFiles union.
+  // Stub for the relative manifest import; one generated path beyond the static
+  // list exercises the requiredArtifactPaths ∪ requiredPackageFiles union.
   writeFileSync(
     path.join(root, "core", "verification", "skill-contract-manifest.mjs"),
-    `export const requiredPackageFiles = ["package.json", "${manifestExtraPath}"];\n`,
+    `export const requiredPackageArtifactPaths = ${JSON.stringify(requiredArtifactPaths, null, 2)};\n` +
+      `export const requiredPackageFiles = ["package.json", "${manifestExtraPath}"];\n`,
     "utf8",
   );
 
@@ -167,7 +159,7 @@ function runVerifyPackage(root) {
 
 const tests = [
   {
-    name: "extracts the verifier contracts needed to drive the fixture",
+    name: "loads shared verifier contracts needed to drive the fixture",
     run() {
       assertIncludes(requiredArtifactPaths, "package.json", "requiredArtifactPaths");
       assert(

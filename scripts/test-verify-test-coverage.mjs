@@ -14,8 +14,8 @@
 // verify-package.mjs is flattened into the corpus, so a test reached only via
 // `npm run verify` -> verify-package.mjs -> `npm run test:X` still counts.
 // (a) matches the execution form only, never a bare path mention:
-// verify-package.mjs lists test paths as packaging data in requiredArtifactPaths,
-// and that data must not be misread as "executed".
+// package artifact manifests list test paths as packaging data, and those bare
+// paths must not be misread as "executed".
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 
@@ -54,8 +54,7 @@ function corpusInvokesScript(corpus, name) {
 }
 
 // Only a real execution counts (`node scripts/<file>` in a workflow step), not
-// a bare path mention: verify-package.mjs lists every test path in
-// requiredArtifactPaths as packaging data, which must not be read as "executed".
+// a bare path mention from package artifact manifest data.
 function corpusInvokesFile(corpus, fileBasename) {
   const exec = new RegExp(`node\\s+(?:\\./)?scripts/${escapeRegExp(fileBasename)}(?![\\w.-])`);
   return exec.test(corpus);

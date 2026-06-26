@@ -3,66 +3,15 @@ import { mkdtempSync, rmSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import { requiredPackageFiles } from "../core/verification/skill-contract-manifest.mjs";
+import {
+  requiredPackageArtifactPaths,
+  requiredPackageFiles,
+} from "../core/verification/skill-contract-manifest.mjs";
 import { verifyPipelineStages } from "../core/verification/verify-pipeline.mjs";
 
 const rootDir = process.cwd();
 const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
-const requiredArtifactPaths = [
-  "package.json",
-  "README.md",
-  "llms.txt",
-  "LICENSE",
-  "bin/ddalggak.js",
-  "bin/lib/dispatch.mjs",
-  "bin/lib/profile.mjs",
-  "bin/lib/setup.mjs",
-  "bin/lib/status.mjs",
-  "core/development-control-plane.mjs",
-  "core/verification/side-effect-boundary-policy.mjs",
-  "scripts/project-runtime-assets.mjs",
-  "scripts/smoke.mjs",
-  "scripts/verify-codex-skill.mjs",
-  "scripts/verify-package.mjs",
-  "scripts/verify-projections.mjs",
-  "scripts/test-verify-codex-skill-reference-aware.mjs",
-  "scripts/eval-ddalggak-readiness.mjs",
-  "scripts/test-release-helpers.mjs",
-  "scripts/test-release-drafter.mjs",
-  "scripts/test-manual-release-bump.mjs",
-  "scripts/test-release-candidate.mjs",
-  "scripts/test-release-publish.mjs",
-  "scripts/security-posture-report.mjs",
-  "scripts/test-security-posture-report.mjs",
-  "scripts/verify-workflow-lint.mjs",
-  "scripts/test-verify-workflow-lint.mjs",
-  "scripts/test-development-control-plane.mjs",
-  "scripts/pr-check-evidence-report.mjs",
-  "scripts/test-pr-check-evidence-report.mjs",
-  "scripts/pr-status-evidence-report.mjs",
-  "scripts/test-pr-status-evidence-report.mjs",
-  "scripts/verify-issue-forms.mjs",
-  "scripts/workflow-boundary-inventory.mjs",
-  "scripts/lib/release.mjs",
-  "scripts/release-plan.mjs",
-  "scripts/bump-release-version.mjs",
-  "scripts/classify-npm-lookup-error.mjs",
-  "scripts/classify-npm-publish-error.mjs",
-  "evals/ddalggak-readiness/fixtures.json",
-  "templates/claude-profile-hermes.md",
-  "ddalggak/SKILL.md",
-  "ddalggak/references/wiki-bridge.md",
-  ".codex/skills/ddalggak/SKILL.md",
-  ".codex/skills/ddalggak/agents/openai.yaml",
-  ".codex/skills/ddalggak/references/wiki-bridge.md",
-  "core/projections.yaml",
-  "core/commands/start.yaml",
-  "core/commands/review.yaml",
-  "core/runtimes/claude.yaml",
-  "core/runtimes/codex.yaml",
-  "core/runtimes/hermes.yaml",
-  "core/verification/skill-contract-manifest.mjs",
-];
+const requiredArtifactPaths = requiredPackageArtifactPaths;
 const runtimeSurfacePrefixes = [
   "bin/lib/",
   "core/",
