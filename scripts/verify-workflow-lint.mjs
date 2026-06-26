@@ -20,10 +20,13 @@
  * secret safety, or provenance safety.
  */
 
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import path from "node:path";
 import { execSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+
+import { collectWorkflowFiles } from "./lib/workflow-files.mjs";
+import { collectBlockLines, lineIndent, stripComment } from "./lib/yaml-lines.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -95,47 +98,8 @@ function parseArgs(argv) {
   return options;
 }
 
-function collectWorkflowFiles(rootDir) {
-  const workflowDir = path.join(rootDir, ".github", "workflows");
-  if (!existsSync(workflowDir)) return [];
-  return readdirSync(workflowDir)
-    .filter((f) => /\.ya?ml$/i.test(f))
-    .sort()
-    .map((f) => path.join(workflowDir, f));
-}
-
-function stripComment(line) {
-  // Strip YAML inline comments — but not inside ${{ }} which may have #
-  const hashIdx = line.indexOf("#");
-  if (hashIdx === -1) return line;
-  // Only strip if the # is not inside an expression block
-  const beforeHash = line.slice(0, hashIdx);
-  const openBraces = (beforeHash.match(/\$\{\{/g) || []).length;
-  const closeBraces = (beforeHash.match(/\}\}/g) || []).length;
-  if (openBraces > closeBraces) return line; // inside expression
-  return beforeHash;
-}
-
 function isRunBlockStart(line) {
   return /^\s*-?\s*run\s*:\s*[|>]/.test(line) || /^\s*-?\s*run\s*:\s*$/.test(line);
-}
-
-function lineIndent(line) {
-  const m = line.match(/^(\s*)/);
-  return m ? m[1].length : 0;
-}
-
-function collectBlockLines(lines, startIdx) {
-  const startIndent = lineIndent(lines[startIdx]);
-  const result = [];
-  for (let i = startIdx + 1; i < lines.length; i++) {
-    const line = lines[i];
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith("#")) continue;
-    if (lineIndent(line) <= startIndent) break;
-    result.push({ lineNo: i + 1, text: trimmed });
-  }
-  return result;
 }
 
 // ---------------------------------------------------------------------------
