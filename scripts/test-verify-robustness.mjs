@@ -148,7 +148,7 @@ const specialInputs = JSON.parse(readFileSync(path.join(fixtureDir, "special-reg
 
 {
   const tempDir = copyRepo();
-  const manifestPath = path.join(tempDir, "core", "verification", "skill-contract-manifest.mjs");
+  const manifestPath = path.join(tempDir, "core", "verification", "manifests", "subcommands.mjs");
   const manifest = readFileSync(manifestPath, "utf8");
   const drifted = manifest.replace(
     'githubWriteAllowed: false,\n    requiredReferences: ["status.md", "pr-check-evidence-bundle.md"],',
@@ -168,7 +168,7 @@ const specialInputs = JSON.parse(readFileSync(path.join(fixtureDir, "special-reg
 
 {
   const tempDir = copyRepo();
-  const manifestPath = path.join(tempDir, "core", "verification", "skill-contract-manifest.mjs");
+  const manifestPath = path.join(tempDir, "core", "verification", "manifests", "disclosure-assets.mjs");
   const manifest = readFileSync(manifestPath, "utf8");
   const drifted = manifest.replace(
     '  start: {\n    templates: ["worker-brief.md"],',

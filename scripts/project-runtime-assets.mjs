@@ -323,6 +323,13 @@ function requiredPackageFiles() {
     "scripts/project-runtime-assets.mjs",
     "core/verification/side-effect-boundary-policy.mjs",
     "core/verification/skill-contract-manifest.mjs",
+    "core/verification/manifests/README.md",
+    "core/verification/manifests/disclosure-assets.mjs",
+    "core/verification/manifests/gate-contracts.mjs",
+    "core/verification/manifests/hot-path.mjs",
+    "core/verification/manifests/package-files.mjs",
+    "core/verification/manifests/reference-anchors.mjs",
+    "core/verification/manifests/subcommands.mjs",
     "ddalggak/SKILL.md",
     "bin/ddalggak.js",
     "bin/lib/dispatch.mjs",
@@ -614,7 +621,7 @@ const projections = [
     blocks: [["show-doc-heading-map", renderDocSectionMap()]],
   },
   {
-    path: "core/verification/skill-contract-manifest.mjs",
+    path: "core/verification/manifests/package-files.mjs",
     blocks: [["package-required-asset-list", renderRequiredPackageFiles()]],
   },
 ];
