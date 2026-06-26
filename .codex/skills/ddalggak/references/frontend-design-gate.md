@@ -1,4 +1,8 @@
 # Frontend Design Gate
+Use when: `ddalggak plan`, `ddalggak start`, or `ddalggak review` involves UI, frontend, design, page, component, layout, polish, responsive behavior, dashboard, card, CTA, typography, animation, visual acceptance, or screenshot-sensitive work.
+Required by: Quality Lens Router gate family `frontend-design`.
+Side effects: none.
+Do not use when: the work is backend/API-only, docs-only, infrastructure-only, or a narrow non-visual bugfix with no frontend/design acceptance claim.
 
 Use this reference when `ddalggak plan`, `ddalggak start`, or `ddalggak review` involves UI, frontend, design, page, component, layout, polish, responsive behavior, dashboard, card, CTA, typography, animation, visual acceptance, or screenshot-sensitive work.
 

@@ -1,11 +1,9 @@
----
+# RALPLAN Critic Consensus
 Use when: plan/review must choose a plan, PR topology, or approval/changes-requested verdict.
 Required by: plan, review
 Side effects: none
 Do not use when: the command only reports status/check output without making a readiness or review verdict.
----
 
-# RALPLAN Critic Consensus
 
 Run a compact second-pass critic before final readiness or review verdicts.
 

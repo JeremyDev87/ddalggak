@@ -80,7 +80,7 @@ export const requiredReferenceAdmissionHeaderFields = [
   "Do not use when:",
 ];
 // Admission header enforcement targets are not curated here: scripts/verify-codex-skill.mjs
-// derives them from the required_references union across core/commands/*.yaml (#264).
+// derives them from the live reference markdown payloads under each skill root (#264, #372).
 export const modePermissionProfiles = {
   "source-edit": { sourceEditAllowed: true, githubWriteAllowed: false },
   "review-fix": { sourceEditAllowed: true, githubWriteAllowed: true },

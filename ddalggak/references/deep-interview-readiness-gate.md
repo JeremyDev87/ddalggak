@@ -1,11 +1,8 @@
----
+# Deep-Interview Readiness Gate
 Use when: plan/start must turn an issue or user request into implementation scope.
 Required by: plan, start
 Side effects: none
 Do not use when: the command is status/check/clean or an already-approved execution brief has no blocking unknowns.
----
-
-# Deep-Interview Readiness Gate
 
 Before implementation or `PLAN_DONE`, inventory ambiguity instead of guessing.
 

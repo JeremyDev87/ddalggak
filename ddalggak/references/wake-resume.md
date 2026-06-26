@@ -1,4 +1,8 @@
 # Wake/Resume 프로토콜
+Use when: a ddalggak task resumes after sleep, compaction, another session, or a long wait.
+Required by: plan, start, review, ship, status after any resume boundary.
+Side effects: may read ignored session/conductor state and live git/GitHub state.
+Do not use when: the task has not crossed a resume/compaction/wait boundary.
 
 Resume must rebuild context from durable state plus live repository facts, not from stale conversation memory.
 

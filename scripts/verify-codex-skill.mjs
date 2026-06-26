@@ -453,8 +453,9 @@ function assertRequiredDisclosureAssetsExist() {
   }
 }
 
-// Header enforcement targets are derived from the canonical command contracts so a new
-// required reference can never land without an admission header (fail-closed coverage; #264).
+// Header enforcement targets are derived from the live reference payloads so any new
+// reference or gate document must declare its admission contract before it can land
+// (fail-closed coverage; #264, #372).
 function commandContractDocsBySubcommand() {
   const commandDir = path.join(rootDir, "core", "commands");
   const docs = new Map();
@@ -475,38 +476,40 @@ function commandContractDocsBySubcommand() {
   return docs;
 }
 
-function requiredReferenceUnionFromCommandContracts() {
-  const references = new Set();
-  for (const doc of commandContractDocsBySubcommand().values()) {
-    for (const reference of doc.required_references || []) {
-      references.add(reference);
+function referenceAdmissionHeaderTargets() {
+  const targets = [];
+  for (const root of skillPayloadRoots) {
+    const referencesDir = path.join(rootDir, root, "references");
+    const referenceFiles = readdirSync(referencesDir, { withFileTypes: true })
+      .filter((entry) => entry.isFile() && entry.name.endsWith(".md"))
+      .map((entry) => entry.name)
+      .sort();
+    if (referenceFiles.length === 0) {
+      fail(`required reference admission header coverage could not be derived: ${root}/references contains no markdown files.`);
+      continue;
+    }
+    for (const reference of referenceFiles) {
+      const relativePath = `${root}/references/${reference}`;
+      targets.push({ relativePath, absolutePath: path.join(rootDir, relativePath) });
     }
   }
-  if (references.size === 0) {
-    fail(
-      "required reference admission header coverage could not be derived: core/commands/*.yaml declared no required_references.",
-    );
-  }
-  return [...references].sort();
+  return targets;
 }
 
 function assertRequiredReferenceAdmissionHeaders() {
-  for (const reference of requiredReferenceUnionFromCommandContracts()) {
-    for (const root of skillPayloadRoots) {
-      const relativePath = `${root}/references/${reference}`;
-      const absolutePath = path.join(rootDir, relativePath);
-      if (!statSync(absolutePath, { throwIfNoEntry: false })?.isFile()) {
-        fail(`required reference admission header file missing: ${relativePath}`);
-        continue;
-      }
-      const text = readText(absolutePath);
-      const firstBlock = text.split(/\n\n/)[0] || "";
-      const missingFields = requiredReferenceAdmissionHeaderFields.filter((field) => !firstBlock.includes(field));
-      if (missingFields.length > 0) {
-        fail(
-          `${relativePath} missing required reference admission header fields:\n${formatAnchorList(missingFields)}`,
-        );
-      }
+  for (const { relativePath, absolutePath } of referenceAdmissionHeaderTargets()) {
+    if (!statSync(absolutePath, { throwIfNoEntry: false })?.isFile()) {
+      fail(`required reference admission header file missing: ${relativePath}`);
+      continue;
+    }
+    const text = readText(absolutePath);
+    const firstBlock = text.split(/\n\n/)[0] || "";
+    if (firstBlock.trimStart().startsWith("---")) {
+      fail(`${relativePath} must use plaintext admission header fields, not frontmatter.`);
+    }
+    const missingFields = requiredReferenceAdmissionHeaderFields.filter((field) => !firstBlock.includes(field));
+    if (missingFields.length > 0) {
+      fail(`${relativePath} missing required reference admission header fields:\n${formatAnchorList(missingFields)}`);
     }
   }
 }

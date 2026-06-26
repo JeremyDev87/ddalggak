@@ -1,5 +1,4 @@
 # React Code Quality Harness
-
 Use when: `ddalggak plan`, `start`, or `review` touches React/Next.js code quality, AI-generated React diffs, shared components, hooks/effects, state/fallback behavior, rendered UI evidence, or frontend performance boundaries.
 Required by: Quality Lens Router gate family `react-code-quality-harness`.
 Side effects: none.

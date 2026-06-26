@@ -407,6 +407,29 @@ for (const [fixtureName, expectedMessage] of [
 
 {
   const tempDir = copyRepo();
+  for (const rootPath of [path.join("ddalggak"), path.join(".codex", "skills", "ddalggak")]) {
+    const referencePath = path.join(tempDir, rootPath, "references", "frontend-design-gate.md");
+    const reference = readFileSync(referencePath, "utf8");
+    const drifted = reference.replace(
+      "Required by: Quality Lens Router gate family `frontend-design`.\n",
+      "",
+    );
+    assert(drifted !== reference, `fixture setup: expected to remove frontend-design admission header in ${rootPath}`);
+    writeFileSync(referencePath, drifted, "utf8");
+  }
+
+  const result = runCodexSkillVerifier(tempDir);
+  const output = `${result.stdout}\n${result.stderr}`;
+  assert(result.status === 1, `unrequired reference admission header drift must fail, got exit ${result.status}\n${output}`);
+  assert(
+    output.includes("ddalggak/references/frontend-design-gate.md missing required reference admission header fields"),
+    `expected source-root admission header diagnostic\n${output}`,
+  );
+  assert(output.includes("Required by:"), `expected missing admission field in diagnostic\n${output}`);
+}
+
+{
+  const tempDir = copyRepo();
   const referencePath = path.join(tempDir, "ddalggak", "references", "frontend-design-gate.md");
   const reference = readFileSync(referencePath, "utf8");
   const drifted = reference.replace("## review", "## Frontend Design Review Gate");
