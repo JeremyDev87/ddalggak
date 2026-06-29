@@ -160,5 +160,9 @@ export const requiredPackageFiles = [
   "ddalggak/templates/worker-brief.md",
   "llms.txt",
   "scripts/project-runtime-assets.mjs",
+  "scripts/project-runtime-assets/load-contracts.mjs",
+  "scripts/project-runtime-assets/render-package-manifest.mjs",
+  "scripts/project-runtime-assets/render-skill-blocks.mjs",
+  "scripts/project-runtime-assets/token-budget-report.mjs",
 ];
 // <!-- ddalggak:generated:end package-required-asset-list -->
