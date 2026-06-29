@@ -5,8 +5,9 @@ import { fileURLToPath } from "node:url";
 
 const __filename = fileURLToPath(import.meta.url);
 
-import { sanitizeText, sanitizeUrl } from "./lib/secret-scrub.mjs";
 import { classifyFailure, normalizeChecks, normalizeState } from "./lib/check-evidence.mjs";
+import { countSummary, emitReport, finishMarkdown } from "./lib/reporting.mjs";
+import { sanitizeText, sanitizeUrl } from "./lib/secret-scrub.mjs";
 
 function parseArgs(argv) {
   const options = {
@@ -88,7 +89,7 @@ function formatMarkdown(report) {
   lines.push("# PR check evidence bundle");
   lines.push("");
   lines.push(`- checks: ${report.checkCount}`);
-  lines.push(`- states: success=${report.counts.success}, failure=${report.counts.failure}, pending=${report.counts.pending}, skipped=${report.counts.skipped}, unknown=${report.counts.unknown}`);
+  lines.push(`- states: ${countSummary(report.counts, ["success", "failure", "pending", "skipped", "unknown"])}`);
   lines.push(`- failure classes: infra=${report.failureTypes["infra-failure"]}, test=${report.failureTypes["test-failure"]}, permission/auth=${report.failureTypes["permission-auth-failure"]}, unknown=${report.failureTypes["unknown-failure"]}`);
   lines.push("");
   lines.push("## Checks");
@@ -104,7 +105,7 @@ function formatMarkdown(report) {
   for (const caveat of report.caveats) {
     lines.push(`- ${caveat}`);
   }
-  return `${lines.join("\n").trim()}\n`;
+  return finishMarkdown(lines);
 }
 
 function main() {
@@ -112,11 +113,7 @@ function main() {
   const inputPath = path.resolve(options.input);
   const input = JSON.parse(readFileSync(inputPath, "utf8"));
   const report = summarizeChecks(input);
-  if (options.format === "json") {
-    process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
-  } else {
-    process.stdout.write(formatMarkdown(report));
-  }
+  emitReport({ format: options.format, report, formatMarkdown });
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === __filename) {

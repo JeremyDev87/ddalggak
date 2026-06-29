@@ -4,6 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { walkYamlFiles } from "./lib/workflow-files.mjs";
+import { countSummary, emitReport, finishMarkdown, pushMarkdownTable } from "./lib/reporting.mjs";
 import { collectBlock, lineIndent, stripComment } from "./lib/yaml-lines.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -637,7 +638,7 @@ function formatMarkdown(report) {
   lines.push(`- CodeQL workflow/action evidence: ${report.securityScans.codeql ? "present" : "missing optional evidence"}`);
   lines.push(`- Dependency Review evidence: ${report.securityScans.dependencyReview ? "present" : "missing optional evidence"}`);
   lines.push(`- OpenSSF Scorecard evidence: ${report.securityScans.scorecard ? "present" : "missing optional evidence"}`);
-  lines.push(`- action pin summary: ${Object.entries(report.actionPinSummary).map(([key, value]) => `${key}=${value}`).join(", ")}`);
+  lines.push(`- action pin summary: ${countSummary(report.actionPinSummary)}`);
   if (report.actionPinPolicy) {
     const pol = report.actionPinPolicy;
     lines.push(`- action pin policy: ${pol.policy} | total=${pol.summary.total} sha-pinned=${pol.summary["sha-pinned"]} compliant=${pol.summary.compliant} needs-review=${pol.summary["needs-review"]}`);
@@ -671,12 +672,18 @@ function formatMarkdown(report) {
     }
     lines.push(`- risk findings (untrusted context interpolation): ${riskCount}`);
     lines.push("");
-    lines.push("| workflow | line | channel | sourceKind | encodingGuard | riskNote |");
-    lines.push("|---|---|---|---|---|---|");
-    for (const write of report.workflowCommandWrites) {
-      const risk = write.riskNote ?? "";
-      lines.push(`| ${write.workflow} | ${write.line} | ${write.channel} | ${write.sourceKind} | ${write.encodingGuard} | ${risk} |`);
-    }
+    pushMarkdownTable(
+      lines,
+      ["workflow", "line", "channel", "sourceKind", "encodingGuard", "riskNote"],
+      report.workflowCommandWrites.map((write) => [
+        write.workflow,
+        write.line,
+        write.channel,
+        write.sourceKind,
+        write.encodingGuard,
+        write.riskNote ?? "",
+      ]),
+    );
   }
   lines.push("");
   lines.push("## Action pin policy");
@@ -687,13 +694,18 @@ function formatMarkdown(report) {
     lines.push(`- unregistered tag ref advisory policy: ${pol.unregisteredTagRefPolicy}`);
     lines.push(`- caveat: ${pol.caveat}`);
     lines.push("");
-    lines.push("| workflow | line | action | ref | pinClass | exceptionStatus |");
-    lines.push("|---|---|---|---|---|---|");
-    for (const finding of pol.findings) {
-      lines.push(
-        `| ${finding.workflow} | ${finding.line} | ${finding.action} | ${finding.ref} | ${finding.pinClass} | ${finding.exceptionStatus} |`,
-      );
-    }
+    pushMarkdownTable(
+      lines,
+      ["workflow", "line", "action", "ref", "pinClass", "exceptionStatus"],
+      pol.findings.map((finding) => [
+        finding.workflow,
+        finding.line,
+        finding.action,
+        finding.ref,
+        finding.pinClass,
+        finding.exceptionStatus,
+      ]),
+    );
   } else {
     lines.push("- no pinnable action refs detected");
   }
@@ -736,17 +748,13 @@ function formatMarkdown(report) {
     }
     lines.push("");
   }
-  return `${lines.join("\n").trim()}\n`;
+  return finishMarkdown(lines);
 }
 
 function main() {
   const options = parseArgs(process.argv.slice(2));
   const report = analyzeWorkflows(options.rootDir);
-  if (options.format === "json") {
-    process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
-  } else {
-    process.stdout.write(formatMarkdown(report));
-  }
+  emitReport({ format: options.format, report, formatMarkdown });
   if (options.admission && !report.admission.passed) {
     console.error(`[security-posture-report] admission gate failed with ${report.admission.findingCount} finding(s)`);
     process.exitCode = 1;

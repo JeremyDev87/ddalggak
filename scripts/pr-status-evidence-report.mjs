@@ -9,8 +9,9 @@ import { fileURLToPath } from "node:url";
 
 const __filename = fileURLToPath(import.meta.url);
 
-import { sanitizeText, sanitizeUrl } from "./lib/secret-scrub.mjs";
 import { normalizeChecks } from "./lib/check-evidence.mjs";
+import { countSummary, emitReport, finishMarkdown } from "./lib/reporting.mjs";
+import { sanitizeText, sanitizeUrl } from "./lib/secret-scrub.mjs";
 
 // ──────────────────────────────────────────────
 // Arg parser
@@ -350,7 +351,7 @@ function formatMarkdown(bundle) {
   const ce = bundle.checkEvidence;
   lines.push(`- overall_state: ${ce.overallState}`);
   lines.push(`- checks: ${ce.checkCount}`);
-  lines.push(`- success=${ce.counts.success}, failure=${ce.counts.failure}, pending=${ce.counts.pending}, skipped=${ce.counts.skipped}, unknown=${ce.counts.unknown}`);
+  lines.push(`- ${countSummary(ce.counts, ["success", "failure", "pending", "skipped", "unknown"])}`);
   if (ce.checks.length > 0) {
     for (const c of ce.checks) {
       const wf = c.workflow ? `${c.workflow} / ` : "";
@@ -440,7 +441,7 @@ function formatMarkdown(bundle) {
     lines.push(`- ${c}`);
   }
 
-  return `${lines.join("\n").trim()}\n`;
+  return finishMarkdown(lines);
 }
 
 // ──────────────────────────────────────────────
@@ -451,11 +452,7 @@ function main() {
   const inputPath = path.resolve(options.input);
   const input = JSON.parse(readFileSync(inputPath, "utf8"));
   const bundle = buildBundle(input);
-  if (options.format === "json") {
-    process.stdout.write(`${JSON.stringify(bundle, null, 2)}\n`);
-  } else {
-    process.stdout.write(formatMarkdown(bundle));
-  }
+  emitReport({ format: options.format, report: bundle, formatMarkdown });
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === __filename) {
