@@ -61,7 +61,9 @@ const baseProjections = `source_root: ddalggak
 parity_ledger:
   - path: SKILL.md
     class: must-match
-# claude values: #224 baseline.
+`;
+
+const baseTokenBudgets = `# claude values: #224 baseline.
 subcommand_token_budgets:
   claude:
     start: 19500
@@ -75,6 +77,7 @@ function makeFixtureRepo() {
   const repoDir = mkdtempSync(path.join(os.tmpdir(), "ddalggak-budget-isolation-"));
   git(repoDir, ["init", "-q"]);
   writeRepoFile(repoDir, "core/projections.yaml", baseProjections);
+  writeRepoFile(repoDir, "core/token-budgets.yaml", baseTokenBudgets);
   writeRepoFile(repoDir, "core/commands/start.yaml", "command: start\n");
   writeRepoFile(repoDir, "ddalggak/SKILL.md", "skill body v1\n");
   writeRepoFile(repoDir, ".codex/skills/ddalggak/SKILL.md", "codex skill body v1\n");
@@ -105,7 +108,7 @@ const tests = [
     name: "violation: budget change + ddalggak measured content fails",
     run({ repoDir, baseSha }) {
       git(repoDir, ["checkout", "-q", "-b", "case-violation-claude", baseSha]);
-      editRepoFile(repoDir, "core/projections.yaml", "start: 19500", "start: 21000");
+      editRepoFile(repoDir, "core/token-budgets.yaml", "start: 19500", "start: 21000");
       editRepoFile(repoDir, "ddalggak/SKILL.md", "skill body v1", "skill body v2 grown");
       const headSha = commitAll(repoDir, "grow content and raise budget");
       const result = runCheck(repoDir, baseSha, headSha);
@@ -119,7 +122,7 @@ const tests = [
     name: "violation: budget change + core/commands contract change fails",
     run({ repoDir, baseSha }) {
       git(repoDir, ["checkout", "-q", "-b", "case-violation-commands", baseSha]);
-      editRepoFile(repoDir, "core/projections.yaml", "review: 26500", "review: 28000");
+      editRepoFile(repoDir, "core/token-budgets.yaml", "review: 26500", "review: 28000");
       editRepoFile(repoDir, "core/commands/start.yaml", "command: start", "command: start\nrequired_references: more");
       const headSha = commitAll(repoDir, "change contract and raise budget");
       assertExit(this.name, runCheck(repoDir, baseSha, headSha), 1);
@@ -129,7 +132,7 @@ const tests = [
     name: "budget-only PR passes",
     run({ repoDir, baseSha }) {
       git(repoDir, ["checkout", "-q", "-b", "case-budget-only", baseSha]);
-      editRepoFile(repoDir, "core/projections.yaml", "start: 19500", "start: 21000");
+      editRepoFile(repoDir, "core/token-budgets.yaml", "start: 19500", "start: 21000");
       const headSha = commitAll(repoDir, "raise budget only");
       assertExit(this.name, runCheck(repoDir, baseSha, headSha), 0);
     },
@@ -140,13 +143,13 @@ const tests = [
       git(repoDir, ["checkout", "-q", "-b", "case-new-command-initial-budget", baseSha]);
       editRepoFile(
         repoDir,
-        "core/projections.yaml",
+        "core/token-budgets.yaml",
         "    review: 20000\n  codex:",
         "    review: 20000\n    tune: 11000\n  codex:",
       );
       editRepoFile(
         repoDir,
-        "core/projections.yaml",
+        "core/token-budgets.yaml",
         "    review: 26500\n",
         "    review: 26500\n    tune: 12000\n",
       );
@@ -187,7 +190,7 @@ const tests = [
       // Rename the budget root key only; values are unchanged. A co-equal
       // rename like claude_legacy -> claude must not be flagged as a budget
       // change even when shipped together with measured content.
-      editRepoFile(repoDir, "core/projections.yaml", "  claude:\n", "  claude_renamed:\n");
+      editRepoFile(repoDir, "core/token-budgets.yaml", "  claude:\n", "  claude_renamed:\n");
       editRepoFile(repoDir, "ddalggak/SKILL.md", "skill body v1", "skill body v2 co-equal");
       const headSha = commitAll(repoDir, "rename budget root key and reword content");
       assertExit(this.name, runCheck(repoDir, baseSha, headSha), 0);
@@ -197,7 +200,7 @@ const tests = [
     name: "calibration PR (budget + non-measured formula file) passes",
     run({ repoDir, baseSha }) {
       git(repoDir, ["checkout", "-q", "-b", "case-calibration", baseSha]);
-      editRepoFile(repoDir, "core/projections.yaml", "start: 23000", "start: 24500");
+      editRepoFile(repoDir, "core/token-budgets.yaml", "start: 23000", "start: 24500");
       editRepoFile(repoDir, "scripts/project-runtime-assets.mjs", "formula v1", "formula v2");
       const headSha = commitAll(repoDir, "calibrate formula and budgets");
       assertExit(this.name, runCheck(repoDir, baseSha, headSha), 0);
@@ -210,7 +213,7 @@ const tests = [
       editRepoFile(repoDir, "ddalggak/SKILL.md", "skill body v1", "skill body advanced on base");
       const advancedBaseSha = commitAll(repoDir, "unrelated content change on base branch");
       git(repoDir, ["checkout", "-q", "-b", "case-budget-pr", baseSha]);
-      editRepoFile(repoDir, "core/projections.yaml", "review: 20000", "review: 22000");
+      editRepoFile(repoDir, "core/token-budgets.yaml", "review: 20000", "review: 22000");
       const headSha = commitAll(repoDir, "raise budget only");
       assertExit(this.name, runCheck(repoDir, advancedBaseSha, headSha), 0);
     },
@@ -219,7 +222,7 @@ const tests = [
     name: "violation: budget change + rename out of measured path fails",
     run({ repoDir, baseSha }) {
       git(repoDir, ["checkout", "-q", "-b", "case-rename-out", baseSha]);
-      editRepoFile(repoDir, "core/projections.yaml", "review: 20000", "review: 21500");
+      editRepoFile(repoDir, "core/token-budgets.yaml", "review: 20000", "review: 21500");
       git(repoDir, ["mv", "ddalggak/SKILL.md", "docs-moved-skill.md"]);
       const headSha = commitAll(repoDir, "move skill out of measured tree and raise budget");
       const result = runCheck(repoDir, baseSha, headSha);

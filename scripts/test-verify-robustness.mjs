@@ -289,11 +289,11 @@ for (const [fixtureName, expectedMessage] of [
 
 {
   const tempDir = copyRepo();
-  const projectionsPath = path.join(tempDir, "core", "projections.yaml");
-  const projections = readFileSync(projectionsPath, "utf8");
-  const lowered = projections.replace(/^( {4}review:) \d+$/gm, "$1 1");
-  assert(lowered !== projections, "fixture setup: expected to lower at least one review budget");
-  writeFileSync(projectionsPath, lowered, "utf8");
+  const tokenBudgetsPath = path.join(tempDir, "core", "token-budgets.yaml");
+  const tokenBudgets = readFileSync(tokenBudgetsPath, "utf8");
+  const lowered = tokenBudgets.replace(/^( {4}review:) \d+$/gm, "$1 1");
+  assert(lowered !== tokenBudgets, "fixture setup: expected to lower at least one review budget");
+  writeFileSync(tokenBudgetsPath, lowered, "utf8");
 
   const advisory = runTokenBudgetReport(tempDir);
   const advisoryOutput = `${advisory.stdout}\n${advisory.stderr}`;
@@ -318,11 +318,11 @@ for (const [fixtureName, expectedMessage] of [
 
 {
   const tempDir = copyRepo();
-  const projectionsPath = path.join(tempDir, "core", "projections.yaml");
-  const projections = readFileSync(projectionsPath, "utf8");
-  const removed = projections.replace(/^ {4}start: \d+\n/m, "");
-  assert(removed !== projections, "fixture setup: expected to remove one start budget line");
-  writeFileSync(projectionsPath, removed, "utf8");
+  const tokenBudgetsPath = path.join(tempDir, "core", "token-budgets.yaml");
+  const tokenBudgets = readFileSync(tokenBudgetsPath, "utf8");
+  const removed = tokenBudgets.replace(/^ {4}start: \d+\n/m, "");
+  assert(removed !== tokenBudgets, "fixture setup: expected to remove one start budget line");
+  writeFileSync(tokenBudgetsPath, removed, "utf8");
 
   const admission = runTokenBudgetReport(tempDir, ["--admission"]);
   const admissionOutput = `${admission.stdout}\n${admission.stderr}`;

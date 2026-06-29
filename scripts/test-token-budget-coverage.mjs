@@ -52,7 +52,7 @@ function assertFail(name, result, expectedMessage) {
   console.log(`[PASS] ${name}`);
 }
 
-const PROJECTIONS = "core/projections.yaml";
+const TOKEN_BUDGETS = "core/token-budgets.yaml";
 const EXEMPTIONS_HEADER = "reference_budget_exemptions:\n";
 
 // Baseline: an unmutated copy must pass so the failing cases prove the mutation,
@@ -65,7 +65,7 @@ withTempRepo("baseline admission passes on an unmutated copy", (tempDir) => {
 // common-rules.md's exemption leaves it reachable but unbudgeted.
 withTempRepo("unmeasured + unexempt reference fails coverage", (tempDir) => {
   replaceInFile(
-    path.join(tempDir, PROJECTIONS),
+    path.join(tempDir, TOKEN_BUDGETS),
     "  - reference: common-rules.md\n" +
       "    max_tokens: 500\n" +
       "    reason: operational guardrail referenced from SKILL.md body pointer, not a per-subcommand required reference\n",
@@ -82,7 +82,7 @@ withTempRepo("unmeasured + unexempt reference fails coverage", (tempDir) => {
 // exempt. core-invariants.md is in plan/start/review required_references.
 withTempRepo("exemption of a measured reference fails as redundant", (tempDir) => {
   replaceInFile(
-    path.join(tempDir, PROJECTIONS),
+    path.join(tempDir, TOKEN_BUDGETS),
     EXEMPTIONS_HEADER,
     EXEMPTIONS_HEADER +
       "  - reference: core-invariants.md\n    max_tokens: 99999\n    reason: test redundant exemption\n",
@@ -97,7 +97,7 @@ withTempRepo("exemption of a measured reference fails as redundant", (tempDir) =
 // Stale exemption: an exemption for a non-existent reference must fail.
 withTempRepo("exemption of a non-existent reference fails as stale", (tempDir) => {
   replaceInFile(
-    path.join(tempDir, PROJECTIONS),
+    path.join(tempDir, TOKEN_BUDGETS),
     EXEMPTIONS_HEADER,
     EXEMPTIONS_HEADER +
       "  - reference: __no-such-reference-probe.md\n    max_tokens: 100\n    reason: test stale exemption\n",
@@ -130,7 +130,7 @@ withTempRepo("growing an exempt reference past its cap fails", (tempDir) => {
 // content fits — this is the 2-PR ratchet bypass guard. claude plan
 // budget 20000 has ceiling 30000.
 withTempRepo("budget above its ceiling fails", (tempDir) => {
-  replaceInFile(path.join(tempDir, PROJECTIONS), "    plan: 20000\n", "    plan: 40000\n");
+  replaceInFile(path.join(tempDir, TOKEN_BUDGETS), "    plan: 20000\n", "    plan: 40000\n");
   assertFail(
     "budget above its ceiling fails",
     runAdmission(tempDir),
