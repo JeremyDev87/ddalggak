@@ -1,5 +1,6 @@
 # Canonical ddalggak command contract. Keep this file data-only; do not paste long procedure here.
 command: status
+command_order: "030"
 show_doc_heading: "Status"
 source_edit_allowed: false
 github_write_allowed: false

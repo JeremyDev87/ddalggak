@@ -1,5 +1,6 @@
 # Canonical ddalggak command contract. Keep this file data-only; do not paste long procedure here.
 command: prompt
+command_order: "090"
 show_doc_heading: "Prompt Optimizer"
 source_edit_allowed: false
 github_write_allowed: false

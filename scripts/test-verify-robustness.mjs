@@ -148,21 +148,18 @@ const specialInputs = JSON.parse(readFileSync(path.join(fixtureDir, "special-reg
 
 {
   const tempDir = copyRepo();
-  const manifestPath = path.join(tempDir, "core", "verification", "manifests", "subcommands.mjs");
-  const manifest = readFileSync(manifestPath, "utf8");
-  const drifted = manifest.replace(
-    'githubWriteAllowed: false,\n    requiredReferences: ["status.md", "pr-check-evidence-bundle.md"],',
-    'githubWriteAllowed: true,\n    requiredReferences: ["status.md", "pr-check-evidence-bundle.md"],',
-  );
-  assert(drifted !== manifest, "fixture setup: expected to drift status githubWriteAllowed");
-  writeFileSync(manifestPath, drifted, "utf8");
+  const statusPath = path.join(tempDir, "core", "commands", "status.yaml");
+  const status = readFileSync(statusPath, "utf8");
+  const drifted = status.replace('command_order: "030"', 'command_order: "010"');
+  assert(drifted !== status, "fixture setup: expected to duplicate status command_order");
+  writeFileSync(statusPath, drifted, "utf8");
 
-  const result = runCodexSkillVerifier(tempDir);
+  const result = runProjectionVerifier(tempDir);
   const output = `${result.stdout}\n${result.stderr}`;
-  assert(result.status === 1, `manifest permission drift must fail, got exit ${result.status}\n${output}`);
+  assert(result.status === 1, `duplicate command_order must fail, got exit ${result.status}\n${output}`);
   assert(
-    output.includes("subcommandExecutionContracts.status.githubWriteAllowed must derive from modePermissionProfiles['read-only']=false"),
-    `expected mode permission profile drift diagnostic\n${output}`,
+    output.includes("duplicate command_order 010"),
+    `expected command_order duplicate diagnostic\n${output}`,
   );
 }
 
@@ -203,8 +200,8 @@ const specialInputs = JSON.parse(readFileSync(path.join(fixtureDir, "special-reg
   const output = `${result.stdout}\n${result.stderr}`;
   assert(result.status === 1, `yaml/manifest stop_condition drift must fail, got exit ${result.status}\n${output}`);
   assert(
-    output.includes("subcommandExecutionContracts.start.stopCondition drifted from core/commands/start.yaml stop_condition"),
-    `expected yaml/manifest stop condition drift diagnostic\n${output}`,
+    output.includes(".codex/skills/ddalggak/SKILL.md subcommand table stop condition for 'start' drifted"),
+    `expected yaml/skill stop condition drift diagnostic\n${output}`,
   );
 }
 
@@ -220,7 +217,7 @@ const specialInputs = JSON.parse(readFileSync(path.join(fixtureDir, "special-reg
   const output = `${result.stdout}\n${result.stderr}`;
   assert(result.status === 1, `yaml github_write_allowed drift must fail, got exit ${result.status}\n${output}`);
   assert(
-    output.includes("subcommandExecutionContracts.issue.githubWriteAllowed drifted from core/commands/issue.yaml github_write_allowed=false"),
+    output.includes("subcommandExecutionContracts.issue.githubWriteAllowed must derive from modePermissionProfiles['github-write']=true"),
     `expected yaml github_write_allowed drift diagnostic\n${output}`,
   );
 }

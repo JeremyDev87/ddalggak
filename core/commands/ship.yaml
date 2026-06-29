@@ -1,5 +1,6 @@
 # Canonical ddalggak command contract. Keep this file data-only; do not paste long procedure here.
 command: ship
+command_order: "070"
 show_doc_heading: "Ship"
 source_edit_allowed: false
 github_write_allowed: true

@@ -1,5 +1,6 @@
 # Canonical ddalggak command contract. Keep this file data-only; do not paste long procedure here.
 command: start
+command_order: "010"
 show_doc_heading: "Start Workflow"
 source_edit_allowed: true
 github_write_allowed: false

@@ -1,5 +1,6 @@
 # Canonical ddalggak command contract. Keep this file data-only; do not paste long procedure here.
 command: getwiki
+command_order: "140"
 show_doc_heading: "GetWiki Bridge"
 source_edit_allowed: false
 github_write_allowed: false

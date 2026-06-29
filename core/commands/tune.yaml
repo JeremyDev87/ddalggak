@@ -1,5 +1,6 @@
 # Canonical ddalggak command contract. Keep this file data-only; do not paste long procedure here.
 command: tune
+command_order: "100"
 show_doc_heading: "Tune Goal Brief"
 source_edit_allowed: false
 github_write_allowed: false

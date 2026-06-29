@@ -4,29 +4,16 @@ import path from "node:path";
 import { assertValidCommandContract } from "../../scripts/lib/command-contract-schema.mjs";
 import { parseSimpleYaml } from "../../scripts/lib/parse-simple-yaml.mjs";
 
-// Keep the human-facing order stable while reading the command metadata from
-// core/commands/*.yaml. Issue #313 owns removing the remaining command-order
-// registry duplication across all surfaces.
-export const COMMAND_ORDER = [
-  "start",
-  "review",
-  "status",
-  "plan",
-  "issue",
-  "clean",
-  "ship",
-  "retro",
-  "prompt",
-  "tune",
-  "forge",
-  "spark",
-  "check",
-  "getwiki",
-  "setwiki",
-];
-
 function formatContractError(message) {
   return `ddalggak command contract error: ${message}`;
+}
+
+function parseCommandOrder(doc, relativePath) {
+  const raw = doc.command_order;
+  if (typeof raw !== "string" || !/^\d+$/.test(raw)) {
+    throw new Error(formatContractError(`${relativePath} must define numeric string command_order`));
+  }
+  return Number.parseInt(raw, 10);
 }
 
 export function loadCommandContracts(rootDir) {
@@ -38,7 +25,9 @@ export function loadCommandContracts(rootDir) {
     throw new Error(formatContractError(`cannot list core/commands: ${error.message}`));
   }
 
-  const docs = new Map();
+  const ordered = [];
+  const orders = new Map();
+  const commands = new Map();
   for (const name of names) {
     const relativePath = `core/commands/${name}`;
     let doc;
@@ -55,30 +44,40 @@ export function loadCommandContracts(rootDir) {
     } catch (error) {
       throw new Error(formatContractError(error.message));
     }
-    if (docs.has(doc.command)) {
-      throw new Error(formatContractError(`duplicate command contract: ${doc.command}`));
+    if (commands.has(doc.command)) {
+      throw new Error(
+        formatContractError(`duplicate command contract ${doc.command}: ${commands.get(doc.command)} and ${relativePath}`),
+      );
     }
-    docs.set(doc.command, doc);
+    commands.set(doc.command, relativePath);
+    const commandOrder = parseCommandOrder(doc, relativePath);
+    if (orders.has(commandOrder)) {
+      throw new Error(
+        formatContractError(
+          `duplicate command_order ${String(commandOrder).padStart(3, "0")}: ${orders.get(commandOrder)} and ${relativePath}`,
+        ),
+      );
+    }
+    orders.set(commandOrder, relativePath);
+    ordered.push({ order: commandOrder, doc });
   }
 
-  const contracts = COMMAND_ORDER.map((command) => {
-    const doc = docs.get(command);
-    if (!doc) {
-      throw new Error(formatContractError(`core command contract missing: ${command}`));
-    }
-    return doc;
-  });
-
-  const extra = [...docs.keys()].filter((command) => !COMMAND_ORDER.includes(command));
-  if (extra.length > 0) {
-    throw new Error(formatContractError(`core command contract order missing: ${extra.join(", ")}`));
-  }
-
-  return contracts;
+  return ordered
+    .sort((left, right) => left.order - right.order)
+    .map(({ doc }) => doc);
 }
 
 export function loadSubcommands(rootDir) {
   return loadCommandContracts(rootDir).map((contract) => contract.command);
+}
+
+export function loadShowDocHeadingMap(rootDir) {
+  return Object.fromEntries(
+    loadCommandContracts(rootDir).map((contract) => [
+      contract.command,
+      contract.show_doc_heading,
+    ]),
+  );
 }
 
 function trimFinalPeriod(value) {
