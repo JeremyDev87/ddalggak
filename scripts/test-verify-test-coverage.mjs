@@ -5,12 +5,14 @@
 // wired into no gate degrades to a no-op: the verifier it guards could rot to
 // green and nothing would notice (#284).
 //
-// Coverage model (corpus = verify-package.mjs source + all workflow ymls):
+// Coverage model (corpus = verify-package.mjs source + smoke harness + all workflow ymls):
 //   a test-*.mjs file is COVERED when
 //     (a) the corpus executes it directly (`node scripts/test-X.mjs`, e.g. a
 //         ci.yml step), or
 //     (b) it is the target of a package.json npm script whose name the corpus
-//         invokes (`npm run <name>` or a spawn array `"run", "<name>"`).
+//         invokes (`npm run <name>` or a spawn array `"run", "<name>"`), or
+//     (c) it is imported by scripts/smoke.mjs, which is itself executed by
+//         `npm test` in the verify pipeline.
 // verify-package.mjs is flattened into the corpus, so a test reached only via
 // `npm run verify` -> verify-package.mjs -> `npm run test:X` still counts.
 // (a) matches the execution form only, never a bare path mention:
@@ -31,7 +33,11 @@ function read(relativePath) {
 }
 
 function buildCorpus() {
-  const parts = [read("scripts/verify-package.mjs"), read("core/verification/verify-pipeline.mjs")];
+  const parts = [
+    read("scripts/verify-package.mjs"),
+    read("core/verification/verify-pipeline.mjs"),
+    read("scripts/smoke.mjs"),
+  ];
   let workflowNames = [];
   try {
     workflowNames = readdirSync(workflowsDir).filter((name) => /\.ya?ml$/.test(name));
@@ -57,7 +63,8 @@ function corpusInvokesScript(corpus, name) {
 // a bare path mention from package artifact manifest data.
 function corpusInvokesFile(corpus, fileBasename) {
   const exec = new RegExp(`node\\s+(?:\\./)?scripts/${escapeRegExp(fileBasename)}(?![\\w.-])`);
-  return exec.test(corpus);
+  const smokeImport = new RegExp(`import\\(["']\\./${escapeRegExp(fileBasename)}["']\\)`);
+  return exec.test(corpus) || smokeImport.test(corpus);
 }
 
 const failures = [];
