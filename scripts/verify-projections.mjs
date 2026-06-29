@@ -4,6 +4,7 @@ import path from "node:path";
 
 import { sideEffectBoundaryAgentsForbiddenSentinels } from "../core/verification/side-effect-boundary-policy.mjs";
 import { requiredReferenceAdmissionHeaderFields } from "../core/verification/skill-contract-manifest.mjs";
+import { loadCommandContracts } from "../bin/lib/command-contracts.mjs";
 import { assertValidCommandContract } from "./lib/command-contract-schema.mjs";
 import { parseSimpleYaml } from "./lib/parse-simple-yaml.mjs";
 
@@ -22,24 +23,9 @@ const rootDir = process.cwd();
 const commandDir = path.join(rootDir, "core", "commands");
 const runtimeDir = path.join(rootDir, "core", "runtimes");
 const projectionPath = path.join(rootDir, "core", "projections.yaml");
-const dispatchPath = path.join(rootDir, "bin", "lib", "dispatch.mjs");
 const sourceSkillRoot = path.join(rootDir, "ddalggak");
 const codexSkillRoot = path.join(rootDir, ".codex", "skills", "ddalggak");
-
-const requiredCommands = [
-  "start",
-  "review",
-  "status",
-  "plan",
-  "issue",
-  "clean",
-  "ship",
-  "retro",
-  "prompt",
-  "check",
-  "getwiki",
-  "setwiki",
-];
+const requiredCommands = loadCommandContracts(rootDir).map((doc) => doc.command);
 
 const failures = [];
 
@@ -75,22 +61,6 @@ function readText(filePath) {
     fail(`missing or unreadable: ${path.relative(rootDir, filePath)} (${error.message})`);
     return "";
   }
-}
-
-function extractDispatchSections() {
-  const dispatchText = readText(dispatchPath);
-  const mapMatch = dispatchText.match(/const DOC_SECTION = \{([\s\S]*?)\n\};/);
-  if (!mapMatch) {
-    fail("bin/lib/dispatch.mjs: DOC_SECTION map not found");
-    return new Map();
-  }
-
-  const sections = new Map();
-  const entryPattern = /([A-Za-z0-9_-]+):\s*"([^"]+)"/g;
-  for (const match of mapMatch[1].matchAll(entryPattern)) {
-    sections.set(match[1], match[2]);
-  }
-  return sections;
 }
 
 function assertSkillPayload(root, label, commandDoc) {
@@ -400,7 +370,6 @@ for (const name of commandFiles) {
   if (doc.command) commandDocs.set(doc.command, doc);
 }
 
-const dispatchSections = extractDispatchSections();
 for (const command of requiredCommands) {
   const doc = commandDocs.get(command);
   if (!doc) {
@@ -414,15 +383,6 @@ for (const command of requiredCommands) {
 
   if (!Object.hasOwn(doc, "github_write_allowed")) {
     fail(`core/commands/${command}.yaml must define github_write_allowed`);
-  }
-
-  const expectedHeading = dispatchSections.get(command);
-  if (!expectedHeading) {
-    fail(`bin/lib/dispatch.mjs DOC_SECTION lacks ${command}`);
-  } else if (doc.show_doc_heading !== expectedHeading) {
-    fail(
-      `show-doc drift for ${command}: core has ${doc.show_doc_heading}, dispatch has ${expectedHeading}`
-    );
   }
 
   assertSkillPayload(sourceSkillRoot, "ddalggak", doc);

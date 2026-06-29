@@ -173,7 +173,6 @@ const referenceAnchorContracts = [
 const packagePath = path.join(rootDir, "package.json");
 const readmePath = path.join(rootDir, "README.md");
 const cliPath = path.join(rootDir, "bin", "ddalggak.js");
-const dispatchPath = path.join(rootDir, "bin", "lib", "dispatch.mjs");
 const skillBudgets = [
   {
     label: ".codex/skills/ddalggak/SKILL.md",
@@ -259,18 +258,6 @@ function extractCliHelpSubcommands(text) {
     }
   }
   return commands;
-}
-
-function extractDocSectionMap(text) {
-  const match = text.match(/const DOC_SECTION = \{([\s\S]*?)\};/);
-  if (!match) {
-    return null;
-  }
-  const entries = {};
-  for (const item of match[1].matchAll(/\s*([a-z]+):\s*"([^"]+)"/g)) {
-    entries[item[1]] = item[2];
-  }
-  return entries;
 }
 
 function arraysEqual(a, b) {
@@ -1395,23 +1382,21 @@ if (!arraysEqual(cliSubcommands, requiredSubcommands)) {
   );
 }
 
-const dispatchText = readText(dispatchPath);
-const docSectionMap = extractDocSectionMap(dispatchText);
-if (!docSectionMap) {
-  fail("bin/lib/dispatch.mjs must define DOC_SECTION.");
-} else {
-  const docSectionKeys = Object.keys(docSectionMap);
-  if (!arraysEqual(docSectionKeys, requiredSubcommands)) {
+for (const subcommand of requiredSubcommands) {
+  const showDocResult = spawnSync(process.execPath, [cliPath, subcommand, "--show-doc"], {
+    cwd: rootDir,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  if (showDocResult.status !== 0) {
     fail(
-      `DOC_SECTION keys drifted. Expected ${requiredSubcommands.join(", ")}; got ${docSectionKeys.join(", ")}`
+      `ddalggak ${subcommand} --show-doc failed:\nstdout:\n${showDocResult.stdout}\nstderr:\n${showDocResult.stderr}`,
     );
+    continue;
   }
-  for (const subcommand of requiredSubcommands) {
-    if (docSectionMap[subcommand] !== requiredClaudeHeadings[subcommand]) {
-      fail(
-        `DOC_SECTION.${subcommand} must map to "${requiredClaudeHeadings[subcommand]}".`
-      );
-    }
+  const expectedHeading = requiredClaudeHeadings[subcommand];
+  if (!showDocResult.stdout.includes(`## ${expectedHeading}`)) {
+    fail(`ddalggak ${subcommand} --show-doc must resolve core/commands heading "${expectedHeading}".`);
   }
 }
 

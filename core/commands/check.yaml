@@ -1,5 +1,6 @@
 # Canonical ddalggak command contract. Keep this file data-only; do not paste long procedure here.
 command: check
+command_order: "130"
 show_doc_heading: "Local Diff Check"
 source_edit_allowed: false
 github_write_allowed: false

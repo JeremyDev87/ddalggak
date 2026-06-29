@@ -1,5 +1,6 @@
 # Canonical ddalggak command contract. Keep this file data-only; do not paste long procedure here.
 command: review
+command_order: "020"
 show_doc_heading: "Cross-Review Loop"
 source_edit_allowed: true
 github_write_allowed: true

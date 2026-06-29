@@ -2,7 +2,7 @@
 import { readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
-import { COMMAND_ORDER, loadCommandContracts as loadCoreCommandContracts } from "../bin/lib/command-contracts.mjs";
+import { loadCommandContracts as loadCoreCommandContracts } from "../bin/lib/command-contracts.mjs";
 import { escapeRegExp } from "./lib/escape-regexp.mjs";
 import {
   parseReferenceBudgetExemptions,
@@ -63,8 +63,6 @@ function parseArgs(argv) {
 }
 
 const { writeMode, reportMode, admissionMode, checkMode } = parseArgs(process.argv.slice(2));
-
-const commandOrder = COMMAND_ORDER;
 
 const allowedArtifactByCommand = {
   start: "worker agents may edit only files named in their brief",
@@ -304,15 +302,6 @@ function renderCodexCompletionSignalTable() {
   for (const doc of commands) {
     lines.push(`| \`${doc.command}\` | \`${completionSignalOf(doc)}\` |`);
   }
-  return lines.join("\n");
-}
-
-function renderDocSectionMap() {
-  const lines = ["const DOC_SECTION = {"];
-  for (const doc of commands) {
-    lines.push(`  ${doc.command}: ${JSON.stringify(doc.show_doc_heading)},`);
-  }
-  lines.push("};");
   return lines.join("\n");
 }
 
@@ -615,10 +604,6 @@ const projections = [
       ["required-reference-map", renderRequiredReferenceMap()],
       ["completion-signal-table", renderCodexCompletionSignalTable()],
     ],
-  },
-  {
-    path: "bin/lib/dispatch.mjs",
-    blocks: [["show-doc-heading-map", renderDocSectionMap()]],
   },
   {
     path: "core/verification/manifests/package-files.mjs",

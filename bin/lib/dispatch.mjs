@@ -3,31 +3,17 @@
 // zero-dep, ESM only.
 
 import { spawn } from "node:child_process";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { loadShowDocHeadingMap } from "./command-contracts.mjs";
 import { buildSlashString } from "./dispatch/slash.mjs";
 import { extractDocSection } from "./dispatch/show-doc.mjs";
 import { parseArgs, runRuntimeDispatch } from "./dispatch/runtime-dispatch-args.mjs";
 import { resolveExecutable } from "./process/resolve-executable.mjs";
 
-// subcmd → SKILL.md H2 헤더 매핑 (--show-doc 용)
-// <!-- ddalggak:generated:start show-doc-heading-map -->
-const DOC_SECTION = {
-  start: "Start Workflow",
-  review: "Cross-Review Loop",
-  status: "Status",
-  plan: "Issue-Ready Plan",
-  issue: "Plan to Issues",
-  clean: "Merge Cleanup",
-  ship: "Ship",
-  retro: "Retrospective",
-  prompt: "Prompt Optimizer",
-  tune: "Tune Goal Brief",
-  forge: "Forge Acceptance Criteria",
-  spark: "Spark Runtime Goal",
-  check: "Local Diff Check",
-  getwiki: "GetWiki Bridge",
-  setwiki: "SetWiki Bridge",
-};
-// <!-- ddalggak:generated:end show-doc-heading-map -->
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const rootDir = join(__dirname, "..", "..");
+const DOC_SECTION = loadShowDocHeadingMap(rootDir);
 
 async function findClaude() {
   return resolveExecutable("claude");

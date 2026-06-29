@@ -1,5 +1,6 @@
 # Canonical ddalggak command contract. Keep this file data-only; do not paste long procedure here.
 command: forge
+command_order: "110"
 show_doc_heading: "Forge Acceptance Criteria"
 source_edit_allowed: false
 github_write_allowed: false
