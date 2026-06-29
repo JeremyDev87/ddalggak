@@ -22,6 +22,8 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { emitReport, pushMarkdownTable } from "./lib/reporting.mjs";
+
 import { collectWorkflowFiles } from "./lib/workflow-files.mjs";
 import { extractTopLevelBlocks, indentOf } from "./lib/yaml-lines.mjs";
 
@@ -493,15 +495,15 @@ function formatMarkdown(result) {
 
   lines.push("## Summary");
   lines.push("");
-  lines.push("| workflow | triggers | write? | next_gate |");
-  lines.push("|---|---|---|---|");
-  for (const wf of result.workflows) {
-    const hasWrite = wf.write_escalation_reason ? "yes" : "no";
-    const name = path.basename(wf.workflow_path);
-    lines.push(
-      `| \`${name}\` | ${wf.trigger_events.join(", ")} | ${hasWrite} | ${wf.next_gate} |`
-    );
-  }
+  pushMarkdownTable(
+    lines,
+    ["workflow", "triggers", "write?", "next_gate"],
+    result.workflows.map((wf) => {
+      const hasWrite = wf.write_escalation_reason ? "yes" : "no";
+      const name = path.basename(wf.workflow_path);
+      return [`\`${name}\``, wf.trigger_events.join(", "), hasWrite, wf.next_gate];
+    }),
+  );
   lines.push("");
 
   return lines.join("\n");
@@ -548,11 +550,7 @@ function run() {
       "and remain unknown. Unknown fields are not promoted to pass.",
   };
 
-  if (options.format === "json") {
-    process.stdout.write(JSON.stringify(result, null, 2) + "\n");
-  } else {
-    process.stdout.write(formatMarkdown(result));
-  }
+  emitReport({ format: options.format, report: result, formatMarkdown });
 }
 
 run();
