@@ -310,6 +310,7 @@ function requiredPackageFiles() {
     ".codex/skills/ddalggak/SKILL.md",
     ".codex/skills/ddalggak/agents/openai.yaml",
     "scripts/project-runtime-assets.mjs",
+    "core/token-budgets.yaml",
     "core/verification/side-effect-boundary-policy.mjs",
     "core/verification/skill-contract-manifest.mjs",
     "core/verification/manifests/README.md",
@@ -381,16 +382,20 @@ function readProjectionsText() {
   return readText("core/projections.yaml");
 }
 
+function readTokenBudgetsText() {
+  return readText("core/token-budgets.yaml");
+}
+
 function readSubcommandTokenBudgets() {
-  return parseSubcommandTokenBudgets(readProjectionsText());
+  return parseSubcommandTokenBudgets(readTokenBudgetsText());
 }
 
 function readSubcommandTokenCeilings() {
-  return parseSubcommandTokenCeilings(readProjectionsText());
+  return parseSubcommandTokenCeilings(readTokenBudgetsText());
 }
 
 function readReferenceBudgetExemptions() {
-  return parseReferenceBudgetExemptions(readProjectionsText());
+  return parseReferenceBudgetExemptions(readTokenBudgetsText());
 }
 
 function runTokenBudgetReport() {
@@ -425,7 +430,7 @@ function runTokenBudgetReport() {
       let status = "ok";
       if (budget === undefined) {
         status = "no-budget";
-        warnings.push(`${key}/${doc.command}: no budget declared in core/projections.yaml subcommand_token_budgets.${key}`);
+        warnings.push(`${key}/${doc.command}: no budget declared in core/token-budgets.yaml subcommand_token_budgets.${key}`);
       } else if (estTokens > budget) {
         status = "OVER";
         warnings.push(`${key}/${doc.command}: ~${estTokens} tokens exceeds budget ${budget}`);
@@ -530,7 +535,7 @@ function runReferenceCoverageChecks() {
       const estTokens = Math.ceil(fileTokenEstimate(relativePath));
       if (estTokens > exemption.maxTokens) {
         failures.push(
-          `${key}: reference ${exemption.reference} ~${estTokens} tokens exceeds its exemption cap ${exemption.maxTokens}; reduce the reference or raise max_tokens in core/projections.yaml reference_budget_exemptions`,
+          `${key}: reference ${exemption.reference} ~${estTokens} tokens exceeds its exemption cap ${exemption.maxTokens}; reduce the reference or raise max_tokens in core/token-budgets.yaml reference_budget_exemptions`,
         );
       }
     }
@@ -555,7 +560,7 @@ function runCeilingChecks() {
       if (budget === undefined) continue; // missing-budget already reported by runTokenBudgetReport
       const ceiling = ceilings.get(doc.command);
       if (ceiling === undefined) {
-        failures.push(`${key}/${doc.command}: no ceiling declared in core/projections.yaml subcommand_token_ceilings.${key}`);
+        failures.push(`${key}/${doc.command}: no ceiling declared in core/token-budgets.yaml subcommand_token_ceilings.${key}`);
         continue;
       }
       if (budget > ceiling) {
@@ -577,7 +582,7 @@ if (reportMode) {
   if (admissionMode) {
     if (overBudget + missingBudget + extraFailures.length > 0) {
       console.error(
-        `[token-budget] admission gate: fail (over-budget ${overBudget}, missing-budget ${missingBudget}, coverage/cap/ceiling ${extraFailures.length}); adjust assets, budgets, ceilings, or exemptions in core/projections.yaml`,
+        `[token-budget] admission gate: fail (over-budget ${overBudget}, missing-budget ${missingBudget}, coverage/cap/ceiling ${extraFailures.length}); adjust assets, budgets, ceilings, or exemptions in core/token-budgets.yaml`,
       );
       process.exit(1);
     }

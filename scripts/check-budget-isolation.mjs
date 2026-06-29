@@ -5,7 +5,7 @@
  * PR diff isolation gate for subcommand token budgets (#267).
  *
  * Policy: a PR that changes the `subcommand_token_budgets` block in
- * core/projections.yaml must not also change measured skill content
+ * core/token-budgets.yaml must not also change measured skill content
  * (ddalggak/**, .codex/**, core/commands/**). Otherwise raising the
  * budget inside the same PR that grows the content would neutralize
  * the admission gate's ratchet (#254).
@@ -19,15 +19,15 @@
  * The comparison uses the merge-base of the two refs, so commits that
  * landed on the base branch after the PR branched off do not flag the
  * PR. Budget change detection parses the budget block on both sides and
- * compares values, so edits to other core/projections.yaml blocks
- * (parity_ledger etc.) or comment-only edits never count as budget
+ * compares values, so edits to other core/token-budgets.yaml blocks
+ * (reference exemptions, ceilings, etc.) or comment-only edits never count as budget
  * changes.
  */
 
 import { spawnSync } from "node:child_process";
 import { parseSubcommandTokenBudgets } from "./lib/token-budget-yaml.mjs";
 
-const PROJECTIONS_PATH = "core/projections.yaml";
+const TOKEN_BUDGETS_PATH = "core/token-budgets.yaml";
 const MEASURED_ASSET_PREFIXES = ["ddalggak/", ".codex/", "core/commands/"];
 
 function usage() {
@@ -127,10 +127,10 @@ if (!mergeBase) {
   process.exit(2);
 }
 
-const baseProjectionText = showFileAt(mergeBase, PROJECTIONS_PATH);
-const headProjectionText = showFileAt(head, PROJECTIONS_PATH);
-const budgetsChanged = canonicalBudgets(baseProjectionText) !== canonicalBudgets(headProjectionText);
-const disallowedBudgetCommands = changedBudgetCommands(baseProjectionText, headProjectionText).filter(
+const baseTokenBudgetsText = showFileAt(mergeBase, TOKEN_BUDGETS_PATH);
+const headTokenBudgetsText = showFileAt(head, TOKEN_BUDGETS_PATH);
+const budgetsChanged = canonicalBudgets(baseTokenBudgetsText) !== canonicalBudgets(headTokenBudgetsText);
+const disallowedBudgetCommands = changedBudgetCommands(baseTokenBudgetsText, headTokenBudgetsText).filter(
   (command) => !isNewCommand(command, mergeBase, head),
 );
 
@@ -146,7 +146,7 @@ const measuredChanges = changedFiles.filter((file) =>
 
 if (budgetsChanged && measuredChanges.length > 0 && disallowedBudgetCommands.length > 0) {
   console.error(
-    "[budget-isolation] fail: this PR changes core/projections.yaml subcommand_token_budgets together with measured skill content:",
+    "[budget-isolation] fail: this PR changes core/token-budgets.yaml subcommand_token_budgets together with measured skill content:",
   );
   for (const file of measuredChanges) {
     console.error(`- ${file}`);
