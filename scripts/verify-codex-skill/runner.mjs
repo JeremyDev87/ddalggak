@@ -3,6 +3,11 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
+import { runCliReadmeDriftChecks } from "./cli-readme-drift.mjs";
+import { runFrontmatterChecks } from "./frontmatter.mjs";
+import { runHotPathBudgetChecks } from "./hot-path-budget.mjs";
+import { runReferenceAdmissionChecks } from "./reference-admission.mjs";
+import { runSemanticAnchorChecks } from "./semantic-anchors.mjs";
 import { sideEffectBoundarySkillSemanticAnchorGuards } from "../../core/verification/side-effect-boundary-policy.mjs";
 import {
   requiredDisclosureAssetsBySubcommand,
@@ -1080,6 +1085,11 @@ export function runVerifyCodexSkill() {
     return stripMarkdownHtmlComments(body).replace(/\s+/g, "").length;
   }
 
+  const minSubstantiveSectionBodyChars = 40;
+  // Known pre-existing index-style heading with an intentionally empty body (#214 audit finding).
+  // The document itself is must-not-touch in #214; do not extend this list without an issue reference.
+  const allowedEmptySectionBodies = new Set(["regression-library.md :: Existing failure classes"]);
+
   function assertSubstantiveSectionBodies({ label, fileName, text }) {
     for (const section of parseMarkdownSections(text)) {
       if (allowedEmptySectionBodies.has(`${fileName} :: ${section.heading}`)) {
@@ -1189,64 +1199,26 @@ export function runVerifyCodexSkill() {
     }
   }
 
-  for (const budget of skillBudgets) {
-    assertSkillBudget(budget);
-  }
-  assertRequiredDisclosureAssetsExist();
-  assertRequiredReferenceAdmissionHeaders();
-  assertSubcommandExecutionContracts();
-  assertPackageArtifactIncludes();
-
-  for (const root of skillPayloadRoots) {
-    assertTemplateRequiredFields({
-      label: root,
-      relativePath: `${root}/templates/issue-body.md`,
-      fields: requiredIssueTemplateFields,
-    });
-    assertTemplateRequiredFields({
-      label: root,
-      relativePath: `${root}/templates/epic-body.md`,
-      fields: requiredEpicTemplateFields,
-    });
-  }
-
-  verifySkillFile(skillPath, {
-    label: ".codex/skills/ddalggak/SKILL.md",
-    hotPathAnchors: requiredSkillHotPathAnchors,
+  runHotPathBudgetChecks({ skillBudgets, assertSkillBudget });
+  runReferenceAdmissionChecks({
+    skillPayloadRoots,
+    requiredIssueTemplateFields,
+    requiredEpicTemplateFields,
+    assertRequiredDisclosureAssetsExist,
+    assertRequiredReferenceAdmissionHeaders,
+    assertSubcommandExecutionContracts,
+    assertPackageArtifactIncludes,
+    assertTemplateRequiredFields,
   });
-
-  verifySkillFile(claudeSkillPath, {
-    label: "ddalggak/SKILL.md",
-    hotPathAnchors: requiredClaudeSkillHotPathAnchors,
+  runFrontmatterChecks({
+    skillPath,
+    claudeSkillPath,
+    requiredSkillHotPathAnchors,
+    requiredClaudeSkillHotPathAnchors,
+    verifySkillFile,
+    assertForbiddenHotPathTemplateSentinels,
+    readText,
   });
-
-  assertForbiddenHotPathTemplateSentinels({
-    label: ".codex/skills/ddalggak/SKILL.md",
-    text: readText(skillPath),
-  });
-  assertForbiddenHotPathTemplateSentinels({
-    label: "ddalggak/SKILL.md",
-    text: readText(claudeSkillPath),
-  });
-
-  for (const contract of referenceAnchorContracts) {
-    verifyReferenceAnchorContract(contract);
-  }
-
-  for (const contract of gateStageHeadingReferenceContracts) {
-    const referencePaths = [
-      path.join(skillDir, contract.reference),
-      path.join(rootDir, "ddalggak", contract.reference),
-    ];
-    for (const referencePath of referencePaths) {
-      const label = path.relative(rootDir, referencePath);
-      if (!statSync(referencePath, { throwIfNoEntry: false })?.isFile()) {
-        fail(`${label} must exist for canonical gate stage-heading verification.`);
-        continue;
-      }
-      assertStageHeadings({ label, text: readText(referencePath), stages: contract.stages });
-    }
-  }
 
   // Must-match projection parity is intentionally not checked here. The single
   // source of authority for codex↔claude byte parity is core/projections.yaml's
@@ -1262,419 +1234,56 @@ export function runVerifyCodexSkill() {
     return { label, text: readText(sourceRootReferencePath) };
   }
 
-  const gateActivationReferencePathsByFile = new Map([
-    ["frontend-design-gate.md", frontendDesignReferencePaths],
-    ["vercel-agent-skills-gates.md", vercelAgentSkillsReferencePaths],
-  ]);
-  for (const [gateFamily, contract] of Object.entries(gateActivationKeywordContracts)) {
-    const gateReferencePaths = gateActivationReferencePathsByFile.get(contract.referenceFile) || [];
-    for (const [index, routerReferencePath] of routerReferencePaths.entries()) {
-      const gateReferencePath = gateReferencePaths[index];
-      if (
-        !gateReferencePath ||
-        !statSync(routerReferencePath, { throwIfNoEntry: false })?.isFile() ||
-        !statSync(gateReferencePath, { throwIfNoEntry: false })?.isFile()
-      ) {
-        continue;
-      }
-      assertGateActivationKeywordContract({
-        gateFamily,
-        contract,
-        routerText: readText(routerReferencePath),
-        gateReferenceText: readText(gateReferencePath),
-      });
-    }
-  }
-
-  const minSubstantiveSectionBodyChars = 40;
-  // Known pre-existing index-style heading with an intentionally empty body (#214 audit finding).
-  // The document itself is must-not-touch in #214; do not extend this list without an issue reference.
-  const allowedEmptySectionBodies = new Set(["regression-library.md :: Existing failure classes"]);
-  const substantiveSectionReferencePaths = [
-    ...new Set([
-      ...requiredDisclosureAssetPaths()
-        .filter((assetPath) => assetPath.includes("/references/"))
-        .map((assetPath) => path.join(rootDir, assetPath)),
-      ...referenceAnchorContracts.flatMap((contract) => contract.referencePaths),
-    ]),
-  ];
-  for (const referencePath of substantiveSectionReferencePaths) {
-    // Missing required files are already reported by the existence checks above.
-    if (!statSync(referencePath, { throwIfNoEntry: false })?.isFile()) {
-      continue;
-    }
-    assertSubstantiveSectionBodies({
-      label: path.relative(rootDir, referencePath),
-      fileName: path.basename(referencePath),
-      text: readText(referencePath),
-    });
-  }
-
-  // Section-scoped anchor contracts: the heading must exist and the anchor must live under it.
-  // A matching string elsewhere in the file must not satisfy these. Manifest arrays stay file-wide
-  // for backward compatibility; this layer pins the anchors that are only meaningful inside their section.
-  const referenceSectionAnchorContracts = [
-    {
-      referencePaths: routerReferencePaths,
-      sections: [
-        {
-          heading: "Gate Families",
-          anchors: requiredRouterGateFamilies.map((gateFamily) => `\`${gateFamily}\``),
-        },
-        {
-          heading: "Required Reference Mapping",
-          anchors: [...new Set(routerGateFamilies.map((family) => `\`${family.reference}\``))],
-        },
-        {
-          heading: "Priority Order",
-          anchors: ["This priority is exact"],
-        },
-      ],
-    },
-    {
-      referencePaths: evidenceReferencePaths,
-      sections: [
-        {
-          heading: "Evidence Templates",
-          anchors: [
-            "UI/design/frontend",
-            "Deploy/release/env",
-            "Performance",
-            "Bugfix/regression",
-            "Security/auth/privacy",
-            "Data/API/backend",
-          ],
-        },
-        {
-          heading: "Missing Evidence Severity",
-          anchors: ["not-applicable: <reason>", "High"],
-        },
-        {
-          heading: "Approval Rule",
-          anchors: ["APPROVE", "not-applicable: <reason>"],
-        },
-      ],
-    },
-  ];
-  for (const { referencePaths, sections } of referenceSectionAnchorContracts) {
-    for (const referencePath of referencePaths) {
-      if (!statSync(referencePath, { throwIfNoEntry: false })?.isFile()) {
-        continue;
-      }
-      const label = path.relative(rootDir, referencePath);
-      const parsedSections = parseMarkdownSections(readText(referencePath));
-      for (const { heading, anchors } of sections) {
-        assertSectionScopedAnchors({ label, parsedSections, heading, anchors });
-      }
-    }
-  }
-
-  const readmeText = readText(readmePath);
-  const missingReadmeQualityAnchors = requiredReadmeQualityAnchors.filter(
-    (anchor) => !readmeText.includes(anchor),
-  );
-  if (missingReadmeQualityAnchors.length > 0) {
-    fail(
-      `README Quality Defaults anchors missing:\n${missingReadmeQualityAnchors
-        .map((anchor) => `  - ${anchor}`)
-        .join("\n")}`,
-    );
-  }
-
-  const packageJson = JSON.parse(readText(packagePath));
-  const packageFiles = Array.isArray(packageJson.files) ? packageJson.files : [];
-  if (!packageFiles.includes(".codex/")) {
-    fail('package.json files must include ".codex/".');
-  }
-
-  const cliText = readText(cliPath);
-  const helpResult = spawnSync(process.execPath, [cliPath, "--help"], {
-    cwd: rootDir,
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "pipe"],
-  });
-  if (helpResult.status !== 0) {
-    fail(`bin/ddalggak.js --help must run successfully. stderr:\n${helpResult.stderr}`);
-  }
-  const cliSubcommands = extractCliHelpSubcommands(helpResult.stdout);
-  if (!arraysEqual(cliSubcommands, requiredSubcommands)) {
-    fail(
-      `CLI help subcommands drifted. Expected ${requiredSubcommands.join(", ")}; got ${cliSubcommands.join(", ")}`
-    );
-  }
-
-  for (const subcommand of requiredSubcommands) {
-    const showDocResult = spawnSync(process.execPath, [cliPath, subcommand, "--show-doc"], {
-      cwd: rootDir,
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-    if (showDocResult.status !== 0) {
-      fail(
-        `ddalggak ${subcommand} --show-doc failed:\nstdout:\n${showDocResult.stdout}\nstderr:\n${showDocResult.stderr}`,
-      );
-      continue;
-    }
-    const expectedHeading = requiredClaudeHeadings[subcommand];
-    if (!showDocResult.stdout.includes(`## ${expectedHeading}`)) {
-      fail(`ddalggak ${subcommand} --show-doc must resolve core/commands heading "${expectedHeading}".`);
-    }
-  }
-
-  const claudeSkillText = statSync(claudeSkillPath, { throwIfNoEntry: false })?.isFile()
-    ? readText(claudeSkillPath)
-    : "";
-  for (const [subcommand, heading] of Object.entries(requiredClaudeHeadings)) {
-    if (!claudeSkillText.includes(`## ${heading}`)) {
-      fail(`ddalggak/SKILL.md must include ## ${heading} for '${subcommand}'.`);
-    }
-  }
-
-  const compactShowDocContracts = {
-    plan: [
-      "Full procedure: `references/issue-ready-plan.md`; wiki preflight: `references/wiki-context-preflight.md`; wiki bridge: `references/wiki-bridge.md`; Brain v0 authority: `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`.",
-      "references/wiki-bridge.md",
-      "Execution contract index:",
-      "Quality Lens Router Output",
-      "Evidence Contract",
-      "Simplicity / Deletability Gate",
-      "Frontend/Vercel/Regression details only when applicable",
-      "one PR per issue by default",
-      "conflict fallback only with proof",
-      "Parallelization Decision",
-      "Must not touch",
-      "evidence",
-      "commit message",
-    ],
-    start: [
-      "Full procedure: `references/start-workflow.md`; reusable prompt: `templates/worker-brief.md`.",
-      "Execution contract index:",
-      "Quality Lens Router",
-      "Evidence Contract",
-      "Simplicity / Deletability",
-      "Core Invariants",
-      "frontend/vercel/regression only when applicable",
-      "allowed, forbidden, inspect-only, Must not touch",
-      "one issue PR by default",
-      "hard-conflict fallback only with reason",
-      "commit/push/PR/evidence/blocking gaps",
-    ],
-    review: [
-      "Full procedure: `references/cross-review-loop.md`; wiki authority: `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`; reusable prompt: `templates/review-brief.md`.",
-      "Execution contract index:",
-      "live PR state",
-      "diff/files/checks",
-      "linked issue",
-      "current head SHA",
-      "wiki-context preflight",
-      "Quality Lens Router",
-      "Evidence Contract",
-      "Simplicity / Deletability",
-      "Core Invariants",
-      "conditional frontend/vercel/regression gates",
-      "top-level comment with SHA",
-      "validation",
-      "conclusion",
-    ],
-  };
-  for (const [subcommand, anchors] of Object.entries(compactShowDocContracts)) {
-    const heading = requiredClaudeHeadings[subcommand];
-    const section = extractClaudeSection(claudeSkillText, heading);
-    for (const anchor of anchors) {
-      if (!section.includes(anchor)) {
-        fail(`ddalggak ${subcommand} --show-doc compact contract missing anchor: ${anchor}`);
-      }
-    }
-    for (const forbiddenHeading of [
-      "### Quality Lens Router Output",
-      "### Evidence Contract",
-      "### Frontend Design Brief",
-      "### Vercel Agent Skills Gate",
-    ]) {
-      if (section.includes(forbiddenHeading)) {
-        fail(`ddalggak ${subcommand} --show-doc must keep ${forbiddenHeading} detail in references/templates, not inline.`);
-      }
-    }
-  }
-
-  const codexSkillText = statSync(skillPath, { throwIfNoEntry: false })?.isFile()
-    ? readText(skillPath)
-    : "";
-  assertRenderedSubcommandContracts({
-    label: ".codex/skills/ddalggak/SKILL.md",
-    text: codexSkillText,
-  });
-  assertRenderedSubcommandContracts({
-    label: "ddalggak/SKILL.md",
-    text: claudeSkillText,
-  });
-  const codexCompactSubcommandContracts = {
-    plan: [
-      "Full procedure: `references/issue-ready-plan.md`; wiki preflight: `references/wiki-context-preflight.md`; wiki bridge: `references/wiki-bridge.md`; Brain v0 authority: `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`.",
-      "references/wiki-bridge.md",
-      "Execution contract index:",
-      "Quality Lens Router Output",
-      "Evidence Contract",
-      "Simplicity / Deletability Gate",
-      "one issue PR by default",
-      "conflict fallback only with proof",
-      "Parallelization Decision",
-      "Must not touch",
-    ],
-    start: [
-      "Full procedure: `references/start-workflow.md`; reusable prompt: `templates/worker-brief.md`.",
-      "Execution contract index:",
-      "Quality Lens Router Output",
-      "Evidence Contract",
-      "Simplicity / Deletability Gate",
-      "allowed/forbidden/inspect-only/Must not touch",
-      "one issue PR by default",
-      "hard-conflict fallback only with reason",
-      "validation/PR evidence",
-    ],
-    review: [
-      "Full procedure: `references/cross-review-loop.md`; wiki authority: `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`; reusable prompt: `templates/review-brief.md`.",
-      "Execution contract index:",
-      "live PR/diff/files/checks/issue/head SHA",
-      "Wiki Context Preflight",
-      "Quality Lens Router Output",
-      "Evidence Contract",
-      "Simplicity / Deletability Gate",
-      "conditional frontend/Vercel/regression gates",
-      "top-level conclusion comment",
-    ],
-  };
-  const codexCompactHeadings = {
-    plan: "`plan` - Issue-Ready Plan",
-    start: "`start` - Issue-Based Implementation",
-    review: "`review` - Cross-Review Loop",
-  };
-  for (const [subcommand, anchors] of Object.entries(codexCompactSubcommandContracts)) {
-    const section = extractMarkdownSection(codexSkillText, codexCompactHeadings[subcommand]);
-    for (const anchor of anchors) {
-      if (!section.includes(anchor)) {
-        fail(`.codex/skills/ddalggak/SKILL.md ${subcommand} compact contract missing anchor: ${anchor}`);
-      }
-    }
-  }
-
-  const issueSection = extractClaudeSection(claudeSkillText, requiredClaudeHeadings.issue);
-  for (const issueCommitLaneAnchor of ["Owned files", "Must not touch", "Parallelization note", "Commit lane suggestion", "Validation/evidence", "Dependencies / blocked by"]) {
-    if (!issueSection.includes(issueCommitLaneAnchor)) {
-      fail(`ddalggak issue --show-doc section must preserve commit-lane issue fields (${issueCommitLaneAnchor}).`);
-    }
-  }
-
-  assertForbiddenTermsAbsent({
-    label: "ddalggak start --show-doc section",
-    text: extractClaudeSection(claudeSkillText, requiredClaudeHeadings.start),
-    terms: [
-      "PUSHED:",
-      "PR URL 출력",
-      "git add → commit → push → gh pr create",
-      "commit/push/draft PR까지 완료",
-      "PR 링크 요약",
-      "PR이 열렸으면",
-      "push/PR만 빠진 경우",
-      "gh pr create --draft --base",
-      "Wave",
-      "wave",
-      "복수 PR merge",
-    ],
+  runSemanticAnchorChecks({
+    referenceAnchorContracts,
+    verifyReferenceAnchorContract,
+    gateStageHeadingReferenceContracts,
+    skillDir,
+    rootDir,
+    path,
+    statSync,
+    fail,
+    assertStageHeadings,
+    readText,
+    requiredDisclosureAssetPaths,
+    assertSubstantiveSectionBodies,
+    assertSectionScopedAnchors,
+    parseMarkdownSections,
+    routerReferencePaths,
+    evidenceReferencePaths,
+    frontendDesignReferencePaths,
+    vercelAgentSkillsReferencePaths,
+    gateActivationKeywordContracts,
+    assertGateActivationKeywordContract,
+    requiredRouterGateFamilies,
+    routerGateFamilies,
   });
 
-  assertForbiddenTermsAbsent({
-    label: "ddalggak plan --show-doc section",
-    text: extractClaudeSection(claudeSkillText, requiredClaudeHeadings.plan),
-    terms: [
-      "Wave",
-      "wave",
-      "복수 PR merge",
-      "별도 wave",
-      "같은 wave",
-    ],
+  runCliReadmeDriftChecks({
+    rootDir,
+    packagePath,
+    readmePath,
+    cliPath,
+    skillPath,
+    skillDir,
+    claudeSkillPath,
+    requiredReadmeQualityAnchors,
+    requiredSubcommands,
+    requiredClaudeHeadings,
+    requiredIssueTemplateFields,
+    extractCliHelpSubcommands,
+    arraysEqual,
+    extractClaudeSection,
+    extractMarkdownSection,
+    assertRenderedSubcommandContracts,
+    assertForbiddenTermsAbsent,
+    readText,
+    statSync,
+    listFiles,
+    bannedTerms,
+    countOccurrences,
+    fail,
   });
-
-  assertForbiddenTermsAbsent({
-    label: "ddalggak issue --show-doc section",
-    text: issueSection,
-    terms: [
-      "Wave",
-      "wave",
-      "Wave 1",
-      "Wave 2",
-      "Wave 단위",
-      "모든 sub-issue merge",
-      "/multi-issue-executor",
-      "복수 PR merge",
-      "| # | 제목 | 파일 | Wave | Blockers | 상태 |",
-    ],
-  });
-
-  assertForbiddenTermsAbsent({
-    label: "Codex skill",
-    text: readText(skillPath),
-    terms: [
-      "PRs in the same wave",
-      "tests, commit, push, draft PR",
-      "worker repeatedly idles after commit without push or PR",
-      '"phase": "wave-1"',
-      '"pr_url"',
-      "`pr_opened`",
-      "`pr_review_approved`",
-      "merge-order context",
-      "one PR per lane unless",
-      "do not create stacked PRs, branch matrices, or lane-specific PRs",
-      "Lane-specific/per-issue PRs are required",
-      "without creating lane PRs",
-    ],
-  });
-
-  assertForbiddenTermsAbsent({
-    label: "ddalggak Claude skill unconditional lane-specific PR prohibition",
-    text: claudeSkillText,
-    terms: [
-      "Worker는 lane-specific PR을 만들지 않는다.",
-      "content=\"BRIEF.md(.worktrees/<branch>/BRIEF.md)를 읽고 지시된 대로 구현해. 완료 후 한 줄: LANE_READY: Phase Y W<번호> <patch-or-commit> <validation>\"",
-      "모든 워커가 `LANE_READY:` 출력 나오면 lane 초안 수집 완료",
-    ],
-  });
-
-  if (statSync(skillDir, { throwIfNoEntry: false })?.isDirectory()) {
-    const bannedHits = [];
-    for (const filePath of listFiles(skillDir)) {
-      const text = readText(filePath);
-      for (const term of bannedTerms) {
-        const count = countOccurrences(text, term);
-        if (count > 0) {
-          bannedHits.push({
-            file: path.relative(rootDir, filePath),
-            term,
-            count,
-          });
-        }
-      }
-    }
-
-    if (bannedHits.length > 0) {
-      const details = bannedHits
-        .map((hit) => `${hit.file}: ${hit.term} x${hit.count}`)
-        .join("\n");
-      fail(`banned Claude primitive leftovers must be zero:\n${details}`);
-    }
-  }
-
-  const projectionVerifier = spawnSync(process.execPath, ["scripts/verify-projections.mjs"], {
-    cwd: rootDir,
-    encoding: "utf8",
-  });
-  if (projectionVerifier.status !== 0) {
-    fail(
-      `projection-aware verifier failed with exit ${projectionVerifier.status}:\n${projectionVerifier.stdout || ""}${projectionVerifier.stderr || ""}`,
-    );
-  } else if (projectionVerifier.stdout) {
-    process.stdout.write(projectionVerifier.stdout);
-  }
 
   if (failures.length > 0) {
     console.error("[verify:codex-skill] failed");
