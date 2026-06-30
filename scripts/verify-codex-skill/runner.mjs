@@ -1062,27 +1062,37 @@ export function runVerifyCodexSkill() {
     });
   }
 
-  function stripMarkdownHtmlComments(text) {
-    let output = "";
+  function stripHtmlComments(text) {
+    let result = "";
     let cursor = 0;
     while (cursor < text.length) {
-      const start = text.indexOf("<!--", cursor);
-      if (start === -1) {
-        output += text.slice(cursor);
+      const commentStart = text.indexOf("<!--", cursor);
+      if (commentStart === -1) {
+        result += text.slice(cursor);
         break;
       }
-      output += text.slice(cursor, start);
-      const end = text.indexOf("-->", start + 4);
-      if (end === -1) {
+      result += text.slice(cursor, commentStart);
+      const commentEnd = text.indexOf("-->", commentStart + 4);
+      if (commentEnd === -1) {
         break;
       }
-      cursor = end + 3;
+      cursor = commentEnd + 3;
     }
-    return output;
+    return result;
+  }
+
+  function nonWhitespaceLength(text) {
+    let length = 0;
+    for (const char of text) {
+      if (!/\s/u.test(char)) {
+        length += 1;
+      }
+    }
+    return length;
   }
 
   function substantiveBodyLength(body) {
-    return stripMarkdownHtmlComments(body).replace(/\s+/g, "").length;
+    return nonWhitespaceLength(stripHtmlComments(body));
   }
 
   const minSubstantiveSectionBodyChars = 40;
