@@ -24,15 +24,15 @@ subcommand_token_budgets:
     review: 27000
     status: 10000
     plan: 20000
-    issue: 9000
-    clean: 8500
-    ship: 8500
+    issue: 9500
+    clean: 9000
+    ship: 9500
     retro: 14000
     prompt: 12500
     tune: 11000
     forge: 11000
     spark: 11000
-    check: 8500
+    check: 9000
     getwiki: 11000
     setwiki: 13000
   codex:
@@ -42,7 +42,7 @@ subcommand_token_budgets:
     plan: 21000
     issue: 10000
     clean: 9500
-    ship: 9500
+    ship: 10000
     retro: 12500
     prompt: 12500
     tune: 12000
