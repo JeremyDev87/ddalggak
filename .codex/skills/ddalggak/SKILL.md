@@ -1,21 +1,21 @@
 ---
 name: ddalggak
-description: "Use for ddalggak workflow subcommands."
+description: "Use for Codex-native ddalggak issue, plan, implementation, ship, review, recovery, retrospective, prompt, wiki bridge, ULW, and GJC workflows."
 ---
 
 # ddalggak - Codex App workflow
 
-Ddalggak is a thin-router for Issue -> plan -> implementation -> review -> recovery -> retro.
+Ddalggak routes GitHub issue -> plan -> implementation -> review -> recovery -> retrospective. Keep long procedure in `references/` and wording in `templates/`.
 
 ## Subcommands
 
 Supported subcommands are declared in the generated table below.
 
-Standard cycle: `prompt` -> `tune` -> `forge` -> `spark` -> `plan` -> `start` -> `ship` -> `review` -> `retro`.
+Standard cycle: `prompt` -> `tune` -> `forge` -> `spark` -> `plan` -> `start` -> `ship` -> `review` -> `retro`. `status`, `issue`, `clean`, `check`, `getwiki`, and `setwiki` are supporting commands.
 
 ## Hot-Path Target Architecture
 
-The hot path is routing, code permissions, guardrails, subcommand contracts, reference map, stop conditions, and verification checklist.
+Hot path: routing, permissions, guardrails, contracts, references, stop conditions, and verification.
 
 
 ## Routing Invariant
@@ -34,7 +34,7 @@ Parse only the first whitespace-separated word from the invocation arguments.
 
 ## Code Modification Invariant
 
-Repository source edits are authorized only where the generated permission table below says `yes`; every `no` subcommand is read-only for source code and may only produce its listed artifacts.
+Source edits are allowed only where the generated table says `yes`; `no` commands are source-read-only and may produce only listed artifacts.
 
 <!-- ddalggak:generated:start code-permission-table -->
 | Subcommand | May modify source files | Allowed artifacts |
@@ -106,7 +106,7 @@ If a non-writing subcommand would need a source edit to continue, report the nee
 
 ## Codex App Primitives
 
-Use Codex App native orchestration names in briefs and state records: `spawn_agent`, `send_input`, `wait_agent`, `.ddalggak/session-state.json`, and `request_user_input` when available. The state file is the source of truth for lane IDs, worktree paths, branch names, issue numbers, PR URL/evidence, validation commands, review verdicts, and blockers.
+Use Codex App orchestration names in briefs/state: `spawn_agent`, `send_input`, `wait_agent`, `.ddalggak/session-state.json`, and `request_user_input` when available. The state file owns lane IDs, worktrees, branches, issue/PR evidence, validation, review verdicts, and blockers.
 
 ## Global Guardrails
 
@@ -168,7 +168,7 @@ Command contract: mode `source-edit`; source edits are limited to live issue-own
 
 Full procedure: `references/start-workflow.md`; reusable prompt: `templates/worker-brief.md`.
 
-Execution contract index: repo/base freshness, issue body+comments, Quality Lens Router Output, Evidence Contract, Simplicity / Deletability Gate, allowed/forbidden/inspect-only/Must not touch, one issue PR by default, hard-conflict fallback only with reason, validation/PR evidence, blocking gaps.
+Execution contract index: target repo/base freshness, issue body+comments, Quality Lens Router Output, React Code Quality Harness when applicable, Evidence Contract, Simplicity / Deletability Gate, allowed/forbidden/inspect-only/Must not touch, one issue PR by default, hard-conflict fallback only with reason, validation/PR evidence, and blocking gaps.
 
 ## `review` - Cross-Review Loop
 
@@ -176,7 +176,7 @@ Command contract: mode `review-fix`; source edits are allowed only for accepted 
 
 Full procedure: `references/cross-review-loop.md`; wiki authority: `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`; reusable prompt: `templates/review-brief.md`.
 
-Execution contract index: live PR/diff/files/checks/issue/head SHA, Wiki Context Preflight, Quality Lens Router Output, Evidence Contract, Simplicity / Deletability Gate, conditional frontend/Vercel/regression gates, blocker triage, and top-level conclusion comment when formal approval is inappropriate.
+Execution contract index: live PR/diff/files/checks/issue/head SHA, Wiki Context Preflight, Quality Lens Router Output, React Code Quality Harness when applicable, Evidence Contract, Simplicity / Deletability Gate, conditional frontend/Vercel/regression gates, React code quality gates when applicable, blocker triage, inline line-anchored finding comments in one COMMENT-event batch (suggestion blocks when a concrete fix fits, no finding-body duplication in the top-level comment), and top-level conclusion comment when formal approval is inappropriate.
 
 ## `status` - Current State Snapshot
 
@@ -186,13 +186,13 @@ Read `.ddalggak/session-state.json` if present, then inspect live git/GitHub sta
 
 Full procedure: `references/issue-ready-plan.md`; wiki preflight: `references/wiki-context-preflight.md`; wiki bridge: `references/wiki-bridge.md`; Brain v0 authority: `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`.
 
-Execution contract index: source/non-goals/unknowns, ownership, Quality Lens Router Output, Evidence Contract, Simplicity / Deletability Gate, one issue PR by default, conflict fallback only with proof, Parallelization Decision, Must not touch, evidence/validation, commit message.
+Execution contract index: source of truth, non-goals, context anchors, assumptions/unknowns, work inventory, ownership, forbidden/inspect-only files, Quality Lens Router Output, React Code Quality Harness when applicable, Evidence Contract, Counterargument Pass, Simplicity / Deletability Gate, one issue PR by default, conflict fallback only with proof, Parallelization Decision, Must not touch, evidence/validation, and commit message.
 
 ## `issue` - Plan To GitHub Issues
 
 Convert a plan into GitHub issues without editing repository files. Preserve Owned files, Must not touch, Parallelization note, Commit lane suggestion, Validation/evidence, and Dependencies / blocked by.
 
-Issue titles/bodies must be raw UTF-8, not JSON-escaped text. Reject or decode literal Unicode escapes before GitHub mutation; verify live title/body after creation.
+Issue titles and bodies must be submitted as raw UTF-8, not JSON-escaped text. Before any `gh issue create` or `gh issue edit`, reject or decode titles/bodies containing literal Unicode escapes such as `\\uD558` / `\\ud558`; do not persist those escape sequences to GitHub. Prefer `--body-file` for Markdown bodies, and for non-ASCII titles prefer a UTF-8 REST payload written with `json.dumps(..., ensure_ascii=False)` via `gh api --input`. After creation, re-read `gh issue view --json title,body,url` and verify the live title contains Korean characters, not literal `\\uXXXX` sequences.
 
 ## `ship` - Publish Current Lane
 
@@ -272,7 +272,14 @@ Stale repo state; missing issue comments; hallucinated dependencies; unsafe forc
 
 ## Verification Checklist
 
-Full procedure: `references/verification-checklist.md`. Verify base freshness, issue body+comments, file tracking/local-only status, validation evidence, reviewer isolation, and Markdown fence integrity.
+- Base freshness and ahead/behind state known.
+- Issue body and comments inspected.
+- Allowed, forbidden, inspect-only, and Must not touch files explicit.
+- New dependencies avoided or proven.
+- Subagent side effects rechecked with git/GitHub.
+- Tests distinguished from commit, push, PR, and review completion.
+- Markdown edits preserve frontmatter, routing, code permissions, headings, fences, and numbering.
+- Evidence Contract, Simplicity / Deletability Gate, and relevant conditional references applied or skipped with reasons.
 
 ## Completion Signals
 
@@ -310,12 +317,134 @@ Stop when source edits fall outside the routed subcommand, a lane needs files ou
 
 ## Reference Contract Summary
 
-- URL beats cwd; owner/repo/number; cwd remote does not match; Issue comments matter.
-- Manual merge only: merge actions stay outside this workflow.
-- Approval-comment policy; Issue-PRs by default.
-- Runtime contract language in `references/agent-runtime-contract.md`: Task Scope Contract, Context Assembly Manifest, Resume Snapshot, Control-flow ownership, tool capability boundary, task scope contract, out-of-scope diff, scope-expansion failure.
-- Quality Lens Router keeps Required references; Domain gate is a lens, not a mandate.
-- Wiki Context First uses `references/wiki-context-preflight.md`; Wiki Bridge uses `references/wiki-bridge.md`: `getwiki` read-only retrieval, `setwiki` approval-gated write.
-- Evidence Contract in `references/evidence-contract.md`: Blocking evidence gaps, No evidence, no readiness or approval.
-- Simplicity / Deletability Gate in `references/simplicity-deletability-gate.md`: small direct change first, why any proposed abstraction is necessary.
-- Core Invariants Reference in `references/core-invariants.md`: Counterargument Pass, Self-created complexity is a defect, no silent fallback, raw UTF-8.
+The following compact contract keeps hot-path guardrails operational while detailed procedure moves to references/templates/scripts. Each item is a required review or routing concept, not a standalone checklist to satisfy mechanically:
+
+- URL beats cwd
+- GitHub URL handling criteria
+- owner/repo/number
+- cwd remote does not match
+- Task Scope Contract
+- Context Assembly Manifest
+- Resume Snapshot
+- Control-flow ownership
+- Runtime contract language
+- Small focused workers, explicit orchestration
+- tool capability boundary
+- task scope contract
+- out-of-scope diff
+- scope-expansion failure
+- Diff Footprint / Scope Expansion Review
+- knowledge extraction
+- harness-engineering/*
+- principles/*
+- frontend/*
+- llm-wiki/*
+- rendered evidence
+- route evidence
+- viewport evidence
+- rendered DOM evidence
+- screenshot evidence
+- fallback evidence
+- contract graph evidence
+- not-applicable
+- Analytics privacy
+- raw search terms
+- prompt titles
+- full query strings
+- Transitive rendered fallback
+- PR numbers
+- commit SHAs
+- single-session completion logs
+- incident records
+- durable reusable knowledge
+- Self-created complexity is a defect
+- forced modularization
+- Client-side patches
+- mock-only tests
+- Quality Lens Router
+- Quality Lens Router Output
+- Applicable gate families
+- Skipped gates
+- Required references
+- Domain gate is a lens, not a mandate
+- backend-only skip
+- Repo/product conventions
+- frontend-design
+- backend-only
+- Evidence Contract
+- references/evidence-contract.md
+- Blocking evidence gaps
+- No evidence, no readiness or approval
+- Counterargument Pass
+- weak assumptions
+- evidence that would disprove readiness
+- smaller or more direct change
+- Simplicity / Deletability Gate
+- references/simplicity-deletability-gate.md
+- React Code Quality Harness
+- react-code-quality-harness
+- references/react-code-quality-harness.md
+- Readability
+- Predictability
+- Hook/effect stability
+- Rendered evidence
+- Rendering/performance boundary
+- Frontend Design Gate
+- references/frontend-design-gate.md
+- Frontend Design Brief
+- Frontend Design Review Gate
+- Vercel Agent Skills Gate
+- references/vercel-agent-skills-gates.md
+- react-best-practices
+- composition-patterns
+- react-view-transitions
+- web-design-guidelines
+- deploy-to-vercel
+- vercel-cli-with-tokens
+- react-native-skills
+- server/client boundary
+- unnecessary client component avoidance
+- hydration/bundle regression avoidance
+- token source without printing secrets
+- preview-first
+- Vercel deploy safety
+- component API quality
+- animation meaning
+- React Native/Expo constraints
+- small direct change first
+- why any proposed abstraction is necessary
+- one-off abstraction
+- human readability
+- SOLID
+- Continuous Regression Library
+- references/regression-library.md
+- Regression Library Candidate
+- class-level risks
+- transient incidents in memory
+- Manual merge only
+- auto-merge
+- ready for manual merge
+- Approval-comment policy
+- top-level PR comment
+- head SHA
+- review scope
+- validation evidence
+- blocking findings count
+- Issue-PRs by default
+- do not replace independent issue PRs
+- one issue PR per independent issue
+- Issue PRs are required for independent issues
+- rescue the missing issue PR creation
+- Issue-PR Strategy with Conflict Fallback
+- Parallelization Decision
+- Must not touch
+- one PR
+- separate commits
+- Component methodology gate
+- main component only assembles
+- ComponentName.parts.tsx
+- ComponentName.utils.ts
+- satisfies Record<...>
+- public visual-contract classes
+- no silent fallback
+- empty companion files
