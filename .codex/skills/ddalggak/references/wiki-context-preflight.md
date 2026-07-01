@@ -1,10 +1,10 @@
 # Wiki Context Preflight
-Use when: a `plan`, `start`, or `review` run must combine live GitHub/repo evidence with prior LLM Wiki knowledge before issue-ready plans or review judgments.
-Required by: `plan`, `review`, `start`; every Wiki Context Manifest those runs emit.
+Use when: any ddalggak subcommand run must combine live GitHub/repo evidence with prior LLM Wiki knowledge before acting.
+Required by: all ddalggak subcommands; every Wiki Context Manifest those runs emit.
 Side effects: none
 Do not use when: the task needs wiki writes (the approval-gated `setwiki` bridge owns those), or wiki facts would substitute for live diff/issue/PR/check evidence.
 
-Use this reference before `plan` and `review` to retrieve relevant knowledge from 박정욱's LLM Wiki before making issue-ready plans or PR review judgments.
+Use this reference before every subcommand to retrieve relevant knowledge from 박정욱's LLM Wiki. When no relevant wiki exists or search fails, record `Wiki: none-found` and proceed with normal behavior — wiki strengthens the run but never blocks it.
 
 ## Purpose
 
@@ -43,7 +43,7 @@ After the Brain v0 migration/hardening batches, ddalggak wiki preflight must app
 
 ## Manifest
 
-Every `plan` and `review` output must include a wiki context manifest:
+Every subcommand output must include a wiki context manifest before its completion signal (record `Wiki: none-found` when retrieval returns nothing relevant):
 
 ```markdown
 ### Wiki Context Manifest

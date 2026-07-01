@@ -12,6 +12,7 @@ import { loadLayout } from "./doctor/layout.mjs";
 import { checkDeadPointers, checkReachability } from "./doctor/reachability.mjs";
 import { checkRootParity } from "./doctor/root-parity.mjs";
 import { checkSignalRegistry } from "./doctor/signals.mjs";
+import { checkWikiWiring } from "./doctor/wiki-wiring.mjs";
 import { isDirectory } from "./doctor/lib.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -34,6 +35,9 @@ Checks:
                    templates/*.md definition.
   root-parity      file existence diff between projection roots over the
                    shared skill surface (SKILL.md, references/, templates/).
+  wiki-wiring      every core/commands contract lists
+                   references/wiki-context-preflight.md so the mandatory wiki
+                   preflight is wired for all subcommands.
 
 Not checked (do not read a clean doctor run as proof of these):
   - projection-root content parity (bytes/checksums) — parity ledger scope.
@@ -65,6 +69,7 @@ const CHECK_ORDER = [
   "dead-pointer",
   "signal-registry",
   "root-parity",
+  "wiki-wiring",
 ];
 
 function out(message) {
@@ -104,6 +109,7 @@ function buildReport(rootDir) {
     "dead-pointer": checkDeadPointers(layout),
     "signal-registry": checkSignalRegistry(layout),
     "root-parity": checkRootParity(layout),
+    "wiki-wiring": checkWikiWiring(layout),
   };
 
   const checks = {};

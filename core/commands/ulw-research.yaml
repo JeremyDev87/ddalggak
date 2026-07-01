@@ -8,6 +8,7 @@ mode: "read-only"
 write_side_effects: "Research only; no writes."
 stop_condition: "Stop after cited claims/gaps."
 required_references:
+  - wiki-context-preflight.md
   - ulw-research.md
 
 required_templates:

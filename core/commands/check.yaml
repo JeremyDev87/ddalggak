@@ -9,6 +9,7 @@ mode: "read-only"
 write_side_effects: "Local diff review notes only; no GitHub comments and no repository edits."
 stop_condition: "Stop after findings and exact validation gaps are reported."
 required_references:
+  - wiki-context-preflight.md
   - local-diff-check.md
 
 required_templates:

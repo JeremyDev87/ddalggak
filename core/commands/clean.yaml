@@ -9,6 +9,7 @@ mode: "local-destructive"
 write_side_effects: "Local branch/worktree cleanup only after live merge evidence; no GitHub mutation."
 stop_condition: "Stop on dirty, ambiguous, unmerged, or non-ancestor worktrees/branches."
 required_references:
+  - wiki-context-preflight.md
   - merge-cleanup.md
 
 required_templates:

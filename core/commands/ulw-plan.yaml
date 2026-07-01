@@ -8,6 +8,7 @@ mode: "plan-only"
 write_side_effects: "Plan only; no writes."
 stop_condition: "Stop after criteria/blockers."
 required_references:
+  - wiki-context-preflight.md
   - ulw-plan.md
 
 required_templates:
