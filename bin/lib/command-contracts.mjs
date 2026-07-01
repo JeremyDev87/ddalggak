@@ -103,7 +103,7 @@ Codex App:
   Invocation name: ddalggak
 
 Subcommands:
-  setup                Install legacy Claude Code skill to ~/.claude/skills/ddalggak/
+  setup                Install Claude Code skills to ~/.claude/skills/
   doctor               Run repo-source health checks (reachability, dead pointers, signals, root parity)
 ${commandLines}
   status --local       Inspect local source/Codex/installed skill parity
@@ -121,6 +121,12 @@ Options:
 Examples:
   ddalggak setup
   ddalggak plan --print "Split issue 22 into reviewable PR units"
+  ddalggak ulw-loop --print "Implement the bounded goal"
+  ddalggak ulw-plan --print "Plan this remediation"
+  ddalggak ulw-research --print "Research the current options"
+  ddalggak gjc-plan --print "Delegate a planning pass"
+  ddalggak gjc-execute --print "Delegate approved execution"
+  ddalggak gjc-team --print "Delegate parallel team work"
   ddalggak spark --print "Draft the next runtime goal"
   ddalggak getwiki --print "workflow routing"
   ddalggak setwiki --print "review this lesson"

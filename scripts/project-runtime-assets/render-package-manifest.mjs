@@ -26,6 +26,7 @@ export function requiredPackageFiles(commands) {
     "LICENSE",
   ]);
   for (const doc of commands) {
+    base.add(`core/commands/${doc.command}.yaml`);
     for (const ref of doc.required_references || []) {
       base.add(`.codex/skills/ddalggak/references/${ref}`);
       base.add(`ddalggak/references/${ref}`);

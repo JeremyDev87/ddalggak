@@ -124,6 +124,7 @@ function makePackageFixture() {
         scripts,
         files: [
           ".codex/",
+          "claude-skills/",
           "ddalggak/",
           "bin/",
           "scripts/",

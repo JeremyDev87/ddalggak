@@ -193,6 +193,10 @@ export const cases = [
         "expected setup to create skills/ddalggak/SKILL.md",
       );
       assert(
+        !existsSync(path.join(claudeHome, "skills", ["omo", "ulw"].join("-"))),
+        "expected setup not to create a standalone ULW skill",
+      );
+      assert(
         existsSync(path.join(skillDir, ".installed-version")),
         "expected setup to create skills/ddalggak/.installed-version",
       );

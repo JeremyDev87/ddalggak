@@ -1,0 +1,18 @@
+command: ulw-research
+command_order: "180"
+show_doc_heading: "ULW Research"
+source_edit_allowed: false
+github_write_allowed: false
+purpose: "Cited research with explicit gaps."
+mode: "read-only"
+write_side_effects: "Research output only; no source, GitHub, or git mutation."
+stop_condition: "Stop after claims are cited or tested and gaps are named."
+required_references:
+  - ulw-research.md
+
+required_templates:
+  []
+
+output_contract:
+  completion_signal: "ULW_RESEARCH_DONE"
+  evidence_required: true

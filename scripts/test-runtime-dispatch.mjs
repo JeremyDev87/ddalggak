@@ -1,3 +1,5 @@
+import { pathToFileURL } from "node:url";
+
 import {
   assert,
   assertDispatchSlashHelpers,
@@ -58,6 +60,35 @@ export const cases = [
         assertExit(result, 0);
         assertStdout(result, expected);
       }
+    },
+  },
+{
+    name: "ulw subcommands --print emit ddalggak-native slash commands",
+    run() {
+      for (const subcommand of ["ulw-loop", "ulw-plan", "ulw-research"]) {
+        const result = runCli([subcommand, "--print", "demo"]);
+        assertExit(result, 0);
+        assertStdout(result, `/ddalggak ${subcommand} demo\n`);
+      }
+    },
+  },
+{
+    name: "gjc subcommands --print emit ddalggak-native slash commands",
+    run() {
+      for (const subcommand of ["gjc-plan", "gjc-execute", "gjc-team"]) {
+        const result = runCli([subcommand, "--print", "demo task"]);
+        assertExit(result, 0);
+        assertStdout(result, `/ddalggak ${subcommand} "demo task"\n`);
+      }
+    },
+  },
+{
+    name: "unsupported research alias remains unsupported",
+    run() {
+      const unsupportedAlias = ["ultra", "research"].join("");
+      const result = runCli([unsupportedAlias, "--print", "demo"]);
+      assertExit(result, 2);
+      assertIncludes(result.stderr, `Unknown command: ${unsupportedAlias}`, "stderr");
     },
   },
 {
@@ -240,6 +271,42 @@ export const cases = [
           assets: [],
           maxLines: 12,
         },
+        "ulw-loop": {
+          heading: "## ULW Loop",
+          fullProcedure: "references/ulw-loop.md",
+          assets: ["source_edit_allowed: true", "github_write_allowed: false", "ULW_LOOP_DONE"],
+          maxLines: 12,
+        },
+        "ulw-plan": {
+          heading: "## ULW Plan",
+          fullProcedure: "references/ulw-plan.md",
+          assets: ["source_edit_allowed: false", "ULW_PLAN_DONE"],
+          maxLines: 12,
+        },
+        "ulw-research": {
+          heading: "## ULW Research",
+          fullProcedure: "references/ulw-research.md",
+          assets: ["source_edit_allowed: false", "ULW_RESEARCH_DONE"],
+          maxLines: 12,
+        },
+        "gjc-plan": {
+          heading: "## Gajae-Code Delegation",
+          fullProcedure: "references/gajae-code.md",
+          assets: ["gjc_delegate_plan", "allow_mutation: false", "GJC_PLAN_DONE"],
+          maxLines: 12,
+        },
+        "gjc-execute": {
+          heading: "## Gajae-Code Delegation",
+          fullProcedure: "references/gajae-code.md",
+          assets: ["gjc_delegate_execute", "explicit user approval", "GJC_EXECUTE_DONE"],
+          maxLines: 12,
+        },
+        "gjc-team": {
+          heading: "## Gajae-Code Delegation",
+          fullProcedure: "references/gajae-code.md",
+          assets: ["gjc_delegate_team", "external GJC visible-session helpers", "GJC_TEAM_DONE"],
+          maxLines: 12,
+        },
       };
 
       for (const [subcommand, contract] of Object.entries(expectedDisclosures)) {
@@ -267,3 +334,21 @@ export const cases = [
     },
   }
 ];
+
+if (import.meta.url === pathToFileURL(process.argv[1] || "").href) {
+  let passed = 0;
+  const failures = [];
+  for (const testCase of cases) {
+    try {
+      await testCase.run();
+      passed += 1;
+      console.log(`[PASS] test-runtime-dispatch: ${testCase.name}`);
+    } catch (error) {
+      failures.push(testCase.name);
+      console.error(`[FAIL] test-runtime-dispatch: ${testCase.name}`);
+      console.error(error && error.stack ? error.stack : String(error));
+    }
+  }
+  console.log(`\nSummary: ${passed}/${cases.length} runtime dispatch cases passed.`);
+  if (failures.length > 0) process.exitCode = 1;
+}

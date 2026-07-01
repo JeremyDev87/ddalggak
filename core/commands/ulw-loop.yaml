@@ -1,0 +1,18 @@
+command: ulw-loop
+command_order: "160"
+show_doc_heading: "ULW Loop"
+source_edit_allowed: true
+github_write_allowed: false
+purpose: "Evidence-led bounded implementation loop."
+mode: "source-edit"
+write_side_effects: "Scoped source edits; no GitHub writes."
+stop_condition: "Stop after evidence, validation, cleanup, and blockers."
+required_references:
+  - ulw-loop.md
+
+required_templates:
+  []
+
+output_contract:
+  completion_signal: "ULW_LOOP_DONE"
+  evidence_required: true

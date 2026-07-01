@@ -35,6 +35,12 @@ subcommand_token_budgets:
     check: 8500
     getwiki: 11000
     setwiki: 13000
+    ulw-loop: 14000
+    ulw-plan: 13000
+    ulw-research: 11000
+    gjc-plan: 13000
+    gjc-execute: 14000
+    gjc-team: 14000
   codex:
     start: 24000
     review: 27500
@@ -51,6 +57,12 @@ subcommand_token_budgets:
     check: 9500
     getwiki: 11500
     setwiki: 13500
+    ulw-loop: 15000
+    ulw-plan: 14000
+    ulw-research: 12000
+    gjc-plan: 14000
+    gjc-execute: 15000
+    gjc-team: 15000
 # Per-reference effective-load exemptions. The token budget admission gate
 # (scripts/project-runtime-assets.mjs --report --admission) requires every
 # ddalggak/references/*.md file to be EITHER measured (named in some command's
@@ -119,6 +131,12 @@ subcommand_token_ceilings:
     check: 13000
     getwiki: 16500
     setwiki: 19500
+    ulw-loop: 21000
+    ulw-plan: 19500
+    ulw-research: 16500
+    gjc-plan: 19500
+    gjc-execute: 21000
+    gjc-team: 21000
   codex:
     start: 36000
     review: 40000
@@ -135,3 +153,9 @@ subcommand_token_ceilings:
     check: 14500
     getwiki: 17500
     setwiki: 20500
+    ulw-loop: 22500
+    ulw-plan: 21000
+    ulw-research: 18000
+    gjc-plan: 21000
+    gjc-execute: 22500
+    gjc-team: 22500
