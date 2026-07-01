@@ -126,6 +126,9 @@ node bin/ddalggak.js plan --print "Split issue 22 into reviewable PR units"
 node bin/ddalggak.js ulw-loop --print "Implement the bounded goal"
 node bin/ddalggak.js ulw-plan --print "Plan this remediation"
 node bin/ddalggak.js ulw-research --print "Research the current options"
+node bin/ddalggak.js gjc-plan --print "Delegate a planning pass"
+node bin/ddalggak.js gjc-execute --print "Delegate approved execution"
+node bin/ddalggak.js gjc-team --print "Delegate parallel team work"
 node bin/ddalggak.js tune --print "Clarify this implementation goal"
 node bin/ddalggak.js spark --print "Draft the next runtime goal"
 node bin/ddalggak.js start 22
@@ -175,7 +178,7 @@ Common subcommand options:
 - `--print`: print only the `/ddalggak <subcommand> ...` slash command.
 - `--show-doc`: print the matching `SKILL.md` section for the subcommand.
 
-Goal-shaping subcommands:
+Workflow support subcommands:
 
 - `tune`: produce an intent/scope brief for a future runtime goal.
 - `forge`: turn a tuned brief into command/observation plus expected-result acceptance criteria.
@@ -183,6 +186,9 @@ Goal-shaping subcommands:
 - `ulw-loop`: implement a bounded goal with evidence and local validation; no GitHub writes.
 - `ulw-plan`: produce a decision-complete implementation plan without source edits.
 - `ulw-research`: produce cited research without source edits.
+- `gjc-plan`: delegate a planning pass through Gajae-Code.
+- `gjc-execute`: delegate approved execution through Gajae-Code.
+- `gjc-team`: delegate parallel team work through Gajae-Code.
 
 `profile hermes` options:
 
