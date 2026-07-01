@@ -49,6 +49,15 @@ Every review verdict and every fix result is tied to a concrete PR head SHA.
 - If a fix commit changes files outside the accepted finding scope, treat the review as reopened and run scope-expansion review again.
 - If formal GitHub approval is self-review or otherwise inappropriate, use a top-level `approve`/`change request` comment that names the current head SHA, scope, validation, blocker count, and human merge boundary.
 
+## Inline finding comments
+
+Review finding은 top-level 요약이 아니라 diff 라인에 앵커된 inline review comment로 게시한다. severity로 게시 위치를 나누지 않는다 — Critical부터 nit·suggestion까지 모든 finding이 inline이다.
+
+- 게시는 단일 review 제출 1건으로 묶는다: `POST /repos/{owner}/{repo}/pulls/{number}/reviews`, `event: COMMENT`, `comments: [{path, line, side, body}, ...]`. finding마다 개별 comment API를 반복 호출하지 않는다.
+- 구체적 코드 대안이 있는 finding은 body에 GitHub ` ```suggestion ` 블록을 포함해 리뷰이가 한 번에 적용할 수 있게 한다.
+- 앵커 순서(fallback): (1) 추가·변경 라인은 `side: RIGHT`, (2) 삭제 라인은 `side: LEFT`, (3) 파일 전반 지적은 file-level comment(`subject_type: file`), (4) diff 밖 코드를 유발한 변경 라인에 근접 앵커, (5) 그래도 앵커 불가하면 blocker는 top-level의 blocking finding count에만 반영하고 non-blocker는 drop하되 drop 사실을 리뷰 로그에 남긴다. 조용한 누락은 금지.
+- top-level 요약 comment는 현재 approval-comment 형식 그대로다(current head SHA, review scope, validation evidence, blocking finding count, conclusion). finding 본문을 top-level에 중복하지 않는다.
+
 ## Wiki Review Context Preflight
 
 Before judging the PR, run `references/wiki-context-preflight.md` using:
