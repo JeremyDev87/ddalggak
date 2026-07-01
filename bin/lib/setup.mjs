@@ -1,4 +1,4 @@
-// ddalggak setup — install the skill payload to <CLAUDE_HOME>/skills/ddalggak/
+// ddalggak setup — install Claude Code skill payloads to <CLAUDE_HOME>/skills/
 //
 // Contract (called from bin/ddalggak.js):
 //   export async function run(args) → number (exit code)
@@ -7,8 +7,8 @@
 //
 // Behaviour summary:
 //   - Resolves claudeHome: --target > $CLAUDE_HOME > $HOME/.claude.
-//   - Source payload: <pkgRoot>/ddalggak/  (two levels up from this file).
-//   - Destination:    <claudeHome>/skills/ddalggak/.
+//   - Source payload: <pkgRoot>/ddalggak/.
+//   - Destination:     <claudeHome>/skills/<name>/.
 //   - Idempotent via <dst>/.installed-version (compared against package.json version).
 //   - Atomic backup: rename <dst> → <dst>.bak.<YYYYMMDD-HHMMSS>[-rand6].
 //   - Flags: --dry-run, --force, --no-backup, --target <path>, --help.
@@ -29,10 +29,12 @@ import { resolvePhysicalPath, safetyCheck } from "./setup/path-safety.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PKG_ROOT = resolve(__dirname, "..", "..");
-const SRC_DIR = join(PKG_ROOT, "ddalggak");
+const SOURCE_SKILLS = [
+  { name: "ddalggak", sourceRoot: join(PKG_ROOT, "ddalggak") },
+];
 const PKG_JSON = join(PKG_ROOT, "package.json");
 
-const HELP_TEXT = `ddalggak setup — install skill payload to <CLAUDE_HOME>/skills/ddalggak/
+const HELP_TEXT = `ddalggak setup — install Claude Code skills to <CLAUDE_HOME>/skills/
 
 Usage:
   ddalggak setup [options]
@@ -124,7 +126,6 @@ export async function run(args) {
     return 0;
   }
 
-  // Resolve claudeHome: --target > CLAUDE_HOME > ~/.claude
   let claudeHomeInput;
   if (opts.target !== null) {
     claudeHomeInput = opts.target;
@@ -135,9 +136,16 @@ export async function run(args) {
   }
 
   const claudeHomeResolved = await resolvePhysicalPath(claudeHomeInput);
-  const dstDir = resolve(claudeHomeResolved, "skills", "ddalggak");
+  const skillPayloads = SOURCE_SKILLS.map((skill) => ({
+    ...skill,
+    dstDir: resolve(claudeHomeResolved, "skills", skill.name),
+  }));
 
-  const safetyError = safetyCheck(claudeHomeInput, claudeHomeResolved, dstDir);
+  const safetyError = safetyCheck(
+    claudeHomeInput,
+    claudeHomeResolved,
+    resolve(claudeHomeResolved, "skills", "ddalggak"),
+  );
   if (safetyError) {
     err(`safety check failed: ${safetyError}`);
     return 2;
@@ -151,53 +159,58 @@ export async function run(args) {
     return 1;
   }
 
-  // Verify source payload exists (helps surface packaging mistakes early).
-  if (!(await pathExists(SRC_DIR))) {
-    err(`source payload missing: ${SRC_DIR}`);
-    return 1;
+  for (const skill of skillPayloads) {
+    if (!(await pathExists(skill.sourceRoot))) {
+      err(`source payload missing: ${skill.sourceRoot}`);
+      return 1;
+    }
   }
 
-  // --- dry-run ------------------------------------------------------------
   if (opts.dryRun) {
     out(`Would resolve claudeHome → ${claudeHomeResolved}`);
-    out(`Would resolve target dir → ${dstDir}`);
-    const installed = (await pathExists(dstDir))
-      ? await readInstalledVersion(dstDir)
-      : null;
-    if (installed !== null && installed === version && !opts.force) {
-      out(`Would skip: already up to date at ${version}`);
-      return 0;
-    }
-    if (installed !== null) {
-      if (opts.noBackup) {
-        out(`Would remove existing ${dstDir} (--no-backup)`);
-      } else {
-        out(`Would rename ${dstDir} → ${dstDir}.bak.<timestamp>`);
+    for (const skill of skillPayloads) {
+      out(`Would resolve target dir → ${skill.dstDir}`);
+      const installed = (await pathExists(skill.dstDir))
+        ? await readInstalledVersion(skill.dstDir)
+        : null;
+      if (installed !== null && installed === version && !opts.force) {
+        out(`Would skip ${skill.name}: already up to date at ${version}`);
+        continue;
       }
+      if (installed !== null) {
+        if (opts.noBackup) {
+          out(`Would remove existing ${skill.dstDir} (--no-backup)`);
+        } else {
+          out(`Would rename ${skill.dstDir} → ${skill.dstDir}.bak.<timestamp>`);
+        }
+      }
+      out(`Would copy ${skill.sourceRoot} → ${skill.dstDir}`);
+      out(`Would write ${skill.name} .installed-version with ${version}`);
+      out(
+        `Would write ${skill.name} .installed-manifest.json with file sha256 inventory`,
+      );
     }
-    out(`Would copy ${SRC_DIR} → ${dstDir}`);
-    out(`Would write .installed-version with ${version}`);
-    out("Would write .installed-manifest.json with file sha256 inventory");
     return 0;
   }
 
-  // --- real install -------------------------------------------------------
   try {
-    await installSkillPayload({
-      sourceRoot: SRC_DIR,
-      dstDir,
-      version,
-      force: opts.force,
-      noBackup: opts.noBackup,
-      out,
-    });
+    for (const skill of skillPayloads) {
+      await installSkillPayload({
+        sourceRoot: skill.sourceRoot,
+        dstDir: skill.dstDir,
+        version,
+        force: opts.force,
+        noBackup: opts.noBackup,
+        out,
+      });
+    }
 
-    out(`✓ Installed ddalggak v${version} → ${dstDir}`);
+    out(
+      `✓ Installed Claude Code skills v${version} → ${resolve(claudeHomeResolved, "skills")}`,
+    );
     out("");
     out("Next step:");
-    out(
-      "  Claude Code에서 /ddalggak 또는 npx @jeremyfellaz/ddalggak <subcommand>를 사용하세요.",
-    );
+    out("  Claude Code에서 /ddalggak <subcommand>를 사용하세요.");
     return 0;
   } catch (e) {
     err(`install failed: ${e && e.message ? e.message : e}`);

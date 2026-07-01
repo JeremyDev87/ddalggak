@@ -75,7 +75,7 @@ export const cases = [
         !result.stdout.includes("Run issue-based implementation lanes"),
         "help should use core/commands purpose text, not the old hand-written start description",
       );
-      assertIncludes(result.stdout, "  setup                Install legacy Claude Code skill", "stdout");
+      assertIncludes(result.stdout, "  setup                Install Claude Code skills", "stdout");
       assertIncludes(result.stdout, "  status --local       Inspect local source/Codex/installed skill parity", "stdout");
     },
   },

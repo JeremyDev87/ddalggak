@@ -1,7 +1,7 @@
 ---
 name: ddalggak
-description: "Use when 박정욱 invokes `/ddalggak` for the GitHub issue → plan → implementation → ship → review workflow, including plan, issue, start, ship, review, status, clean, retro, prompt, tune, forge, spark, check, getwiki, and setwiki subcommands."
-argument-hint: "[start|review|status|plan|issue|clean|ship|retro|prompt|tune|forge|spark|check|getwiki|setwiki] — no arg = start from GitHub issue"
+description: "Use for `/ddalggak` repo workflow subcommands, ULW, and GJC."
+argument-hint: "[subcommand] — no arg = start from GitHub issue"
 user-invocable: true
 ---
 
@@ -11,9 +11,9 @@ user-invocable: true
 
 ## 표준 워크플로우와 코드 수정 권한 (전역 invariant)
 
-표준 사이클: `prompt` → `tune` → `forge` → `spark` → `plan` → `start` → `ship` → `review` → `retro`. `status`, `issue`, `clean`, `check`, `getwiki`, `setwiki`는 보조 명령이다.
+사이클: `prompt` → `tune` → `forge` → `spark` → `plan` → `start` → `ship` → `review` → `retro`; 나머지는 보조 명령이다.
 
-소스 코드(repo 내 파일, SKILL.md 포함)를 수정할 권한이 있는 서브커맨드는 `start`와 `review` 뿐이다. 다른 모든 서브커맨드는 자기 산출물 또는 GitHub 산출물만 작성한다.
+소스 수정은 아래 표의 `✅` subcommand만 가능하다. `❌`는 read-only이며 표의 산출물만 작성한다.
 
 <!-- ddalggak:generated:start code-permission-table -->
 | 서브커맨드 | 소스 코드 수정 | 작성 가능한 산출물 |
@@ -33,13 +33,17 @@ user-invocable: true
 | `check` | ❌ | local review notes only; no repository edits |
 | `getwiki` | ❌ | delegate to dedicated `/getwiki` read-only retrieval |
 | `setwiki` | ❌ | delegate to dedicated `/setwiki` approval-gated write workflow |
+| `ulw-loop` | ✅ | scoped edits; no GitHub |
+| `ulw-plan` | ❌ | plan output only |
+| `ulw-research` | ❌ | research output only |
+| `gjc-plan` | ❌ | coordinator evidence |
+| `gjc-execute` | ✅ | approved edits; no GitHub |
+| `gjc-team` | ✅ | approved team work; no GitHub |
 <!-- ddalggak:generated:end code-permission-table -->
 
 ## Hot-Path Target Architecture
 
-항상 로드되는 본문은 frontmatter, routing invariant, code modification invariant, global guardrails, subcommand dispatch table, required reference map, stop conditions, verification checklist만 담는다. 상세 절차는 reference/template/script/eval로 넘긴다.
-
-현재 hot-path 목표는 line-count 자체가 아니라 subcommand별 Mode / Source edit / GitHub-write side effects / Required references / Stop condition을 한눈에 확인하게 하는 것이다. 상세 절차와 예시는 계속 references/templates/scripts에 둔다.
+항상 로드되는 본문은 routing, 권한, guardrails, dispatch/reference map, stop/verify만 담고 상세 절차는 references/templates/scripts/eval로 넘긴다.
 
 ## Routing Invariant
 
@@ -49,7 +53,7 @@ user-invocable: true
 2. 인수가 없으면 `start`로 route한다.
 3. 첫 단어가 issue 참조(GitHub issue/PR URL, `#<번호>`, 베어 issue 번호, `owner/repo#<번호>`)이면 `start`로 route하고 전체 인자를 issue context로 취급한다. issue 참조는 명령어가 아니라 인자다.
 4. 첫 단어가 CLI 전용 명령(`doctor`, `setup` 등 `bin/ddalggak.js`가 처리하는 명령)이면 route하지 않고 "터미널 CLI 명령입니다 — 셸에서 `ddalggak <명령>`을 실행하세요"로 안내한 뒤 멈춘다.
-5. 첫 단어가 지원 subcommand도, issue 참조도, CLI 전용 명령도 아니면(오타·미인식 단어) `start`로 자동 진입하지 않는다(fail-closed). `NEEDS_CLARIFICATION`으로 지원 subcommand 목록(`start|review|status|plan|issue|clean|ship|retro|prompt|tune|forge|spark|check|getwiki|setwiki`)을 제시하고 의도를 되묻는다.
+5. 첫 단어가 지원 subcommand도, issue 참조도, CLI 전용 명령도 아니면(오타·미인식 단어) `start`로 자동 진입하지 않는다(fail-closed). `NEEDS_CLARIFICATION`으로 아래 생성 테이블의 지원 subcommand 목록을 제시하고 의도를 되묻는다.
 6. Route가 결정된 뒤 후속 인자는 절대 route를 바꾸지 않는다.
 7. 작업 전 정확히 한 줄 `-> <subcommand> 실행`을 출력한다.
 8. 선택된 subcommand는 코드 수정 권한 표를 넘지 않는다.
@@ -92,6 +96,12 @@ user-invocable: true
 | `check` | read-only | Local Diff Check | Read-only local diff review | Local diff review notes only; no GitHub comments and no repository edits. | Stop after findings and exact validation gaps are reported. | refs: `references/local-diff-check.md`; templates: - |
 | `getwiki` | read-only | GetWiki Bridge | Wiki context retrieval bridge | Delegate to dedicated /getwiki retrieval; no wiki or repo mutation. | Stop after cited wiki sources or retrieval gaps are reported. | refs: `references/wiki-bridge.md`, `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`; templates: - |
 | `setwiki` | approval-gated-write | SetWiki Bridge | Wiki write workflow bridge | Delegate to dedicated /setwiki; wiki writes require explicit approval and verification. | Stop at review-only plan unless explicit approval is present; then stop after wiki write verification. | refs: `references/wiki-bridge.md`, `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`, `references/wiki-growth-triage.md`; templates: - |
+| `ulw-loop` | source-edit | ULW Loop | ULW implement | Scoped edits; no GitHub. | Stop after evidence/blockers. | refs: `references/ulw-loop.md`; templates: - |
+| `ulw-plan` | plan-only | ULW Plan | ULW plan | Plan only; no writes. | Stop after criteria/blockers. | refs: `references/ulw-plan.md`; templates: - |
+| `ulw-research` | read-only | ULW Research | ULW research | Research only; no writes. | Stop after cited claims/gaps. | refs: `references/ulw-research.md`; templates: - |
+| `gjc-plan` | plan-only | Gajae-Code Delegation | GJC plan | Coordinator only. | Stop after evidence/blocker. | refs: `references/gajae-code.md`; templates: - |
+| `gjc-execute` | source-edit | Gajae-Code Delegation | GJC execute | Approved edits; no GitHub. | Stop after evidence/blockers. | refs: `references/gajae-code.md`; templates: - |
+| `gjc-team` | source-edit | Gajae-Code Delegation | GJC team | Approved team work; no GitHub. | Stop after team evidence/blockers. | refs: `references/gajae-code.md`; templates: - |
 <!-- ddalggak:generated:end subcommand-table -->
 
 ### mode 분류 정의
@@ -128,6 +138,12 @@ user-invocable: true
 | `check` | `references/local-diff-check.md` | - | - | - |
 | `getwiki` | - | - | `references/wiki-bridge.md`, `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md` | - |
 | `setwiki` | `references/wiki-growth-triage.md` | - | `references/wiki-bridge.md`, `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md` | - |
+| `ulw-loop` | `references/ulw-loop.md` | - | - | - |
+| `ulw-plan` | `references/ulw-plan.md` | - | - | - |
+| `ulw-research` | `references/ulw-research.md` | - | - | - |
+| `gjc-plan` | `references/gajae-code.md` | - | - | - |
+| `gjc-execute` | `references/gajae-code.md` | - | - | - |
+| `gjc-team` | `references/gajae-code.md` | - | - | - |
 <!-- ddalggak:generated:end required-reference-map -->
 
 ## Start Workflow
@@ -243,6 +259,22 @@ Full procedure: `references/forge-goal.md`; objective command/observation plus e
 
 Full procedure: `references/spark-goal.md`; copyable runtime goal sentence, validation checklist, non-goals, next instruction, and no source edits.
 
+## ULW Loop
+
+Full procedure: `references/ulw-loop.md`; `source_edit_allowed: true`; `github_write_allowed: false`; `ULW_LOOP_DONE`.
+
+## ULW Plan
+
+Full procedure: `references/ulw-plan.md`; `source_edit_allowed: false`; `ULW_PLAN_DONE`.
+
+## ULW Research
+
+Full procedure: `references/ulw-research.md`; `source_edit_allowed: false`; `ULW_RESEARCH_DONE`.
+
+## Gajae-Code Delegation
+
+Full procedure: `references/gajae-code.md`; `gjc_delegate_plan`; `gjc_delegate_execute`; `gjc_delegate_team`; `allow_mutation: false`; explicit user approval; external GJC visible-session helpers; `GJC_PLAN_DONE`; `GJC_EXECUTE_DONE`; `GJC_TEAM_DONE`.
+
 ## GetWiki Bridge
 
 Full procedure: `references/wiki-bridge.md`; Brain v0 authority: `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`.
@@ -305,4 +337,10 @@ Branches are purpose-centered with no generated date/time suffixes; commit/PR de
 | `check` | `CHECK_DONE` |
 | `getwiki` | `GETWIKI_DONE` |
 | `setwiki` | `SETWIKI_DONE` |
+| `ulw-loop` | `ULW_LOOP_DONE` |
+| `ulw-plan` | `ULW_PLAN_DONE` |
+| `ulw-research` | `ULW_RESEARCH_DONE` |
+| `gjc-plan` | `GJC_PLAN_DONE` |
+| `gjc-execute` | `GJC_EXECUTE_DONE` |
+| `gjc-team` | `GJC_TEAM_DONE` |
 <!-- ddalggak:generated:end completion-signal-table -->

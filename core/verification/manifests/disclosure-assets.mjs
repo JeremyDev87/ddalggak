@@ -46,6 +46,24 @@ export const requiredDisclosureAssetsBySubcommand = {
   setwiki: {
     templates: [],
   },
+  "ulw-loop": {
+    templates: [],
+  },
+  "ulw-plan": {
+    templates: [],
+  },
+  "ulw-research": {
+    templates: [],
+  },
+  "gjc-plan": {
+    templates: [],
+  },
+  "gjc-execute": {
+    templates: [],
+  },
+  "gjc-team": {
+    templates: [],
+  },
 };
 
 export const requiredIssueTemplateFields = [

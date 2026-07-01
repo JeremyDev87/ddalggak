@@ -1,21 +1,21 @@
 ---
 name: ddalggak
-description: "Use when the user wants a Codex App native GitHub issue to implementation to review to recovery workflow, or wants to plan issues, create GitHub issues, inspect status, ship an existing lane, clean up after merge, write retrospectives, improve prompts, or run a one-shot local diff check."
+description: "Use for ddalggak workflow subcommands, ULW, and GJC."
 ---
 
 # ddalggak - Codex App workflow
 
-Ddalggak is a thin-router skill for GitHub Issue -> plan -> implementation -> review -> recovery -> retrospective. Keep long procedure in `references/` and reusable wording in `templates/`.
+Ddalggak is a thin router. Keep procedure in `references/` and wording in `templates/`.
 
 ## Subcommands
 
-Supported subcommands are: `start|review|status|plan|issue|clean|ship|retro|prompt|tune|forge|spark|check|getwiki|setwiki`.
+Supported subcommands are declared in the generated table below.
 
-Standard cycle: `prompt` -> `tune` -> `forge` -> `spark` -> `plan` -> `start` -> `ship` -> `review` -> `retro`. `status`, `issue`, `clean`, `check`, `getwiki`, and `setwiki` are supporting commands.
+Cycle: `prompt` -> `tune` -> `forge` -> `spark` -> `plan` -> `start` -> `ship` -> `review` -> `retro`; other commands support.
 
 ## Hot-Path Target Architecture
 
-The hot path is routing, code permissions, guardrails, subcommand contracts, reference map, stop conditions, and verification checklist.
+Hot path: routing, permissions, guardrails, contracts, references, stop conditions, and verification.
 
 
 ## Routing Invariant
@@ -26,7 +26,7 @@ Parse only the first whitespace-separated word from the invocation arguments.
 2. If there are no arguments, route to `start`.
 3. If the first word is an issue reference (GitHub issue/PR URL, `#<number>`, a bare issue number, or `owner/repo#<number>`), route to `start` and treat the full argument string as issue context. An issue reference is an argument, not a command word.
 4. If the first word is a CLI-only command (`doctor`, `setup`, or any command handled by `bin/ddalggak.js`), do not route; reply that it is a terminal CLI command to run as `ddalggak <command>` in the shell, and stop.
-5. Otherwise, when the first word is neither a supported subcommand, an issue reference, nor a CLI-only command (a typo or unrecognized word), do not fall through to `start` (fail-closed). Return `NEEDS_CLARIFICATION` with the supported subcommand list (`start|review|status|plan|issue|clean|ship|retro|prompt|tune|forge|spark|check|getwiki|setwiki`) and ask for intent.
+5. Otherwise, when the first word is neither a supported subcommand, an issue reference, nor a CLI-only command (a typo or unrecognized word), do not fall through to `start` (fail-closed). Return `NEEDS_CLARIFICATION` with the supported subcommand list from the generated table below and ask for intent.
 6. Once a route is selected, later arguments must never reroute the request, even if they look like an implementation request.
 7. Immediately print exactly one route line before doing work: `-> <subcommand> 실행`.
 8. The routed subcommand must stay inside the code modification permissions in the table below.
@@ -34,7 +34,7 @@ Parse only the first whitespace-separated word from the invocation arguments.
 
 ## Code Modification Invariant
 
-Only `start` and `review` may authorize repository source file edits. All other subcommands are read-only for source code and may only produce their listed artifacts.
+Source edits are allowed only where the generated table says `yes`; `no` commands are source-read-only and may produce only listed artifacts.
 
 <!-- ddalggak:generated:start code-permission-table -->
 | Subcommand | May modify source files | Allowed artifacts |
@@ -54,6 +54,12 @@ Only `start` and `review` may authorize repository source file edits. All other 
 | `check` | no | local review notes only; no repository edits |
 | `getwiki` | no | delegate to dedicated `/getwiki` read-only retrieval |
 | `setwiki` | no | delegate to dedicated `/setwiki` approval-gated write workflow |
+| `ulw-loop` | yes | scoped edits; no GitHub |
+| `ulw-plan` | no | plan output only |
+| `ulw-research` | no | research output only |
+| `gjc-plan` | no | coordinator evidence |
+| `gjc-execute` | yes | approved edits; no GitHub |
+| `gjc-team` | yes | approved team work; no GitHub |
 <!-- ddalggak:generated:end code-permission-table -->
 
 If a non-writing subcommand would need a source edit to continue, report the need and stop.
@@ -77,6 +83,12 @@ If a non-writing subcommand would need a source edit to continue, report the nee
 | `check` | read-only | Local Diff Check | Read-only local diff review | Local diff review notes only; no GitHub comments and no repository edits. | Stop after findings and exact validation gaps are reported. | refs: `references/local-diff-check.md`; templates: - |
 | `getwiki` | read-only | GetWiki Bridge | Wiki context retrieval bridge | Delegate to dedicated /getwiki retrieval; no wiki or repo mutation. | Stop after cited wiki sources or retrieval gaps are reported. | refs: `references/wiki-bridge.md`, `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`; templates: - |
 | `setwiki` | approval-gated-write | SetWiki Bridge | Wiki write workflow bridge | Delegate to dedicated /setwiki; wiki writes require explicit approval and verification. | Stop at review-only plan unless explicit approval is present; then stop after wiki write verification. | refs: `references/wiki-bridge.md`, `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`, `references/wiki-growth-triage.md`; templates: - |
+| `ulw-loop` | source-edit | ULW Loop | ULW implement | Scoped edits; no GitHub. | Stop after evidence/blockers. | refs: `references/ulw-loop.md`; templates: - |
+| `ulw-plan` | plan-only | ULW Plan | ULW plan | Plan only; no writes. | Stop after criteria/blockers. | refs: `references/ulw-plan.md`; templates: - |
+| `ulw-research` | read-only | ULW Research | ULW research | Research only; no writes. | Stop after cited claims/gaps. | refs: `references/ulw-research.md`; templates: - |
+| `gjc-plan` | plan-only | Gajae-Code Delegation | GJC plan | Coordinator only. | Stop after evidence/blocker. | refs: `references/gajae-code.md`; templates: - |
+| `gjc-execute` | source-edit | Gajae-Code Delegation | GJC execute | Approved edits; no GitHub. | Stop after evidence/blockers. | refs: `references/gajae-code.md`; templates: - |
+| `gjc-team` | source-edit | Gajae-Code Delegation | GJC team | Approved team work; no GitHub. | Stop after team evidence/blockers. | refs: `references/gajae-code.md`; templates: - |
 <!-- ddalggak:generated:end subcommand-table -->
 
 ### Mode taxonomy
@@ -94,7 +106,7 @@ If a non-writing subcommand would need a source edit to continue, report the nee
 
 ## Codex App Primitives
 
-Use Codex App native orchestration names in briefs and state records: `spawn_agent`, `send_input`, `wait_agent`, `.ddalggak/session-state.json`, and `request_user_input` when available. The state file is the source of truth for lane IDs, worktree paths, branch names, issue numbers, PR URL/evidence, validation commands, review verdicts, and blockers.
+Use Codex App orchestration names in briefs/state: `spawn_agent`, `send_input`, `wait_agent`, `.ddalggak/session-state.json`, and `request_user_input` when available. The state file owns lane IDs, worktrees, branches, issue/PR evidence, validation, review verdicts, and blockers.
 
 ## Global Guardrails
 
@@ -134,6 +146,12 @@ Use Codex App native orchestration names in briefs and state records: `spawn_age
 | `check` | `references/local-diff-check.md` | - | - | - |
 | `getwiki` | - | - | `references/wiki-bridge.md`, `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md` | - |
 | `setwiki` | `references/wiki-growth-triage.md` | - | `references/wiki-bridge.md`, `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md` | - |
+| `ulw-loop` | `references/ulw-loop.md` | - | - | - |
+| `ulw-plan` | `references/ulw-plan.md` | - | - | - |
+| `ulw-research` | `references/ulw-research.md` | - | - | - |
+| `gjc-plan` | `references/gajae-code.md` | - | - | - |
+| `gjc-execute` | `references/gajae-code.md` | - | - | - |
+| `gjc-team` | `references/gajae-code.md` | - | - | - |
 <!-- ddalggak:generated:end required-reference-map -->
 
 ## Shared Workflow Rules
@@ -208,6 +226,22 @@ Full procedure: `references/forge-goal.md`; objective command/observation plus e
 
 Full procedure: `references/spark-goal.md`; copyable runtime goal sentence, validation checklist, non-goals, next instruction, and no source edits.
 
+## `ulw-loop` - ULW Loop
+
+Full procedure: `references/ulw-loop.md`; `source_edit_allowed: true`; `github_write_allowed: false`; `ULW_LOOP_DONE`.
+
+## `ulw-plan` - ULW Plan
+
+Full procedure: `references/ulw-plan.md`; `source_edit_allowed: false`; `ULW_PLAN_DONE`.
+
+## `ulw-research` - ULW Research
+
+Full procedure: `references/ulw-research.md`; `source_edit_allowed: false`; `ULW_RESEARCH_DONE`.
+
+## `gjc-plan` / `gjc-execute` / `gjc-team` - Gajae-Code Delegation
+
+Full procedure: `references/gajae-code.md`; `gjc_delegate_plan`; `gjc_delegate_execute`; `gjc_delegate_team`; `allow_mutation: false`; explicit user approval; external GJC visible-session helpers; `GJC_PLAN_DONE`; `GJC_EXECUTE_DONE`; `GJC_TEAM_DONE`.
+
 ## `check` - Local Diff Check
 
 Run a read-only local diff review. Capture base freshness, status, diff stat, ignored/local-only/generated paths, and findings. Use references/local-diff-check.md for details.
@@ -226,7 +260,7 @@ Normal finish pipeline: local validation, publish evidence when requested, fresh
 
 ## Common Pitfalls
 
-Stale repo state; missing issue comments; hallucinated dependencies; unsafe force-push loops; equating test pass with completion; reviewing inside an implementation worktree; staging ignored/local-only files; over-fixing Medium findings; Markdown surgery that loses fenced blocks or routing; frontend approval without rendered evidence; analytics without privacy allowlist/denylist.
+Pitfalls: stale repo, missing comments, hallucinated deps, force-push loops, test-pass completion, review in implementation worktree, local-only staging, over-fixing Medium findings, Markdown routing/fence loss, unrendered frontend approval, analytics without privacy lists.
 
 ## Verification Checklist
 
@@ -261,6 +295,12 @@ Per-subcommand completion signals come from each command contract's `output_cont
 | `check` | `CHECK_DONE` |
 | `getwiki` | `GETWIKI_DONE` |
 | `setwiki` | `SETWIKI_DONE` |
+| `ulw-loop` | `ULW_LOOP_DONE` |
+| `ulw-plan` | `ULW_PLAN_DONE` |
+| `ulw-research` | `ULW_RESEARCH_DONE` |
+| `gjc-plan` | `GJC_PLAN_DONE` |
+| `gjc-execute` | `GJC_EXECUTE_DONE` |
+| `gjc-team` | `GJC_TEAM_DONE` |
 <!-- ddalggak:generated:end completion-signal-table -->
 
 ## Stop Conditions

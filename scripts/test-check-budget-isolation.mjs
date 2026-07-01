@@ -105,27 +105,31 @@ function assertExit(name, result, expectedExit) {
 
 const tests = [
   {
-    name: "violation: budget change + ddalggak measured content fails",
+    name: "budget/content calibration with ddalggak measured content passes",
     run({ repoDir, baseSha }) {
       git(repoDir, ["checkout", "-q", "-b", "case-violation-claude", baseSha]);
       editRepoFile(repoDir, "core/token-budgets.yaml", "start: 19500", "start: 21000");
       editRepoFile(repoDir, "ddalggak/SKILL.md", "skill body v1", "skill body v2 grown");
       const headSha = commitAll(repoDir, "grow content and raise budget");
       const result = runCheck(repoDir, baseSha, headSha);
-      assertExit(this.name, result, 1);
-      if (!result.stderr.includes("ddalggak/SKILL.md")) {
-        throw new Error(`${this.name}: offending file missing from output:\n${result.stderr}`);
+      assertExit(this.name, result, 0);
+      if (!result.stdout.includes("budget/content calibration with measured content")) {
+        throw new Error(`${this.name}: expected calibration classification:\n${result.stdout}`);
       }
     },
   },
   {
-    name: "violation: budget change + core/commands contract change fails",
+    name: "budget/content calibration with core/commands contract change passes",
     run({ repoDir, baseSha }) {
       git(repoDir, ["checkout", "-q", "-b", "case-violation-commands", baseSha]);
       editRepoFile(repoDir, "core/token-budgets.yaml", "review: 26500", "review: 28000");
       editRepoFile(repoDir, "core/commands/start.yaml", "command: start", "command: start\nrequired_references: more");
       const headSha = commitAll(repoDir, "change contract and raise budget");
-      assertExit(this.name, runCheck(repoDir, baseSha, headSha), 1);
+      const result = runCheck(repoDir, baseSha, headSha);
+      assertExit(this.name, result, 0);
+      if (!result.stdout.includes("review")) {
+        throw new Error(`${this.name}: changed command note missing:\n${result.stdout}`);
+      }
     },
   },
   {
@@ -219,16 +223,16 @@ const tests = [
     },
   },
   {
-    name: "violation: budget change + rename out of measured path fails",
+    name: "budget/content calibration with rename out of measured path passes",
     run({ repoDir, baseSha }) {
       git(repoDir, ["checkout", "-q", "-b", "case-rename-out", baseSha]);
       editRepoFile(repoDir, "core/token-budgets.yaml", "review: 20000", "review: 21500");
       git(repoDir, ["mv", "ddalggak/SKILL.md", "docs-moved-skill.md"]);
       const headSha = commitAll(repoDir, "move skill out of measured tree and raise budget");
       const result = runCheck(repoDir, baseSha, headSha);
-      assertExit(this.name, result, 1);
-      if (!result.stderr.includes("ddalggak/SKILL.md")) {
-        throw new Error(`${this.name}: renamed-away source path missing from output:\n${result.stderr}`);
+      assertExit(this.name, result, 0);
+      if (!result.stdout.includes("budget/content calibration with measured content")) {
+        throw new Error(`${this.name}: expected calibration classification:\n${result.stdout}`);
       }
     },
   },

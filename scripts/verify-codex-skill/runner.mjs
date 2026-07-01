@@ -188,7 +188,7 @@ export function runVerifyCodexSkill() {
       maxChars: 35_000,
       principleHeadings: ["Global Guardrails"],
       maxPrincipleBullets: 25,
-      maxInlineSubcommandAnchors: 23,
+      maxInlineSubcommandAnchors: 31,
     },
     {
       label: "ddalggak/SKILL.md",
@@ -197,7 +197,7 @@ export function runVerifyCodexSkill() {
       maxChars: 45_000,
       principleHeadings: ["핵심 원칙", "myWiki-derived 운영 Guardrails"],
       maxPrincipleBullets: 30,
-      maxInlineSubcommandAnchors: 60,
+      maxInlineSubcommandAnchors: 61,
     },
   ];
   const skillBudgetMetrics = [];
@@ -600,7 +600,6 @@ export function runVerifyCodexSkill() {
   function assertRenderedSubcommandContracts({ label, text }) {
     const permissionRows = parseCodePermissionRows(extractGeneratedBlock(text, "code-permission-table"));
     const contractRows = parseSubcommandContractRows(extractGeneratedBlock(text, "subcommand-table"));
-    const allowedSourceEditors = new Set(["start", "review"]);
     const sourceEditAuthorityPatterns = [
       /\bmay edit source\b/i,
       /\bmay modify source\b/i,
@@ -659,7 +658,7 @@ export function runVerifyCodexSkill() {
 
       const renderedAuthorityText = `${permission.allowedArtifacts}\n${renderedContract.sideEffects}`;
       const grantsSourceAuthority = sourceEditAuthorityPatterns.some((pattern) => pattern.test(renderedAuthorityText));
-      if (!allowedSourceEditors.has(subcommand) && grantsSourceAuthority) {
+      if (!manifestContract.sourceEditAllowed && grantsSourceAuthority) {
         fail(
           `${label} non-source-edit subcommand '${subcommand}' contains unnegated source-edit authority wording.`,
         );

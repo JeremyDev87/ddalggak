@@ -55,6 +55,8 @@ parity_ledger:
     class: may-localize
   - path: references/frontend-design-gate.md
     class: must-match
+  - path: references/gajae-code.md
+    class: must-match
   - path: references/gate-verdict-vocabulary.md
     class: must-match
   - path: references/human-review-feedback-loop.md
@@ -78,6 +80,12 @@ parity_ledger:
   - path: references/prompt-skill-optimization-staging.md
     class: must-match
   - path: references/tune-goal.md
+    class: must-match
+  - path: references/ulw-loop.md
+    class: must-match
+  - path: references/ulw-plan.md
+    class: must-match
+  - path: references/ulw-research.md
     class: must-match
   - path: references/forge-goal.md
     class: must-match
