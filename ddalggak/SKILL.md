@@ -1,7 +1,7 @@
 ---
 name: ddalggak
-description: "Use when 박정욱 invokes `/ddalggak` for the GitHub issue → plan → implementation → ship → review workflow, including plan, issue, start, ship, review, status, clean, retro, prompt, tune, forge, spark, check, getwiki, and setwiki subcommands."
-argument-hint: "[start|review|status|plan|issue|clean|ship|retro|prompt|tune|forge|spark|check|getwiki|setwiki] — no arg = start from GitHub issue"
+description: "Use when 박정욱 invokes `/ddalggak` or a ddalggak subcommand."
+argument-hint: "[subcommand] — no arg = start from GitHub issue"
 user-invocable: true
 ---
 
@@ -11,9 +11,9 @@ user-invocable: true
 
 ## 표준 워크플로우와 코드 수정 권한 (전역 invariant)
 
-표준 사이클: `prompt` → `tune` → `forge` → `spark` → `plan` → `start` → `ship` → `review` → `retro`. `status`, `issue`, `clean`, `check`, `getwiki`, `setwiki`는 보조 명령이다.
+표준 사이클: `prompt` → `tune` → `forge` → `spark` → `plan` → `start` → `ship` → `review` → `retro`. 다른 선언된 subcommand는 보조 명령이다.
 
-소스 코드(repo 내 파일, SKILL.md 포함)를 수정할 권한이 있는 서브커맨드는 `start`와 `review` 뿐이다. 다른 모든 서브커맨드는 자기 산출물 또는 GitHub 산출물만 작성한다.
+소스 코드(repo 내 파일, SKILL.md 포함) 수정 권한은 아래 생성 권한표에서 `✅`인 subcommand만 가진다. `❌` subcommand는 소스 코드 read-only이며 표에 적힌 산출물만 작성한다.
 
 <!-- ddalggak:generated:start code-permission-table -->
 | 서브커맨드 | 소스 코드 수정 | 작성 가능한 산출물 |
@@ -33,13 +33,17 @@ user-invocable: true
 | `check` | ❌ | local review notes only; no repository edits |
 | `getwiki` | ❌ | delegate to dedicated `/getwiki` read-only retrieval |
 | `setwiki` | ❌ | delegate to dedicated `/setwiki` approval-gated write workflow |
+| `ulw-loop` | ✅ | scoped source edits only; no GitHub writes |
+| `ulw-plan` | ❌ | plan output only |
+| `ulw-research` | ❌ | research output only |
+| `gjc-plan` | ❌ | coordinator plan delegation evidence only |
+| `gjc-execute` | ✅ | scoped source edits only after explicit approval and coordinator mutation enablement; no GitHub writes |
+| `gjc-team` | ✅ | scoped team work only after explicit approval and coordinator mutation enablement; no GitHub writes |
 <!-- ddalggak:generated:end code-permission-table -->
 
 ## Hot-Path Target Architecture
 
-항상 로드되는 본문은 frontmatter, routing invariant, code modification invariant, global guardrails, subcommand dispatch table, required reference map, stop conditions, verification checklist만 담는다. 상세 절차는 reference/template/script/eval로 넘긴다.
-
-현재 hot-path 목표는 line-count 자체가 아니라 subcommand별 Mode / Source edit / GitHub-write side effects / Required references / Stop condition을 한눈에 확인하게 하는 것이다. 상세 절차와 예시는 계속 references/templates/scripts에 둔다.
+Hot path는 routing, code permissions, guardrails, command table, required references, stop/verification만 담고 상세 절차는 references/templates/scripts로 넘긴다.
 
 ## Routing Invariant
 
@@ -49,7 +53,7 @@ user-invocable: true
 2. 인수가 없으면 `start`로 route한다.
 3. 첫 단어가 issue 참조(GitHub issue/PR URL, `#<번호>`, 베어 issue 번호, `owner/repo#<번호>`)이면 `start`로 route하고 전체 인자를 issue context로 취급한다. issue 참조는 명령어가 아니라 인자다.
 4. 첫 단어가 CLI 전용 명령(`doctor`, `setup` 등 `bin/ddalggak.js`가 처리하는 명령)이면 route하지 않고 "터미널 CLI 명령입니다 — 셸에서 `ddalggak <명령>`을 실행하세요"로 안내한 뒤 멈춘다.
-5. 첫 단어가 지원 subcommand도, issue 참조도, CLI 전용 명령도 아니면(오타·미인식 단어) `start`로 자동 진입하지 않는다(fail-closed). `NEEDS_CLARIFICATION`으로 지원 subcommand 목록(`start|review|status|plan|issue|clean|ship|retro|prompt|tune|forge|spark|check|getwiki|setwiki`)을 제시하고 의도를 되묻는다.
+5. 첫 단어가 지원 subcommand도, issue 참조도, CLI 전용 명령도 아니면(오타·미인식 단어) `start`로 자동 진입하지 않는다(fail-closed). `NEEDS_CLARIFICATION`으로 아래 생성 테이블의 지원 subcommand 목록을 제시하고 의도를 되묻는다.
 6. Route가 결정된 뒤 후속 인자는 절대 route를 바꾸지 않는다.
 7. 작업 전 정확히 한 줄 `-> <subcommand> 실행`을 출력한다.
 8. 선택된 subcommand는 코드 수정 권한 표를 넘지 않는다.
@@ -57,20 +61,14 @@ user-invocable: true
 
 ## 핵심 원칙
 
-- URL beats cwd: GitHub URL 처리 기준은 owner/repo/number 파싱 후 cwd remote 검증이다. cwd remote가 URL repo와 다르면 mutation을 멈춘다.
-- Issue comments matter: issue body와 comments는 모두 source-of-truth 후보이며 최신 명시 comment가 stale body보다 우선한다.
-- Issue-PRs by default: 독립 이슈는 기본적으로 issue PR 하나를 만든다. hard conflict만 single PR + serial commit fallback이 가능하다.
-- Manual merge only: 주인님 PR은 merge/auto-merge 금지. green + APPROVE도 ready for manual merge 보고까지만 허용한다.
-- approval-comment policy: top-level PR comment에 current head SHA, review scope, validation evidence, blocking finding count, conclusion을 담고 `CI/check`, `formal review/branch protection`, `merge blocker`, `human action`을 분리한다.
-- Runtime contract language: `references/agent-runtime-contract.md` owns Task Scope Contract, Context Assembly Manifest, Resume Snapshot, Control-flow ownership, tool capability boundary, task scope contract, out-of-scope diff, scope-expansion failure.
-- Quality Lens Router Output: `references/quality-lens-router.md` owns Applicable gate families, Skipped gates, Required references, Repo/product conventions, backend-only skip. Domain gate is a lens, not a mandate.
-- React Code Quality Harness: React/Next.js, AI-generated React diff, component/hook/state/fallback/rendering boundary면 `react-code-quality-harness`와 `references/react-code-quality-harness.md`; hot path에 gate 복사 금지.
-- Wiki Context First for plan/review: `references/wiki-context-preflight.md`; wiki-derived claim은 source path/evidence gap. `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`: broad `qmd://wiki` is discovery only; current-answer claims route through Brain P0/P1/domain/SSOT/control docs; raw/imported/hidden/index/log/redirect alias hits are evidence-only unless canonical/distilled.
-- Wiki Bridge: `getwiki` read-only retrieval, `setwiki` approval-gated write; `references/wiki-bridge.md` owns admission/approval boundary.
-- Evidence Contract: `references/evidence-contract.md` 기준이며 Blocking evidence gaps가 있으면 PR ready/APPROVE 금지다.
-- Simplicity / Deletability Gate: `references/simplicity-deletability-gate.md` 기준이며 small direct change first와 why is this abstraction necessary?를 우선한다.
-- Core Invariants Reference: `references/core-invariants.md`가 Counterargument Pass, scope expansion, privacy, knowledge extraction, rendered evidence, component methodology gate, raw UTF-8 같은 장문 guardrail rationale를 소유한다.
-- Conditional gates: frontend, React code quality, Vercel, regression-library는 해당 작업에만 관련 reference를 로드하고 backend-only/lightweight skip reason을 남긴다.
+- URL beats cwd: GitHub URL 처리 기준은 owner/repo/number 파싱 후 cwd remote 검증이며, cwd remote가 URL repo와 다르면 mutation을 멈춘다.
+- Issue comments matter; Issue-PRs by default; Manual merge only; approval-comment policy는 SHA/scope/validation/blocker/conclusion을 분리한다.
+- Runtime contract language는 `references/agent-runtime-contract.md`의 Task Scope Contract, Context Assembly Manifest, Resume Snapshot, Control-flow ownership, tool capability boundary, task scope contract, out-of-scope diff, scope-expansion failure를 따른다.
+- Quality Lens Router Output은 Required references와 조건부 gate를 기록한다. Domain gate is a lens, not a mandate.
+- Wiki Context First는 `references/wiki-context-preflight.md`; Wiki Bridge는 `references/wiki-bridge.md`의 `getwiki` read-only retrieval, `setwiki` approval-gated write를 따른다.
+- Evidence Contract(`references/evidence-contract.md`): Blocking evidence gaps가 있으면 PR ready/APPROVE 금지.
+- Simplicity / Deletability Gate(`references/simplicity-deletability-gate.md`): small direct change first, why is this abstraction necessary?
+- Core Invariants Reference(`references/core-invariants.md`) owns Counterargument Pass, no silent fallback, Self-created complexity is a defect, raw UTF-8.
 
 ## 서브커맨드 분기
 
@@ -92,6 +90,12 @@ user-invocable: true
 | `check` | read-only | Local Diff Check | Read-only local diff review | Local diff review notes only; no GitHub comments and no repository edits. | Stop after findings and exact validation gaps are reported. | refs: `references/local-diff-check.md`; templates: - |
 | `getwiki` | read-only | GetWiki Bridge | Wiki context retrieval bridge | Delegate to dedicated /getwiki retrieval; no wiki or repo mutation. | Stop after cited wiki sources or retrieval gaps are reported. | refs: `references/wiki-bridge.md`, `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`; templates: - |
 | `setwiki` | approval-gated-write | SetWiki Bridge | Wiki write workflow bridge | Delegate to dedicated /setwiki; wiki writes require explicit approval and verification. | Stop at review-only plan unless explicit approval is present; then stop after wiki write verification. | refs: `references/wiki-bridge.md`, `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`, `references/wiki-growth-triage.md`; templates: - |
+| `ulw-loop` | source-edit | ULW Loop | Evidence-led bounded implementation loop | Scoped source edits; no GitHub writes. | Stop after evidence, validation, cleanup, and blockers. | refs: `references/ulw-loop.md`; templates: - |
+| `ulw-plan` | plan-only | ULW Plan | Decision-complete plan before edits | Plan only; no source, GitHub, or git mutation. | Stop after scope, criteria, validation, non-goals, and blockers. | refs: `references/ulw-plan.md`; templates: - |
+| `ulw-research` | read-only | ULW Research | Cited research with explicit gaps | Research output only; no source, GitHub, or git mutation. | Stop after claims are cited or tested and gaps are named. | refs: `references/ulw-research.md`; templates: - |
+| `gjc-plan` | plan-only | Gajae-Code Delegation | Delegate planning to gajae-code coordinator MCP | Coordinator delegation only; no source, GitHub, git, or filesystem mutation unless explicitly approved. | Stop after coordinator turn evidence, plan artifact, or explicit blocker. | refs: `references/gajae-code.md`; templates: - |
+| `gjc-execute` | source-edit | Gajae-Code Delegation | Delegate approved execution to gajae-code coordinator MCP | Scoped source edits only after explicit user approval and coordinator mutation enablement; no GitHub writes. | Stop after verified coordinator terminal state, artifacts, cleanup, and blockers. | refs: `references/gajae-code.md`; templates: - |
+| `gjc-team` | source-edit | Gajae-Code Delegation | Delegate parallel team work to gajae-code coordinator MCP | Scoped team work only after explicit user approval and coordinator mutation enablement; no GitHub writes. | Stop after terminal team state, lane evidence, cleanup, and blockers. | refs: `references/gajae-code.md`; templates: - |
 <!-- ddalggak:generated:end subcommand-table -->
 
 ### mode 분류 정의
@@ -109,7 +113,7 @@ user-invocable: true
 
 ## Required Reference Map
 
-`plan`, `start`, `review`는 Quality Lens Router Output으로 적용 gate와 skipped gate를 먼저 기록한다. `plan`과 `review`는 `references/wiki-context-preflight.md`를 먼저 읽고 Wiki Context Manifest를 남긴다. Wiki lookup/write admission은 `references/wiki-bridge.md`를 따른다. Evidence Contract, Simplicity / Deletability Gate, Core Invariants Reference는 readiness, code-shape, scope, privacy, knowledge-growth 판단이 있으면 필수다. Frontend/Vercel/Regression references는 조건부로만 읽고 backend-only skip reason을 남긴다.
+`plan`, `start`, `review`는 Quality Lens Router Output과 Required references를 먼저 기록한다. `plan/review`는 `references/wiki-context-preflight.md`; wiki admission은 `references/wiki-bridge.md`.
 <!-- ddalggak:generated:start required-reference-map -->
 | Subcommand | Workflow reference | Gate references | Wiki/meta references | Required templates |
 | --- | --- | --- | --- | --- |
@@ -128,33 +132,31 @@ user-invocable: true
 | `check` | `references/local-diff-check.md` | - | - | - |
 | `getwiki` | - | - | `references/wiki-bridge.md`, `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md` | - |
 | `setwiki` | `references/wiki-growth-triage.md` | - | `references/wiki-bridge.md`, `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md` | - |
+| `ulw-loop` | `references/ulw-loop.md` | - | - | - |
+| `ulw-plan` | `references/ulw-plan.md` | - | - | - |
+| `ulw-research` | `references/ulw-research.md` | - | - | - |
+| `gjc-plan` | `references/gajae-code.md` | - | - | - |
+| `gjc-execute` | `references/gajae-code.md` | - | - | - |
+| `gjc-team` | `references/gajae-code.md` | - | - | - |
 <!-- ddalggak:generated:end required-reference-map -->
 
 ## Start Workflow
 
-Command contract: mode `source-edit`; source edits are limited to live issue-owned scope; start publishes the issue PR via the ship procedure (`references/ship.md`) and routes cross-review through the review gate; stop on stale base, missing issue body/comments, duplicate PR, or required files outside scope.
+Command contract: mode `source-edit`; live issue scope only; publish via `references/ship.md`; stop on stale base, missing issue body/comments, duplicate PR, or out-of-scope files.
 
 Full procedure: `references/start-workflow.md`; reusable prompt: `templates/worker-brief.md`.
 
-Execution contract index:
-- Source: issue body/comments, URL beats cwd, base freshness first.
-- Gates: Quality Lens Router, Evidence Contract, Simplicity / Deletability, Core Invariants; frontend/vercel/regression only when applicable; React code quality only when applicable.
-- Scope: allowed, forbidden, inspect-only, Must not touch, and one issue PR by default; hard-conflict fallback only with reason.
-- Output: `ISSUE_PR_READY` or `LANE_READY` with commit/push/PR/evidence/blocking gaps.
+Execution contract index: issue body/comments, URL beats cwd, base freshness, Quality Lens Router, Evidence Contract, Simplicity / Deletability, Core Invariants, frontend/vercel/regression only when applicable, allowed, forbidden, inspect-only, Must not touch, one issue PR by default, hard-conflict fallback only with reason, commit/push/PR/evidence/blocking gaps.
 
 ---
 
 ## Cross-Review Loop
 
-Command contract: mode `review-fix`; source edits are allowed only for accepted Critical/High blockers; top-level review comments are allowed; stop before APPROVE when current-head CI/checks are not terminal, blockers remain, or evidence/wiki preflight has blocking gaps.
+Command contract: mode `review-fix`; edit only accepted Critical/High blockers; top-level comments allowed; stop before APPROVE on nonterminal checks, blockers, or evidence/wiki gaps.
 
 Full procedure: `references/cross-review-loop.md`; wiki authority: `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`; reusable prompt: `templates/review-brief.md`.
 
-Execution contract index:
-- Re-read live PR state, diff/files/checks, linked issue, current head SHA, and wiki-context preflight.
-- Apply Quality Lens Router, Evidence Contract, Simplicity / Deletability, Core Invariants, and conditional frontend/vercel/regression gates, and React code quality gates when applicable.
-- Findings must separate live evidence, wiki-strengthened rationale, non-wiki inference, and retrieval gaps.
-- If formal approval is inappropriate, use a top-level comment with SHA, scope, validation, blocker count, and conclusion.
+Execution contract index: live PR state, diff/files/checks, linked issue, current head SHA, wiki-context preflight, Quality Lens Router, Evidence Contract, Simplicity / Deletability, Core Invariants, conditional frontend/vercel/regression gates, blocker triage, top-level comment with SHA, validation, conclusion.
 
 ---
 
@@ -170,11 +172,7 @@ Read-only snapshot: fetch/prune, status, branch/upstream, worktrees, open PRs, l
 
 Full procedure: `references/issue-ready-plan.md`; wiki preflight: `references/wiki-context-preflight.md`; wiki bridge: `references/wiki-bridge.md`; Brain v0 authority: `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`.
 
-Execution contract index:
-- Identify Goal, Source Of Truth, Non-Goals, Context Recovery Anchors, Assumptions/Unknowns.
-- Include Wiki Context Manifest, Quality Lens Router Output, Evidence Contract, Counterargument Pass, and Simplicity / Deletability Gate.
-- Add Frontend/Vercel/Regression details only when applicable, plus React code quality details only when applicable, with skip or lightweight reason otherwise.
-- Plan Issue-PR Strategy: one PR per issue by default, conflict fallback only with proof, Parallelization Decision, Must not touch, evidence, commit message.
+Execution contract index: goal/source/non-goals/unknowns, wiki manifest, Quality Lens Router Output, Evidence Contract, Simplicity / Deletability Gate, Frontend/Vercel/Regression details only when applicable, Issue-PR Strategy, one PR per issue by default, conflict fallback only with proof, Parallelization Decision, Must not touch, evidence, commit message.
 
 ---
 
@@ -182,7 +180,7 @@ Execution contract index:
 
 Full procedure: `references/plan-to-issues.md`; reusable prompts: `templates/issue-body.md`, `templates/epic-body.md`.
 
-Each generated issue body must preserve Owned files, Must not touch, Parallelization note, Commit lane suggestion, Validation/evidence, and Dependencies / blocked by. Use raw UTF-8 GitHub title/body payloads and verify no literal Unicode escapes persisted.
+Each issue body preserves Owned files, Must not touch, Parallelization note, Commit lane suggestion, Validation/evidence, and Dependencies / blocked by. Use raw UTF-8 GitHub payloads; verify no literal Unicode escapes persisted.
 
 ---
 
@@ -214,7 +212,7 @@ Read-only local diff review. No GitHub comments and no source edits. Report Crit
 
 Full procedure: `references/retrospective.md`.
 
-Separate durable reusable knowledge from incident records. Use `references/wiki-bridge.md` for setwiki admission: default review-only, explicit approval before wiki write. PR numbers, commit SHAs, and single-session completion logs are not durable reusable knowledge unless generalized into harness-engineering/*, principles/*, frontend/*, or llm-wiki/* patterns.
+Separate durable reusable knowledge from incident records. Wiki write remains approval-gated through `references/wiki-bridge.md`.
 
 ---
 
@@ -241,6 +239,30 @@ Full procedure: `references/forge-goal.md`; objective command/observation plus e
 ## Spark Runtime Goal
 
 Full procedure: `references/spark-goal.md`; copyable runtime goal sentence, validation checklist, non-goals, next instruction, and no source edits.
+
+## ULW Loop
+
+Full procedure: `references/ulw-loop.md`.
+
+Execution contract index: `source_edit_allowed: true`; `github_write_allowed: false`; failing-first proof when feasible; targeted validation plus real-surface evidence; `ULW_LOOP_DONE`.
+
+## ULW Plan
+
+Full procedure: `references/ulw-plan.md`.
+
+Execution contract index: `source_edit_allowed: false`; decision-complete plan, owned files, non-goals, validation surfaces, blockers; `ULW_PLAN_DONE`.
+
+## ULW Research
+
+Full procedure: `references/ulw-research.md`.
+
+Execution contract index: `source_edit_allowed: false`; cited claims, investigated leads, executable evidence where applicable, explicit gaps; `ULW_RESEARCH_DONE`.
+
+## Gajae-Code Delegation
+
+Full procedure: `references/gajae-code.md`.
+
+Execution contract index: delegate via `gjc_delegate_plan`, `gjc_delegate_execute`, or `gjc_delegate_team`; pass current project cwd and task; keep `allow_mutation: false` unless explicit user approval and coordinator mutation enablement are both present; use external GJC visible-session helpers only when installed; end with `GJC_PLAN_DONE`, `GJC_EXECUTE_DONE`, or `GJC_TEAM_DONE`.
 
 ## GetWiki Bridge
 
@@ -304,4 +326,10 @@ Branches are purpose-centered with no generated date/time suffixes; commit/PR de
 | `check` | `CHECK_DONE` |
 | `getwiki` | `GETWIKI_DONE` |
 | `setwiki` | `SETWIKI_DONE` |
+| `ulw-loop` | `ULW_LOOP_DONE` |
+| `ulw-plan` | `ULW_PLAN_DONE` |
+| `ulw-research` | `ULW_RESEARCH_DONE` |
+| `gjc-plan` | `GJC_PLAN_DONE` |
+| `gjc-execute` | `GJC_EXECUTE_DONE` |
+| `gjc-team` | `GJC_TEAM_DONE` |
 <!-- ddalggak:generated:end completion-signal-table -->

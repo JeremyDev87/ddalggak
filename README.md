@@ -123,6 +123,9 @@ Examples:
 ```bash
 node bin/ddalggak.js prompt "Improve retry handling"
 node bin/ddalggak.js plan --print "Split issue 22 into reviewable PR units"
+node bin/ddalggak.js ulw-loop --print "Implement the bounded goal"
+node bin/ddalggak.js ulw-plan --print "Plan this remediation"
+node bin/ddalggak.js ulw-research --print "Research the current options"
 node bin/ddalggak.js tune --print "Clarify this implementation goal"
 node bin/ddalggak.js spark --print "Draft the next runtime goal"
 node bin/ddalggak.js start 22
@@ -148,13 +151,13 @@ Note that Hermes is an unverified, aspirational parity target: it is declared in
 
 ### Setup
 
-`setup` installs the Claude Code skill payloads into `~/.claude/skills/`:
+`setup` installs the Claude Code skill payload into `~/.claude/skills/`:
 
 ```bash
 node bin/ddalggak.js setup
 ```
 
-It installs `/ddalggak` for the ddalggak workflow and `/omo-ulw` for a Claude-native OMO ULW helper covering `ulw-loop`, `ulw-plan`, and `ulw-research` style work.
+It installs `/ddalggak` for the ddalggak workflow. Use `/ddalggak ulw-loop`, `/ddalggak ulw-plan`, or `/ddalggak ulw-research` for ULW-style work.
 
 Use `CLAUDE_HOME` or `--target` to choose a different Claude Code home:
 
@@ -177,6 +180,9 @@ Goal-shaping subcommands:
 - `tune`: produce an intent/scope brief for a future runtime goal.
 - `forge`: turn a tuned brief into command/observation plus expected-result acceptance criteria.
 - `spark`: produce the copyable runtime goal sentence and validation checklist.
+- `ulw-loop`: implement a bounded goal with evidence and local validation; no GitHub writes.
+- `ulw-plan`: produce a decision-complete implementation plan without source edits.
+- `ulw-research`: produce cited research without source edits.
 
 `profile hermes` options:
 

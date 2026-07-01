@@ -1,17 +1,17 @@
 ---
 name: ddalggak
-description: "Use when the user wants a Codex App native GitHub issue to implementation to review to recovery workflow, or wants to plan issues, create GitHub issues, inspect status, ship an existing lane, clean up after merge, write retrospectives, improve prompts, or run a one-shot local diff check."
+description: "Use for ddalggak workflow subcommands."
 ---
 
 # ddalggak - Codex App workflow
 
-Ddalggak is a thin-router skill for GitHub Issue -> plan -> implementation -> review -> recovery -> retrospective. Keep long procedure in `references/` and reusable wording in `templates/`.
+Ddalggak is a thin-router for Issue -> plan -> implementation -> review -> recovery -> retro.
 
 ## Subcommands
 
-Supported subcommands are: `start|review|status|plan|issue|clean|ship|retro|prompt|tune|forge|spark|check|getwiki|setwiki`.
+Supported subcommands are declared in the generated table below.
 
-Standard cycle: `prompt` -> `tune` -> `forge` -> `spark` -> `plan` -> `start` -> `ship` -> `review` -> `retro`. `status`, `issue`, `clean`, `check`, `getwiki`, and `setwiki` are supporting commands.
+Standard cycle: `prompt` -> `tune` -> `forge` -> `spark` -> `plan` -> `start` -> `ship` -> `review` -> `retro`.
 
 ## Hot-Path Target Architecture
 
@@ -26,7 +26,7 @@ Parse only the first whitespace-separated word from the invocation arguments.
 2. If there are no arguments, route to `start`.
 3. If the first word is an issue reference (GitHub issue/PR URL, `#<number>`, a bare issue number, or `owner/repo#<number>`), route to `start` and treat the full argument string as issue context. An issue reference is an argument, not a command word.
 4. If the first word is a CLI-only command (`doctor`, `setup`, or any command handled by `bin/ddalggak.js`), do not route; reply that it is a terminal CLI command to run as `ddalggak <command>` in the shell, and stop.
-5. Otherwise, when the first word is neither a supported subcommand, an issue reference, nor a CLI-only command (a typo or unrecognized word), do not fall through to `start` (fail-closed). Return `NEEDS_CLARIFICATION` with the supported subcommand list (`start|review|status|plan|issue|clean|ship|retro|prompt|tune|forge|spark|check|getwiki|setwiki`) and ask for intent.
+5. Otherwise, when the first word is neither a supported subcommand, an issue reference, nor a CLI-only command (a typo or unrecognized word), do not fall through to `start` (fail-closed). Return `NEEDS_CLARIFICATION` with the supported subcommand list from the generated table below and ask for intent.
 6. Once a route is selected, later arguments must never reroute the request, even if they look like an implementation request.
 7. Immediately print exactly one route line before doing work: `-> <subcommand> 실행`.
 8. The routed subcommand must stay inside the code modification permissions in the table below.
@@ -34,7 +34,7 @@ Parse only the first whitespace-separated word from the invocation arguments.
 
 ## Code Modification Invariant
 
-Only `start` and `review` may authorize repository source file edits. All other subcommands are read-only for source code and may only produce their listed artifacts.
+Repository source edits are authorized only where the generated permission table below says `yes`; every `no` subcommand is read-only for source code and may only produce its listed artifacts.
 
 <!-- ddalggak:generated:start code-permission-table -->
 | Subcommand | May modify source files | Allowed artifacts |
@@ -54,6 +54,12 @@ Only `start` and `review` may authorize repository source file edits. All other 
 | `check` | no | local review notes only; no repository edits |
 | `getwiki` | no | delegate to dedicated `/getwiki` read-only retrieval |
 | `setwiki` | no | delegate to dedicated `/setwiki` approval-gated write workflow |
+| `ulw-loop` | yes | scoped source edits only; no GitHub writes |
+| `ulw-plan` | no | plan output only |
+| `ulw-research` | no | research output only |
+| `gjc-plan` | no | coordinator plan delegation evidence only |
+| `gjc-execute` | yes | scoped source edits only after explicit approval and coordinator mutation enablement; no GitHub writes |
+| `gjc-team` | yes | scoped team work only after explicit approval and coordinator mutation enablement; no GitHub writes |
 <!-- ddalggak:generated:end code-permission-table -->
 
 If a non-writing subcommand would need a source edit to continue, report the need and stop.
@@ -77,6 +83,12 @@ If a non-writing subcommand would need a source edit to continue, report the nee
 | `check` | read-only | Local Diff Check | Read-only local diff review | Local diff review notes only; no GitHub comments and no repository edits. | Stop after findings and exact validation gaps are reported. | refs: `references/local-diff-check.md`; templates: - |
 | `getwiki` | read-only | GetWiki Bridge | Wiki context retrieval bridge | Delegate to dedicated /getwiki retrieval; no wiki or repo mutation. | Stop after cited wiki sources or retrieval gaps are reported. | refs: `references/wiki-bridge.md`, `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`; templates: - |
 | `setwiki` | approval-gated-write | SetWiki Bridge | Wiki write workflow bridge | Delegate to dedicated /setwiki; wiki writes require explicit approval and verification. | Stop at review-only plan unless explicit approval is present; then stop after wiki write verification. | refs: `references/wiki-bridge.md`, `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`, `references/wiki-growth-triage.md`; templates: - |
+| `ulw-loop` | source-edit | ULW Loop | Evidence-led bounded implementation loop | Scoped source edits; no GitHub writes. | Stop after evidence, validation, cleanup, and blockers. | refs: `references/ulw-loop.md`; templates: - |
+| `ulw-plan` | plan-only | ULW Plan | Decision-complete plan before edits | Plan only; no source, GitHub, or git mutation. | Stop after scope, criteria, validation, non-goals, and blockers. | refs: `references/ulw-plan.md`; templates: - |
+| `ulw-research` | read-only | ULW Research | Cited research with explicit gaps | Research output only; no source, GitHub, or git mutation. | Stop after claims are cited or tested and gaps are named. | refs: `references/ulw-research.md`; templates: - |
+| `gjc-plan` | plan-only | Gajae-Code Delegation | Delegate planning to gajae-code coordinator MCP | Coordinator delegation only; no source, GitHub, git, or filesystem mutation unless explicitly approved. | Stop after coordinator turn evidence, plan artifact, or explicit blocker. | refs: `references/gajae-code.md`; templates: - |
+| `gjc-execute` | source-edit | Gajae-Code Delegation | Delegate approved execution to gajae-code coordinator MCP | Scoped source edits only after explicit user approval and coordinator mutation enablement; no GitHub writes. | Stop after verified coordinator terminal state, artifacts, cleanup, and blockers. | refs: `references/gajae-code.md`; templates: - |
+| `gjc-team` | source-edit | Gajae-Code Delegation | Delegate parallel team work to gajae-code coordinator MCP | Scoped team work only after explicit user approval and coordinator mutation enablement; no GitHub writes. | Stop after terminal team state, lane evidence, cleanup, and blockers. | refs: `references/gajae-code.md`; templates: - |
 <!-- ddalggak:generated:end subcommand-table -->
 
 ### Mode taxonomy
@@ -134,6 +146,12 @@ Use Codex App native orchestration names in briefs and state records: `spawn_age
 | `check` | `references/local-diff-check.md` | - | - | - |
 | `getwiki` | - | - | `references/wiki-bridge.md`, `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md` | - |
 | `setwiki` | `references/wiki-growth-triage.md` | - | `references/wiki-bridge.md`, `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md` | - |
+| `ulw-loop` | `references/ulw-loop.md` | - | - | - |
+| `ulw-plan` | `references/ulw-plan.md` | - | - | - |
+| `ulw-research` | `references/ulw-research.md` | - | - | - |
+| `gjc-plan` | `references/gajae-code.md` | - | - | - |
+| `gjc-execute` | `references/gajae-code.md` | - | - | - |
+| `gjc-team` | `references/gajae-code.md` | - | - | - |
 <!-- ddalggak:generated:end required-reference-map -->
 
 ## Shared Workflow Rules
@@ -150,7 +168,7 @@ Command contract: mode `source-edit`; source edits are limited to live issue-own
 
 Full procedure: `references/start-workflow.md`; reusable prompt: `templates/worker-brief.md`.
 
-Execution contract index: target repo/base freshness, issue body+comments, Quality Lens Router Output, React Code Quality Harness when applicable, Evidence Contract, Simplicity / Deletability Gate, allowed/forbidden/inspect-only/Must not touch, one issue PR by default, hard-conflict fallback only with reason, validation/PR evidence, and blocking gaps.
+Execution contract index: repo/base freshness, issue body+comments, Quality Lens Router Output, Evidence Contract, Simplicity / Deletability Gate, allowed/forbidden/inspect-only/Must not touch, one issue PR by default, hard-conflict fallback only with reason, validation/PR evidence, blocking gaps.
 
 ## `review` - Cross-Review Loop
 
@@ -158,7 +176,7 @@ Command contract: mode `review-fix`; source edits are allowed only for accepted 
 
 Full procedure: `references/cross-review-loop.md`; wiki authority: `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`; reusable prompt: `templates/review-brief.md`.
 
-Execution contract index: live PR/diff/files/checks/issue/head SHA, Wiki Context Preflight, Quality Lens Router Output, React Code Quality Harness when applicable, Evidence Contract, Simplicity / Deletability Gate, conditional frontend/Vercel/regression gates, React code quality gates when applicable, blocker triage, and top-level conclusion comment when formal approval is inappropriate.
+Execution contract index: live PR/diff/files/checks/issue/head SHA, Wiki Context Preflight, Quality Lens Router Output, Evidence Contract, Simplicity / Deletability Gate, conditional frontend/Vercel/regression gates, blocker triage, and top-level conclusion comment when formal approval is inappropriate.
 
 ## `status` - Current State Snapshot
 
@@ -168,13 +186,13 @@ Read `.ddalggak/session-state.json` if present, then inspect live git/GitHub sta
 
 Full procedure: `references/issue-ready-plan.md`; wiki preflight: `references/wiki-context-preflight.md`; wiki bridge: `references/wiki-bridge.md`; Brain v0 authority: `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`.
 
-Execution contract index: source of truth, non-goals, context anchors, assumptions/unknowns, work inventory, ownership, forbidden/inspect-only files, Quality Lens Router Output, React Code Quality Harness when applicable, Evidence Contract, Counterargument Pass, Simplicity / Deletability Gate, one issue PR by default, conflict fallback only with proof, Parallelization Decision, Must not touch, evidence/validation, and commit message.
+Execution contract index: source/non-goals/unknowns, ownership, Quality Lens Router Output, Evidence Contract, Simplicity / Deletability Gate, one issue PR by default, conflict fallback only with proof, Parallelization Decision, Must not touch, evidence/validation, commit message.
 
 ## `issue` - Plan To GitHub Issues
 
 Convert a plan into GitHub issues without editing repository files. Preserve Owned files, Must not touch, Parallelization note, Commit lane suggestion, Validation/evidence, and Dependencies / blocked by.
 
-Issue titles and bodies must be submitted as raw UTF-8, not JSON-escaped text. Before any `gh issue create` or `gh issue edit`, reject or decode titles/bodies containing literal Unicode escapes such as `\\uD558` / `\\ud558`; do not persist those escape sequences to GitHub. Prefer `--body-file` for Markdown bodies, and for non-ASCII titles prefer a UTF-8 REST payload written with `json.dumps(..., ensure_ascii=False)` via `gh api --input`. After creation, re-read `gh issue view --json title,body,url` and verify the live title contains Korean characters, not literal `\\uXXXX` sequences.
+Issue titles/bodies must be raw UTF-8, not JSON-escaped text. Reject or decode literal Unicode escapes before GitHub mutation; verify live title/body after creation.
 
 ## `ship` - Publish Current Lane
 
@@ -208,6 +226,30 @@ Full procedure: `references/forge-goal.md`; objective command/observation plus e
 
 Full procedure: `references/spark-goal.md`; copyable runtime goal sentence, validation checklist, non-goals, next instruction, and no source edits.
 
+## `ulw-loop` - ULW Loop
+
+Full procedure: `references/ulw-loop.md`.
+
+Execution contract index: `source_edit_allowed: true`; `github_write_allowed: false`; failing-first proof when feasible; targeted validation plus real-surface evidence; `ULW_LOOP_DONE`.
+
+## `ulw-plan` - ULW Plan
+
+Full procedure: `references/ulw-plan.md`.
+
+Execution contract index: `source_edit_allowed: false`; decision-complete plan, owned files, non-goals, validation surfaces, blockers; `ULW_PLAN_DONE`.
+
+## `ulw-research` - ULW Research
+
+Full procedure: `references/ulw-research.md`.
+
+Execution contract index: `source_edit_allowed: false`; cited claims, investigated leads, executable evidence where applicable, explicit gaps; `ULW_RESEARCH_DONE`.
+
+## `gjc-plan` / `gjc-execute` / `gjc-team` - Gajae-Code Delegation
+
+Full procedure: `references/gajae-code.md`.
+
+Execution contract index: delegate via `gjc_delegate_plan`, `gjc_delegate_execute`, or `gjc_delegate_team`; pass current project cwd and task; keep `allow_mutation: false` unless explicit user approval and coordinator mutation enablement are both present; use external GJC visible-session helpers only when installed; end with `GJC_PLAN_DONE`, `GJC_EXECUTE_DONE`, or `GJC_TEAM_DONE`.
+
 ## `check` - Local Diff Check
 
 Run a read-only local diff review. Capture base freshness, status, diff stat, ignored/local-only/generated paths, and findings. Use references/local-diff-check.md for details.
@@ -230,14 +272,7 @@ Stale repo state; missing issue comments; hallucinated dependencies; unsafe forc
 
 ## Verification Checklist
 
-- Base freshness and ahead/behind state known.
-- Issue body and comments inspected.
-- Allowed, forbidden, inspect-only, and Must not touch files explicit.
-- New dependencies avoided or proven.
-- Subagent side effects rechecked with git/GitHub.
-- Tests distinguished from commit, push, PR, and review completion.
-- Markdown edits preserve frontmatter, routing, code permissions, headings, fences, and numbering.
-- Evidence Contract, Simplicity / Deletability Gate, and relevant conditional references applied or skipped with reasons.
+Full procedure: `references/verification-checklist.md`. Verify base freshness, issue body+comments, file tracking/local-only status, validation evidence, reviewer isolation, and Markdown fence integrity.
 
 ## Completion Signals
 
@@ -261,6 +296,12 @@ Per-subcommand completion signals come from each command contract's `output_cont
 | `check` | `CHECK_DONE` |
 | `getwiki` | `GETWIKI_DONE` |
 | `setwiki` | `SETWIKI_DONE` |
+| `ulw-loop` | `ULW_LOOP_DONE` |
+| `ulw-plan` | `ULW_PLAN_DONE` |
+| `ulw-research` | `ULW_RESEARCH_DONE` |
+| `gjc-plan` | `GJC_PLAN_DONE` |
+| `gjc-execute` | `GJC_EXECUTE_DONE` |
+| `gjc-team` | `GJC_TEAM_DONE` |
 <!-- ddalggak:generated:end completion-signal-table -->
 
 ## Stop Conditions
@@ -269,134 +310,12 @@ Stop when source edits fall outside the routed subcommand, a lane needs files ou
 
 ## Reference Contract Summary
 
-The following compact contract keeps hot-path guardrails operational while detailed procedure moves to references/templates/scripts. Each item is a required review or routing concept, not a standalone checklist to satisfy mechanically:
-
-- URL beats cwd
-- GitHub URL handling criteria
-- owner/repo/number
-- cwd remote does not match
-- Task Scope Contract
-- Context Assembly Manifest
-- Resume Snapshot
-- Control-flow ownership
-- Runtime contract language
-- Small focused workers, explicit orchestration
-- tool capability boundary
-- task scope contract
-- out-of-scope diff
-- scope-expansion failure
-- Diff Footprint / Scope Expansion Review
-- knowledge extraction
-- harness-engineering/*
-- principles/*
-- frontend/*
-- llm-wiki/*
-- rendered evidence
-- route evidence
-- viewport evidence
-- rendered DOM evidence
-- screenshot evidence
-- fallback evidence
-- contract graph evidence
-- not-applicable
-- Analytics privacy
-- raw search terms
-- prompt titles
-- full query strings
-- Transitive rendered fallback
-- PR numbers
-- commit SHAs
-- single-session completion logs
-- incident records
-- durable reusable knowledge
-- Self-created complexity is a defect
-- forced modularization
-- Client-side patches
-- mock-only tests
-- Quality Lens Router
-- Quality Lens Router Output
-- Applicable gate families
-- Skipped gates
-- Required references
-- Domain gate is a lens, not a mandate
-- backend-only skip
-- Repo/product conventions
-- frontend-design
-- backend-only
-- Evidence Contract
-- references/evidence-contract.md
-- Blocking evidence gaps
-- No evidence, no readiness or approval
-- Counterargument Pass
-- weak assumptions
-- evidence that would disprove readiness
-- smaller or more direct change
-- Simplicity / Deletability Gate
-- references/simplicity-deletability-gate.md
-- React Code Quality Harness
-- react-code-quality-harness
-- references/react-code-quality-harness.md
-- Readability
-- Predictability
-- Hook/effect stability
-- Rendered evidence
-- Rendering/performance boundary
-- Frontend Design Gate
-- references/frontend-design-gate.md
-- Frontend Design Brief
-- Frontend Design Review Gate
-- Vercel Agent Skills Gate
-- references/vercel-agent-skills-gates.md
-- react-best-practices
-- composition-patterns
-- react-view-transitions
-- web-design-guidelines
-- deploy-to-vercel
-- vercel-cli-with-tokens
-- react-native-skills
-- server/client boundary
-- unnecessary client component avoidance
-- hydration/bundle regression avoidance
-- token source without printing secrets
-- preview-first
-- Vercel deploy safety
-- component API quality
-- animation meaning
-- React Native/Expo constraints
-- small direct change first
-- why any proposed abstraction is necessary
-- one-off abstraction
-- human readability
-- SOLID
-- Continuous Regression Library
-- references/regression-library.md
-- Regression Library Candidate
-- class-level risks
-- transient incidents in memory
-- Manual merge only
-- auto-merge
-- ready for manual merge
-- Approval-comment policy
-- top-level PR comment
-- head SHA
-- review scope
-- validation evidence
-- blocking findings count
-- Issue-PRs by default
-- do not replace independent issue PRs
-- one issue PR per independent issue
-- Issue PRs are required for independent issues
-- rescue the missing issue PR creation
-- Issue-PR Strategy with Conflict Fallback
-- Parallelization Decision
-- Must not touch
-- one PR
-- separate commits
-- Component methodology gate
-- main component only assembles
-- ComponentName.parts.tsx
-- ComponentName.utils.ts
-- satisfies Record<...>
-- public visual-contract classes
-- no silent fallback
-- empty companion files
+- URL beats cwd; owner/repo/number; cwd remote does not match; Issue comments matter.
+- Manual merge only: merge actions stay outside this workflow.
+- Approval-comment policy; Issue-PRs by default.
+- Runtime contract language in `references/agent-runtime-contract.md`: Task Scope Contract, Context Assembly Manifest, Resume Snapshot, Control-flow ownership, tool capability boundary, task scope contract, out-of-scope diff, scope-expansion failure.
+- Quality Lens Router keeps Required references; Domain gate is a lens, not a mandate.
+- Wiki Context First uses `references/wiki-context-preflight.md`; Wiki Bridge uses `references/wiki-bridge.md`: `getwiki` read-only retrieval, `setwiki` approval-gated write.
+- Evidence Contract in `references/evidence-contract.md`: Blocking evidence gaps, No evidence, no readiness or approval.
+- Simplicity / Deletability Gate in `references/simplicity-deletability-gate.md`: small direct change first, why any proposed abstraction is necessary.
+- Core Invariants Reference in `references/core-invariants.md`: Counterargument Pass, Self-created complexity is a defect, no silent fallback, raw UTF-8.

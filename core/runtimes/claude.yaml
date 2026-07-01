@@ -4,11 +4,9 @@ projection_roots:
   - ddalggak
 install_targets:
   - .claude/skills/ddalggak
-  - .claude/skills/omo-ulw
 entrypoints:
   - "ddalggak setup"
   - "/ddalggak <subcommand>"
-  - "/omo-ulw"
 capabilities:
   slash_commands: true
   local_skill_install: true

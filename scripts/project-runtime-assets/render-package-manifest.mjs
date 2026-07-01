@@ -21,12 +21,12 @@ export function requiredPackageFiles(commands) {
     "bin/ddalggak.js",
     "bin/lib/dispatch.mjs",
     "bin/lib/setup.mjs",
-    "claude-skills/omo-ulw/SKILL.md",
     "README.md",
     "llms.txt",
     "LICENSE",
   ]);
   for (const doc of commands) {
+    base.add(`core/commands/${doc.command}.yaml`);
     for (const ref of doc.required_references || []) {
       base.add(`.codex/skills/ddalggak/references/${ref}`);
       base.add(`ddalggak/references/${ref}`);

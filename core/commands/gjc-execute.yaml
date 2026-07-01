@@ -1,0 +1,18 @@
+command: gjc-execute
+command_order: "200"
+show_doc_heading: "Gajae-Code Delegation"
+source_edit_allowed: true
+github_write_allowed: false
+purpose: "Delegate approved execution to gajae-code coordinator MCP."
+mode: "source-edit"
+write_side_effects: "Scoped source edits only after explicit user approval and coordinator mutation enablement; no GitHub writes."
+stop_condition: "Stop after verified coordinator terminal state, artifacts, cleanup, and blockers."
+required_references:
+  - gajae-code.md
+
+required_templates:
+  []
+
+output_contract:
+  completion_signal: "GJC_EXECUTE_DONE"
+  evidence_required: true

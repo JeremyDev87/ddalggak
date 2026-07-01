@@ -1,0 +1,18 @@
+command: ulw-plan
+command_order: "170"
+show_doc_heading: "ULW Plan"
+source_edit_allowed: false
+github_write_allowed: false
+purpose: "Decision-complete plan before edits."
+mode: "plan-only"
+write_side_effects: "Plan only; no source, GitHub, or git mutation."
+stop_condition: "Stop after scope, criteria, validation, non-goals, and blockers."
+required_references:
+  - ulw-plan.md
+
+required_templates:
+  []
+
+output_contract:
+  completion_signal: "ULW_PLAN_DONE"
+  evidence_required: true

@@ -7,7 +7,7 @@
 //
 // Behaviour summary:
 //   - Resolves claudeHome: --target > $CLAUDE_HOME > $HOME/.claude.
-//   - Source payloads: <pkgRoot>/ddalggak/ and <pkgRoot>/claude-skills/*/.
+//   - Source payload: <pkgRoot>/ddalggak/.
 //   - Destination:     <claudeHome>/skills/<name>/.
 //   - Idempotent via <dst>/.installed-version (compared against package.json version).
 //   - Atomic backup: rename <dst> → <dst>.bak.<YYYYMMDD-HHMMSS>[-rand6].
@@ -31,7 +31,6 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const PKG_ROOT = resolve(__dirname, "..", "..");
 const SOURCE_SKILLS = [
   { name: "ddalggak", sourceRoot: join(PKG_ROOT, "ddalggak") },
-  { name: "omo-ulw", sourceRoot: join(PKG_ROOT, "claude-skills", "omo-ulw") },
 ];
 const PKG_JSON = join(PKG_ROOT, "package.json");
 
@@ -211,9 +210,7 @@ export async function run(args) {
     );
     out("");
     out("Next step:");
-    out(
-      "  Claude Code에서 /ddalggak 또는 /omo-ulw를 사용하세요.",
-    );
+    out("  Claude Code에서 /ddalggak <subcommand>를 사용하세요.");
     return 0;
   } catch (e) {
     err(`install failed: ${e && e.message ? e.message : e}`);
