@@ -6,7 +6,7 @@ source_edit_allowed: true
 github_write_allowed: true
 purpose: "Independent current-head review and accepted fix loop."
 mode: "review-fix"
-write_side_effects: "Top-level review comment plus inline line-anchored review comments for every finding in one COMMENT-event batch; accepted Critical/High fixes may edit source and push to the reviewed PR branch."
+write_side_effects: "Top-level review comment; accepted Critical/High fixes may edit source and push to the reviewed PR branch."
 stop_condition: "Stop before APPROVE if current-head CI is not terminal green/skipped, blockers remain, or wiki/evidence preflight has blocking gaps."
 required_references:
   - wiki-context-preflight.md
