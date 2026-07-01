@@ -148,11 +148,13 @@ Note that Hermes is an unverified, aspirational parity target: it is declared in
 
 ### Setup
 
-`setup` installs the Claude Code skill payload into `~/.claude/skills/ddalggak/`:
+`setup` installs the Claude Code skill payloads into `~/.claude/skills/`:
 
 ```bash
 node bin/ddalggak.js setup
 ```
+
+It installs `/ddalggak` for the ddalggak workflow and `/omo-ulw` for a Claude-native OMO ULW helper covering `ulw-loop`, `ulw-plan`, and `ulw-research` style work.
 
 Use `CLAUDE_HOME` or `--target` to choose a different Claude Code home:
 

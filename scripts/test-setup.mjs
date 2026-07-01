@@ -187,10 +187,23 @@ export const cases = [
         env: { CLAUDE_HOME: claudeHome },
       });
       const skillDir = path.join(claudeHome, "skills", "ddalggak");
+      const ulwSkillDir = path.join(claudeHome, "skills", "omo-ulw");
       assertExit(result, 0);
       assert(
         existsSync(path.join(skillDir, "SKILL.md")),
         "expected setup to create skills/ddalggak/SKILL.md",
+      );
+      assert(
+        existsSync(path.join(ulwSkillDir, "SKILL.md")),
+        "expected setup to create skills/omo-ulw/SKILL.md",
+      );
+      assert(
+        existsSync(path.join(ulwSkillDir, ".installed-version")),
+        "expected setup to create skills/omo-ulw/.installed-version",
+      );
+      assert(
+        existsSync(path.join(ulwSkillDir, ".installed-manifest.json")),
+        "expected setup to create skills/omo-ulw/.installed-manifest.json",
       );
       assert(
         existsSync(path.join(skillDir, ".installed-version")),

@@ -43,6 +43,7 @@
   "files": [
     ".codex/",
     "ddalggak/",
+    "claude-skills/",
     "bin/",
     "scripts/",
     "evals/",

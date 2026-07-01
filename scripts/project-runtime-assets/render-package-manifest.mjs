@@ -21,6 +21,7 @@ export function requiredPackageFiles(commands) {
     "bin/ddalggak.js",
     "bin/lib/dispatch.mjs",
     "bin/lib/setup.mjs",
+    "claude-skills/omo-ulw/SKILL.md",
     "README.md",
     "llms.txt",
     "LICENSE",

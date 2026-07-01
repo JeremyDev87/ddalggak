@@ -15,6 +15,7 @@ const requiredArtifactPaths = requiredPackageArtifactPaths;
 const runtimeSurfacePrefixes = [
   "bin/lib/",
   "core/",
+  "claude-skills/",
   "ddalggak/",
   ".codex/skills/ddalggak/",
   "scripts/project-runtime-assets.mjs",
@@ -63,7 +64,11 @@ function parsePackJson(stdout) {
 }
 
 function artifactCategory(filePath) {
-  if (filePath.startsWith(".codex/skills/ddalggak/") || filePath.startsWith("ddalggak/")) {
+  if (
+    filePath.startsWith(".codex/skills/ddalggak/") ||
+    filePath.startsWith("claude-skills/") ||
+    filePath.startsWith("ddalggak/")
+  ) {
     return "skill-payload";
   }
   if (filePath.startsWith("core/") || filePath.startsWith("bin/lib/")) {
