@@ -1,17 +1,17 @@
 ---
 name: ddalggak
-description: "Use for Codex-native ddalggak issue, plan, implementation, ship, review, recovery, retrospective, prompt, wiki bridge, ULW, and GJC workflows."
+description: "Use for ddalggak workflow subcommands, ULW, and GJC."
 ---
 
 # ddalggak - Codex App workflow
 
-Ddalggak routes GitHub issue -> plan -> implementation -> review -> recovery -> retrospective. Keep long procedure in `references/` and wording in `templates/`.
+Ddalggak is a thin router. Keep procedure in `references/` and wording in `templates/`.
 
 ## Subcommands
 
 Supported subcommands are declared in the generated table below.
 
-Standard cycle: `prompt` -> `tune` -> `forge` -> `spark` -> `plan` -> `start` -> `ship` -> `review` -> `retro`. `status`, `issue`, `clean`, `check`, `getwiki`, and `setwiki` are supporting commands.
+Cycle: `prompt` -> `tune` -> `forge` -> `spark` -> `plan` -> `start` -> `ship` -> `review` -> `retro`; other commands support.
 
 ## Hot-Path Target Architecture
 
@@ -54,12 +54,12 @@ Source edits are allowed only where the generated table says `yes`; `no` command
 | `check` | no | local review notes only; no repository edits |
 | `getwiki` | no | delegate to dedicated `/getwiki` read-only retrieval |
 | `setwiki` | no | delegate to dedicated `/setwiki` approval-gated write workflow |
-| `ulw-loop` | yes | scoped source edits only; no GitHub writes |
+| `ulw-loop` | yes | scoped edits; no GitHub |
 | `ulw-plan` | no | plan output only |
 | `ulw-research` | no | research output only |
-| `gjc-plan` | no | coordinator plan delegation evidence only |
-| `gjc-execute` | yes | scoped source edits only after explicit approval and coordinator mutation enablement; no GitHub writes |
-| `gjc-team` | yes | scoped team work only after explicit approval and coordinator mutation enablement; no GitHub writes |
+| `gjc-plan` | no | coordinator evidence |
+| `gjc-execute` | yes | approved edits; no GitHub |
+| `gjc-team` | yes | approved team work; no GitHub |
 <!-- ddalggak:generated:end code-permission-table -->
 
 If a non-writing subcommand would need a source edit to continue, report the need and stop.
@@ -83,12 +83,12 @@ If a non-writing subcommand would need a source edit to continue, report the nee
 | `check` | read-only | Local Diff Check | Read-only local diff review | Local diff review notes only; no GitHub comments and no repository edits. | Stop after findings and exact validation gaps are reported. | refs: `references/local-diff-check.md`; templates: - |
 | `getwiki` | read-only | GetWiki Bridge | Wiki context retrieval bridge | Delegate to dedicated /getwiki retrieval; no wiki or repo mutation. | Stop after cited wiki sources or retrieval gaps are reported. | refs: `references/wiki-bridge.md`, `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`; templates: - |
 | `setwiki` | approval-gated-write | SetWiki Bridge | Wiki write workflow bridge | Delegate to dedicated /setwiki; wiki writes require explicit approval and verification. | Stop at review-only plan unless explicit approval is present; then stop after wiki write verification. | refs: `references/wiki-bridge.md`, `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`, `references/wiki-growth-triage.md`; templates: - |
-| `ulw-loop` | source-edit | ULW Loop | Evidence-led bounded implementation loop | Scoped source edits; no GitHub writes. | Stop after evidence, validation, cleanup, and blockers. | refs: `references/ulw-loop.md`; templates: - |
-| `ulw-plan` | plan-only | ULW Plan | Decision-complete plan before edits | Plan only; no source, GitHub, or git mutation. | Stop after scope, criteria, validation, non-goals, and blockers. | refs: `references/ulw-plan.md`; templates: - |
-| `ulw-research` | read-only | ULW Research | Cited research with explicit gaps | Research output only; no source, GitHub, or git mutation. | Stop after claims are cited or tested and gaps are named. | refs: `references/ulw-research.md`; templates: - |
-| `gjc-plan` | plan-only | Gajae-Code Delegation | Delegate planning to gajae-code coordinator MCP | Coordinator delegation only; no source, GitHub, git, or filesystem mutation unless explicitly approved. | Stop after coordinator turn evidence, plan artifact, or explicit blocker. | refs: `references/gajae-code.md`; templates: - |
-| `gjc-execute` | source-edit | Gajae-Code Delegation | Delegate approved execution to gajae-code coordinator MCP | Scoped source edits only after explicit user approval and coordinator mutation enablement; no GitHub writes. | Stop after verified coordinator terminal state, artifacts, cleanup, and blockers. | refs: `references/gajae-code.md`; templates: - |
-| `gjc-team` | source-edit | Gajae-Code Delegation | Delegate parallel team work to gajae-code coordinator MCP | Scoped team work only after explicit user approval and coordinator mutation enablement; no GitHub writes. | Stop after terminal team state, lane evidence, cleanup, and blockers. | refs: `references/gajae-code.md`; templates: - |
+| `ulw-loop` | source-edit | ULW Loop | ULW implement | Scoped edits; no GitHub. | Stop after evidence/blockers. | refs: `references/ulw-loop.md`; templates: - |
+| `ulw-plan` | plan-only | ULW Plan | ULW plan | Plan only; no writes. | Stop after criteria/blockers. | refs: `references/ulw-plan.md`; templates: - |
+| `ulw-research` | read-only | ULW Research | ULW research | Research only; no writes. | Stop after cited claims/gaps. | refs: `references/ulw-research.md`; templates: - |
+| `gjc-plan` | plan-only | Gajae-Code Delegation | GJC plan | Coordinator only. | Stop after evidence/blocker. | refs: `references/gajae-code.md`; templates: - |
+| `gjc-execute` | source-edit | Gajae-Code Delegation | GJC execute | Approved edits; no GitHub. | Stop after evidence/blockers. | refs: `references/gajae-code.md`; templates: - |
+| `gjc-team` | source-edit | Gajae-Code Delegation | GJC team | Approved team work; no GitHub. | Stop after team evidence/blockers. | refs: `references/gajae-code.md`; templates: - |
 <!-- ddalggak:generated:end subcommand-table -->
 
 ### Mode taxonomy
@@ -228,27 +228,19 @@ Full procedure: `references/spark-goal.md`; copyable runtime goal sentence, vali
 
 ## `ulw-loop` - ULW Loop
 
-Full procedure: `references/ulw-loop.md`.
-
-Execution contract index: `source_edit_allowed: true`; `github_write_allowed: false`; failing-first proof when feasible; targeted validation plus real-surface evidence; `ULW_LOOP_DONE`.
+Full procedure: `references/ulw-loop.md`; `source_edit_allowed: true`; `github_write_allowed: false`; `ULW_LOOP_DONE`.
 
 ## `ulw-plan` - ULW Plan
 
-Full procedure: `references/ulw-plan.md`.
-
-Execution contract index: `source_edit_allowed: false`; decision-complete plan, owned files, non-goals, validation surfaces, blockers; `ULW_PLAN_DONE`.
+Full procedure: `references/ulw-plan.md`; `source_edit_allowed: false`; `ULW_PLAN_DONE`.
 
 ## `ulw-research` - ULW Research
 
-Full procedure: `references/ulw-research.md`.
-
-Execution contract index: `source_edit_allowed: false`; cited claims, investigated leads, executable evidence where applicable, explicit gaps; `ULW_RESEARCH_DONE`.
+Full procedure: `references/ulw-research.md`; `source_edit_allowed: false`; `ULW_RESEARCH_DONE`.
 
 ## `gjc-plan` / `gjc-execute` / `gjc-team` - Gajae-Code Delegation
 
-Full procedure: `references/gajae-code.md`.
-
-Execution contract index: delegate via `gjc_delegate_plan`, `gjc_delegate_execute`, or `gjc_delegate_team`; pass current project cwd and task; keep `allow_mutation: false` unless explicit user approval and coordinator mutation enablement are both present; use external GJC visible-session helpers only when installed; end with `GJC_PLAN_DONE`, `GJC_EXECUTE_DONE`, or `GJC_TEAM_DONE`.
+Full procedure: `references/gajae-code.md`; `gjc_delegate_plan`; `gjc_delegate_execute`; `gjc_delegate_team`; `allow_mutation: false`; explicit user approval; external GJC visible-session helpers; `GJC_PLAN_DONE`; `GJC_EXECUTE_DONE`; `GJC_TEAM_DONE`.
 
 ## `check` - Local Diff Check
 
@@ -268,7 +260,7 @@ Normal finish pipeline: local validation, publish evidence when requested, fresh
 
 ## Common Pitfalls
 
-Stale repo state; missing issue comments; hallucinated dependencies; unsafe force-push loops; equating test pass with completion; reviewing inside an implementation worktree; staging ignored/local-only files; over-fixing Medium findings; Markdown surgery that loses fenced blocks or routing; frontend approval without rendered evidence; analytics without privacy allowlist/denylist.
+Pitfalls: stale repo, missing comments, hallucinated deps, force-push loops, test-pass completion, review in implementation worktree, local-only staging, over-fixing Medium findings, Markdown routing/fence loss, unrendered frontend approval, analytics without privacy lists.
 
 ## Verification Checklist
 

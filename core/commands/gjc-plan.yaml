@@ -3,10 +3,10 @@ command_order: "190"
 show_doc_heading: "Gajae-Code Delegation"
 source_edit_allowed: false
 github_write_allowed: false
-purpose: "Delegate planning to gajae-code coordinator MCP."
+purpose: "GJC plan."
 mode: "plan-only"
-write_side_effects: "Coordinator delegation only; no source, GitHub, git, or filesystem mutation unless explicitly approved."
-stop_condition: "Stop after coordinator turn evidence, plan artifact, or explicit blocker."
+write_side_effects: "Coordinator only."
+stop_condition: "Stop after evidence/blocker."
 required_references:
   - gajae-code.md
 

@@ -1,6 +1,6 @@
 ---
 name: ddalggak
-description: "Use when 박정욱 invokes `/ddalggak` for the GitHub issue → plan → implementation → ship → review workflow, including plan, issue, start, ship, review, status, clean, retro, prompt, tune, forge, spark, check, getwiki, and setwiki subcommands."
+description: "Use for `/ddalggak` repo workflow subcommands, ULW, and GJC."
 argument-hint: "[subcommand] — no arg = start from GitHub issue"
 user-invocable: true
 ---
@@ -11,9 +11,9 @@ user-invocable: true
 
 ## 표준 워크플로우와 코드 수정 권한 (전역 invariant)
 
-표준 사이클: `prompt` → `tune` → `forge` → `spark` → `plan` → `start` → `ship` → `review` → `retro`. 다른 선언된 subcommand는 보조 명령이다.
+사이클: `prompt` → `tune` → `forge` → `spark` → `plan` → `start` → `ship` → `review` → `retro`; 나머지는 보조 명령이다.
 
-소스 코드(repo 내 파일, SKILL.md 포함) 수정 권한은 아래 생성 권한표에서 `✅`인 subcommand만 가진다. `❌` subcommand는 소스 코드 read-only이며 표에 적힌 산출물만 작성한다.
+소스 수정은 아래 표의 `✅` subcommand만 가능하다. `❌`는 read-only이며 표의 산출물만 작성한다.
 
 <!-- ddalggak:generated:start code-permission-table -->
 | 서브커맨드 | 소스 코드 수정 | 작성 가능한 산출물 |
@@ -33,19 +33,17 @@ user-invocable: true
 | `check` | ❌ | local review notes only; no repository edits |
 | `getwiki` | ❌ | delegate to dedicated `/getwiki` read-only retrieval |
 | `setwiki` | ❌ | delegate to dedicated `/setwiki` approval-gated write workflow |
-| `ulw-loop` | ✅ | scoped source edits only; no GitHub writes |
+| `ulw-loop` | ✅ | scoped edits; no GitHub |
 | `ulw-plan` | ❌ | plan output only |
 | `ulw-research` | ❌ | research output only |
-| `gjc-plan` | ❌ | coordinator plan delegation evidence only |
-| `gjc-execute` | ✅ | scoped source edits only after explicit approval and coordinator mutation enablement; no GitHub writes |
-| `gjc-team` | ✅ | scoped team work only after explicit approval and coordinator mutation enablement; no GitHub writes |
+| `gjc-plan` | ❌ | coordinator evidence |
+| `gjc-execute` | ✅ | approved edits; no GitHub |
+| `gjc-team` | ✅ | approved team work; no GitHub |
 <!-- ddalggak:generated:end code-permission-table -->
 
 ## Hot-Path Target Architecture
 
-항상 로드되는 본문은 frontmatter, routing invariant, code modification invariant, global guardrails, subcommand dispatch table, required reference map, stop conditions, verification checklist만 담는다. 상세 절차는 reference/template/script/eval로 넘긴다.
-
-현재 hot-path 목표는 line-count 자체가 아니라 subcommand별 Mode / Source edit / GitHub-write side effects / Required references / Stop condition을 한눈에 확인하게 하는 것이다. 상세 절차와 예시는 계속 references/templates/scripts에 둔다.
+항상 로드되는 본문은 routing, 권한, guardrails, dispatch/reference map, stop/verify만 담고 상세 절차는 references/templates/scripts/eval로 넘긴다.
 
 ## Routing Invariant
 
@@ -98,12 +96,12 @@ user-invocable: true
 | `check` | read-only | Local Diff Check | Read-only local diff review | Local diff review notes only; no GitHub comments and no repository edits. | Stop after findings and exact validation gaps are reported. | refs: `references/local-diff-check.md`; templates: - |
 | `getwiki` | read-only | GetWiki Bridge | Wiki context retrieval bridge | Delegate to dedicated /getwiki retrieval; no wiki or repo mutation. | Stop after cited wiki sources or retrieval gaps are reported. | refs: `references/wiki-bridge.md`, `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`; templates: - |
 | `setwiki` | approval-gated-write | SetWiki Bridge | Wiki write workflow bridge | Delegate to dedicated /setwiki; wiki writes require explicit approval and verification. | Stop at review-only plan unless explicit approval is present; then stop after wiki write verification. | refs: `references/wiki-bridge.md`, `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`, `references/wiki-growth-triage.md`; templates: - |
-| `ulw-loop` | source-edit | ULW Loop | Evidence-led bounded implementation loop | Scoped source edits; no GitHub writes. | Stop after evidence, validation, cleanup, and blockers. | refs: `references/ulw-loop.md`; templates: - |
-| `ulw-plan` | plan-only | ULW Plan | Decision-complete plan before edits | Plan only; no source, GitHub, or git mutation. | Stop after scope, criteria, validation, non-goals, and blockers. | refs: `references/ulw-plan.md`; templates: - |
-| `ulw-research` | read-only | ULW Research | Cited research with explicit gaps | Research output only; no source, GitHub, or git mutation. | Stop after claims are cited or tested and gaps are named. | refs: `references/ulw-research.md`; templates: - |
-| `gjc-plan` | plan-only | Gajae-Code Delegation | Delegate planning to gajae-code coordinator MCP | Coordinator delegation only; no source, GitHub, git, or filesystem mutation unless explicitly approved. | Stop after coordinator turn evidence, plan artifact, or explicit blocker. | refs: `references/gajae-code.md`; templates: - |
-| `gjc-execute` | source-edit | Gajae-Code Delegation | Delegate approved execution to gajae-code coordinator MCP | Scoped source edits only after explicit user approval and coordinator mutation enablement; no GitHub writes. | Stop after verified coordinator terminal state, artifacts, cleanup, and blockers. | refs: `references/gajae-code.md`; templates: - |
-| `gjc-team` | source-edit | Gajae-Code Delegation | Delegate parallel team work to gajae-code coordinator MCP | Scoped team work only after explicit user approval and coordinator mutation enablement; no GitHub writes. | Stop after terminal team state, lane evidence, cleanup, and blockers. | refs: `references/gajae-code.md`; templates: - |
+| `ulw-loop` | source-edit | ULW Loop | ULW implement | Scoped edits; no GitHub. | Stop after evidence/blockers. | refs: `references/ulw-loop.md`; templates: - |
+| `ulw-plan` | plan-only | ULW Plan | ULW plan | Plan only; no writes. | Stop after criteria/blockers. | refs: `references/ulw-plan.md`; templates: - |
+| `ulw-research` | read-only | ULW Research | ULW research | Research only; no writes. | Stop after cited claims/gaps. | refs: `references/ulw-research.md`; templates: - |
+| `gjc-plan` | plan-only | Gajae-Code Delegation | GJC plan | Coordinator only. | Stop after evidence/blocker. | refs: `references/gajae-code.md`; templates: - |
+| `gjc-execute` | source-edit | Gajae-Code Delegation | GJC execute | Approved edits; no GitHub. | Stop after evidence/blockers. | refs: `references/gajae-code.md`; templates: - |
+| `gjc-team` | source-edit | Gajae-Code Delegation | GJC team | Approved team work; no GitHub. | Stop after team evidence/blockers. | refs: `references/gajae-code.md`; templates: - |
 <!-- ddalggak:generated:end subcommand-table -->
 
 ### mode 분류 정의
@@ -263,21 +261,19 @@ Full procedure: `references/spark-goal.md`; copyable runtime goal sentence, vali
 
 ## ULW Loop
 
-Full procedure: `references/ulw-loop.md`; `source_edit_allowed: true`; `github_write_allowed: false`; failing-first proof when feasible; targeted validation plus real-surface evidence; `ULW_LOOP_DONE`.
+Full procedure: `references/ulw-loop.md`; `source_edit_allowed: true`; `github_write_allowed: false`; `ULW_LOOP_DONE`.
 
 ## ULW Plan
 
-Full procedure: `references/ulw-plan.md`; `source_edit_allowed: false`; decision-complete plan, owned files, non-goals, validation surfaces, blockers; `ULW_PLAN_DONE`.
+Full procedure: `references/ulw-plan.md`; `source_edit_allowed: false`; `ULW_PLAN_DONE`.
 
 ## ULW Research
 
-Full procedure: `references/ulw-research.md`; `source_edit_allowed: false`; cited claims, investigated leads, executable evidence where applicable, explicit gaps; `ULW_RESEARCH_DONE`.
+Full procedure: `references/ulw-research.md`; `source_edit_allowed: false`; `ULW_RESEARCH_DONE`.
 
 ## Gajae-Code Delegation
 
-Full procedure: `references/gajae-code.md`.
-
-Execution contract index: delegate via `gjc_delegate_plan`, `gjc_delegate_execute`, or `gjc_delegate_team`; pass current project cwd and task; keep `allow_mutation: false` unless explicit user approval and coordinator mutation enablement are both present; use external GJC visible-session helpers only when installed; end with `GJC_PLAN_DONE`, `GJC_EXECUTE_DONE`, or `GJC_TEAM_DONE`.
+Full procedure: `references/gajae-code.md`; `gjc_delegate_plan`; `gjc_delegate_execute`; `gjc_delegate_team`; `allow_mutation: false`; explicit user approval; external GJC visible-session helpers; `GJC_PLAN_DONE`; `GJC_EXECUTE_DONE`; `GJC_TEAM_DONE`.
 
 ## GetWiki Bridge
 

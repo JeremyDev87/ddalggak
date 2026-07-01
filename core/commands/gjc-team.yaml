@@ -3,10 +3,10 @@ command_order: "210"
 show_doc_heading: "Gajae-Code Delegation"
 source_edit_allowed: true
 github_write_allowed: false
-purpose: "Delegate parallel team work to gajae-code coordinator MCP."
+purpose: "GJC team."
 mode: "source-edit"
-write_side_effects: "Scoped team work only after explicit user approval and coordinator mutation enablement; no GitHub writes."
-stop_condition: "Stop after terminal team state, lane evidence, cleanup, and blockers."
+write_side_effects: "Approved team work; no GitHub."
+stop_condition: "Stop after team evidence/blockers."
 required_references:
   - gajae-code.md
 

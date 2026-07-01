@@ -3,10 +3,10 @@ command_order: "170"
 show_doc_heading: "ULW Plan"
 source_edit_allowed: false
 github_write_allowed: false
-purpose: "Decision-complete plan before edits."
+purpose: "ULW plan."
 mode: "plan-only"
-write_side_effects: "Plan only; no source, GitHub, or git mutation."
-stop_condition: "Stop after scope, criteria, validation, non-goals, and blockers."
+write_side_effects: "Plan only; no writes."
+stop_condition: "Stop after criteria/blockers."
 required_references:
   - ulw-plan.md
 

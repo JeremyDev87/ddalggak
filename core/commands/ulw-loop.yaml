@@ -3,10 +3,10 @@ command_order: "160"
 show_doc_heading: "ULW Loop"
 source_edit_allowed: true
 github_write_allowed: false
-purpose: "Evidence-led bounded implementation loop."
+purpose: "ULW implement."
 mode: "source-edit"
-write_side_effects: "Scoped source edits; no GitHub writes."
-stop_condition: "Stop after evidence, validation, cleanup, and blockers."
+write_side_effects: "Scoped edits; no GitHub."
+stop_condition: "Stop after evidence/blockers."
 required_references:
   - ulw-loop.md
 
