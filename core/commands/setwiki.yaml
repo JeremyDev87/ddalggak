@@ -9,6 +9,7 @@ mode: "approval-gated-write"
 write_side_effects: "Delegate to dedicated /setwiki; wiki writes require explicit approval and verification."
 stop_condition: "Stop at review-only plan unless explicit approval is present; then stop after wiki write verification."
 required_references:
+  - wiki-context-preflight.md
   - wiki-bridge.md
   - 2026-06-04-brain-v0-wiki-authority-in-ddalggak.md
   - wiki-growth-triage.md

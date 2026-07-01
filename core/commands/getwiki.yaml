@@ -9,6 +9,7 @@ mode: "read-only"
 write_side_effects: "Delegate to dedicated /getwiki retrieval; no wiki or repo mutation."
 stop_condition: "Stop after cited wiki sources or retrieval gaps are reported."
 required_references:
+  - wiki-context-preflight.md
   - wiki-bridge.md
   - 2026-06-04-brain-v0-wiki-authority-in-ddalggak.md
 

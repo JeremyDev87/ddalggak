@@ -220,6 +220,8 @@ export function writeDoctorFixture() {
       "    class: may-localize",
       "  - path: references/alpha.md",
       "    class: must-match",
+      "  - path: references/wiki-context-preflight.md",
+      "    class: must-match",
       "  - path: references/claude-only.md",
       "    class: root-specific",
       "    root: claude",
@@ -234,6 +236,7 @@ export function writeDoctorFixture() {
     [
       "command: start",
       "required_references:",
+      "  - wiki-context-preflight.md",
       "  - alpha.md",
       "required_templates:",
       "  - brief.md",
@@ -255,9 +258,11 @@ export function writeDoctorFixture() {
   ].join("\n");
   const alpha = "# alpha\n\nUse `templates/brief.md`.\n";
   const brief = "# brief\n\nEnd with LANE DONE.\n";
+  const wikiPreflight = "# wiki context preflight\n\nFixture wiki preflight.\n";
   for (const root of DOCTOR_FIXTURE_ROOTS) {
     write(path.join(root, "SKILL.md"), skill);
     write(path.join(root, "references", "alpha.md"), alpha);
+    write(path.join(root, "references", "wiki-context-preflight.md"), wikiPreflight);
     write(path.join(root, "templates", "brief.md"), brief);
   }
   write(

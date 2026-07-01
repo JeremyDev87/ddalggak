@@ -9,6 +9,7 @@ mode: "plan-only"
 write_side_effects: "Brief/review/fix artifacts only after explicit confirmation; no canonical source edits."
 stop_condition: "Stop with READY_FOR_BRIEF, NEEDS_CLARIFICATION, BLOCKED_UNSAFE, or DISCOVERY_ONLY."
 required_references:
+  - wiki-context-preflight.md
   - prompt-optimizer.md
   - prompt-skill-optimization-staging.md
 

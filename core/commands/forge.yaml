@@ -9,6 +9,7 @@ mode: "plan-only"
 write_side_effects: "Criteria only; no source, GitHub, or git mutation."
 stop_condition: "Stop after verifiable criteria or explicit gaps."
 required_references:
+  - wiki-context-preflight.md
   - forge-goal.md
 
 required_templates:
