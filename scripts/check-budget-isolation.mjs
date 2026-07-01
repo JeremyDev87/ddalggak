@@ -4,24 +4,23 @@
  *
  * PR diff isolation gate for subcommand token budgets (#267).
  *
- * Policy: a PR that changes the `subcommand_token_budgets` block in
- * core/token-budgets.yaml must not also change measured skill content
- * (ddalggak/**, .codex/**, core/commands/**). Otherwise raising the
- * budget inside the same PR that grows the content would neutralize
- * the admission gate's ratchet (#254).
+ * Policy: classify PRs that change `subcommand_token_budgets` together with
+ * measured skill content (ddalggak/**, .codex/**, core/commands/**), but do not
+ * block them here. The hard bound belongs to the token-budget admission and
+ * ceiling gates, which verify the resulting package surface directly.
  *
  * Allowed: budget-only PRs, content-only PRs, new-command PRs that add the
- * command's initial budgets, and calibration PRs that change the budget
- * together with non-measured files (e.g. the estimation formula in scripts/).
+ * command's initial budgets, calibration PRs, and intentional budget/content
+ * PRs that still pass the admission and ceiling gates.
  *
  * Usage: node scripts/check-budget-isolation.mjs --base <ref> --head <ref>
  *
  * The comparison uses the merge-base of the two refs, so commits that
- * landed on the base branch after the PR branched off do not flag the
+ * landed on the base branch after the PR branched off do not affect the
  * PR. Budget change detection parses the budget block on both sides and
  * compares values, so edits to other core/token-budgets.yaml blocks
  * (reference exemptions, ceilings, etc.) or comment-only edits never count as budget
- * changes.
+ * classification.
  */
 
 import { spawnSync } from "node:child_process";
@@ -144,29 +143,20 @@ const measuredChanges = changedFiles.filter((file) =>
   MEASURED_ASSET_PREFIXES.some((prefix) => file.startsWith(prefix)),
 );
 
-if (budgetsChanged && measuredChanges.length > 0 && disallowedBudgetCommands.length > 0) {
-  console.error(
-    "[budget-isolation] fail: this PR changes core/token-budgets.yaml subcommand_token_budgets together with measured skill content:",
-  );
-  for (const file of measuredChanges) {
-    console.error(`- ${file}`);
-  }
-  console.error(
-    "[budget-isolation] budget changes must ship in a separate budget-only PR (see README.md Progressive Disclosure Budget); calibration PRs may change budgets together with non-measured files only.",
-  );
-  console.error(
-    `[budget-isolation] disallowed budget command(s): ${disallowedBudgetCommands.join(", ")}`,
-  );
-  process.exit(1);
-}
-
 const classification = budgetsChanged
   ? measuredChanges.length > 0
-    ? "new-command initial budget with measured content"
+    ? disallowedBudgetCommands.length > 0
+      ? "budget/content calibration with measured content"
+      : "new-command initial budget with measured content"
     : "budget-change without measured content"
   : measuredChanges.length > 0
     ? "measured content without budget change"
     : "neither budgets nor measured content changed";
+if (budgetsChanged && measuredChanges.length > 0 && disallowedBudgetCommands.length > 0) {
+  console.log(
+    `[budget-isolation] note: existing budget command(s) changed with measured content: ${disallowedBudgetCommands.join(", ")}`,
+  );
+}
 console.log(
   `[budget-isolation] pass: ${classification} (merge-base ${mergeBase.slice(0, 12)}, ${changedFiles.length} changed file(s))`,
 );

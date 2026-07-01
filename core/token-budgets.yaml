@@ -21,7 +21,7 @@
 subcommand_token_budgets:
   claude:
     start: 23000
-    review: 27000
+    review: 28000
     status: 10000
     plan: 20000
     issue: 9500
@@ -43,7 +43,7 @@ subcommand_token_budgets:
     gjc-team: 14000
   codex:
     start: 24000
-    review: 27500
+    review: 28500
     status: 10000
     plan: 21000
     issue: 10000
