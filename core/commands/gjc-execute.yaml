@@ -8,6 +8,7 @@ mode: "source-edit"
 write_side_effects: "Approved edits; no GitHub."
 stop_condition: "Stop after evidence/blockers."
 required_references:
+  - wiki-context-preflight.md
   - gajae-code.md
 
 required_templates:

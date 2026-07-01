@@ -9,6 +9,7 @@ mode: "plan-only"
 write_side_effects: "Brief only; no source, GitHub, or git mutation."
 stop_condition: "Stop after a scoped brief or explicit blockers."
 required_references:
+  - wiki-context-preflight.md
   - tune-goal.md
 
 required_templates:

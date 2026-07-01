@@ -8,6 +8,7 @@ mode: "plan-only"
 write_side_effects: "Coordinator only."
 stop_condition: "Stop after evidence/blocker."
 required_references:
+  - wiki-context-preflight.md
   - gajae-code.md
 
 required_templates:

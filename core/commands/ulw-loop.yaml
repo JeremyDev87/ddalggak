@@ -8,6 +8,7 @@ mode: "source-edit"
 write_side_effects: "Scoped edits; no GitHub."
 stop_condition: "Stop after evidence/blockers."
 required_references:
+  - wiki-context-preflight.md
   - ulw-loop.md
 
 required_templates:

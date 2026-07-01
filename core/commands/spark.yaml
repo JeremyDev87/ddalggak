@@ -9,6 +9,7 @@ mode: "plan-only"
 write_side_effects: "Goal text only; no source, GitHub, or git mutation."
 stop_condition: "Stop after goal text and validation checklist."
 required_references:
+  - wiki-context-preflight.md
   - spark-goal.md
 
 required_templates:

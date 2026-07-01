@@ -180,7 +180,7 @@ export const cases = [
       writeFileSync(
         contractPath,
         readFileSync(contractPath, "utf8").replace(
-          "required_references:\n  - alpha.md",
+          "required_references:\n  - wiki-context-preflight.md\n  - alpha.md",
           "required_references: [alpha.md]",
         ),
         "utf8",
@@ -207,7 +207,7 @@ export const cases = [
       writeFileSync(
         contractPath,
         readFileSync(contractPath, "utf8").replace(
-          "required_references:\n  - alpha.md",
+          "required_references:\n  - wiki-context-preflight.md\n  - alpha.md",
           "required_references: alpha.md",
         ),
         "utf8",

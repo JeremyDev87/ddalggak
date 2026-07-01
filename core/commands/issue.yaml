@@ -9,6 +9,7 @@ mode: "github-write"
 write_side_effects: "Create/edit GitHub issues and comments only; no repository source edits."
 stop_condition: "Stop after live issue URLs/labels/assignees/body UTF-8 verification or on metadata permission failure."
 required_references:
+  - wiki-context-preflight.md
   - plan-to-issues.md
 
 required_templates:

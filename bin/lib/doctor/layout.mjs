@@ -68,18 +68,21 @@ export function loadLayout(rootDir) {
         continue;
       }
       const label = `core/commands/${file}`;
+      const findingCountBeforeParse = findings.length;
       const doc = parseSimpleYaml(text, label, {
         onError: (message) =>
           findings.push(`malformed command contract: ${message}`),
       });
+      const requiredReferences = contractRequiredList(
+        doc,
+        label,
+        "required_references",
+        findings,
+      );
       commands.push({
         file,
-        requiredReferences: contractRequiredList(
-          doc,
-          label,
-          "required_references",
-          findings,
-        ),
+        malformed: findings.length > findingCountBeforeParse,
+        requiredReferences,
         requiredTemplates: contractRequiredList(
           doc,
           label,

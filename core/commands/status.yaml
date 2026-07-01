@@ -9,6 +9,7 @@ mode: "read-only"
 write_side_effects: "No source, GitHub, or local cleanup mutation; report live git/GitHub/session state only."
 stop_condition: "Stop after a live state snapshot and next-action recommendation."
 required_references:
+  - wiki-context-preflight.md
   - status.md
   - pr-check-evidence-bundle.md
 

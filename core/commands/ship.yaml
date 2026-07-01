@@ -9,6 +9,7 @@ mode: "github-write"
 write_side_effects: "Commit, push, and draft PR for already-existing scoped changes; no new source edits."
 stop_condition: "Stop after PR creation/current-head publication evidence or on no-diff/scope/validation blocker."
 required_references:
+  - wiki-context-preflight.md
   - ship.md
 
 required_templates:
