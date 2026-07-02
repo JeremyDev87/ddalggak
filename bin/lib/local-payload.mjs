@@ -53,6 +53,23 @@ export async function readInstalledManifest(installedRoot) {
   }
 }
 
+// macOS/editor junk that must never enter a copied skill payload or its manifest.
+// Filtered at the single file-walk below so copy, manifest, and checksum all agree
+// on the same file set. Basename match catches junk at any nesting depth.
+export const IGNORED_PAYLOAD_NAMES = new Set([".DS_Store"]);
+
+export function isIgnoredPayloadEntry(name) {
+  return IGNORED_PAYLOAD_NAMES.has(name);
+}
+
+// Install-time metadata the installer writes into the destination but that is not
+// part of the source payload. Single source of truth so drift detection here and
+// status --local parity (install-parity extraInstalledPaths) never disagree.
+export const INSTALL_METADATA_NAMES = new Set([
+  ".installed-version",
+  ".installed-manifest.json",
+]);
+
 export async function listPayloadFiles(root, { missingRoot = "throw" } = {}) {
   const files = [];
   async function visit(dir) {
@@ -65,6 +82,7 @@ export async function listPayloadFiles(root, { missingRoot = "throw" } = {}) {
     }
     entries.sort((a, b) => a.name.localeCompare(b.name));
     for (const entry of entries) {
+      if (isIgnoredPayloadEntry(entry.name)) continue;
       const abs = join(dir, entry.name);
       if (entry.isDirectory()) {
         await visit(abs);
@@ -100,6 +118,24 @@ export async function payloadChecksum(root, expectedFiles = null) {
     aggregate.update("\0");
   }
   return { sha256: aggregate.digest("hex"), files };
+}
+
+// True when the installed payload's content no longer matches source at the same
+// version — the gap that version-only skip logic misses. Mirrors the staleness
+// definition status --local uses (install-parity): changed/missing source files
+// AND extra installed files, ignoring install metadata (.installed-*).
+export async function payloadDrifted(sourceRoot, installedRoot) {
+  const source = await payloadChecksum(sourceRoot);
+  if (!source) return false;
+  const installed = await payloadChecksum(installedRoot, source.files);
+  if (!installed || installed.sha256 !== source.sha256) return true;
+  const installedFiles = await listPayloadFiles(installedRoot, {
+    missingRoot: "empty",
+  });
+  const sourceSet = new Set(source.files);
+  return installedFiles.some(
+    (f) => !sourceSet.has(f) && !INSTALL_METADATA_NAMES.has(f),
+  );
 }
 
 export async function buildInstalledManifest({ sourceRoot, installedRoot, version }) {
