@@ -9,7 +9,8 @@
 //   - Resolves claudeHome: --target > $CLAUDE_HOME > $HOME/.claude.
 //   - Source payload: <pkgRoot>/ddalggak/.
 //   - Destination:     <claudeHome>/skills/<name>/.
-//   - Idempotent via <dst>/.installed-version (compared against package.json version).
+//   - Idempotent via <dst>/.installed-version (package.json version) plus a payload
+//     content-checksum drift check so same-version content changes still re-sync.
 //   - Atomic backup: rename <dst> → <dst>.bak.<YYYYMMDD-HHMMSS>[-rand6].
 //   - Flags: --dry-run, --force, --no-backup, --target <path>, --help.
 //   - path/realpath-based safety check; rejects system roots, descendants, and symlink escapes.
@@ -21,6 +22,7 @@ import { dirname, join, resolve } from "node:path";
 import { homedir } from "node:os";
 import {
   pathExists,
+  payloadDrifted,
   readInstalledVersion,
   readPackageVersion,
 } from "./local-payload.mjs";
@@ -174,8 +176,11 @@ export async function run(args) {
         ? await readInstalledVersion(skill.dstDir)
         : null;
       if (installed !== null && installed === version && !opts.force) {
-        out(`Would skip ${skill.name}: already up to date at ${version}`);
-        continue;
+        if (!(await payloadDrifted(skill.sourceRoot, skill.dstDir))) {
+          out(`Would skip ${skill.name}: already up to date at ${version}`);
+          continue;
+        }
+        out(`Would re-sync ${skill.name}: content drift detected at ${version}`);
       }
       if (installed !== null) {
         if (opts.noBackup) {

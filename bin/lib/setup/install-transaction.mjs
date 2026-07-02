@@ -7,10 +7,12 @@ import {
   rm,
   writeFile,
 } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { basename, join, resolve } from "node:path";
 import {
   buildInstalledManifest,
+  isIgnoredPayloadEntry,
   pathExists,
+  payloadDrifted,
   readInstalledVersion,
 } from "../local-payload.mjs";
 
@@ -63,7 +65,11 @@ async function backfillInstalledManifest({ sourceRoot, dstDir, version, out }) {
 
 async function stageInstall({ sourceRoot, dstParent, version }) {
   const stagedDir = await mkdtemp(join(dstParent, ".ddalggak-install-"));
-  await cp(sourceRoot, stagedDir, { recursive: true, force: true });
+  await cp(sourceRoot, stagedDir, {
+    recursive: true,
+    force: true,
+    filter: (src) => !isIgnoredPayloadEntry(basename(src)),
+  });
   await writeFile(join(stagedDir, ".installed-version"), `${version}\n`, "utf8");
   await writeInstalledManifest({
     sourceRoot,
@@ -114,9 +120,12 @@ export async function installSkillPayload({
   const installed = dstExists ? await readInstalledVersion(dstDir) : null;
 
   if (dstExists && !force && installed === version) {
-    await backfillInstalledManifest({ sourceRoot, dstDir, version, out });
-    out(`Already up to date (v${version}) at ${dstDir}`);
-    return;
+    if (!(await payloadDrifted(sourceRoot, dstDir))) {
+      await backfillInstalledManifest({ sourceRoot, dstDir, version, out });
+      out(`Already up to date (v${version}) at ${dstDir}`);
+      return;
+    }
+    out(`Content drift detected at v${version}; re-syncing ${dstDir}`);
   }
 
   const dstParent = resolve(dstDir, "..");

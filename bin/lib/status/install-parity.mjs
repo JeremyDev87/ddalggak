@@ -1,5 +1,6 @@
 import { join } from "node:path";
 import {
+  INSTALL_METADATA_NAMES,
   listPayloadFiles,
   pathExists,
   payloadChecksum,
@@ -26,13 +27,9 @@ async function missingPaths(root, requiredPaths) {
 }
 
 function extraInstalledPaths(installedFiles, sourceFiles) {
-  const allowedExtra = new Set([
-    ".installed-version",
-    ".installed-manifest.json",
-  ]);
   const sourceSet = new Set(sourceFiles);
   return installedFiles.filter(
-    (file) => !sourceSet.has(file) && !allowedExtra.has(file),
+    (file) => !sourceSet.has(file) && !INSTALL_METADATA_NAMES.has(file),
   );
 }
 

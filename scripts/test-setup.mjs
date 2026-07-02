@@ -30,6 +30,8 @@ import {
   sha256File,
   DOCTOR_FIXTURE_ROOTS,
 } from "./test-lib/cli-fixtures.mjs";
+import { mkdirSync, mkdtempSync } from "node:fs";
+import { installSkillPayload } from "../bin/lib/setup/install-transaction.mjs";
 
 export const cases = [
 {
@@ -326,6 +328,91 @@ export const cases = [
           path.join(skillDirFor(claudeHome), ".installed-manifest.json"),
         ),
         "expected setup to backfill missing .installed-manifest.json",
+      );
+    },
+  },
+{
+    name: "install excludes .DS_Store junk from payload copy and manifest",
+    async run() {
+      const src = mkdtempSync(path.join(os.tmpdir(), "ddx-src-"));
+      mkdirSync(path.join(src, "references"), { recursive: true });
+      writeFileSync(path.join(src, "SKILL.md"), "# skill\n", "utf8");
+      writeFileSync(path.join(src, "references", "r.md"), "ref\n", "utf8");
+      writeFileSync(path.join(src, ".DS_Store"), "junk", "utf8");
+      writeFileSync(path.join(src, "references", ".DS_Store"), "junk", "utf8");
+      const claudeHome = makeTempHome();
+      const dst = path.join(claudeHome, "skills", "ddalggak");
+      try {
+        await installSkillPayload({
+          sourceRoot: src,
+          dstDir: dst,
+          version: "9.9.9",
+          force: false,
+          noBackup: false,
+          out: () => {},
+        });
+        assert(existsSync(path.join(dst, "SKILL.md")), "expected SKILL.md copied");
+        assert(
+          !existsSync(path.join(dst, ".DS_Store")),
+          "expected top-level .DS_Store excluded from install",
+        );
+        assert(
+          !existsSync(path.join(dst, "references", ".DS_Store")),
+          "expected nested .DS_Store excluded from install",
+        );
+        const manifest = JSON.parse(
+          readFileSync(path.join(dst, ".installed-manifest.json"), "utf8"),
+        );
+        assert(
+          manifest.files.every((f) => !f.path.split("/").includes(".DS_Store")),
+          "expected no .DS_Store entry in installed manifest",
+        );
+      } finally {
+        rmSync(src, { recursive: true, force: true });
+      }
+    },
+  },
+{
+    name: "setup re-syncs same-version content drift without --force",
+    run() {
+      const claudeHome = makeTempHome();
+      assertExit(runCli(["setup"], { env: { CLAUDE_HOME: claudeHome } }), 0);
+      const skillMd = path.join(skillDirFor(claudeHome), "SKILL.md");
+      const original = readFileSync(skillMd, "utf8");
+      // Same installed-version, drifted content — the case plain version-only skip missed.
+      writeFileSync(skillMd, `${original}\n<!-- drift -->\n`, "utf8");
+
+      const second = runCli(["setup"], { env: { CLAUDE_HOME: claudeHome } });
+      assertExit(second, 0);
+      assert(
+        !second.stdout.includes("Already up to date"),
+        "expected content drift to bypass the up-to-date skip",
+      );
+      assertIncludes(second.stdout, "re-syncing", "stdout");
+      assert(
+        readFileSync(skillMd, "utf8") === original,
+        "expected drifted SKILL.md restored to source bytes after re-sync",
+      );
+    },
+  },
+{
+    name: "setup re-syncs when installed payload has an extra file at same version",
+    run() {
+      const claudeHome = makeTempHome();
+      assertExit(runCli(["setup"], { env: { CLAUDE_HOME: claudeHome } }), 0);
+      const extra = path.join(skillDirFor(claudeHome), "references", "obsolete.md");
+      writeFileSync(extra, "stray\n", "utf8"); // extra installed file, version unchanged
+
+      const second = runCli(["setup"], { env: { CLAUDE_HOME: claudeHome } });
+      assertExit(second, 0);
+      assert(
+        !second.stdout.includes("Already up to date"),
+        "expected an extra installed file to count as drift and bypass skip",
+      );
+      assertIncludes(second.stdout, "re-syncing", "stdout");
+      assert(
+        !existsSync(extra),
+        "expected re-sync to drop the extra installed file not present in source",
       );
     },
   }
