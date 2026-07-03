@@ -105,6 +105,8 @@ parity_ledger:
     class: may-localize
   - path: references/retrospective.md
     class: may-localize
+  - path: references/review-comment-style.md
+    class: must-match
   - path: references/security-posture-gate.md
     class: may-localize
   - path: references/ship.md

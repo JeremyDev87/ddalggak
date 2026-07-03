@@ -57,9 +57,10 @@ finding 후보는 게시 전에 3문 트리아지를 통과해야 한다(Counter
 2. 반영 시 코드/문서가 실제로 바뀌는가? — "참고용"·"후속 튜닝 대상" 같은 무행동 메모는 탈락.
 3. live evidence가 특정 라인을 지목하는가? — 증거 없는 가설적 엣지케이스는 탈락.
 
-- 프로세스성 evidence-gap(Evidence Contract 누락)은 inline을 만들지 않고 top-level의 blocking count와 gap 목록에만 기록한다. severity 규칙은 유지하며 게시 채널만 분리한다.
+- 프로세스성 evidence-gap(Evidence Contract 누락)은 inline을 만들지 않고 top-level의 blocking count와 gap 목록에만 기록한다. severity 규칙은 그대로다.
 - 걸러진 Low/nit·정보성 항목은 top-level의 접이식 `<details>` "비차단 메모" 섹션 하나로 모으고, 버린 후보는 리뷰 로그에 drop 사유를 남긴다.
-- **finding 0건 + 검증 evidence만 있는 리뷰는 유효한 완료다.** 개수는 품질 지표가 아니며, 채우기 위한 finding을 만들지 않는다.
+- **finding 0건 + 검증 evidence만 있는 리뷰는 유효한 완료다.** 채우기 위한 finding을 만들지 않는다.
+- 게시 직전 `references/review-comment-style.md`의 문체 계약을 적용한다.
 
 ## Inline finding comments
 
