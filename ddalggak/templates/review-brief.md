@@ -22,6 +22,6 @@
 - Finding signal gate (3문 트리아지; 통과분만 inline, 걸러진 후보는 비차단 메모 또는 drop 로그):
 
 ## Output
-`REVIEW_DONE PR#<num>: <APPROVE|CHANGES_REQUESTED> critical=N high=N medium=N low=N`
+`REVIEW_DONE PR#<num>: <APPROVE|CHANGES_REQUESTED> critical=N high=N medium=N low=N head=<sha>`
 
 finding 0건 리뷰도 유효한 완료다 (finding signal gate 참조).
