@@ -69,7 +69,7 @@ finding 후보는 게시 전에 3문 트리아지를 통과해야 한다(Counter
 - 게시는 단일 review 제출 1건으로 묶는다: `POST /repos/{owner}/{repo}/pulls/{number}/reviews`, `event: COMMENT`, `comments: [{path, line, side, body}, ...]`. finding마다 개별 comment API를 반복 호출하지 않는다.
 - 구체적 코드 대안이 있는 finding은 body에 GitHub ` ```suggestion ` 블록을 포함해 리뷰이가 한 번에 적용할 수 있게 한다.
 - 앵커 순서(fallback): (1) 추가·변경 라인은 `side: RIGHT`, (2) 삭제 라인은 `side: LEFT`, (3) 파일 전반 지적은 file-level comment(`subject_type: file`), (4) diff 밖 코드를 유발한 변경 라인에 근접 앵커, (5) 그래도 앵커 불가하면 blocker는 top-level의 blocking finding count에만 반영하고 non-blocker는 drop하되 drop 사실을 리뷰 로그에 남긴다. 조용한 누락은 금지.
-- top-level 요약 comment는 approval-comment 필수 요소(current head SHA, review scope, validation evidence, blocking finding count, conclusion)를 압축 형식으로 담는다: 첫 줄 `REVIEW_DONE PR#<num> head=<sha> verdict=<...> blockers=N` 트레일러, 본문에 validation evidence(실행 명령과 측정치), CI/check·formal review/branch protection 면책·merge blocker·human action 4항목은 접이식 `<details>` 1블록. finding 본문을 top-level에 중복하지 않는다.
+- top-level 요약 comment: 첫 줄은 사람용 한 줄 결론(평문), 본문은 review scope와 validation evidence(실행 명령과 측정치), CI/check·formal review/branch protection 면책·merge blocker·human action 4항목은 접이식 `<details>` 1블록, 마지막 줄은 `templates/review-brief.md`의 완료 신호 트레일러. approval-comment 필수 요소는 이 배치로 모두 충족된다. finding 본문을 top-level에 중복하지 않는다.
 
 ## Wiki Review Context Preflight
 
