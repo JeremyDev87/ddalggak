@@ -27,14 +27,14 @@ subcommand_token_budgets:
     issue: 10000
     clean: 9500
     ship: 10000
-    retro: 14000
+    retro: 14500
     prompt: 12500
     tune: 11000
     forge: 11000
     spark: 11000
     check: 9500
     getwiki: 11500
-    setwiki: 13000
+    setwiki: 13500
     ulw-loop: 14000
     ulw-plan: 13000
     ulw-research: 11000
@@ -49,14 +49,14 @@ subcommand_token_budgets:
     issue: 10500
     clean: 10000
     ship: 10500
-    retro: 12500
+    retro: 13500
     prompt: 12500
     tune: 12000
     forge: 12000
     spark: 12000
     check: 10000
     getwiki: 12000
-    setwiki: 13500
+    setwiki: 14000
     ulw-loop: 15000
     ulw-plan: 14000
     ulw-research: 12000
@@ -87,6 +87,9 @@ reference_budget_exemptions:
   - reference: vercel-agent-skills-gates.md
     max_tokens: 2300
     reason: conditional gate reachable only via quality-lens-router; not in any base required_references
+  - reference: knowledge-freshness-contract.md
+    max_tokens: 800
+    reason: freshness contract loaded on demand via wiki-growth-triage knowledge audit pointer; not in any base required_references
   - reference: pr-status-evidence-bundle.md
     max_tokens: 1400
     reason: claude-runtime pr-status evidence bundle loaded on demand outside base required_references
