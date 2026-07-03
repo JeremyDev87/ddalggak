@@ -46,6 +46,31 @@ Before promoting wiki-derived knowledge into ddalggak, verify:
 - The change does not create hidden runtime machinery, scheduler mutation, or durable state storage unless explicitly requested and separately scoped.
 - The change includes validation evidence appropriate to the touched surface: `npm run verify:codex-skill`, `npm test`, package dry-run, `git diff --check`, or a specific not-applicable reason.
 
+## Idempotent knowledge writes
+
+Re-observing an already-recorded lesson is the normal case, not an error. Durable-surface writes (wiki proposals, references, templates, regression-library entries) must stay idempotent against it:
+
+- Identity is semantic, not path- or title-based: before writing, read the neighboring entries and compare meaning.
+- Re-observation is an upsert: add the new evidence source to the existing entry instead of creating a sibling entry. If the same source is already recorded, make no change.
+- Do not re-add knowledge that was already promoted or deprecated; if it recurs, cite the prior decision and propose raising its promotion strength instead.
+- Repair duplicates that slipped past judgment by merging, not blocking: consolidate evidence into the better-distilled entry and deprecate the other with the merge reason recorded. The goal is bounded duplication with cheap recovery, not zero duplication.
+
+Pattern provenance: distilled from field observation of an OKF-style repo-local agent knowledge-bundle workflow (Open Knowledge Format v0.1 governance).
+
+## Knowledge audit mode
+
+When asked to audit or clean a durable knowledge surface, run report → approval → batch fix. Never fix silently while auditing. Report at minimum:
+
+1. Orphan entries that no other document links to (indexes excluded).
+2. Broken internal links; external URLs are out of scope.
+3. Mentioned-but-unlinked entries: another entry's subject named in prose without a link.
+4. Missing or undefined required metadata, such as admission header fields.
+5. Index ↔ file mismatches, checked in both directions.
+6. Contradictions between entries on the same topic — report for human decision; never auto-merge content conflicts.
+7. Stale entries past a declared freshness threshold, when the surface declares one.
+8. Tag or vocabulary drift from the established set.
+9. Duplicate suspects, routed to the merge rule in Idempotent knowledge writes.
+
 ## Worked examples
 
 | Input knowledge | Classification | Why |
