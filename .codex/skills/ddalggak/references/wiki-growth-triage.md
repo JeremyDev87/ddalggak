@@ -67,7 +67,7 @@ When asked to audit or clean a durable knowledge surface, run report → approva
 4. Missing or undefined required metadata, such as admission header fields.
 5. Index ↔ file mismatches, checked in both directions.
 6. Contradictions between entries on the same topic — report for human decision; never auto-merge content conflicts.
-7. Stale entries past a declared freshness threshold, when the surface declares one.
+7. Stale entries past a declared freshness threshold, when the surface declares one (thresholds and last-verified semantics: `references/knowledge-freshness-contract.md`).
 8. Tag or vocabulary drift from the established set.
 9. Duplicate suspects, routed to the merge rule in Idempotent knowledge writes.
 

@@ -87,6 +87,9 @@ reference_budget_exemptions:
   - reference: vercel-agent-skills-gates.md
     max_tokens: 2300
     reason: conditional gate reachable only via quality-lens-router; not in any base required_references
+  - reference: knowledge-freshness-contract.md
+    max_tokens: 800
+    reason: freshness contract loaded on demand via wiki-growth-triage knowledge audit pointer; not in any base required_references
   - reference: pr-status-evidence-bundle.md
     max_tokens: 1400
     reason: claude-runtime pr-status evidence bundle loaded on demand outside base required_references

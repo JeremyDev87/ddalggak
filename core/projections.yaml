@@ -63,6 +63,8 @@ parity_ledger:
     class: must-match
   - path: references/issue-ready-plan.md
     class: may-localize
+  - path: references/knowledge-freshness-contract.md
+    class: must-match
   - path: references/local-diff-check.md
     class: may-localize
   - path: references/merge-cleanup.md
