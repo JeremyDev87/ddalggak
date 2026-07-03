@@ -8,7 +8,7 @@ Durable documents rot silently. This contract makes staleness observable instead
 
 ## Last-verified, not created
 
-A freshness timestamp records when the document's claims were last verified against live state, not when the text was written. Editing prose without re-verifying claims does not refresh it.
+A freshness timestamp records when the document's claims were last verified against live state, not when the text was written. Record it as a `Last-verified: YYYY-MM-DD (<evidence>)` line directly under the admission header; a surface declares thresholds or stricter overrides the same way (e.g. `Freshness-threshold: 90d`). Editing prose without re-verifying claims does not refresh it.
 
 ## Staleness thresholds by document kind
 
