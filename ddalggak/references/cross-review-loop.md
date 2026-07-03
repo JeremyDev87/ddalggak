@@ -49,31 +49,27 @@ Every review verdict and every fix result is tied to a concrete PR head SHA.
 - If a fix commit changes files outside the accepted finding scope, treat the review as reopened and run scope-expansion review again.
 - If formal GitHub approval is self-review or otherwise inappropriate, use a top-level `approve`/`change request` comment that names the current head SHA, scope, validation, blocker count, and human merge boundary.
 
+## Finding signal gate (게시 전 트리아지)
+
+finding 후보는 게시 전에 3문 트리아지를 통과해야 한다(Counterargument Pass의 finding 적용):
+
+1. 저자가 이미 아는가? — diff·코드 주석·PR body의 재진술이면 탈락.
+2. 반영 시 코드/문서가 실제로 바뀌는가? — "참고용"·"후속 튜닝 대상" 같은 무행동 메모는 탈락.
+3. live evidence가 특정 라인을 지목하는가? — 증거 없는 가설적 엣지케이스는 탈락.
+
+- 프로세스성 evidence-gap(Evidence Contract 누락)은 inline을 만들지 않고 top-level의 blocking count와 gap 목록에만 기록한다. severity 규칙은 유지하며 게시 채널만 분리한다.
+- 걸러진 Low/nit·정보성 항목은 top-level의 접이식 `<details>` "비차단 메모" 섹션 하나로 모으고, 버린 후보는 리뷰 로그에 drop 사유를 남긴다.
+- **finding 0건 + 검증 evidence만 있는 리뷰는 유효한 완료다.** 개수는 품질 지표가 아니며, 채우기 위한 finding을 만들지 않는다.
+
 ## Inline finding comments
 
-Review finding은 top-level 요약이 아니라 diff 라인에 앵커된 inline review comment로 게시한다. severity로 게시 위치를 나누지 않는다 — Critical부터 nit·suggestion까지 모든 finding이 inline이다.
+트리아지를 통과한 finding은 diff 라인에 앵커된 inline review comment로 게시하며, severity로 게시 위치를 나누지 않는다.
 
 - 게시는 단일 review 제출 1건으로 묶는다: `POST /repos/{owner}/{repo}/pulls/{number}/reviews`, `event: COMMENT`, `comments: [{path, line, side, body}, ...]`. finding마다 개별 comment API를 반복 호출하지 않는다.
 - 구체적 코드 대안이 있는 finding은 body에 GitHub ` ```suggestion ` 블록을 포함해 리뷰이가 한 번에 적용할 수 있게 한다.
 - 앵커 순서(fallback): (1) 추가·변경 라인은 `side: RIGHT`, (2) 삭제 라인은 `side: LEFT`, (3) 파일 전반 지적은 file-level comment(`subject_type: file`), (4) diff 밖 코드를 유발한 변경 라인에 근접 앵커, (5) 그래도 앵커 불가하면 blocker는 top-level의 blocking finding count에만 반영하고 non-blocker는 drop하되 drop 사실을 리뷰 로그에 남긴다. 조용한 누락은 금지.
-- top-level 요약 comment는 현재 approval-comment 형식 그대로다(current head SHA, review scope, validation evidence, blocking finding count, conclusion). finding 본문을 top-level에 중복하지 않는다.
+- top-level 요약 comment는 approval-comment 필수 요소(current head SHA, review scope, validation evidence, blocking finding count, conclusion)를 압축 형식으로 담는다: 첫 줄 `REVIEW_DONE PR#<num> head=<sha> verdict=<...> blockers=N` 트레일러, 본문에 validation evidence(실행 명령과 측정치), CI/check·formal review/branch protection 면책·merge blocker·human action 4항목은 접이식 `<details>` 1블록. finding 본문을 top-level에 중복하지 않는다.
 
 ## Wiki Review Context Preflight
 
-Before judging the PR, run `references/wiki-context-preflight.md` using:
-
-- PR title/body
-- linked issue
-- changed files
-- public API or UX surfaces
-- validation evidence
-- recurring failure patterns
-
-Review output must distinguish:
-
-- Findings backed by live PR/repo evidence
-- Findings strengthened by wiki sources
-- Non-wiki inference
-- Wiki search failures or gaps
-
-Wiki context is a review lens, not an oracle. Blocking findings still require live diff/repo evidence.
+Before judging the PR, run `references/wiki-context-preflight.md` (query seeds: PR/issue text, changed files, public API or UX surfaces, validation evidence, recurring failure patterns). Review output must distinguish findings backed by live PR/repo evidence, findings strengthened by wiki sources, non-wiki inference, and wiki search failures or gaps. Wiki context is a review lens, not an oracle; blocking findings still require live diff/repo evidence.
