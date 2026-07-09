@@ -10,6 +10,7 @@ stop_condition: "Stop after criteria/blockers."
 required_references:
   - wiki-context-preflight.md
   - ulw-plan.md
+  - ulw-intent-routing.md
 
 required_templates:
   []

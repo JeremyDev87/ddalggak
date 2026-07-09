@@ -10,6 +10,7 @@ stop_condition: "Stop after cited claims/gaps."
 required_references:
   - wiki-context-preflight.md
   - ulw-research.md
+  - ulw-epistemic-instrumentation.md
 
 required_templates:
   []

@@ -28,23 +28,23 @@ subcommand_token_budgets:
     clean: 9500
     ship: 10000
     retro: 14500
-    prompt: 12500
+    prompt: 13000
     tune: 11000
     forge: 11000
     spark: 11000
     check: 9500
     getwiki: 11500
     setwiki: 13500
-    ulw-loop: 14000
-    ulw-plan: 13000
-    ulw-research: 11000
+    ulw-loop: 17000
+    ulw-plan: 15500
+    ulw-research: 14500
     gjc-plan: 13000
     gjc-execute: 14000
     gjc-team: 14000
   codex:
     start: 24000
-    review: 28500
-    status: 10500
+    review: 29000
+    status: 11000
     plan: 21000
     issue: 10500
     clean: 10000
@@ -57,9 +57,9 @@ subcommand_token_budgets:
     check: 10000
     getwiki: 12000
     setwiki: 14000
-    ulw-loop: 15000
-    ulw-plan: 14000
-    ulw-research: 12000
+    ulw-loop: 18500
+    ulw-plan: 16500
+    ulw-research: 15500
     gjc-plan: 14000
     gjc-execute: 15000
     gjc-team: 15000
