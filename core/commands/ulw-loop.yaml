@@ -10,6 +10,7 @@ stop_condition: "Stop after evidence/blockers."
 required_references:
   - wiki-context-preflight.md
   - ulw-loop.md
+  - ulw-tier-triage.md
 
 required_templates:
   []

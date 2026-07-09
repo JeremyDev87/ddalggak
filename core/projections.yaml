@@ -89,6 +89,12 @@ parity_ledger:
     class: must-match
   - path: references/ulw-research.md
     class: must-match
+  - path: references/ulw-tier-triage.md
+    class: must-match
+  - path: references/ulw-epistemic-instrumentation.md
+    class: must-match
+  - path: references/ulw-intent-routing.md
+    class: must-match
   - path: references/forge-goal.md
     class: must-match
   - path: references/spark-goal.md

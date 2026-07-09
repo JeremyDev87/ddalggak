@@ -83,9 +83,9 @@ If a non-writing subcommand would need a source edit to continue, report the nee
 | `check` | read-only | Local Diff Check | Read-only local diff review | Local diff review notes only; no GitHub comments and no repository edits. | Stop after findings and exact validation gaps are reported. | refs: `references/wiki-context-preflight.md`, `references/local-diff-check.md`; templates: - |
 | `getwiki` | read-only | GetWiki Bridge | Wiki context retrieval bridge | Delegate to dedicated /getwiki retrieval; no wiki or repo mutation. | Stop after cited wiki sources or retrieval gaps are reported. | refs: `references/wiki-context-preflight.md`, `references/wiki-bridge.md`, `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`; templates: - |
 | `setwiki` | approval-gated-write | SetWiki Bridge | Wiki write workflow bridge | Delegate to dedicated /setwiki; wiki writes require explicit approval and verification. | Stop at review-only plan unless explicit approval is present; then stop after wiki write verification. | refs: `references/wiki-context-preflight.md`, `references/wiki-bridge.md`, `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`, `references/wiki-growth-triage.md`; templates: - |
-| `ulw-loop` | source-edit | ULW Loop | ULW implement | Scoped edits; no GitHub. | Stop after evidence/blockers. | refs: `references/wiki-context-preflight.md`, `references/ulw-loop.md`; templates: - |
-| `ulw-plan` | plan-only | ULW Plan | ULW plan | Plan only; no writes. | Stop after criteria/blockers. | refs: `references/wiki-context-preflight.md`, `references/ulw-plan.md`; templates: - |
-| `ulw-research` | read-only | ULW Research | ULW research | Research only; no writes. | Stop after cited claims/gaps. | refs: `references/wiki-context-preflight.md`, `references/ulw-research.md`; templates: - |
+| `ulw-loop` | source-edit | ULW Loop | ULW implement | Scoped edits; no GitHub. | Stop after evidence/blockers. | refs: `references/wiki-context-preflight.md`, `references/ulw-loop.md`, `references/ulw-tier-triage.md`; templates: - |
+| `ulw-plan` | plan-only | ULW Plan | ULW plan | Plan only; no writes. | Stop after criteria/blockers. | refs: `references/wiki-context-preflight.md`, `references/ulw-plan.md`, `references/ulw-intent-routing.md`; templates: - |
+| `ulw-research` | read-only | ULW Research | ULW research | Research only; no writes. | Stop after cited claims/gaps. | refs: `references/wiki-context-preflight.md`, `references/ulw-research.md`, `references/ulw-epistemic-instrumentation.md`; templates: - |
 | `gjc-plan` | plan-only | Gajae-Code Delegation | GJC plan | Coordinator only. | Stop after evidence/blocker. | refs: `references/wiki-context-preflight.md`, `references/gajae-code.md`; templates: - |
 | `gjc-execute` | source-edit | Gajae-Code Delegation | GJC execute | Approved edits; no GitHub. | Stop after evidence/blockers. | refs: `references/wiki-context-preflight.md`, `references/gajae-code.md`; templates: - |
 | `gjc-team` | source-edit | Gajae-Code Delegation | GJC team | Approved team work; no GitHub. | Stop after team evidence/blockers. | refs: `references/wiki-context-preflight.md`, `references/gajae-code.md`; templates: - |
@@ -146,9 +146,9 @@ Use Codex App orchestration names in briefs/state: `spawn_agent`, `send_input`, 
 | `check` | `references/local-diff-check.md` | - | `references/wiki-context-preflight.md` | - |
 | `getwiki` | - | - | `references/wiki-context-preflight.md`, `references/wiki-bridge.md`, `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md` | - |
 | `setwiki` | `references/wiki-growth-triage.md` | - | `references/wiki-context-preflight.md`, `references/wiki-bridge.md`, `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md` | - |
-| `ulw-loop` | `references/ulw-loop.md` | - | `references/wiki-context-preflight.md` | - |
-| `ulw-plan` | `references/ulw-plan.md` | - | `references/wiki-context-preflight.md` | - |
-| `ulw-research` | `references/ulw-research.md` | - | `references/wiki-context-preflight.md` | - |
+| `ulw-loop` | `references/ulw-loop.md`, `references/ulw-tier-triage.md` | - | `references/wiki-context-preflight.md` | - |
+| `ulw-plan` | `references/ulw-plan.md`, `references/ulw-intent-routing.md` | - | `references/wiki-context-preflight.md` | - |
+| `ulw-research` | `references/ulw-research.md`, `references/ulw-epistemic-instrumentation.md` | - | `references/wiki-context-preflight.md` | - |
 | `gjc-plan` | `references/gajae-code.md` | - | `references/wiki-context-preflight.md` | - |
 | `gjc-execute` | `references/gajae-code.md` | - | `references/wiki-context-preflight.md` | - |
 | `gjc-team` | `references/gajae-code.md` | - | `references/wiki-context-preflight.md` | - |
