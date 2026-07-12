@@ -8,6 +8,7 @@
   },
   "scripts": {
     "test": "node scripts/smoke.mjs",
+    "test:auto-update": "node scripts/run-auto-update-tests.mjs",
     "test:verify-package": "node scripts/test-verify-package.mjs",
     "verify:codex-skill": "node scripts/verify-codex-skill.mjs",
     "verify:projections": "node scripts/verify-projections.mjs",

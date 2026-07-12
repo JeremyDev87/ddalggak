@@ -28,6 +28,7 @@ function runStep(name, command, args, options = {}) {
     cwd: rootDir,
     env: {
       ...process.env,
+      DDALGGAK_NO_UPDATE: "1",
       ...(options.env || {}),
     },
     encoding: "utf8",
