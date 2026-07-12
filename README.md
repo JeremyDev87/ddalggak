@@ -217,6 +217,16 @@ Workflow support subcommands:
 
 Install path priority is `--target <path>`, then `$CLAUDE_HOME`, then `~/.claude`.
 
+### GitHub master auto-update
+
+Packaged installations check `https://github.com/JeremyDev87/ddalggak.git` `master` before each CLI invocation. The updater resolves an exact commit SHA, validates a detached Git checkout in a SHA-keyed immutable cache, atomically switches the active SHA pointer, syncs already-installed Claude and Codex `ddalggak` skill payloads, and re-executes the original command once from that immutable SHA path with its argv, working directory, environment, and exit status preserved. Source/development checkouts containing `.git` skip this bootstrap so branch-local work is never replaced.
+
+Existing installations need one bootstrap update containing this updater. After that, CLI, `core/`, Claude skill, and Codex skill changes on GitHub `master` are used without rerunning `setup`. An absent runtime skill is not created implicitly; run `setup` for the first Claude installation or install the Codex skill through its normal runtime path first.
+
+If GitHub is offline, rate-limited, invalid, or serves an incomplete checkout, ddalggak keeps the last validated cache (or the installed package when no cache exists) and prints a warning to stderr. Concurrent invocations share an atomic update lock, and failed activation restores the previous cache. Use `--no-update` for one invocation or `DDALGGAK_NO_UPDATE=1` for an environment-level opt-out. The cache defaults to `$XDG_CACHE_HOME/ddalggak` or `~/.cache/ddalggak`; `DDALGGAK_UPDATE_CACHE_DIR` overrides it.
+
+`ddalggak status --local --json` reports the active cached SHA, last update state/time, and a redacted last error. Auto-update never merges, tags, publishes, deploys, or mutates a caller's Git repository.
+
 ## Release Helper Scripts
 
 Maintainers can use the release helper scripts to prepare future npm release workflows without publishing anything from local development:

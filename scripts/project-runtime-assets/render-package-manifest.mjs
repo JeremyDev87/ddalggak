@@ -19,6 +19,8 @@ export function requiredPackageFiles(commands) {
     "core/verification/manifests/subcommands.mjs",
     "ddalggak/SKILL.md",
     "bin/ddalggak.js",
+    "bin/lib/auto-update.mjs",
+    "bin/lib/cli-main.mjs",
     "bin/lib/dispatch.mjs",
     "bin/lib/setup.mjs",
     "README.md",

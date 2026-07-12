@@ -117,6 +117,7 @@ Claude Code legacy:
 Options:
   --help, -h           Show this help
   --version, -v        Print version
+  --no-update          Skip the GitHub master update check for this invocation
 
 Examples:
   ddalggak setup

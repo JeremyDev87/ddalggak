@@ -4,6 +4,7 @@ const suites = [
   ["test-status", () => import("./test-status.mjs")],
   ["test-doctor", () => import("./test-doctor.mjs")],
   ["test-runtime-dispatch", () => import("./test-runtime-dispatch.mjs")],
+  ["test-auto-update", () => import("./test-auto-update.mjs")],
 ];
 
 let passed = 0;

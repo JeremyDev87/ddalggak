@@ -6,6 +6,7 @@
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { readAutoUpdateStatus } from "./auto-update.mjs";
 import { collectInstallParity } from "./status/install-parity.mjs";
 import { collectSessionStateEvidence } from "./status/session-state.mjs";
 
@@ -81,7 +82,7 @@ function resolveClaudeHome() {
 export async function collectStatus() {
   const claudeHome = resolveClaudeHome();
   const installedClaudeSkillPath = join(claudeHome, "skills", "ddalggak");
-  const [installParity, sessionState] = await Promise.all([
+  const [installParity, sessionState, autoUpdate] = await Promise.all([
     collectInstallParity({
       packageJsonPath: PKG_JSON,
       sourcePayloadRoot: SOURCE_PAYLOAD_ROOT,
@@ -90,6 +91,7 @@ export async function collectStatus() {
       minimumNodeMajor: MINIMUM_NODE_MAJOR,
     }),
     collectSessionStateEvidence({ schemaPath: SESSION_STATE_SCHEMA_PATH }),
+    readAutoUpdateStatus(),
   ]);
 
   return {
@@ -106,6 +108,7 @@ export async function collectStatus() {
     installedChecksum: installParity.installedChecksum
       ? installParity.installedChecksum.sha256
       : null,
+    autoUpdate,
     sessionState,
   };
 }
@@ -128,6 +131,9 @@ function printHuman(status) {
   }
   out(`source checksum: ${status.sourceChecksum || "(missing)"}`);
   out(`installed checksum: ${status.installedChecksum || "(missing)"}`);
+  out(
+    `GitHub master auto-update: ${status.autoUpdate.lastStatus} (${status.autoUpdate.activeSha || "no cached SHA"})`,
+  );
   if (status.missingRequiredPaths.length > 0) {
     out("missing required references/templates:");
     for (const relPath of status.missingRequiredPaths) out(`  - ${relPath}`);
