@@ -11,6 +11,8 @@ export {
   fetchGhIssueViewJson,
 } from "./development-control-plane/issue-context.mjs";
 export {
+  readDevelopmentEvidence,
+  reduceDevelopmentEvidence,
   writeDevelopmentEvidence,
 } from "./development-control-plane/evidence.mjs";
 export {

@@ -1,5 +1,11 @@
 import { assertNormalizedApproval, normalizeApprovalSource } from "./approval.mjs";
-import { makeEvidence, writeDevelopmentEvidence } from "./evidence.mjs";
+import {
+  makeEvidence,
+  readDevelopmentEvidence,
+  recordDevelopmentEvidenceEvents,
+  reduceDevelopmentEvidence,
+  writeDevelopmentEvidence,
+} from "./evidence.mjs";
 import { ddalggakIssueContextFromGhJson, fetchGhIssueViewJson } from "./issue-context.mjs";
 import {
   DEVELOPMENT_CONTROL_PLANE_STATE_GATES,
@@ -10,6 +16,53 @@ import {
 } from "./packet.mjs";
 import { failClosed } from "./fail-closed.mjs";
 
+function now() {
+  return new Date().toISOString();
+}
+
+function event(packet, suffix, type, overrides = {}) {
+  return {
+    eventId: suffix.startsWith(`${packet.runId}:`) ? suffix : `${packet.runId}:${suffix}`,
+    recordedAt: now(),
+    type,
+    budgetCost: type === "budget_reserved" ? 1 : 0,
+    outcomeCertainty: "not_applicable",
+    failureClass: null,
+    evidenceRefs: [],
+    ...overrides,
+  };
+}
+
+function record(packet, document, events, projectionOverrides = {}, faultInjector) {
+  const projection = makeEvidence(packet, {
+    ...document.projection,
+    ...projectionOverrides,
+  });
+  return recordDevelopmentEvidenceEvents(packet, {
+    events,
+    projection,
+    expectedRevision: document.revision,
+    faultInjector,
+  });
+}
+
+function duplicateInvocationResult(prepared, document) {
+  const reduction = reduceDevelopmentEvidence(document);
+  return {
+    ...prepared,
+    evidence: {
+      ...document.projection,
+      status: reduction.status,
+      nextAction: reduction.nextAction,
+      outcomeCertainty: reduction.outcomeCertainty,
+      decision: reduction.decision,
+    },
+    evidencePath: prepared.evidencePath,
+    executed: false,
+    duplicate: true,
+  };
+}
+
 export function prepareDdalggakWorkerDispatch(packet) {
   requireStateGate(packet, "defaultDispatch", DEVELOPMENT_CONTROL_PLANE_STATE_GATES.defaultDispatch);
   requireControlPlaneSafetyContract(packet);
@@ -18,7 +71,10 @@ export function prepareDdalggakWorkerDispatch(packet) {
       throw failClosed("authorized file must stay inside repoRoot", { file, repoRoot: packet.repoRoot });
     }
   }
+  const invocationId = `${packet.runId}:${packet.subcommand}:runtime-dispatch`;
   const invocation = {
+    invocationId,
+    attemptId: `${invocationId}:attempt-1`,
     workerProfile: "claude-code",
     cwd: packet.repoRoot,
     commandShape: {
@@ -36,36 +92,74 @@ export function prepareDdalggakWorkerDispatch(packet) {
     commandShape: invocation.commandShape,
   });
   const evidencePath = writeDevelopmentEvidence(packet, evidence);
-  return { packet, invocation, evidence, evidencePath };
+  const document = readDevelopmentEvidence(packet);
+  return { packet, invocation, evidence: document.projection, evidencePath };
 }
 
-export function executePreparedWorkerDispatch(prepared, approval, { runner } = {}) {
+export function executePreparedWorkerDispatch(prepared, approval, { runner, faultInjector } = {}) {
   const approvalRequired = requireStateGate(
     prepared.packet,
     "executionRequiresApproval",
     DEVELOPMENT_CONTROL_PLANE_STATE_GATES.executionRequiresApproval,
   );
   requireControlPlaneSafetyContract(prepared.packet);
+  const packet = prepared.packet;
+  const invocationId = prepared.invocation.invocationId;
+  const attemptId = prepared.invocation.attemptId;
+  let document = readDevelopmentEvidence(packet);
+
   if (approvalRequired && (!approval?.approved || !approval.approvedBy || !approval.reason)) {
-    const evidence = makeEvidence(prepared.packet, {
+    const approvalBlockedId = `${invocationId}:approval-blocked`;
+    if (document.events.some((item) => item.eventId === approvalBlockedId)) {
+      return duplicateInvocationResult(prepared, document);
+    }
+    const recorded = record(packet, document, [
+      event(packet, `${invocationId}:approval-blocked`, "approval_blocked", {
+        invocationId,
+        outcomeCertainty: "not_applicable",
+        failureClass: "approval_required",
+        reason: "pending approval",
+      }),
+    ], {
       status: "blocked",
       approved: false,
       workerExecuted: false,
       nextAction: "pending approval",
       approvalSource: approval?.source || null,
     });
-    const evidencePath = writeDevelopmentEvidence(prepared.packet, evidence);
-    return { ...prepared, evidence, evidencePath, executed: false };
+    return {
+      ...prepared,
+      evidence: recorded.document.projection,
+      evidencePath: recorded.evidencePath,
+      executed: false,
+    };
   }
 
-  // Defense in depth: an approval claiming approved=true must have been issued
-  // by normalizeApprovalSource (carries the module-private brand) and name a
-  // recognized source. A raw object literal cannot forge the brand, so a
-  // hand-built approval that bypasses normalization is rejected loudly.
+  // A successful approval must carry the module-private brand from
+  // normalizeApprovalSource. Raw object literals cannot authorize execution.
   assertNormalizedApproval(approval);
 
+  const priorIntent = document.events.find(
+    (item) => item.type === "side_effect_intent_recorded" && item.invocationId === invocationId,
+  );
+  if (priorIntent) {
+    return duplicateInvocationResult(prepared, document);
+  }
+
   if (typeof runner !== "function") {
-    const evidence = makeEvidence(prepared.packet, {
+    const missingRunnerId = `${invocationId}:missing-runner`;
+    if (document.events.some((item) => item.eventId === missingRunnerId)) {
+      return duplicateInvocationResult(prepared, document);
+    }
+    const recorded = record(packet, document, [
+      event(packet, `${invocationId}:missing-runner`, "run_stopped", {
+        invocationId,
+        attemptId,
+        outcomeCertainty: "certain",
+        failureClass: "runner_required",
+        reason: "explicit worker runner required for approved execution",
+      }),
+    ], {
       status: "blocked",
       approved: true,
       approvedBy: approval.approvedBy,
@@ -74,34 +168,126 @@ export function executePreparedWorkerDispatch(prepared, approval, { runner } = {
       nextAction: "explicit worker runner required for approved execution",
       approvalSource: approval.source || null,
     });
-    const evidencePath = writeDevelopmentEvidence(prepared.packet, evidence);
-    return { ...prepared, evidence, evidencePath, executed: false };
+    return {
+      ...prepared,
+      evidence: recorded.document.projection,
+      evidencePath: recorded.evidencePath,
+      executed: false,
+    };
   }
 
-  const result = runner(prepared.invocation);
-  const exitCode = typeof result.status === "number" ? result.status : 1;
-  const verificationRequired = requireStateGate(
-    prepared.packet,
-    "fulfilledRequiresPassingVerification",
-    DEVELOPMENT_CONTROL_PLANE_STATE_GATES.fulfilledRequiresPassingVerification,
-  );
-  const verificationPassed = verificationRequired ? result.verificationPassed === true : true;
-  const fulfilled = exitCode === 0 && verificationPassed;
-  const evidence = makeEvidence(prepared.packet, {
-    status: fulfilled ? "fulfilled" : "blocked",
+  const reduction = reduceDevelopmentEvidence(document);
+  if (reduction.budgetRemaining < 1) {
+    return {
+      ...prepared,
+      evidence: {
+        ...document.projection,
+        status: "blocked",
+        nextAction: "attempt budget exhausted",
+        decision: "budget_exhausted",
+      },
+      evidencePath: prepared.evidencePath,
+      executed: false,
+    };
+  }
+
+  const reserved = record(packet, document, [
+    event(packet, `${invocationId}:budget-reserved`, "budget_reserved", {
+      invocationId,
+      attemptId,
+      reason: "single development attempt reserved",
+    }),
+    event(packet, `${invocationId}:side-effect-intent`, "side_effect_intent_recorded", {
+      invocationId,
+      attemptId,
+      outcomeCertainty: "pending",
+      sideEffectClass: "local_worker_process",
+      reason: "approved local worker invocation",
+    }),
+  ], {
     approved: true,
     approvedBy: approval.approvedBy,
     approvalReason: approval.reason,
-    workerExecuted: true,
+    approvalSource: approval.source || null,
     commandShape: prepared.invocation.commandShape,
     cwd: prepared.invocation.cwd,
     workerProfile: prepared.invocation.workerProfile,
-    exitCode,
-    verificationPassed,
-    nextAction: fulfilled ? "verification passed" : "inspect worker or verification result",
   });
-  const evidencePath = writeDevelopmentEvidence(prepared.packet, evidence);
-  return { ...prepared, evidence, evidencePath, executed: true, exitCode };
+  document = reserved.document;
+
+  let result;
+  try {
+    result = runner(prepared.invocation);
+  } catch (error) {
+    const recorded = record(packet, document, [
+      event(packet, `${invocationId}:run-stopped`, "run_stopped", {
+        invocationId,
+        attemptId,
+        outcomeCertainty: "ambiguous",
+        failureClass: "runner_exception_outcome_ambiguous",
+        reason: "runner exception left side-effect outcome unknown; reconciliation required",
+      }),
+    ], {
+      approved: true,
+      approvedBy: approval.approvedBy,
+      approvalReason: approval.reason,
+      approvalSource: approval.source || null,
+    });
+    error.developmentEvidencePath = recorded.evidencePath;
+    throw error;
+  }
+
+  faultInjector?.("after-runner-before-observation");
+
+  const exitCode = typeof result?.status === "number" ? result.status : 1;
+  const verificationRequired = requireStateGate(
+    packet,
+    "fulfilledRequiresPassingVerification",
+    DEVELOPMENT_CONTROL_PLANE_STATE_GATES.fulfilledRequiresPassingVerification,
+  );
+  const verificationPassed = verificationRequired ? result?.verificationPassed === true : true;
+  const fulfilled = exitCode === 0 && verificationPassed;
+  const recorded = record(packet, document, [
+    event(packet, `${invocationId}:execution-observed`, "execution_observed", {
+      invocationId,
+      attemptId,
+      outcomeCertainty: "certain",
+      failureClass: exitCode === 0 ? null : "runner_failed",
+      exitCode,
+      reason: exitCode === 0 ? "runner exited successfully" : "runner exited unsuccessfully",
+    }),
+    event(packet, `${invocationId}:verification-recorded`, "verification_recorded", {
+      invocationId,
+      attemptId,
+      outcomeCertainty: "certain",
+      failureClass: verificationPassed ? null : "verification_failed",
+      verificationPassed,
+      reason: verificationPassed ? "verification passed" : "verification did not pass",
+    }),
+    event(packet, `${invocationId}:run-stopped`, "run_stopped", {
+      invocationId,
+      attemptId,
+      outcomeCertainty: "certain",
+      failureClass: fulfilled ? null : "worker_or_verification_failed",
+      reason: fulfilled ? "verification passed" : "inspect worker or verification result",
+    }),
+  ], {
+    approved: true,
+    approvedBy: approval.approvedBy,
+    approvalReason: approval.reason,
+    approvalSource: approval.source || null,
+    commandShape: prepared.invocation.commandShape,
+    cwd: prepared.invocation.cwd,
+    workerProfile: prepared.invocation.workerProfile,
+  });
+
+  return {
+    ...prepared,
+    evidence: recorded.document.projection,
+    evidencePath: recorded.evidencePath,
+    executed: true,
+    exitCode,
+  };
 }
 
 export function prepareDdalggakDispatchFromLiveGithubIssue(options) {
@@ -137,5 +323,8 @@ export function runDdalggakDispatchWithApproval(options) {
     repo: options.repo,
     ghCommand: options.ghCommand,
   });
-  return executePreparedWorkerDispatch(prepared, approval, { runner: options.runner });
+  return executePreparedWorkerDispatch(prepared, approval, {
+    runner: options.runner,
+    faultInjector: options.faultInjector,
+  });
 }

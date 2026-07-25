@@ -1,4 +1,5 @@
 import path from "node:path";
+import { createHash, randomUUID } from "node:crypto";
 
 import { sideEffectBoundaryControlPlaneForbiddenActions } from "../verification/side-effect-boundary-policy.mjs";
 import { failClosed } from "./fail-closed.mjs";
@@ -10,6 +11,30 @@ export const DEVELOPMENT_CONTROL_PLANE_STATE_GATES = Object.freeze({
   contentLightEvidenceOnly: true,
 });
 export const DEVELOPMENT_CONTROL_PLANE_FORBIDDEN_ACTIONS = sideEffectBoundaryControlPlaneForbiddenActions;
+
+function canonicalJson(value) {
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
+  if (value && typeof value === "object") {
+    return `{${Object.keys(value)
+      .filter((key) => value[key] !== undefined)
+      .sort()
+      .map((key) => `${JSON.stringify(key)}:${canonicalJson(value[key])}`)
+      .join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
+function sha256(value) {
+  return createHash("sha256").update(canonicalJson(value)).digest("hex");
+}
+
+export function computeDevelopmentPacketHash(packet) {
+  if (!packet || typeof packet !== "object" || Array.isArray(packet)) {
+    throw failClosed("development packet must be an object before hashing");
+  }
+  const { packetHash: _packetHash, ...hashablePacket } = packet;
+  return sha256(hashablePacket);
+}
 
 export function requireStateGate(packet, gateName, expectedValue) {
   const actualValue = packet?.stateGates?.[gateName];
@@ -40,8 +65,21 @@ export function requireForbiddenActions(packet) {
 }
 
 export function requireControlPlaneSafetyContract(packet) {
+  if (packet?.writerProcessId !== process.pid) {
+    throw failClosed("development packet writer process ownership mismatch", {
+      expectedProcessId: process.pid,
+      actualProcessId: packet?.writerProcessId,
+    });
+  }
   requireStateGate(packet, "contentLightEvidenceOnly", DEVELOPMENT_CONTROL_PLANE_STATE_GATES.contentLightEvidenceOnly);
   requireForbiddenActions(packet);
+  const computedPacketHash = computeDevelopmentPacketHash(packet);
+  if (packet.packetHash !== computedPacketHash) {
+    throw failClosed("development packet hash mismatch", {
+      expectedPacketHash: computedPacketHash,
+      actualPacketHash: packet.packetHash,
+    });
+  }
 }
 
 export function buildDdalggakDevelopmentPacket({
@@ -79,9 +117,12 @@ export function buildDdalggakDevelopmentPacket({
     throw failClosed("runtime dispatch only supports start or review", { subcommand });
   }
 
-  return {
+  const packet = {
     schema: "ddalggak.development_control_plane.v1",
+    schemaVersion: 1,
     runId,
+    writerEpoch: randomUUID(),
+    writerProcessId: process.pid,
     subcommand,
     repo: repo || null,
     repoRoot: path.resolve(repoRoot),
@@ -93,7 +134,17 @@ export function buildDdalggakDevelopmentPacket({
       validationCommands: validationCommands.map(String),
     },
     stateGates: { ...DEVELOPMENT_CONTROL_PLANE_STATE_GATES },
+    attemptBudget: 1,
+    maxEvents: 32,
+    successCriteriaRefs: [issueContext.url],
+    stopRules: [
+      "approval_required",
+      "attempt_budget_exhausted",
+      "outcome_ambiguous",
+      "verification_failed",
+    ],
   };
+  return { ...packet, packetHash: computeDevelopmentPacketHash(packet) };
 }
 
 export function isInsideRepoRoot(repoRoot, file) {

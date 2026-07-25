@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { chmodSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import { makeTempDir } from "./test-lib/temp.mjs";
@@ -14,8 +14,15 @@ import {
   normalizeApprovalSource,
   parseGithubIssueCommentApproval,
   prepareDdalggakWorkerDispatch,
+  readDevelopmentEvidence,
+  reduceDevelopmentEvidence,
   runDdalggakDispatchWithApproval,
+  writeDevelopmentEvidence,
 } from "../core/development-control-plane.mjs";
+import {
+  makeEvidence,
+  recordDevelopmentEvidenceEvents,
+} from "../core/development-control-plane/evidence.mjs";
 
 function makeTempRoot() {
   return makeTempDir("ddalggak-dev-control-plane-");
@@ -295,6 +302,13 @@ const cases = [
       assert.equal(result.executed, false);
       assert.equal(result.evidence.status, "blocked");
       assert.equal(result.evidence.nextAction, "pending approval");
+      const repeated = executePreparedWorkerDispatch(prepared, approval, {
+        runner() {
+          throw new Error("repeated blocked approval must not run");
+        },
+      });
+      assert.equal(repeated.executed, false);
+      assert.equal(repeated.duplicate, true);
     },
   },
   {
@@ -341,6 +355,15 @@ const cases = [
       assert.equal(result.executed, false);
       assert.equal(result.evidence.status, "blocked");
       assert.equal(result.evidence.workerExecuted, false);
+      const repeated = executePreparedWorkerDispatch(
+        prepared,
+        normalizeApprovalSource({
+          source: "direct",
+          approval: { approved: true, approvedBy: "JeremyDev87", reason: "test approval" },
+        }),
+      );
+      assert.equal(repeated.executed, false);
+      assert.equal(repeated.duplicate, true);
     },
   },
   {
@@ -414,6 +437,305 @@ const cases = [
       const evidenceText = readFileSync(result.evidencePath, "utf8");
       assert(!evidenceText.includes("raw prompt"));
       assert(!evidenceText.includes("raw transcript"));
+    },
+  },
+  {
+    name: "packet and canonical evidence document bind writer budget hash and immutable events",
+    run() {
+      const packet = packetFixture();
+      const prepared = prepareDdalggakWorkerDispatch(packet);
+      const document = readDevelopmentEvidence(packet);
+      assert.equal(packet.schemaVersion, 1);
+      assert.match(packet.writerEpoch, /^[0-9a-f-]{36}$/);
+      assert.equal(packet.writerProcessId, process.pid);
+      assert.match(packet.packetHash, /^[0-9a-f]{64}$/);
+      assert.equal(packet.attemptBudget, 1);
+      assert.equal(packet.maxEvents, 32);
+      assert.equal(document.schema, "ddalggak.development_run_evidence.v2");
+      assert.equal(document.revision, 0);
+      assert.equal(document.writerEpoch, packet.writerEpoch);
+      assert.equal(document.packetHash, packet.packetHash);
+      assert.equal(document.events.length, 2);
+      assert.deepEqual(document.events.map((event) => event.type), ["run_started", "dispatch_prepared"]);
+      assert.deepEqual(document.events.map((event) => event.sequence), [0, 1]);
+      assert(document.events.every((event) => /^[0-9a-f]{64}$/.test(event.eventHash)));
+      assert.equal(document.projection.status, "dispatch_prepared");
+      assert.equal(prepared.evidence.status, "dispatch_prepared");
+      assert.equal(reduceDevelopmentEvidence(document).decision, "pending_approval");
+    },
+  },
+  {
+    name: "packet and complete canonical document hashes reject mutable contract or projection tampering",
+    run() {
+      const changedPacket = packetFixture();
+      changedPacket.taskScope.authorizedFiles.push("core/unapproved.mjs");
+      assert.throws(
+        () => prepareDdalggakWorkerDispatch(changedPacket),
+        /packet hash mismatch/,
+      );
+
+      const packet = packetFixture();
+      const prepared = prepareDdalggakWorkerDispatch(packet);
+      const tampered = JSON.parse(readFileSync(prepared.evidencePath, "utf8"));
+      tampered.projection.approvedBy = "tampered-actor";
+      tampered.approvedBy = "tampered-actor";
+      tampered.exitCode = 0;
+      writeFileSync(prepared.evidencePath, `${JSON.stringify(tampered, null, 2)}\n`);
+      assert.throws(
+        () => readDevelopmentEvidence(packet),
+        /document hash mismatch/,
+      );
+    },
+  },
+  {
+    name: "duplicate approved invocation calls the runner exactly once and returns prior terminal projection",
+    run() {
+      const packet = packetFixture();
+      const prepared = prepareDdalggakWorkerDispatch(packet);
+      const approval = normalizeApprovalSource({
+        source: "direct",
+        approval: { approved: true, approvedBy: "JeremyDev87", reason: "duplicate test" },
+      });
+      let runnerCalls = 0;
+      const runner = () => {
+        runnerCalls += 1;
+        return { status: 0, verificationPassed: true };
+      };
+      const first = executePreparedWorkerDispatch(prepared, approval, { runner });
+      const second = executePreparedWorkerDispatch(prepared, approval, { runner });
+      assert.equal(first.executed, true);
+      assert.equal(second.executed, false);
+      assert.equal(second.duplicate, true);
+      assert.equal(second.evidence.status, "fulfilled");
+      assert.equal(runnerCalls, 1);
+      assert.equal(readDevelopmentEvidence(packet).projection.status, "fulfilled");
+    },
+  },
+  {
+    name: "runner return without durable observation becomes ambiguous and never reruns",
+    run() {
+      const packet = packetFixture();
+      const prepared = prepareDdalggakWorkerDispatch(packet);
+      const approval = normalizeApprovalSource({
+        source: "direct",
+        approval: { approved: true, approvedBy: "JeremyDev87", reason: "fault test" },
+      });
+      let runnerCalls = 0;
+      assert.throws(
+        () => executePreparedWorkerDispatch(prepared, approval, {
+          runner: () => {
+            runnerCalls += 1;
+            return { status: 0, verificationPassed: true };
+          },
+          faultInjector(stage) {
+            if (stage === "after-runner-before-observation") throw new Error("simulated process crash");
+          },
+        }),
+        /simulated process crash/,
+      );
+      const ambiguous = executePreparedWorkerDispatch(prepared, approval, {
+        runner() {
+          runnerCalls += 1;
+          throw new Error("ambiguous invocation must not rerun");
+        },
+      });
+      assert.equal(ambiguous.executed, false);
+      assert.equal(ambiguous.duplicate, true);
+      assert.equal(ambiguous.evidence.outcomeCertainty, "ambiguous");
+      assert.equal(ambiguous.evidence.nextAction, "reconciliation required");
+      assert.equal(runnerCalls, 1);
+      assert.equal(reduceDevelopmentEvidence(readDevelopmentEvidence(packet)).decision, "reconciliation_required");
+    },
+  },
+  {
+    name: "packet writer process ownership fails closed before a cross-process writer can race",
+    run() {
+      const packet = packetFixture();
+      packet.writerProcessId = process.pid + 1;
+      assert.throws(
+        () => prepareDdalggakWorkerDispatch(packet),
+        /writer process ownership mismatch/,
+      );
+    },
+  },
+  {
+    name: "legacy public evidence writer preserves fulfilled projection semantics",
+    run() {
+      const packet = packetFixture();
+      const prepared = prepareDdalggakWorkerDispatch(packet);
+      writeDevelopmentEvidence(packet, {
+        ...prepared.evidence,
+        status: "fulfilled",
+        workerExecuted: true,
+        exitCode: 0,
+        verificationPassed: true,
+        nextAction: "verification passed",
+      });
+      const document = readDevelopmentEvidence(packet);
+      assert.equal(document.projection.status, "fulfilled");
+      assert.equal(document.projection.workerExecuted, true);
+      assert.equal(document.projection.exitCode, 0);
+      assert.equal(document.projection.verificationPassed, true);
+    },
+  },
+  {
+    name: "runner exception after an unknown side effect is ambiguous and never reruns",
+    run() {
+      const packet = packetFixture();
+      const prepared = prepareDdalggakWorkerDispatch(packet);
+      const approval = normalizeApprovalSource({
+        source: "direct",
+        approval: { approved: true, approvedBy: "JeremyDev87", reason: "test approval" },
+      });
+      let sideEffectCount = 0;
+      assert.throws(
+        () => executePreparedWorkerDispatch(prepared, approval, {
+          runner() {
+            sideEffectCount += 1;
+            throw new Error("runner transport failed after unknown side effect");
+          },
+        }),
+        /runner transport failed/,
+      );
+      const document = readDevelopmentEvidence(packet);
+      assert.equal(reduceDevelopmentEvidence(document).decision, "reconciliation_required");
+      assert.equal(document.projection.outcomeCertainty, "ambiguous");
+      const repeated = executePreparedWorkerDispatch(prepared, approval, {
+        runner() {
+          sideEffectCount += 1;
+          return { status: 0, verificationPassed: true };
+        },
+      });
+      assert.equal(repeated.executed, false);
+      assert.equal(repeated.duplicate, true);
+      assert.equal(sideEffectCount, 1);
+    },
+  },
+  {
+    name: "event replay is idempotent while conflicting event ids and sensitive payloads fail closed",
+    run() {
+      const packet = packetFixture();
+      prepareDdalggakWorkerDispatch(packet);
+      const before = readDevelopmentEvidence(packet);
+      const existing = before.events[0];
+      const replay = recordDevelopmentEvidenceEvents(packet, {
+        events: [existing],
+        projection: before.projection,
+        expectedRevision: before.revision,
+      });
+      assert.equal(replay.document.revision, before.revision);
+      assert.throws(
+        () => recordDevelopmentEvidenceEvents(packet, {
+          events: [{ ...existing, reason: "conflicting replay" }],
+          projection: before.projection,
+          expectedRevision: before.revision,
+        }),
+        /conflicting duplicate event/,
+      );
+      assert.throws(
+        () => recordDevelopmentEvidenceEvents(packet, {
+          events: [{
+            eventId: `${packet.runId}:sensitive`,
+            recordedAt: "2026-07-25T00:00:00.000Z",
+            type: "run_stopped",
+            budgetCost: 0,
+            outcomeCertainty: "certain",
+            failureClass: null,
+            evidenceRefs: [],
+            reason: "blocked",
+            rawPrompt: "must never be persisted",
+          }],
+          projection: before.projection,
+          expectedRevision: before.revision,
+        }),
+        /content-light|unsupported event field/,
+      );
+    },
+  },
+  {
+    name: "atomic replacement leaves old or new complete canonical evidence across injected crashes",
+    run() {
+      const packet = packetFixture();
+      prepareDdalggakWorkerDispatch(packet);
+      const before = readDevelopmentEvidence(packet);
+      const event = {
+        eventId: `${packet.runId}:manual-stop`,
+        recordedAt: "2026-07-25T00:00:00.000Z",
+        type: "run_stopped",
+        budgetCost: 0,
+        outcomeCertainty: "certain",
+        failureClass: "manual_test",
+        evidenceRefs: [],
+        reason: "manual test",
+      };
+      assert.throws(
+        () => recordDevelopmentEvidenceEvents(packet, {
+          events: [event],
+          projection: { ...before.projection, status: "blocked" },
+          expectedRevision: before.revision,
+          faultInjector(stage) {
+            if (stage === "before-rename") throw new Error("before rename crash");
+          },
+        }),
+        /before rename crash/,
+      );
+      assert.equal(readDevelopmentEvidence(packet).revision, before.revision);
+      assert.throws(
+        () => recordDevelopmentEvidenceEvents(packet, {
+          events: [event],
+          projection: { ...before.projection, status: "blocked" },
+          expectedRevision: before.revision,
+          faultInjector(stage) {
+            if (stage === "after-rename") throw new Error("after rename crash");
+          },
+        }),
+        /after rename crash/,
+      );
+      const after = readDevelopmentEvidence(packet);
+      assert.equal(after.revision, before.revision + 1);
+      assert.equal(after.events.at(-1).eventId, event.eventId);
+      assert.equal(after.projection.status, "blocked");
+    },
+  },
+  {
+    name: "exclusive initial publish never leaves a partial canonical document",
+    run() {
+      const packet = packetFixture();
+      const evidence = makeEvidence(packet, {
+        status: "dispatch_prepared",
+        approved: false,
+        workerExecuted: false,
+        nextAction: "pending approval",
+      });
+      const evidencePath = path.join(packet.evidenceDir, `${packet.runId}.json`);
+      assert.throws(
+        () => writeDevelopmentEvidence(packet, evidence, {
+          faultInjector(stage) {
+            if (stage === "before-initial-publish") throw new Error("before initial publish crash");
+          },
+        }),
+        /before initial publish crash/,
+      );
+      assert.equal(existsSync(evidencePath), false);
+      writeDevelopmentEvidence(packet, evidence);
+      assert.equal(readDevelopmentEvidence(packet).projection.status, "dispatch_prepared");
+
+      const afterPublishPacket = packetFixture({ packet: { runId: "issue-200-after-publish" } });
+      const afterPublishEvidence = makeEvidence(afterPublishPacket, {
+        status: "dispatch_prepared",
+        approved: false,
+        workerExecuted: false,
+        nextAction: "pending approval",
+      });
+      assert.throws(
+        () => writeDevelopmentEvidence(afterPublishPacket, afterPublishEvidence, {
+          faultInjector(stage) {
+            if (stage === "after-initial-publish") throw new Error("after initial publish crash");
+          },
+        }),
+        /after initial publish crash/,
+      );
+      assert.equal(readDevelopmentEvidence(afterPublishPacket).projection.status, "dispatch_prepared");
     },
   },
 ];
