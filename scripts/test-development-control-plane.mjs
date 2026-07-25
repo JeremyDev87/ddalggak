@@ -579,6 +579,38 @@ const cases = [
     },
   },
   {
+    name: "legacy fulfilled evidence blocks approved execute without a second runner call",
+    run() {
+      const packet = packetFixture();
+      const prepared = prepareDdalggakWorkerDispatch(packet);
+      writeDevelopmentEvidence(packet, {
+        ...prepared.evidence,
+        status: "fulfilled",
+        workerExecuted: true,
+        exitCode: 0,
+        verificationPassed: true,
+        nextAction: "verification passed",
+      });
+      const approval = normalizeApprovalSource({
+        source: "direct",
+        approval: { approved: true, approvedBy: "JeremyDev87", reason: "legacy terminal guard" },
+      });
+      let runnerCalls = 0;
+      const result = executePreparedWorkerDispatch(prepared, approval, {
+        runner() {
+          runnerCalls += 1;
+          return { status: 0, verificationPassed: true };
+        },
+      });
+      assert.equal(result.executed, false);
+      assert.equal(result.duplicate, true);
+      assert.equal(result.evidence.status, "fulfilled");
+      assert.equal(result.evidence.decision, "terminal_success");
+      assert.equal(runnerCalls, 0);
+      assert.equal(reduceDevelopmentEvidence(readDevelopmentEvidence(packet)).budgetRemaining, 1);
+    },
+  },
+  {
     name: "runner exception after an unknown side effect is ambiguous and never reruns",
     run() {
       const packet = packetFixture();
