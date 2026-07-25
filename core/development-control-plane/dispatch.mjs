@@ -107,6 +107,18 @@ export function executePreparedWorkerDispatch(prepared, approval, { runner, faul
   const invocationId = prepared.invocation.invocationId;
   const attemptId = prepared.invocation.attemptId;
   let document = readDevelopmentEvidence(packet);
+  // Terminal / ambiguous reducer decisions must block re-entry before runner work.
+  // Legacy writeDevelopmentEvidence() can mark fulfilled without side_effect_intent or
+  // budget_reserved; guarding only on intent would re-run the worker.
+  const existingDecision = reduceDevelopmentEvidence(document).decision;
+  if (
+    existingDecision === "terminal_success"
+    || existingDecision === "terminal_failure"
+    || existingDecision === "reconciliation_required"
+    || existingDecision === "budget_exhausted"
+  ) {
+    return duplicateInvocationResult(prepared, document);
+  }
 
   if (approvalRequired && (!approval?.approved || !approval.approvedBy || !approval.reason)) {
     const approvalBlockedId = `${invocationId}:approval-blocked`;
