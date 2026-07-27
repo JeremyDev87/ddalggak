@@ -1,6 +1,8 @@
 import { readdirSync } from "node:fs";
 import path from "node:path";
 
+import { commandReferenceNames, commandTemplateNames } from "../../core/conditional-assets.mjs";
+
 import {
   parseReferenceBudgetExemptions,
   parseSubcommandTokenBudgets,
@@ -55,19 +57,21 @@ export function runTokenBudgetReport(context) {
     const skillTokens = fileTokenEstimate(`${base}/SKILL.md`, context);
     const rows = [];
     for (const doc of commands) {
-      const referenceBytes = (doc.required_references || []).reduce(
+      const references = commandReferenceNames(doc);
+      const templates = commandTemplateNames(doc);
+      const referenceBytes = references.reduce(
         (sum, ref) => sum + fileSize(`${base}/references/${ref}`),
         0,
       );
-      const referenceTokens = (doc.required_references || []).reduce(
+      const referenceTokens = references.reduce(
         (sum, ref) => sum + fileTokenEstimate(`${base}/references/${ref}`, context),
         0,
       );
-      const templateBytes = (doc.required_templates || []).reduce(
+      const templateBytes = templates.reduce(
         (sum, template) => sum + fileSize(`${base}/templates/${template}`),
         0,
       );
-      const templateTokens = (doc.required_templates || []).reduce(
+      const templateTokens = templates.reduce(
         (sum, template) => sum + fileTokenEstimate(`${base}/templates/${template}`, context),
         0,
       );
@@ -108,7 +112,7 @@ export function runTokenBudgetReport(context) {
 }
 
 // Coverage + per-reference cap invariant (#283): every ddalggak/references/*.md
-// file must be EITHER measured (named in some command's required_references, so
+// file must be EITHER measured (named in a command's base or conditional references, so
 // it counts against that subcommand's budget) OR exempt (registered in
 // reference_budget_exemptions with a positive max_tokens cap). Neither leaves a
 // reference unbudgeted; both is a redundant exemption. Exempted references are
@@ -120,7 +124,7 @@ function runReferenceCoverageChecks(context) {
   const failures = [];
   const measured = new Set();
   for (const doc of commands) {
-    for (const ref of doc.required_references || []) measured.add(ref);
+    for (const ref of commandReferenceNames(doc)) measured.add(ref);
   }
 
   const exemptions = readReferenceBudgetExemptions(context);
@@ -146,7 +150,7 @@ function runReferenceCoverageChecks(context) {
     const isExempt = exemptByRef.has(file);
     if (!isMeasured && !isExempt) {
       failures.push(
-        `reference ${file} is neither measured (in any command required_references) nor exempt (reference_budget_exemptions); add it to a required_references list or register an exemption with a max_tokens cap`,
+        `reference ${file} is neither measured (in any command base/conditional references) nor exempt (reference_budget_exemptions); add it to a command asset list or register an exemption with a max_tokens cap`,
       );
     } else if (isMeasured && isExempt) {
       failures.push(

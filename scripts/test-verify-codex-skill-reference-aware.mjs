@@ -71,11 +71,14 @@ function withTempRepo(name, fn) {
 
 withTempRepo("reference-only anchor can leave SKILL.md", (tempDir) => {
   for (const skillRelativePath of [".codex/skills/ddalggak/SKILL.md", "ddalggak/SKILL.md"]) {
-    replaceInFile(
-      path.join(tempDir, skillRelativePath),
-      "Counterargument Pass",
-      "Counterargument guardrail is intentionally verified from references only",
-    );
+    const skillPath = path.join(tempDir, skillRelativePath);
+    if (readFileSync(skillPath, "utf8").includes("Counterargument Pass")) {
+      replaceInFile(
+        skillPath,
+        "Counterargument Pass",
+        "Counterargument guardrail is intentionally verified from references only",
+      );
+    }
   }
   assertPass("reference-only anchor can leave SKILL.md", runVerifier(tempDir));
 });

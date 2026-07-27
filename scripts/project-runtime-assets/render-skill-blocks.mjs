@@ -1,4 +1,5 @@
 import { escapeRegExp } from "../lib/escape-regexp.mjs";
+import { conditionalAssets } from "../../core/conditional-assets.mjs";
 
 const allowedArtifactByCommand = {
   start: "worker agents may edit only files named in their brief",
@@ -54,8 +55,22 @@ function mdList(items, prefix) {
   return items.map((item) => `\`${prefix}${item}\``).join(", ");
 }
 
+function mdConditionalList(doc, field, prefix) {
+  const entries = conditionalAssets(doc, field);
+  if (entries.length === 0) return "-";
+  return entries.map(({ activation, asset }) => `\`${activation}→${prefix}${asset}\``).join(", ");
+}
+
 function purpose(doc) {
   return String(doc.purpose || "").replace(/\.$/, "");
+}
+
+function conditionalAssetSuffix(doc) {
+  const entries = [
+    ...conditionalAssets(doc, "conditional_references"),
+    ...conditionalAssets(doc, "conditional_templates"),
+  ];
+  return entries.length > 0 ? "; conditional: see conditional map" : "";
 }
 
 function renderCodexCodePermissionTable(commands) {
@@ -94,7 +109,7 @@ function renderCodexSubcommandTable(commands) {
   for (const doc of commands) {
     const refs = mdList(doc.required_references || [], "references/");
     const templates = mdList(doc.required_templates || [], "templates/");
-    lines.push(`| \`${doc.command}\` | ${doc.mode || "read-only"} | ${doc.show_doc_heading} | ${purpose(doc)} | ${doc.write_side_effects || "response output only"} | ${doc.stop_condition || "Stop after reporting current state."} | refs: ${refs}; templates: ${templates} |`);
+    lines.push(`| \`${doc.command}\` | ${doc.mode || "read-only"} | ${doc.show_doc_heading} | ${purpose(doc)} | ${doc.write_side_effects || "response output only"} | ${doc.stop_condition || "Stop after reporting current state."} | refs: ${refs}; templates: ${templates}${conditionalAssetSuffix(doc)} |`);
   }
   return lines.join("\n");
 }
@@ -107,7 +122,7 @@ function renderClaudeSubcommandTable(commands) {
   for (const doc of commands) {
     const refs = mdList(doc.required_references || [], "references/");
     const templates = mdList(doc.required_templates || [], "templates/");
-    lines.push(`| \`${doc.command}\` | ${doc.mode || "read-only"} | ${doc.show_doc_heading} | ${purpose(doc)} | ${doc.write_side_effects || "response output only"} | ${doc.stop_condition || "Stop after reporting current state."} | refs: ${refs}; templates: ${templates} |`);
+    lines.push(`| \`${doc.command}\` | ${doc.mode || "read-only"} | ${doc.show_doc_heading} | ${purpose(doc)} | ${doc.write_side_effects || "response output only"} | ${doc.stop_condition || "Stop after reporting current state."} | refs: ${refs}; templates: ${templates}${conditionalAssetSuffix(doc)} |`);
   }
   return lines.join("\n");
 }
@@ -185,13 +200,13 @@ function splitReferencesByGroup(refs) {
 
 function renderRequiredReferenceMap(commands) {
   const lines = [
-    "| Subcommand | Workflow reference | Gate references | Wiki/meta references | Required templates |",
-    "| --- | --- | --- | --- | --- |",
+    "| Subcommand | Base workflow reference | Base gate references | Base wiki/meta references | Base templates | Conditional references | Conditional templates |",
+    "| --- | --- | --- | --- | --- | --- | --- |",
   ];
   for (const doc of commands) {
     const refs = splitReferencesByGroup(doc.required_references || []);
     lines.push(
-      `| \`${doc.command}\` | ${mdList(refs.workflow, "references/")} | ${mdList(refs.gates, "references/")} | ${mdList(refs.wiki, "references/")} | ${mdList(doc.required_templates || [], "templates/")} |`,
+      `| \`${doc.command}\` | ${mdList(refs.workflow, "references/")} | ${mdList(refs.gates, "references/")} | ${mdList(refs.wiki, "references/")} | ${mdList(doc.required_templates || [], "templates/")} | ${mdConditionalList(doc, "conditional_references", "references/")} | ${mdConditionalList(doc, "conditional_templates", "templates/")} |`,
     );
   }
   return lines.join("\n");

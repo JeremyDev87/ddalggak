@@ -91,6 +91,18 @@ export const verifyPipelineStages = [
         args: ["run", "eval:ddalggak-readiness"],
         npmScript: "eval:ddalggak-readiness",
       },
+      {
+        label: "model migration eval fail-closed tests",
+        command: "npm",
+        args: ["run", "test:model-migration-eval"],
+        npmScript: "test:model-migration-eval",
+      },
+      {
+        label: "conditional command asset routing tests",
+        command: "npm",
+        args: ["run", "test:conditional-command-assets"],
+        npmScript: "test:conditional-command-assets",
+      },
     ],
   },
   {

@@ -1,3 +1,5 @@
+import { commandReferenceNames, commandTemplateNames } from "../../core/conditional-assets.mjs";
+
 export function requiredPackageFiles(commands) {
   const base = new Set([
     ".codex/skills/ddalggak/SKILL.md",
@@ -8,6 +10,7 @@ export function requiredPackageFiles(commands) {
     "scripts/project-runtime-assets/render-package-manifest.mjs",
     "scripts/project-runtime-assets/token-budget-report.mjs",
     "core/token-budgets.yaml",
+    "core/conditional-assets.mjs",
     "core/verification/side-effect-boundary-policy.mjs",
     "core/verification/skill-contract-manifest.mjs",
     "core/verification/manifests/README.md",
@@ -29,11 +32,11 @@ export function requiredPackageFiles(commands) {
   ]);
   for (const doc of commands) {
     base.add(`core/commands/${doc.command}.yaml`);
-    for (const ref of doc.required_references || []) {
+    for (const ref of commandReferenceNames(doc)) {
       base.add(`.codex/skills/ddalggak/references/${ref}`);
       base.add(`ddalggak/references/${ref}`);
     }
-    for (const template of doc.required_templates || []) {
+    for (const template of commandTemplateNames(doc)) {
       base.add(`.codex/skills/ddalggak/templates/${template}`);
       base.add(`ddalggak/templates/${template}`);
     }

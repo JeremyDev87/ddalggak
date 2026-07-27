@@ -13,17 +13,22 @@ required_references:
   - 2026-06-04-brain-v0-wiki-authority-in-ddalggak.md
   - quality-lens-router.md
   - evidence-contract.md
-  - simplicity-deletability-gate.md
-  - core-invariants.md
-  - regression-library.md
   - cross-review-loop.md
-  - human-review-feedback-loop.md
-  - ci-failure-triage-loop.md
-  - security-posture-gate.md
+
+conditional_references:
+  - code-shape=simplicity-deletability-gate.md
+  - scope-or-privacy=core-invariants.md
+  - regression-risk=regression-library.md
+  - human-feedback=human-review-feedback-loop.md
+  - failing-ci=ci-failure-triage-loop.md
+  - package-workflow-release-or-security-posture=security-posture-gate.md
 
 required_templates:
-  - review-brief.md
-  - fix-brief.md
+  []
+
+conditional_templates:
+  - delegated-review=review-brief.md
+  - accepted-critical-high-fix=fix-brief.md
 
 output_contract:
   completion_signal: "REVIEW_DONE"
