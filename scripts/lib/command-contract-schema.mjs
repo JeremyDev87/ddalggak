@@ -1,3 +1,5 @@
+import { parseConditionalAssetSpec } from "../../core/conditional-assets.mjs";
+
 const REQUIRED_STRING_FIELDS = Object.freeze([
   "command",
   "show_doc_heading",
@@ -15,6 +17,11 @@ const REQUIRED_BOOLEAN_FIELDS = Object.freeze([
 const REQUIRED_LIST_FIELDS = Object.freeze([
   "required_references",
   "required_templates",
+]);
+
+const OPTIONAL_CONDITIONAL_LIST_FIELDS = Object.freeze([
+  "conditional_references",
+  "conditional_templates",
 ]);
 
 // Unknown top-level keys are intentionally allowed so command contracts can add
@@ -64,6 +71,27 @@ export function validateCommandContract(doc, label) {
 
   for (const field of REQUIRED_LIST_FIELDS) {
     validateStringList(doc, field, failures);
+  }
+
+  for (const field of OPTIONAL_CONDITIONAL_LIST_FIELDS) {
+    if (doc[field] === undefined) continue;
+    validateStringList(doc, field, failures);
+    if (!Array.isArray(doc[field])) continue;
+    const seen = new Set();
+    for (const [index, spec] of doc[field].entries()) {
+      if (typeof spec !== "string") continue;
+      try {
+        const parsed = parseConditionalAssetSpec(spec, `${field}[${index}]`);
+        if (seen.has(spec)) failures.push(`${field} must not contain duplicate specs: ${spec}`);
+        seen.add(spec);
+        const baseField = field === "conditional_references" ? "required_references" : "required_templates";
+        if (Array.isArray(doc[baseField]) && doc[baseField].includes(parsed.asset)) {
+          failures.push(`${field} asset ${parsed.asset} must not also be listed in ${baseField}`);
+        }
+      } catch (error) {
+        failures.push(error.message);
+      }
+    }
   }
 
   if (!isPlainObject(doc.output_contract)) {

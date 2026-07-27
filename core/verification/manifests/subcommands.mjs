@@ -21,6 +21,9 @@ function executionContractFromCommand(doc) {
     sourceEditAllowed: doc.source_edit_allowed,
     githubWriteAllowed: doc.github_write_allowed,
     requiredReferences: doc.required_references || [],
+    conditionalReferences: doc.conditional_references || [],
+    requiredTemplates: doc.required_templates || [],
+    conditionalTemplates: doc.conditional_templates || [],
     stopCondition: doc.stop_condition,
     completionSignal: doc.output_contract?.completion_signal,
   };

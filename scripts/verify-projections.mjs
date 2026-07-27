@@ -2,6 +2,8 @@ import { spawnSync } from "node:child_process";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 
+import { commandReferenceNames, commandTemplateNames } from "../core/conditional-assets.mjs";
+
 import { sideEffectBoundaryAgentsForbiddenSentinels } from "../core/verification/side-effect-boundary-policy.mjs";
 import { requiredReferenceAdmissionHeaderFields } from "../core/verification/skill-contract-manifest.mjs";
 import { loadCommandContracts } from "../bin/lib/command-contracts.mjs";
@@ -68,14 +70,14 @@ function assertSkillPayload(root, label, commandDoc) {
     fail(`${label}: SKILL.md missing`);
   }
 
-  for (const ref of commandDoc.required_references || []) {
+  for (const ref of commandReferenceNames(commandDoc)) {
     const refPath = path.join(root, "references", ref);
     if (!exists(refPath)) {
       fail(`${label}: required reference missing for ${commandDoc.command}: references/${ref}`);
     }
   }
 
-  for (const template of commandDoc.required_templates || []) {
+  for (const template of commandTemplateNames(commandDoc)) {
     const templatePath = path.join(root, "templates", template);
     if (!exists(templatePath)) {
       fail(`${label}: required template missing for ${commandDoc.command}: templates/${template}`);

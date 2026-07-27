@@ -68,10 +68,10 @@ If a non-writing subcommand would need a source edit to continue, report the nee
 
 | Subcommand | Mode | Show-doc heading | Purpose | Side effects | Stop condition | Required assets |
 | --- | --- | --- | --- | --- | --- | --- |
-| `start` | source-edit | Start Workflow | Issue implementation from live issue body/comments; one issue PR by default | Repo source edits in issue scope; start publishes the issue PR via the ship procedure (ship.md); cross-review comments come through the review gate. | Stop on stale base, missing issue body/comments, duplicate PR, or required files outside the issue-owned scope. | refs: `references/wiki-context-preflight.md`, `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`, `references/quality-lens-router.md`, `references/evidence-contract.md`, `references/simplicity-deletability-gate.md`, `references/agent-runtime-contract.md`, `references/core-invariants.md`, `references/deep-interview-readiness-gate.md`, `references/start-workflow.md`; templates: `templates/worker-brief.md`, `templates/conductor-state.md`, `templates/lane-state.md`, `templates/artifact-manifest.md` |
-| `review` | review-fix | Cross-Review Loop | Independent current-head review and accepted fix loop | Top-level review comment plus inline line-anchored review comments for every triage-passing finding in one COMMENT-event batch; accepted Critical/High fixes may edit source and push to the reviewed PR branch. | Stop before APPROVE if current-head CI is not terminal green/skipped, blockers remain, or wiki/evidence preflight has blocking gaps. | refs: `references/wiki-context-preflight.md`, `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`, `references/quality-lens-router.md`, `references/evidence-contract.md`, `references/simplicity-deletability-gate.md`, `references/core-invariants.md`, `references/regression-library.md`, `references/cross-review-loop.md`, `references/human-review-feedback-loop.md`, `references/ci-failure-triage-loop.md`, `references/security-posture-gate.md`; templates: `templates/review-brief.md`, `templates/fix-brief.md` |
+| `start` | source-edit | Start Workflow | Issue implementation from live issue body/comments; one issue PR by default | Repo source edits in issue scope; start publishes the issue PR via the ship procedure (ship.md); cross-review comments come through the review gate. | Stop on stale base, missing issue body/comments, duplicate PR, or required files outside the issue-owned scope. | refs: `references/wiki-context-preflight.md`, `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`, `references/quality-lens-router.md`, `references/evidence-contract.md`, `references/agent-runtime-contract.md`, `references/start-workflow.md`; templates: -; conditional: see conditional map |
+| `review` | review-fix | Cross-Review Loop | Independent current-head review and accepted fix loop | Top-level review comment plus inline line-anchored review comments for every triage-passing finding in one COMMENT-event batch; accepted Critical/High fixes may edit source and push to the reviewed PR branch. | Stop before APPROVE if current-head CI is not terminal green/skipped, blockers remain, or wiki/evidence preflight has blocking gaps. | refs: `references/wiki-context-preflight.md`, `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`, `references/quality-lens-router.md`, `references/evidence-contract.md`, `references/cross-review-loop.md`; templates: -; conditional: see conditional map |
 | `status` | read-only | Status | Read-only live git/GitHub/session state snapshot | No source, GitHub, or local cleanup mutation; report live git/GitHub/session state only. | Stop after a live state snapshot and next-action recommendation. | refs: `references/wiki-context-preflight.md`, `references/status.md`, `references/pr-check-evidence-bundle.md`; templates: - |
-| `plan` | plan-only | Issue-Ready Plan | Issue-ready implementation plan from issue/wiki/code evidence | No source edits; no GitHub writes unless the user separately requests issue creation. | Stop after an issue-ready plan with evidence/unknowns and PR topology. | refs: `references/wiki-context-preflight.md`, `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`, `references/wiki-bridge.md`, `references/quality-lens-router.md`, `references/evidence-contract.md`, `references/simplicity-deletability-gate.md`, `references/core-invariants.md`, `references/deep-interview-readiness-gate.md`, `references/ralplan-critic-consensus.md`, `references/issue-ready-plan.md`; templates: - |
+| `plan` | plan-only | Issue-Ready Plan | Issue-ready implementation plan from issue/wiki/code evidence | No source edits; no GitHub writes unless the user separately requests issue creation. | Stop after an issue-ready plan with evidence/unknowns and PR topology. | refs: `references/wiki-context-preflight.md`, `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`, `references/wiki-bridge.md`, `references/quality-lens-router.md`, `references/evidence-contract.md`, `references/issue-ready-plan.md`; templates: -; conditional: see conditional map |
 | `issue` | github-write | Plan to Issues | Create GitHub issues from an approved plan | Create/edit GitHub issues and comments only; no repository source edits. | Stop after live issue URLs/labels/assignees/body UTF-8 verification or on metadata permission failure. | refs: `references/wiki-context-preflight.md`, `references/plan-to-issues.md`; templates: `templates/issue-body.md`, `templates/epic-body.md` |
 | `clean` | local-destructive | Merge Cleanup | Post-merge local cleanup after live merge evidence | Local branch/worktree cleanup only after live merge evidence; no GitHub mutation. | Stop on dirty, ambiguous, unmerged, or non-ancestor worktrees/branches. | refs: `references/wiki-context-preflight.md`, `references/merge-cleanup.md`; templates: - |
 | `ship` | github-write | Ship | Commit/push/open draft PR for existing scoped changes | Commit, push, and draft PR for already-existing scoped changes; no new source edits. | Stop after PR creation/current-head publication evidence or on no-diff/scope/validation blocker. | refs: `references/wiki-context-preflight.md`, `references/ship.md`; templates: - |
@@ -129,29 +129,29 @@ Use Codex App orchestration names in briefs/state: `spawn_agent`, `send_input`, 
 ## Required Reference Map
 
 <!-- ddalggak:generated:start required-reference-map -->
-| Subcommand | Workflow reference | Gate references | Wiki/meta references | Required templates |
-| --- | --- | --- | --- | --- |
-| `start` | `references/agent-runtime-contract.md`, `references/start-workflow.md` | `references/quality-lens-router.md`, `references/evidence-contract.md`, `references/simplicity-deletability-gate.md`, `references/core-invariants.md`, `references/deep-interview-readiness-gate.md` | `references/wiki-context-preflight.md`, `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md` | `templates/worker-brief.md`, `templates/conductor-state.md`, `templates/lane-state.md`, `templates/artifact-manifest.md` |
-| `review` | `references/cross-review-loop.md`, `references/human-review-feedback-loop.md`, `references/ci-failure-triage-loop.md` | `references/quality-lens-router.md`, `references/evidence-contract.md`, `references/simplicity-deletability-gate.md`, `references/core-invariants.md`, `references/regression-library.md`, `references/security-posture-gate.md` | `references/wiki-context-preflight.md`, `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md` | `templates/review-brief.md`, `templates/fix-brief.md` |
-| `status` | `references/status.md`, `references/pr-check-evidence-bundle.md` | - | `references/wiki-context-preflight.md` | - |
-| `plan` | `references/issue-ready-plan.md` | `references/quality-lens-router.md`, `references/evidence-contract.md`, `references/simplicity-deletability-gate.md`, `references/core-invariants.md`, `references/deep-interview-readiness-gate.md`, `references/ralplan-critic-consensus.md` | `references/wiki-context-preflight.md`, `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`, `references/wiki-bridge.md` | - |
-| `issue` | `references/plan-to-issues.md` | - | `references/wiki-context-preflight.md` | `templates/issue-body.md`, `templates/epic-body.md` |
-| `clean` | `references/merge-cleanup.md` | - | `references/wiki-context-preflight.md` | - |
-| `ship` | `references/ship.md` | - | `references/wiki-context-preflight.md` | - |
-| `retro` | `references/retrospective.md`, `references/retrospective-workflow.md`, `references/wiki-growth-triage.md` | - | `references/wiki-context-preflight.md` | - |
-| `prompt` | `references/prompt-optimizer.md`, `references/prompt-skill-optimization-staging.md` | - | `references/wiki-context-preflight.md` | - |
-| `tune` | `references/tune-goal.md` | - | `references/wiki-context-preflight.md` | - |
-| `forge` | `references/forge-goal.md` | - | `references/wiki-context-preflight.md` | - |
-| `spark` | `references/spark-goal.md` | - | `references/wiki-context-preflight.md` | - |
-| `check` | `references/local-diff-check.md` | - | `references/wiki-context-preflight.md` | - |
-| `getwiki` | - | - | `references/wiki-context-preflight.md`, `references/wiki-bridge.md`, `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md` | - |
-| `setwiki` | `references/wiki-growth-triage.md` | - | `references/wiki-context-preflight.md`, `references/wiki-bridge.md`, `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md` | - |
-| `ulw-loop` | `references/ulw-loop.md`, `references/ulw-tier-triage.md` | - | `references/wiki-context-preflight.md` | - |
-| `ulw-plan` | `references/ulw-plan.md`, `references/ulw-intent-routing.md` | - | `references/wiki-context-preflight.md` | - |
-| `ulw-research` | `references/ulw-research.md`, `references/ulw-epistemic-instrumentation.md` | - | `references/wiki-context-preflight.md` | - |
-| `gjc-plan` | `references/gajae-code.md` | - | `references/wiki-context-preflight.md` | - |
-| `gjc-execute` | `references/gajae-code.md` | - | `references/wiki-context-preflight.md` | - |
-| `gjc-team` | `references/gajae-code.md` | - | `references/wiki-context-preflight.md` | - |
+| Subcommand | Base workflow reference | Base gate references | Base wiki/meta references | Base templates | Conditional references | Conditional templates |
+| --- | --- | --- | --- | --- | --- | --- |
+| `start` | `references/agent-runtime-contract.md`, `references/start-workflow.md` | `references/quality-lens-router.md`, `references/evidence-contract.md` | `references/wiki-context-preflight.md`, `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md` | - | `code-shape→references/simplicity-deletability-gate.md`, `scope-or-privacy→references/core-invariants.md`, `ambiguous-intent→references/deep-interview-readiness-gate.md` | `delegated-work→templates/worker-brief.md`, `multi-lane-long-running→templates/conductor-state.md`, `multi-lane-long-running→templates/lane-state.md`, `evidence-artifacts→templates/artifact-manifest.md` |
+| `review` | `references/cross-review-loop.md` | `references/quality-lens-router.md`, `references/evidence-contract.md` | `references/wiki-context-preflight.md`, `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md` | - | `code-shape→references/simplicity-deletability-gate.md`, `scope-or-privacy→references/core-invariants.md`, `regression-risk→references/regression-library.md`, `human-feedback→references/human-review-feedback-loop.md`, `failing-ci→references/ci-failure-triage-loop.md`, `package-workflow-release-or-security-posture→references/security-posture-gate.md` | `delegated-review→templates/review-brief.md`, `accepted-critical-high-fix→templates/fix-brief.md` |
+| `status` | `references/status.md`, `references/pr-check-evidence-bundle.md` | - | `references/wiki-context-preflight.md` | - | - | - |
+| `plan` | `references/issue-ready-plan.md` | `references/quality-lens-router.md`, `references/evidence-contract.md` | `references/wiki-context-preflight.md`, `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`, `references/wiki-bridge.md` | - | `code-shape→references/simplicity-deletability-gate.md`, `scope-or-privacy→references/core-invariants.md`, `ambiguous-intent→references/deep-interview-readiness-gate.md`, `high-risk→references/ralplan-critic-consensus.md` | - |
+| `issue` | `references/plan-to-issues.md` | - | `references/wiki-context-preflight.md` | `templates/issue-body.md`, `templates/epic-body.md` | - | - |
+| `clean` | `references/merge-cleanup.md` | - | `references/wiki-context-preflight.md` | - | - | - |
+| `ship` | `references/ship.md` | - | `references/wiki-context-preflight.md` | - | - | - |
+| `retro` | `references/retrospective.md`, `references/retrospective-workflow.md`, `references/wiki-growth-triage.md` | - | `references/wiki-context-preflight.md` | - | - | - |
+| `prompt` | `references/prompt-optimizer.md`, `references/prompt-skill-optimization-staging.md` | - | `references/wiki-context-preflight.md` | - | - | - |
+| `tune` | `references/tune-goal.md` | - | `references/wiki-context-preflight.md` | - | - | - |
+| `forge` | `references/forge-goal.md` | - | `references/wiki-context-preflight.md` | - | - | - |
+| `spark` | `references/spark-goal.md` | - | `references/wiki-context-preflight.md` | - | - | - |
+| `check` | `references/local-diff-check.md` | - | `references/wiki-context-preflight.md` | - | - | - |
+| `getwiki` | - | - | `references/wiki-context-preflight.md`, `references/wiki-bridge.md`, `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md` | - | - | - |
+| `setwiki` | `references/wiki-growth-triage.md` | - | `references/wiki-context-preflight.md`, `references/wiki-bridge.md`, `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md` | - | - | - |
+| `ulw-loop` | `references/ulw-loop.md`, `references/ulw-tier-triage.md` | - | `references/wiki-context-preflight.md` | - | - | - |
+| `ulw-plan` | `references/ulw-plan.md`, `references/ulw-intent-routing.md` | - | `references/wiki-context-preflight.md` | - | - | - |
+| `ulw-research` | `references/ulw-research.md`, `references/ulw-epistemic-instrumentation.md` | - | `references/wiki-context-preflight.md` | - | - | - |
+| `gjc-plan` | `references/gajae-code.md` | - | `references/wiki-context-preflight.md` | - | - | - |
+| `gjc-execute` | `references/gajae-code.md` | - | `references/wiki-context-preflight.md` | - | - | - |
+| `gjc-team` | `references/gajae-code.md` | - | `references/wiki-context-preflight.md` | - | - | - |
 <!-- ddalggak:generated:end required-reference-map -->
 
 ## Shared Workflow Rules
@@ -166,17 +166,17 @@ Use Codex App orchestration names in briefs/state: `spawn_agent`, `send_input`, 
 
 Command contract: mode `source-edit`; source edits are limited to live issue-owned scope; start publishes the issue PR via the ship procedure (`references/ship.md`) and routes cross-review through the review gate; stop on stale base, missing issue body/comments, duplicate PR, or required files outside scope.
 
-Full procedure: `references/start-workflow.md`; reusable prompt: `templates/worker-brief.md`.
+Full procedure: `references/start-workflow.md`; delegated work only loads `templates/worker-brief.md`.
 
-Execution contract index: target repo/base freshness, issue body+comments, Quality Lens Router Output, React Code Quality Harness when applicable, Evidence Contract, Simplicity / Deletability Gate, allowed/forbidden/inspect-only/Must not touch, one issue PR by default, hard-conflict fallback only with reason, validation/PR evidence, and blocking gaps.
+Execution contract index: target repo/base freshness, issue body+comments, base Router/Evidence, activation-bound optional gates, allowed/forbidden/inspect-only/Must not touch, one issue PR by default, hard-conflict fallback only with reason, validation/PR evidence, and blocking gaps.
 
 ## `review` - Cross-Review Loop
 
 Command contract: mode `review-fix`; source edits are allowed only for accepted Critical/High blockers; top-level review comments are allowed; stop before APPROVE when current-head CI/checks are not terminal, blockers remain, or evidence/wiki preflight has blocking gaps.
 
-Full procedure: `references/cross-review-loop.md`; wiki authority: `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`; reusable prompt: `templates/review-brief.md`.
+Full procedure: `references/cross-review-loop.md`; wiki authority: `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`; delegated review only loads `templates/review-brief.md`.
 
-Execution contract index: live PR/diff/files/checks/issue/head SHA, Wiki Context Preflight, Quality Lens Router Output, React Code Quality Harness when applicable, Evidence Contract, Simplicity / Deletability Gate, conditional frontend/Vercel/regression gates, React code quality gates when applicable, blocker triage, finding signal gate (triage-passing findings only; filtered notes in one collapsed details section; zero-finding reviews valid), inline line-anchored finding comments in one COMMENT-event batch (suggestion blocks when a concrete fix fits, no finding-body duplication in the top-level comment), and top-level conclusion comment when formal approval is inappropriate.
+Execution contract index: live PR/diff/files/checks/issue/head SHA, Wiki Context Preflight, base Router/Evidence, activation-bound optional gates, blocker triage, finding signal gate (triage-passing findings only; filtered notes in one collapsed details section; zero-finding reviews valid), inline line-anchored finding comments in one COMMENT-event batch (suggestion blocks when a concrete fix fits, no finding-body duplication in the top-level comment), and top-level conclusion comment when formal approval is inappropriate.
 
 ## `status` - Current State Snapshot
 
@@ -186,7 +186,7 @@ Read `.ddalggak/session-state.json` if present, then inspect live git/GitHub sta
 
 Full procedure: `references/issue-ready-plan.md`; wiki preflight: `references/wiki-context-preflight.md`; wiki bridge: `references/wiki-bridge.md`; Brain v0 authority: `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`.
 
-Execution contract index: source of truth, non-goals, context anchors, assumptions/unknowns, work inventory, ownership, forbidden/inspect-only files, Quality Lens Router Output, React Code Quality Harness when applicable, Evidence Contract, Counterargument Pass, Simplicity / Deletability Gate, one issue PR by default, conflict fallback only with proof, Parallelization Decision, Must not touch, evidence/validation, and commit message.
+Execution contract index: source of truth, non-goals, context anchors, assumptions/unknowns, work inventory, ownership, forbidden/inspect-only files, base Router/Evidence, activation-bound optional gates, one issue PR by default, conflict fallback only with proof, Parallelization Decision, Must not touch, evidence/validation, and commit message.
 
 ## `issue` - Plan To GitHub Issues
 

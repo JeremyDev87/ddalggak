@@ -141,8 +141,9 @@ const specialInputs = JSON.parse(readFileSync(path.join(fixtureDir, "special-reg
     `security posture gate must not be rendered as a workflow reference\n${reviewRow}`,
   );
   assert(
-    columns[3].includes("security-posture-gate.md"),
-    `security posture gate must be rendered as a gate reference\n${reviewRow}`,
+    !columns[3].includes("security-posture-gate.md")
+      && columns[6].includes("package-workflow-release-or-security-posture→references/security-posture-gate.md"),
+    `security posture gate must be rendered as a conditional gate reference\n${reviewRow}`,
   );
 }
 

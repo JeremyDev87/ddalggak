@@ -14,13 +14,18 @@ required_references:
   - wiki-bridge.md
   - quality-lens-router.md
   - evidence-contract.md
-  - simplicity-deletability-gate.md
-  - core-invariants.md
-  - deep-interview-readiness-gate.md
-  - ralplan-critic-consensus.md
   - issue-ready-plan.md
 
+conditional_references:
+  - code-shape=simplicity-deletability-gate.md
+  - scope-or-privacy=core-invariants.md
+  - ambiguous-intent=deep-interview-readiness-gate.md
+  - high-risk=ralplan-critic-consensus.md
+
 required_templates:
+  []
+
+conditional_templates:
   []
 
 output_contract:

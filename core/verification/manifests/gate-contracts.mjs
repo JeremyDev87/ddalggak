@@ -89,6 +89,14 @@ export const routerGateFamilies = [
     skipWhen: "One-off incident with no generalized detection signal.",
     reference: "references/regression-library.md",
   },
+  {
+    name: "security-posture",
+    activateWhen:
+      "Package manifests/admission, install/update, CI/workflows, release/publish, repo posture, auth/credentials, dependencies/supply chain, or explicit security surfaces.",
+    skipWhen:
+      "Application-only code/docs/tests touching none of those surfaces.",
+    reference: "references/security-posture-gate.md",
+  },
 ];
 
 export const requiredRouterGateFamilies = routerGateFamilies.map((family) => family.name);
@@ -112,6 +120,9 @@ export const requiredRouterReferenceAnchors = [
   "references/regression-library.md",
   "repeated Medium/High pattern",
   "one-off incidents without a generalized detection signal",
+  "references/security-posture-gate.md",
+  "Package manifests/admission",
+  "Application-only code/docs/tests touching none",
   "component methodology gate",
   "main component only assembles",
   "satisfies Record<...>",

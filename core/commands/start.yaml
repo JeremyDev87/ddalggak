@@ -13,17 +13,22 @@ required_references:
   - 2026-06-04-brain-v0-wiki-authority-in-ddalggak.md
   - quality-lens-router.md
   - evidence-contract.md
-  - simplicity-deletability-gate.md
   - agent-runtime-contract.md
-  - core-invariants.md
-  - deep-interview-readiness-gate.md
   - start-workflow.md
 
+conditional_references:
+  - code-shape=simplicity-deletability-gate.md
+  - scope-or-privacy=core-invariants.md
+  - ambiguous-intent=deep-interview-readiness-gate.md
+
 required_templates:
-  - worker-brief.md
-  - conductor-state.md
-  - lane-state.md
-  - artifact-manifest.md
+  []
+
+conditional_templates:
+  - delegated-work=worker-brief.md
+  - multi-lane-long-running=conductor-state.md
+  - multi-lane-long-running=lane-state.md
+  - evidence-artifacts=artifact-manifest.md
 
 output_contract:
   completion_signal: "ISSUE_PR_READY"

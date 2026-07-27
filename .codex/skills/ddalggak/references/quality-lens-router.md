@@ -68,6 +68,7 @@ Use these stable names so future issue-specific gates can plug into the same con
 | `simplicity-deletability` | Any implementation or review may add code, abstractions, helpers, wrappers, providers, fallbacks, or patterns. | Almost never; if skipped, record why the work is read-only. |
 | `evidence-contract` | Any work claims completion, readiness, review approval, performance, deploy, UI, security, or data behavior. | Almost never; if skipped, record why no completion claim is being made. |
 | `regression-library` | A review finds a repeated Medium/High failure pattern or a retrospective generalizes a failure class. | One-off incident with no generalized detection signal. |
+| `security-posture` | Package manifests/admission, install/update, CI/workflows, release/publish, repo posture, auth/credentials, dependencies/supply chain, or explicit security surfaces. | Application-only code/docs/tests touching none of those surfaces. |
 
 ## Required Reference Mapping
 
@@ -88,6 +89,7 @@ After choosing applicable gate families, attach only the matching references:
 | `simplicity-deletability` | `references/simplicity-deletability-gate.md` |
 | `evidence-contract` | `references/evidence-contract.md` |
 | `regression-library` | `references/regression-library.md` |
+| `security-posture` | `references/security-posture-gate.md` |
 
 `tdd-systematic-debugging` routes to the Evidence Contract bugfix/regression template and existing repository testing/debugging conventions. `regression-library` applies only when a review finds a repeated Medium/High pattern or a retrospective generalizes a failure class; one-off incidents without a generalized detection signal stay skipped.
 
