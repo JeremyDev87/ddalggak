@@ -73,6 +73,7 @@ user-invocable: true
 - Wiki Bridge: `getwiki` read-only retrieval, `setwiki` approval-gated write; `references/wiki-bridge.md` owns admission/approval boundary.
 - Evidence Contract: `references/evidence-contract.md` 기준이며 Blocking evidence gaps가 있으면 PR ready/APPROVE 금지다.
 - Conditional gate loading: `plan`/`start`/`review`는 Router와 Evidence Contract만 base로 둔다. Simplicity/Core Invariants, deep-interview, RALPLAN, frontend/React/Vercel, regression/security는 activation evidence가 있을 때만 로드하고 skip/lightweight reason을 남긴다. Code-shape: small direct change first; why is this abstraction necessary?
+- Review policy layers: 모든 review 후보는 Admission schema v3를 통과한 뒤 candidate disposition, lifecycle aggregate outcome, publication authority를 분리한다. Aggregate와 public renderer는 same-process provenance를 요구하며, summary/finding은 `references/review-output-contract.md`의 deterministic validator만 사용한다.
 
 ## 서브커맨드 분기
 
@@ -162,14 +163,13 @@ Execution contract index:
 
 Command contract: mode `review-fix`; source edits are allowed only for accepted Critical/High blockers; top-level review comments are allowed; stop before APPROVE when current-head CI/checks are not terminal, blockers remain, or evidence/wiki preflight has blocking gaps.
 
-Full procedure: `references/cross-review-loop.md`; wiki authority: `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`; delegated-review만 `templates/review-brief.md`를 로드한다.
+Full procedure: `references/cross-review-loop.md`; public renderer: `references/review-output-contract.md` + `references/review-comment-style.md`; wiki authority: `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`; delegated-review만 `templates/review-brief.md`를 로드한다.
 
 Execution contract index:
 - Re-read live PR state, diff/files/checks, linked issue, current head SHA, and wiki-context preflight.
 - Gates: Router/Evidence는 base; 나머지는 activation evidence applies일 때만 로드한다.
 - Findings must separate live evidence, wiki-strengthened rationale, non-wiki inference, and retrieval gaps.
-- Run the finding signal gate first (`references/cross-review-loop.md`): only triage-passing findings become inline comments in one `COMMENT`-event batch with ` ```suggestion ` blocks where a fix fits; filtered Low/nit notes collapse into one top-level `<details>` section; no finding-body duplication in the top-level comment; a zero-finding review with validation evidence is valid.
-- If formal approval is inappropriate, use a top-level comment with SHA, scope, validation, blocker count, and conclusion.
+- Run admission schema v3 and the finding signal gate first (`references/cross-review-loop.md`): only conductor-promoted admitted findings become inline comments in one `COMMENT`-event batch; each finding is rendered from its aggregate-member canonical candidate, filtered Low/nit notes stay internal, and the top-level body is the deterministic fixed summary. A zero-finding review with substantive validation evidence is valid.
 
 ---
 

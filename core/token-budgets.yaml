@@ -93,6 +93,9 @@ reference_budget_exemptions:
   - reference: review-comment-style.md
     max_tokens: 700
     reason: comment style contract loaded on demand via cross-review-loop finding signal gate pointer; not in any base required_references
+  - reference: review-output-contract.md
+    max_tokens: 2200
+    reason: deterministic public renderer loaded on demand at publication time via cross-review-loop; not in base required_references
   - reference: pr-status-evidence-bundle.md
     max_tokens: 1400
     reason: claude-runtime pr-status evidence bundle loaded on demand outside base required_references
