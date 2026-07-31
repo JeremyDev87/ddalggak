@@ -21,7 +21,7 @@
 subcommand_token_budgets:
   claude:
     start: 23000
-    review: 28000
+    review: 29000
     status: 10500
     plan: 20000
     issue: 10000

@@ -2,6 +2,10 @@ const LIFECYCLES = new Set(["OPEN", "MERGED", "CLOSED_UNMERGED"]);
 const AUTHORITIES = new Set(["CONDUCTOR", "SUBREVIEW"]);
 const SEVERITIES = new Set(["NONE", "LOW", "MEDIUM", "HIGH", "CRITICAL"]);
 const CHECK_STATUSES = new Set(["PASS", "FAIL", "PENDING", "NOT_APPLICABLE"]);
+const COVERAGE_VERDICTS = new Set(["COVERED", "GAP", "NOT_APPLICABLE"]);
+const COUNTEREXAMPLE_STATUSES = new Set(["PASSED", "VIOLATION_PASSED", "BLOCKED", "NOT_RUN"]);
+const COUNTEREXAMPLE_EXPECTATIONS = new Set(["VIOLATION_REJECTED"]);
+const COUNTEREXAMPLE_RESULTS = new Set(["VIOLATION_REJECTED", "VIOLATION_PASSED", "BLOCKED", "NOT_RUN"]);
 const DELTAS = new Set(["NONE", "DEFECT", "STYLE_DIFFERENCE", "PRIVACY_SURFACE_ONLY", "PRIVACY_EXPOSURE", "PROCESS_GAP"]);
 const CONTRACT_STATES = new Set(["PROVEN", "NOT_APPLICABLE", "UNKNOWN"]);
 const SCOPE_RELATIONS = new Set(["IN_SCOPE", "OUT_OF_SCOPE", "UNKNOWN"]);
@@ -19,6 +23,9 @@ const FINAL_DISPOSITIONS = new Set(["DROP", "QUESTION", "NON_BLOCKING", "BLOCKIN
 export const ADMISSION_SCHEMA_VERSION = 3;
 export const ADMISSION_FIELDS = Object.freeze([
   "candidate_id",
+  "pr_number",
+  "base_sha",
+  "head_sha",
   "authority",
   "lifecycle",
   "observed_delta",
@@ -37,10 +44,48 @@ export const ADMISSION_FIELDS = Object.freeze([
   "publication_eligible",
 ]);
 
+export const REVIEW_EVIDENCE_FIELDS = Object.freeze([
+  "pr_number",
+  "lifecycle",
+  "base_sha",
+  "head_sha",
+  "review_risk",
+  "semantic_coverage",
+  "counterexample",
+]);
+export const CHECK_EVIDENCE_FIELDS = Object.freeze(["pr_number", "lifecycle", "base_sha", "head_sha", "status", "justification"]);
+export const PUBLICATION_RECEIPT_FIELDS = Object.freeze(["pr_number", "lifecycle", "base_sha", "head_sha"]);
+export const SEMANTIC_COVERAGE_FIELDS = Object.freeze([
+  "criterion_id",
+  "changed_surface",
+  "caller_or_consumer",
+  "failure_mode",
+  "test_or_evidence",
+  "verdict",
+]);
+export const COUNTEREXAMPLE_FIELDS = Object.freeze([
+  "claim",
+  "probe",
+  "expected_result",
+  "actual_result",
+  "restoration_proof",
+  "status",
+]);
+
 const admissionFieldSet = new Set(ADMISSION_FIELDS);
+const reviewEvidenceFieldSet = new Set(REVIEW_EVIDENCE_FIELDS);
+const checkEvidenceFieldSet = new Set(CHECK_EVIDENCE_FIELDS);
+const publicationReceiptFieldSet = new Set(PUBLICATION_RECEIPT_FIELDS);
+const semanticCoverageFieldSet = new Set(SEMANTIC_COVERAGE_FIELDS);
+const counterexampleFieldSet = new Set(COUNTEREXAMPLE_FIELDS);
 const producedCandidates = new WeakSet();
+const producedReviewEvidence = new WeakSet();
+const producedChecksEvidence = new WeakSet();
+const producedPublicationReceipts = new WeakSet();
 const producedAggregates = new WeakSet();
+const producedPublicationDecisions = new WeakSet();
 const aggregateMembers = new WeakMap();
+const publicationAggregates = new WeakMap();
 const OUTCOMES = Object.freeze({
   OPEN: new Set(["APPROVE", "CHANGES_REQUESTED", "BLOCKED"]),
   MERGED: new Set(["NO_FOLLOW_UP", "FOLLOW_UP_REQUIRED", "BLOCKED"]),
@@ -102,6 +147,14 @@ function requireEnum(name, value, allowed) {
   if (!allowed.has(value)) throw new Error(`unknown ${name}: ${value}`);
 }
 
+function requirePrNumber(value) {
+  if (!Number.isInteger(value) || value < 1) throw new Error("pr number must be a positive integer");
+}
+
+function requireSha(name, value) {
+  if (typeof value !== "string" || !/^[0-9a-f]{40}$/i.test(value)) throw new Error(`${name} must be a full 40-character hex SHA`);
+}
+
 function classifiedToken(name, value, allowed) {
   if (typeof value !== "string") throw new Error(`${name} requires classified evidence detail`);
   const match = value.match(/^([A-Z_]+):\s*(\S.*)$/);
@@ -123,6 +176,9 @@ export function validateAdmissionRecord(record) {
     if (!(key in record)) throw new Error(`missing admission field: ${key}`);
   }
   if (typeof record.candidate_id !== "string" || !record.candidate_id.trim()) throw new Error("candidate_id must be a non-empty string");
+  requirePrNumber(record.pr_number);
+  requireSha("candidate base_sha", record.base_sha);
+  requireSha("candidate head_sha", record.head_sha);
   requireEnum("authority", record.authority, AUTHORITIES);
   requireEnum("lifecycle", record.lifecycle, LIFECYCLES);
   const observedDelta = classifiedToken("observed delta", record.observed_delta, DELTAS);
@@ -219,8 +275,113 @@ export function evaluateCandidate(record) {
   return finalize(record, "QUESTION", false);
 }
 
+function validateExactFields(name, value, fields, fieldSet) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error(`${name} must be an object`);
+  for (const key of Object.keys(value)) {
+    if (!fieldSet.has(key)) throw new Error(`unknown ${name} field: ${key}`);
+  }
+  for (const key of fields) {
+    if (!(key in value)) throw new Error(`missing ${name} field: ${key}`);
+  }
+}
+
+function validateEvidenceText(name, value, maxLength = 240) {
+  if (typeof value !== "string" || !value.trim()) throw new Error(`${name} must be a non-empty string`);
+  if (/\r|\n/.test(value)) throw new Error(`${name} must be one line`);
+  if (value.length > maxLength) throw new Error(`${name} exceeds ${maxLength} characters`);
+}
+
+export function evaluateReviewEvidence(record) {
+  validateExactFields("review evidence", record, REVIEW_EVIDENCE_FIELDS, reviewEvidenceFieldSet);
+  requirePrNumber(record.pr_number);
+  requireEnum("review lifecycle", record.lifecycle, LIFECYCLES);
+  requireSha("review base_sha", record.base_sha);
+  requireSha("review head_sha", record.head_sha);
+  if (record.base_sha === record.head_sha) throw new Error("review base_sha must differ from head_sha");
+  requireEnum("review risk", record.review_risk, SEVERITIES);
+  if (record.review_risk === "NONE") throw new Error("review risk must not be NONE");
+  if (!Array.isArray(record.semantic_coverage) || record.semantic_coverage.length === 0) {
+    throw new Error("semantic_coverage must be a non-empty array");
+  }
+
+  const coverageKeys = new Set();
+  let evidenceGapCount = 0;
+  const semanticCoverage = record.semantic_coverage.map((row) => {
+    validateExactFields("semantic coverage", row, SEMANTIC_COVERAGE_FIELDS, semanticCoverageFieldSet);
+    for (const field of ["criterion_id", "changed_surface", "caller_or_consumer", "failure_mode"]) {
+      validateEvidenceText(`semantic coverage ${field}`, row[field]);
+    }
+    const evidenceState = classifiedToken("semantic coverage evidence", row.test_or_evidence, EVIDENCE_STATES);
+    requireEnum("semantic coverage verdict", row.verdict, COVERAGE_VERDICTS);
+    const coverageKey = `${row.criterion_id}\u0000${row.changed_surface}`;
+    if (coverageKeys.has(coverageKey)) throw new Error("duplicate semantic coverage criterion/surface");
+    coverageKeys.add(coverageKey);
+    if (row.verdict === "GAP" || evidenceState !== "PROVEN") evidenceGapCount += 1;
+    return Object.freeze({ ...row });
+  });
+
+  validateExactFields("counterexample", record.counterexample, COUNTEREXAMPLE_FIELDS, counterexampleFieldSet);
+  for (const field of ["claim", "probe"]) validateEvidenceText(`counterexample ${field}`, record.counterexample[field]);
+  classifiedToken("counterexample expected result", record.counterexample.expected_result, COUNTEREXAMPLE_EXPECTATIONS);
+  const actualResult = classifiedToken("counterexample actual result", record.counterexample.actual_result, COUNTEREXAMPLE_RESULTS);
+  const restorationState = classifiedToken("counterexample restoration proof", record.counterexample.restoration_proof, EVIDENCE_STATES);
+  requireEnum("counterexample status", record.counterexample.status, COUNTEREXAMPLE_STATUSES);
+  const derivedStatus = actualResult === "VIOLATION_REJECTED" ? "PASSED" : actualResult;
+  if (record.counterexample.status !== derivedStatus) throw new Error("counterexample status contradicts actual result");
+  if (derivedStatus !== "PASSED") evidenceGapCount += 1;
+  if (restorationState !== "PROVEN") evidenceGapCount += 1;
+
+  const result = {
+    pr_number: record.pr_number,
+    lifecycle: record.lifecycle,
+    base_sha: record.base_sha,
+    head_sha: record.head_sha,
+    review_risk: record.review_risk,
+    semantic_coverage: Object.freeze(semanticCoverage),
+    counterexample: Object.freeze({ ...record.counterexample }),
+    substantiveReview: true,
+    requiredEvidenceMissing: evidenceGapCount > 0,
+    evidenceGapCount,
+  };
+  Object.freeze(result);
+  producedReviewEvidence.add(result);
+  return result;
+}
+
+function validateRevisionReceipt(record, fields, fieldSet, label) {
+  if (!record || typeof record !== "object" || Array.isArray(record)) throw new Error(`${label} must be an object`);
+  for (const key of Object.keys(record)) if (!fieldSet.has(key)) throw new Error(`unknown ${label} field: ${key}`);
+  for (const key of fields) if (!(key in record)) throw new Error(`missing ${label} field: ${key}`);
+  requirePrNumber(record.pr_number);
+  requireEnum(`${label} lifecycle`, record.lifecycle, LIFECYCLES);
+  requireSha(`${label} base_sha`, record.base_sha);
+  requireSha(`${label} head_sha`, record.head_sha);
+  if (record.base_sha === record.head_sha) throw new Error(`${label} base_sha must differ from head_sha`);
+}
+
+export function evaluateChecksEvidence(record) {
+  validateRevisionReceipt(record, CHECK_EVIDENCE_FIELDS, checkEvidenceFieldSet, "checks evidence");
+  requireEnum("checks status", record.status, CHECK_STATUSES);
+  if (record.status === "NOT_APPLICABLE") validateSingleLine("checks justification", record.justification, 240);
+  else if (record.justification !== "") throw new Error("checks justification must be empty unless status is NOT_APPLICABLE");
+  const result = Object.freeze({ ...record });
+  producedChecksEvidence.add(result);
+  return result;
+}
+
+export function evaluatePublicationReceipt(record) {
+  validateRevisionReceipt(record, PUBLICATION_RECEIPT_FIELDS, publicationReceiptFieldSet, "publication receipt");
+  const result = Object.freeze({ ...record });
+  producedPublicationReceipts.add(result);
+  return result;
+}
+
 function validateAggregateInput(input) {
   if (!input || typeof input !== "object" || Array.isArray(input)) throw new Error("aggregate input must be an object");
+  const allowedFields = new Set(["lifecycle", "candidates", "reviewEvidence", "checksEvidence"]);
+  for (const key of Object.keys(input)) {
+    if (!allowedFields.has(key)) throw new Error(`unknown aggregate input field: ${key}`);
+  }
   requireEnum("lifecycle", input.lifecycle, LIFECYCLES);
   if (!Array.isArray(input.candidates)) throw new Error("candidates must be an array");
   const candidateIds = new Set();
@@ -232,11 +393,17 @@ function validateAggregateInput(input) {
     if (!FINAL_DISPOSITIONS.has(candidate.disposition)) throw new Error("aggregate requires final candidate dispositions");
     if (candidate.lifecycle !== input.lifecycle) throw new Error("candidate lifecycle does not match aggregate lifecycle");
   }
-  for (const key of ["requiredEvidenceMissing", "substantiveReview"]) {
-    if (typeof input[key] !== "boolean") throw new Error(`${key} must be boolean`);
+  if (!producedReviewEvidence.has(input.reviewEvidence)) throw new Error("review evidence lacks evaluator provenance");
+  if (input.reviewEvidence.lifecycle !== input.lifecycle) throw new Error("review evidence lifecycle does not match aggregate lifecycle");
+  if (!producedChecksEvidence.has(input.checksEvidence)) throw new Error("checks evidence lacks evaluator provenance");
+  for (const key of ["pr_number", "lifecycle", "base_sha", "head_sha"]) {
+    if (input.checksEvidence[key] !== input.reviewEvidence[key]) throw new Error(`checks ${key} does not match review evidence`);
   }
-  requireEnum("checks status", input.checksStatus, CHECK_STATUSES);
-  if (input.checksStatus === "NOT_APPLICABLE") validateSingleLine("checksJustification", input.checksJustification, 240);
+  for (const candidate of input.candidates) {
+    if (candidate.pr_number !== input.reviewEvidence.pr_number || candidate.base_sha !== input.reviewEvidence.base_sha || candidate.head_sha !== input.reviewEvidence.head_sha) {
+      throw new Error("candidate authority does not match review evidence revision");
+    }
+  }
 }
 
 export function aggregateReview(input) {
@@ -249,11 +416,15 @@ export function aggregateReview(input) {
   const hasReviewBlocker = input.candidates.some((candidate) => candidate.disposition === "REVIEW_BLOCKED");
   const blockingCount = input.candidates.filter((candidate) => candidate.disposition === "BLOCKING").length;
   const admittedFindingCount = input.candidates.filter((candidate) => candidate.disposition === "BLOCKING" || candidate.disposition === "NON_BLOCKING").length;
+  const checksGapCount = input.checksEvidence.status === "PASS" || input.checksEvidence.status === "NOT_APPLICABLE" ? 0 : 1;
+  const evidenceGapCount = input.reviewEvidence.evidenceGapCount
+    + input.candidates.filter((candidate) => candidate.disposition === "REVIEW_BLOCKED").length
+    + checksGapCount;
 
   let outcome;
   let reviewCompletionEligible;
-  const checksAdmissible = input.checksStatus === "PASS" || input.checksStatus === "NOT_APPLICABLE";
-  if (input.requiredEvidenceMissing || !input.substantiveReview || !checksAdmissible || hasReviewBlocker) {
+  const checksAdmissible = input.checksEvidence.status === "PASS" || input.checksEvidence.status === "NOT_APPLICABLE";
+  if (input.reviewEvidence.requiredEvidenceMissing || !input.reviewEvidence.substantiveReview || !checksAdmissible || hasReviewBlocker) {
     outcome = "BLOCKED";
     reviewCompletionEligible = false;
   } else if (input.lifecycle === "OPEN") {
@@ -273,14 +444,17 @@ export function aggregateReview(input) {
   }
 
   const result = {
+    prNumber: input.reviewEvidence.pr_number,
+    baseSha: input.reviewEvidence.base_sha,
+    headSha: input.reviewEvidence.head_sha,
     lifecycle: input.lifecycle,
-    checksStatus: input.checksStatus,
+    checksStatus: input.checksEvidence.status,
     outcome,
     reviewCompletionEligible,
     counts,
     blockingCount,
     admittedFindingCount,
-    evidenceGapCount: Number(input.requiredEvidenceMissing) + input.candidates.filter((candidate) => candidate.disposition === "REVIEW_BLOCKED").length,
+    evidenceGapCount,
   };
   validateAggregateShape(result);
   Object.freeze(result.counts);
@@ -296,6 +470,10 @@ function requireNonNegativeInteger(name, value) {
 
 function validateAggregateShape(aggregate) {
   if (!aggregate || typeof aggregate !== "object" || Array.isArray(aggregate)) throw new Error("aggregate result must be an object");
+  requirePrNumber(aggregate.prNumber);
+  requireSha("aggregate baseSha", aggregate.baseSha);
+  requireSha("aggregate headSha", aggregate.headSha);
+  if (aggregate.baseSha === aggregate.headSha) throw new Error("aggregate baseSha must differ from headSha");
   requireEnum("lifecycle", aggregate.lifecycle, LIFECYCLES);
   requireEnum("checks status", aggregate.checksStatus, CHECK_STATUSES);
   if (!OUTCOMES[aggregate.lifecycle].has(aggregate.outcome)) throw new Error("outcome is invalid for lifecycle");
@@ -327,19 +505,31 @@ export function validateAggregateResult(aggregate) {
   return aggregate;
 }
 
-export function decidePublication({ aggregate, writeAuthorized }) {
+export function decidePublication(input) {
+  if (!input || typeof input !== "object" || Array.isArray(input)) throw new Error("publication input must be an object");
+  const allowedFields = new Set(["aggregate", "publicationReceipt", "writeAuthorized"]);
+  for (const key of Object.keys(input)) if (!allowedFields.has(key)) throw new Error(`unknown publication input field: ${key}`);
+  const { aggregate, publicationReceipt, writeAuthorized } = input;
   validateAggregateResult(aggregate);
+  if (!producedPublicationReceipts.has(publicationReceipt)) throw new Error("publication receipt lacks evaluator provenance");
+  const expected = { pr_number: aggregate.prNumber, lifecycle: aggregate.lifecycle, base_sha: aggregate.baseSha, head_sha: aggregate.headSha };
+  for (const key of PUBLICATION_RECEIPT_FIELDS) {
+    if (publicationReceipt[key] !== expected[key]) throw new Error(`publication ${key} does not match aggregate`);
+  }
   if (typeof writeAuthorized !== "boolean") throw new Error("writeAuthorized must be boolean");
   const contentEligible = aggregate.reviewCompletionEligible && (
     aggregate.lifecycle === "OPEN"
       ? aggregate.outcome === "APPROVE" || aggregate.outcome === "CHANGES_REQUESTED"
       : aggregate.outcome === "FOLLOW_UP_REQUIRED"
   );
-  return {
+  const result = Object.freeze({
     contentEligible,
     writeAuthorized,
     publicationEligible: contentEligible && writeAuthorized,
-  };
+  });
+  producedPublicationDecisions.add(result);
+  publicationAggregates.set(result, aggregate);
+  return result;
 }
 
 function validatePublicTokens(value) {
@@ -367,10 +557,14 @@ function validateSingleLine(name, value, maxLength) {
   validatePublicContent(value);
 }
 
-export function renderPublicReview({ aggregate, prNumber, headSha, evidenceGapCount, reason, nextAction }) {
+export function renderPublicReview(input) {
+  if (!input || typeof input !== "object" || Array.isArray(input)) throw new Error("public review input must be an object");
+  const allowedFields = new Set(["publicationDecision", "evidenceGapCount", "reason", "nextAction"]);
+  for (const key of Object.keys(input)) if (!allowedFields.has(key)) throw new Error(`unknown public review input field: ${key}`);
+  const { publicationDecision, evidenceGapCount, reason, nextAction } = input;
+  if (!producedPublicationDecisions.has(publicationDecision) || !publicationDecision.publicationEligible) throw new Error("eligible publication decision is required");
+  const aggregate = publicationAggregates.get(publicationDecision);
   validateAggregateResult(aggregate);
-  if (!Number.isInteger(prNumber) || prNumber < 1) throw new Error("prNumber must be a positive integer");
-  if (typeof headSha !== "string" || !/^[0-9a-f]{40}$/i.test(headSha)) throw new Error("headSha must be a full 40-character hex SHA");
   if (!Number.isInteger(evidenceGapCount) || evidenceGapCount < 0) throw new Error("evidenceGapCount must be a non-negative integer");
   if (evidenceGapCount !== aggregate.evidenceGapCount) throw new Error("evidenceGapCount does not match aggregate");
   validateSingleLine("reason", reason, 160);
@@ -381,23 +575,25 @@ export function renderPublicReview({ aggregate, prNumber, headSha, evidenceGapCo
     "",
     `Lifecycle: \`${aggregate.lifecycle}\``,
     `Outcome: \`${aggregate.outcome}\``,
-    `├─ PR: #${prNumber} @ \`${headSha.slice(0, 7)}\``,
+    `├─ PR: #${aggregate.prNumber} @ \`${aggregate.headSha.slice(0, 7)}\``,
     `├─ Proven blockers: Critical ${counts.critical ?? 0} / High ${counts.high ?? 0}`,
     `├─ Evidence gaps: ${evidenceGapCount}`,
     `├─ 핵심 이유: ${reason}`,
     `└─ Next: ${nextAction}`,
     "",
-    `<!-- ddalggak-review-contract:v3 pr=${prNumber} head=${headSha} lifecycle=${aggregate.lifecycle} outcome=${aggregate.outcome} critical=${counts.critical ?? 0} high=${counts.high ?? 0} gaps=${evidenceGapCount} -->`,
+    `<!-- ddalggak-review-contract:v${ADMISSION_SCHEMA_VERSION} pr=${aggregate.prNumber} head=${aggregate.headSha} lifecycle=${aggregate.lifecycle} outcome=${aggregate.outcome} critical=${counts.critical} high=${counts.high} gaps=${evidenceGapCount} -->`,
   ].join("\n");
   validatePublicReview(body);
   return body;
 }
 
 export function renderPublicFinding(input) {
-  if (!input?.aggregate || !input?.candidate) throw new Error("aggregate and candidate are required");
-  validateAggregateResult(input.aggregate);
+  if (!input?.publicationDecision || !input?.candidate) throw new Error("publicationDecision and candidate are required");
+  if (!producedPublicationDecisions.has(input.publicationDecision) || !input.publicationDecision.publicationEligible) throw new Error("eligible publication decision is required");
+  const aggregate = publicationAggregates.get(input.publicationDecision);
+  validateAggregateResult(aggregate);
   if (!producedCandidates.has(input.candidate)) throw new Error("candidate lacks evaluator provenance");
-  if (!aggregateMembers.get(input.aggregate)?.has(input.candidate)) throw new Error("candidate is not a member of aggregate");
+  if (!aggregateMembers.get(aggregate)?.has(input.candidate)) throw new Error("candidate is not a member of aggregate");
   if (!input.candidate.publication_eligible || !["BLOCKING", "NON_BLOCKING"].includes(input.candidate.disposition)) {
     throw new Error("candidate is not publication eligible");
   }

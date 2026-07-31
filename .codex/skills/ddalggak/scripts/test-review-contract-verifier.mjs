@@ -28,11 +28,11 @@ function resetCandidate() {
   cpSync(sourceRoot, candidateRoot, { recursive: true });
 }
 
-function applyMutation(file, oldText, newText) {
+function applyMutation(name, file, oldText, newText) {
   const path = join(candidateRoot, file);
   const source = readFileSync(path, "utf8");
   const occurrences = source.split(oldText).length - 1;
-  if (occurrences !== 1) throw new Error(`MUTATION_NOT_APPLIED ${file}: expected one semantic chokepoint, found ${occurrences}`);
+  if (occurrences !== 1) throw new Error(`MUTATION_NOT_APPLIED ${name} (${file}): expected one semantic chokepoint, found ${occurrences}`);
   const mutated = source.replace(oldText, newText);
   if (mutated === source) throw new Error(`MUTATION_NOT_APPLIED ${file}: unchanged`);
   writeFileSync(path, mutated);
@@ -113,10 +113,94 @@ const mutations = [
     newText: 'if (facts.observedDelta === "__DISABLED__" && facts.governingContract !== "PROVEN") return finalize(record, "DROP", false);',
   },
   {
-    name: "required evidence aggregate blocker",
+    name: "review evidence aggregate blocker",
     file: "scripts/review-contract-policy.mjs",
-    oldText: 'if (input.requiredEvidenceMissing || !input.substantiveReview || !checksAdmissible || hasReviewBlocker) {',
-    newText: 'if (!input.substantiveReview || !checksAdmissible || hasReviewBlocker) {',
+    oldText: 'if (input.reviewEvidence.requiredEvidenceMissing || !input.reviewEvidence.substantiveReview || !checksAdmissible || hasReviewBlocker) {',
+    newText: 'if (!input.reviewEvidence.substantiveReview || !checksAdmissible || hasReviewBlocker) {',
+  },
+  {
+    name: "review evidence same-process producer provenance",
+    file: "scripts/review-contract-policy.mjs",
+    oldText: 'if (!producedReviewEvidence.has(input.reviewEvidence)) throw new Error("review evidence lacks evaluator provenance");',
+    newText: 'if (false && !producedReviewEvidence.has(input.reviewEvidence)) throw new Error("review evidence lacks evaluator provenance");',
+  },
+  {
+    name: "review evidence lifecycle revision binding",
+    file: "scripts/review-contract-policy.mjs",
+    oldText: 'if (input.reviewEvidence.lifecycle !== input.lifecycle) throw new Error("review evidence lifecycle does not match aggregate lifecycle");',
+    newText: 'if (false && input.reviewEvidence.lifecycle !== input.lifecycle) throw new Error("review evidence lifecycle does not match aggregate lifecycle");',
+  },
+  {
+    name: "checks pr_number revision binding",
+    file: "scripts/review-contract-policy.mjs",
+    oldText: 'for (const key of ["pr_number", "lifecycle", "base_sha", "head_sha"]) {',
+    newText: 'for (const key of ["lifecycle", "base_sha", "head_sha"]) {',
+  },
+  {
+    name: "checks lifecycle revision binding",
+    file: "scripts/review-contract-policy.mjs",
+    oldText: 'for (const key of ["pr_number", "lifecycle", "base_sha", "head_sha"]) {',
+    newText: 'for (const key of ["pr_number", "base_sha", "head_sha"]) {',
+  },
+  {
+    name: "checks base_sha revision binding",
+    file: "scripts/review-contract-policy.mjs",
+    oldText: 'for (const key of ["pr_number", "lifecycle", "base_sha", "head_sha"]) {',
+    newText: 'for (const key of ["pr_number", "lifecycle", "head_sha"]) {',
+  },
+  {
+    name: "checks head_sha revision binding",
+    file: "scripts/review-contract-policy.mjs",
+    oldText: 'for (const key of ["pr_number", "lifecycle", "base_sha", "head_sha"]) {',
+    newText: 'for (const key of ["pr_number", "lifecycle", "base_sha"]) {',
+  },
+  {
+    name: "candidate review revision binding",
+    file: "scripts/review-contract-policy.mjs",
+    oldText: 'if (candidate.pr_number !== input.reviewEvidence.pr_number || candidate.base_sha !== input.reviewEvidence.base_sha || candidate.head_sha !== input.reviewEvidence.head_sha) {',
+    newText: 'if (false && (candidate.pr_number !== input.reviewEvidence.pr_number || candidate.base_sha !== input.reviewEvidence.base_sha || candidate.head_sha !== input.reviewEvidence.head_sha)) {',
+  },
+  {
+    name: "renderer publication decision authority",
+    file: "scripts/review-contract-policy.mjs",
+    oldText: 'if (!producedPublicationDecisions.has(publicationDecision) || !publicationDecision.publicationEligible) throw new Error("eligible publication decision is required");',
+    newText: 'if (!publicationDecision?.publicationEligible) throw new Error("eligible publication decision is required");',
+  },
+  {
+    name: "semantic GAP derivation",
+    file: "scripts/review-contract-policy.mjs",
+    oldText: 'if (row.verdict === "GAP" || evidenceState !== "PROVEN") evidenceGapCount += 1;',
+    newText: 'if (evidenceState !== "PROVEN") evidenceGapCount += 1;',
+  },
+  {
+    name: "counterexample violation-pass blocker",
+    file: "scripts/review-contract-policy.mjs",
+    oldText: 'if (derivedStatus !== "PASSED") evidenceGapCount += 1;',
+    newText: 'if (false && derivedStatus !== "PASSED") evidenceGapCount += 1;',
+  },
+  {
+    name: "counterexample status/actual coherence",
+    file: "scripts/review-contract-policy.mjs",
+    oldText: 'if (record.counterexample.status !== derivedStatus) throw new Error("counterexample status contradicts actual result");',
+    newText: 'if (false && record.counterexample.status !== derivedStatus) throw new Error("counterexample status contradicts actual result");',
+  },
+  {
+    name: "counterexample restoration proof blocker",
+    file: "scripts/review-contract-policy.mjs",
+    oldText: 'if (restorationState !== "PROVEN") evidenceGapCount += 1;',
+    newText: 'if (false && restorationState !== "PROVEN") evidenceGapCount += 1;',
+  },
+  {
+    name: "review evidence schema file-local anchor",
+    file: "references/cross-review-loop.md",
+    oldText: "## Review evidence schema v3",
+    newText: "## Review evidence",
+  },
+  {
+    name: "delegated review brief authority anchor",
+    file: "references/cross-review-loop.md",
+    oldText: "## Review brief",
+    newText: "## Delegated notes",
   },
   {
     name: "candidate same-process producer provenance",
@@ -133,20 +217,20 @@ const mutations = [
   {
     name: "finding aggregate-member provenance",
     file: "scripts/review-contract-policy.mjs",
-    oldText: 'if (!aggregateMembers.get(input.aggregate)?.has(input.candidate)) throw new Error("candidate is not a member of aggregate");',
+    oldText: 'if (!aggregateMembers.get(aggregate)?.has(input.candidate)) throw new Error("candidate is not a member of aggregate");',
     newText: 'if (false && !aggregateMembers.get(input.aggregate)?.has(input.candidate)) throw new Error("candidate is not a member of aggregate");',
   },
   {
     name: "exact evidence-gap cardinality",
     file: "scripts/review-contract-policy.mjs",
-    oldText: 'evidenceGapCount: Number(input.requiredEvidenceMissing) + input.candidates.filter((candidate) => candidate.disposition === "REVIEW_BLOCKED").length,',
-    newText: 'evidenceGapCount: Number(input.requiredEvidenceMissing) + Number(hasReviewBlocker),',
+    oldText: '    + input.candidates.filter((candidate) => candidate.disposition === "REVIEW_BLOCKED").length\n',
+    newText: '    + Number(hasReviewBlocker)\n',
   },
   {
     name: "aggregate result immutability",
     file: "scripts/review-contract-policy.mjs",
-    oldText: '  Object.freeze(result);\n',
-    newText: "",
+    oldText: '  Object.freeze(result.counts);\n  Object.freeze(result);\n  producedAggregates.add(result);\n',
+    newText: '  Object.freeze(result.counts);\n  producedAggregates.add(result);\n',
   },
   {
     name: "aggregate counts immutability",
@@ -163,14 +247,14 @@ const mutations = [
   {
     name: "not-applicable checks justification",
     file: "scripts/review-contract-policy.mjs",
-    oldText: 'if (input.checksStatus === "NOT_APPLICABLE") validateSingleLine("checksJustification", input.checksJustification, 240);',
+    oldText: 'if (record.status === "NOT_APPLICABLE") validateSingleLine("checks justification", record.justification, 240);',
     newText: 'if (false && input.checksStatus === "NOT_APPLICABLE") validateSingleLine("checksJustification", input.checksJustification, 240);',
   },
   {
     name: "terminal checks aggregate blocker",
     file: "scripts/review-contract-policy.mjs",
-    oldText: 'if (input.requiredEvidenceMissing || !input.substantiveReview || !checksAdmissible || hasReviewBlocker) {',
-    newText: 'if (input.requiredEvidenceMissing || !input.substantiveReview || hasReviewBlocker) {',
+    oldText: 'if (input.reviewEvidence.requiredEvidenceMissing || !input.reviewEvidence.substantiveReview || !checksAdmissible || hasReviewBlocker) {',
+    newText: 'if (input.reviewEvidence.requiredEvidenceMissing || !input.reviewEvidence.substantiveReview || hasReviewBlocker) {',
   },
   {
     name: "admitted-only severity counts",
@@ -195,6 +279,48 @@ const mutations = [
     file: "scripts/review-contract-policy.mjs",
     oldText: 'publicationEligible: contentEligible && writeAuthorized,',
     newText: 'publicationEligible: contentEligible,',
+  },
+  {
+    name: "publication receipt producer provenance",
+    file: "scripts/review-contract-policy.mjs",
+    oldText: 'if (!producedPublicationReceipts.has(publicationReceipt)) throw new Error("publication receipt lacks evaluator provenance");',
+    newText: 'if (false && !producedPublicationReceipts.has(publicationReceipt)) throw new Error("publication receipt lacks evaluator provenance");',
+  },
+  {
+    name: "publication pr_number live binding",
+    file: "scripts/review-contract-policy.mjs",
+    oldText: 'for (const key of PUBLICATION_RECEIPT_FIELDS) {',
+    newText: 'for (const key of ["lifecycle", "base_sha", "head_sha"]) {',
+  },
+  {
+    name: "publication lifecycle live binding",
+    file: "scripts/review-contract-policy.mjs",
+    oldText: 'for (const key of PUBLICATION_RECEIPT_FIELDS) {',
+    newText: 'for (const key of ["pr_number", "base_sha", "head_sha"]) {',
+  },
+  {
+    name: "publication base_sha live binding",
+    file: "scripts/review-contract-policy.mjs",
+    oldText: 'for (const key of PUBLICATION_RECEIPT_FIELDS) {',
+    newText: 'for (const key of ["pr_number", "lifecycle", "head_sha"]) {',
+  },
+  {
+    name: "publication head_sha live binding",
+    file: "scripts/review-contract-policy.mjs",
+    oldText: 'for (const key of PUBLICATION_RECEIPT_FIELDS) {',
+    newText: 'for (const key of ["pr_number", "lifecycle", "base_sha"]) {',
+  },
+  {
+    name: "finding admission pr/base/head section",
+    file: "references/cross-review-loop.md",
+    oldText: "pr_number:\nbase_sha:\nhead_sha:\n",
+    newText: "pr_number\nbase_sha:\nhead_sha:\n",
+  },
+  {
+    name: "renderer decision producer provenance",
+    file: "scripts/review-contract-policy.mjs",
+    oldText: 'if (!producedPublicationDecisions.has(publicationDecision) || !publicationDecision.publicationEligible) throw new Error("eligible publication decision is required");',
+    newText: 'if (!publicationDecision?.publicationEligible) throw new Error("eligible publication decision is required");',
   },
   {
     name: "aggregate producer provenance",
@@ -326,7 +452,7 @@ try {
 
   for (const mutation of mutations) {
     resetCandidate();
-    applyMutation(mutation.file, mutation.oldText, mutation.newText);
+    applyMutation(mutation.name, mutation.file, mutation.oldText, mutation.newText);
     const result = runGate(candidateRoot);
     if (result.passed) throw new Error(`${mutation.name}: semantic mutation survived verifier and focused policy test`);
   }

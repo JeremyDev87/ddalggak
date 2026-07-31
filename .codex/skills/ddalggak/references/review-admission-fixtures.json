@@ -2,10 +2,15 @@
   "version": 3,
   "description": "Layered deterministic admission, aggregate, publication, and renderer cases for the packaged ddalggak review contract.",
   "requiredAdmissionFields": [
-    "candidate_id", "authority", "lifecycle", "observed_delta", "governing_contract", "scope_relation",
+    "candidate_id", "pr_number", "base_sha", "head_sha", "authority", "lifecycle", "observed_delta", "governing_contract", "scope_relation",
     "prior_decision", "base_state", "current_head_evidence", "diff_causality", "impact", "counterargument",
     "counterargument_disproof", "minimum_correction", "severity", "disposition", "publication_eligible"
   ],
+  "requiredReviewEvidenceFields": ["pr_number", "lifecycle", "base_sha", "head_sha", "review_risk", "semantic_coverage", "counterexample"],
+  "requiredChecksEvidenceFields": ["pr_number", "lifecycle", "base_sha", "head_sha", "status", "justification"],
+  "requiredPublicationReceiptFields": ["pr_number", "lifecycle", "base_sha", "head_sha"],
+  "requiredSemanticCoverageFields": ["criterion_id", "changed_surface", "caller_or_consumer", "failure_mode", "test_or_evidence", "verdict"],
+  "requiredCounterexampleFields": ["claim", "probe", "expected_result", "actual_result", "restoration_proof", "status"],
   "requiredContractMarkers": [
     "## Lifecycle gate",
     "## Finding admission record",
@@ -36,9 +41,17 @@
     "NFKC-equivalent colon/equal assignment delimiter",
     "Unicode-aware punctuation-adjacent repository/issue shorthand",
     "named-user tilde homes",
-
-    "before accepted/base DROP"
+    "## Semantic coverage matrix",
+    "High/Critical zero-finding",
+    "restoration proof",
+    "before accepted/base DROP",
+    "## Review evidence schema v3",
+    "worker self-report is never publication authority"
   ],
+  "requiredContractMarkersByFile": {
+    "references/cross-review-loop.md": ["exactly these 20 fields", "## Semantic coverage matrix", "## Review evidence schema v3", "pr_number", "base_sha", "head_sha", "evaluator-produced exact", "same-process live", "eligible publication decision", "## Review brief"],
+    "templates/review-brief.md": ["PR number", "Base SHA", "Head SHA", "checks Head SHA", "## Semantic coverage matrix", "## Concrete counterexample pass", "Forbidden side effects", "authority: SUBREVIEW", "disposition: CANDIDATE", "publication_eligible: false", "Worker output has no publication authority", "REVIEW_DONE"]
+  },
   "prohibitedContractMarkers": [
     "Start with `change request` only if the workflow still expects that verdict string",
     "After verified GitHub review, Slack/Discord final is exactly",
@@ -50,6 +63,9 @@
   ],
   "baseCandidate": {
     "candidate_id": "fixture-candidate",
+    "pr_number": 7,
+    "base_sha": "1111111111111111111111111111111111111111",
+    "head_sha": "4444444444444444444444444444444444444444",
     "authority": "CONDUCTOR",
     "lifecycle": "OPEN",
     "observed_delta": "DEFECT: changed behavior",
@@ -66,6 +82,15 @@
     "severity": "HIGH",
     "disposition": "CANDIDATE",
     "publication_eligible": false
+  },
+  "baseReviewEvidence": {
+    "pr_number": 7,
+    "lifecycle": "OPEN",
+    "base_sha": "1111111111111111111111111111111111111111",
+    "head_sha": "4444444444444444444444444444444444444444",
+    "review_risk": "HIGH",
+    "semantic_coverage": [{"criterion_id":"c1","changed_surface":"contract","caller_or_consumer":"conductor","failure_mode":"false approval","test_or_evidence":"PROVEN: passed","verdict":"COVERED"}],
+    "counterexample": {"claim":"gaps block","probe":"bad fixture","expected_result":"VIOLATION_REJECTED: blocked","actual_result":"VIOLATION_REJECTED: blocked","restoration_proof":"PROVEN: restored","status":"PASSED"}
   },
   "candidateScenarios": [
     {"id":"current-head-blocker","overrides":{},"expected":{"disposition":"BLOCKING","publication_eligible":true}},
@@ -84,38 +109,60 @@
     {"id":"proven-subreview-unpromoted","overrides":{"authority":"SUBREVIEW"},"expected":{"disposition":"REVIEW_BLOCKED","publication_eligible":false}},
     {"id":"medium-proven-defect","overrides":{"severity":"MEDIUM"},"expected":{"disposition":"NON_BLOCKING","publication_eligible":true}},
     {"id":"medium-missing-current-head","overrides":{"severity":"MEDIUM","current_head_evidence":"UNKNOWN: current-head reproduction is missing"},"expected":{"disposition":"QUESTION","publication_eligible":false}},
-    {"id":"unknown-blocking-evidence","overrides":{"counterargument_disproof":"UNKNOWN: counterargument has not been disproved"},"expected":{"disposition":"REVIEW_BLOCKED","publication_eligible":false}}
+    {"id":"unknown-blocking-evidence","overrides":{"counterargument_disproof":"UNKNOWN: counterargument has not been disproved"},"expected":{"disposition":"REVIEW_BLOCKED","publication_eligible":false}},
+    {"id":"stale-head-candidate","overrides":{"head_sha":"3333333333333333333333333333333333333333"},"expected":{"disposition":"BLOCKING","publication_eligible":true}}
   ],
   "negativeAdmissionScenarios": [
     {"id":"accepted-decision-worsened-head-contradiction","overrides":{"prior_decision":"ACCEPTED_NO_COUNTEREVIDENCE: accepted before the current regression","base_state":"WORSENED_OR_EXPOSED: current head expands exposure","diff_causality":"WORSENED: current diff worsens the accepted state"},"expectedError":"accepted-no-counterevidence contradicts current-head worsening"},
     {"id":"accepted-decision-proven-counterevidence-contradiction","overrides":{"prior_decision":"ACCEPTED_NO_COUNTEREVIDENCE: accepted trade-off","counterargument_disproof":"PROVEN: fresh evidence disproves the trade-off"},"expectedError":"accepted-no-counterevidence contradicts proven counterevidence"}
   ],
+  "reviewEvidenceScenarios": [
+    {"id":"complete","overrides":{},"expected":{"requiredEvidenceMissing":false,"evidenceGapCount":0}},
+    {"id":"semantic-gap","overrides":{"semantic_coverage":[{"criterion_id":"c1","changed_surface":"contract","caller_or_consumer":"conductor","failure_mode":"untested","test_or_evidence":"PROVEN: missed","verdict":"GAP"}]},"expected":{"requiredEvidenceMissing":true,"evidenceGapCount":1}},
+    {"id":"na-gap","overrides":{"semantic_coverage":[{"criterion_id":"c1","changed_surface":"contract","caller_or_consumer":"conductor","failure_mode":"unproven N/A","test_or_evidence":"UNKNOWN: missing","verdict":"NOT_APPLICABLE"}]},"expected":{"requiredEvidenceMissing":true,"evidenceGapCount":1}},
+    {"id":"probe-not-run","overrides":{"counterexample":{"claim":"gaps block","probe":"not run","expected_result":"VIOLATION_REJECTED: blocked","actual_result":"NOT_RUN: absent","restoration_proof":"UNKNOWN: absent","status":"NOT_RUN"}},"expected":{"requiredEvidenceMissing":true,"evidenceGapCount":2}},
+    {"id":"probe-failed","overrides":{"review_risk":"CRITICAL","counterexample":{"claim":"gaps block","probe":"bad fixture","expected_result":"VIOLATION_REJECTED: blocked","actual_result":"VIOLATION_PASSED: passed","restoration_proof":"PROVEN: restored","status":"VIOLATION_PASSED"}},"expected":{"requiredEvidenceMissing":true,"evidenceGapCount":1}}
+  ],
   "aggregateScenarios": [
-    {"id":"open-zero-finding","input":{"lifecycle":"OPEN","candidateIds":[],"requiredEvidenceMissing":false,"substantiveReview":true,"checksStatus":"PASS"},"expected":{"outcome":"APPROVE","reviewCompletionEligible":true}},
-    {"id":"open-pending-checks","input":{"lifecycle":"OPEN","candidateIds":[],"requiredEvidenceMissing":false,"substantiveReview":true,"checksStatus":"PENDING"},"expected":{"outcome":"BLOCKED","reviewCompletionEligible":false}},
-    {"id":"open-failed-checks","input":{"lifecycle":"OPEN","candidateIds":[],"requiredEvidenceMissing":false,"substantiveReview":true,"checksStatus":"FAIL"},"expected":{"outcome":"BLOCKED","reviewCompletionEligible":false}},
-    {"id":"open-blocker","input":{"lifecycle":"OPEN","candidateIds":["current-head-blocker"],"requiredEvidenceMissing":false,"substantiveReview":true,"checksStatus":"PASS"},"expected":{"outcome":"CHANGES_REQUESTED","reviewCompletionEligible":true}},
-    {"id":"open-blocker-pending-checks","input":{"lifecycle":"OPEN","candidateIds":["current-head-blocker"],"requiredEvidenceMissing":false,"substantiveReview":true,"checksStatus":"PENDING"},"expected":{"outcome":"BLOCKED","reviewCompletionEligible":false}},
-    {"id":"open-unresolved-subreview","input":{"lifecycle":"OPEN","candidateIds":["unsupported-subreview"],"requiredEvidenceMissing":false,"substantiveReview":true,"checksStatus":"PASS"},"expected":{"outcome":"BLOCKED","reviewCompletionEligible":false}},
-    {"id":"open-required-evidence-missing","input":{"lifecycle":"OPEN","candidateIds":[],"requiredEvidenceMissing":true,"substantiveReview":true,"checksStatus":"PASS"},"expected":{"outcome":"BLOCKED","reviewCompletionEligible":false}},
-    {"id":"merged-zero-finding","input":{"lifecycle":"MERGED","candidateIds":[],"requiredEvidenceMissing":false,"substantiveReview":true,"checksStatus":"PASS"},"expected":{"outcome":"NO_FOLLOW_UP","reviewCompletionEligible":true}},
-    {"id":"merged-pending-checks","input":{"lifecycle":"MERGED","candidateIds":[],"requiredEvidenceMissing":false,"substantiveReview":true,"checksStatus":"PENDING"},"expected":{"outcome":"BLOCKED","reviewCompletionEligible":false}},
-    {"id":"merged-proven-finding","input":{"lifecycle":"MERGED","candidateIds":["medium-proven-defect"],"requiredEvidenceMissing":false,"substantiveReview":true,"checksStatus":"PASS"},"expected":{"outcome":"FOLLOW_UP_REQUIRED","reviewCompletionEligible":true}},
-    {"id":"closed-zero-finding","input":{"lifecycle":"CLOSED_UNMERGED","candidateIds":[],"requiredEvidenceMissing":false,"substantiveReview":true,"checksStatus":"PASS"},"expected":{"outcome":"NO_ACTION","reviewCompletionEligible":true}},
-    {"id":"closed-proven-finding","input":{"lifecycle":"CLOSED_UNMERGED","candidateIds":["medium-proven-defect"],"requiredEvidenceMissing":false,"substantiveReview":true,"checksStatus":"PASS"},"expected":{"outcome":"FOLLOW_UP_REQUIRED","reviewCompletionEligible":true}},
-    {"id":"open-not-applicable-checks-justified","input":{"lifecycle":"OPEN","candidateIds":[],"requiredEvidenceMissing":false,"substantiveReview":true,"checksStatus":"NOT_APPLICABLE","checksJustification":"No executable checks apply to this documentation-only review."},"expected":{"outcome":"APPROVE","reviewCompletionEligible":true}}
+    {"id":"open-zero-finding","input":{"lifecycle":"OPEN","candidateIds":[],"reviewEvidenceId":"complete","checksStatus":"PASS"},"expected":{"outcome":"APPROVE","reviewCompletionEligible":true}},
+    {"id":"open-pending-checks","input":{"lifecycle":"OPEN","candidateIds":[],"reviewEvidenceId":"complete","checksStatus":"PENDING"},"expected":{"outcome":"BLOCKED","reviewCompletionEligible":false}},
+    {"id":"open-failed-checks","input":{"lifecycle":"OPEN","candidateIds":[],"reviewEvidenceId":"complete","checksStatus":"FAIL"},"expected":{"outcome":"BLOCKED","reviewCompletionEligible":false}},
+    {"id":"open-blocker","input":{"lifecycle":"OPEN","candidateIds":["current-head-blocker"],"reviewEvidenceId":"complete","checksStatus":"PASS"},"expected":{"outcome":"CHANGES_REQUESTED","reviewCompletionEligible":true}},
+    {"id":"open-blocker-pending-checks","input":{"lifecycle":"OPEN","candidateIds":["current-head-blocker"],"reviewEvidenceId":"complete","checksStatus":"PENDING"},"expected":{"outcome":"BLOCKED","reviewCompletionEligible":false}},
+    {"id":"open-unresolved-subreview","input":{"lifecycle":"OPEN","candidateIds":["unsupported-subreview"],"reviewEvidenceId":"complete","checksStatus":"PASS"},"expected":{"outcome":"BLOCKED","reviewCompletionEligible":false}},
+    {"id":"open-required-evidence-missing","input":{"lifecycle":"OPEN","candidateIds":[],"reviewEvidenceId":"semantic-gap","checksStatus":"PASS"},"expected":{"outcome":"BLOCKED","reviewCompletionEligible":false}},
+    {"id":"open-na-gap","input":{"lifecycle":"OPEN","candidateIds":[],"reviewEvidenceId":"na-gap","checksStatus":"PASS"},"expected":{"outcome":"BLOCKED","reviewCompletionEligible":false}},
+    {"id":"open-probe-not-run","input":{"lifecycle":"OPEN","candidateIds":[],"reviewEvidenceId":"probe-not-run","checksStatus":"PASS"},"expected":{"outcome":"BLOCKED","reviewCompletionEligible":false}},
+    {"id":"open-critical-zero-finding-violation-passed","input":{"lifecycle":"OPEN","candidateIds":[],"reviewEvidenceId":"probe-failed","checksStatus":"PASS"},"expected":{"outcome":"BLOCKED","reviewCompletionEligible":false}},
+    {"id":"merged-zero-finding","input":{"lifecycle":"MERGED","candidateIds":[],"reviewEvidenceId":"complete","checksStatus":"PASS"},"expected":{"outcome":"NO_FOLLOW_UP","reviewCompletionEligible":true}},
+    {"id":"merged-pending-checks","input":{"lifecycle":"MERGED","candidateIds":[],"reviewEvidenceId":"complete","checksStatus":"PENDING"},"expected":{"outcome":"BLOCKED","reviewCompletionEligible":false}},
+    {"id":"merged-proven-finding","input":{"lifecycle":"MERGED","candidateIds":["medium-proven-defect"],"reviewEvidenceId":"complete","checksStatus":"PASS"},"expected":{"outcome":"FOLLOW_UP_REQUIRED","reviewCompletionEligible":true}},
+    {"id":"closed-zero-finding","input":{"lifecycle":"CLOSED_UNMERGED","candidateIds":[],"reviewEvidenceId":"complete","checksStatus":"PASS"},"expected":{"outcome":"NO_ACTION","reviewCompletionEligible":true}},
+    {"id":"closed-proven-finding","input":{"lifecycle":"CLOSED_UNMERGED","candidateIds":["medium-proven-defect"],"reviewEvidenceId":"complete","checksStatus":"PASS"},"expected":{"outcome":"FOLLOW_UP_REQUIRED","reviewCompletionEligible":true}},
+    {"id":"open-not-applicable-checks-justified","input":{"lifecycle":"OPEN","candidateIds":[],"reviewEvidenceId":"complete","checksStatus":"NOT_APPLICABLE","checksJustification":"No executable checks apply to this documentation-only review."},"expected":{"outcome":"APPROVE","reviewCompletionEligible":true}},
+    {"id":"open-stale-checks-head","input":{"lifecycle":"OPEN","candidateIds":[],"reviewEvidenceId":"complete","checksOverrides":{"head_sha":"3333333333333333333333333333333333333333"},"checksStatus":"PASS"},"expectedError":"checks head_sha does not match review evidence"},
+    {"id":"open-stale-checks-pr","input":{"lifecycle":"OPEN","candidateIds":[],"reviewEvidenceId":"complete","checksOverrides":{"pr_number":8},"checksStatus":"PASS"},"expectedError":"checks pr_number does not match review evidence"},
+    {"id":"open-stale-checks-base","input":{"lifecycle":"OPEN","candidateIds":[],"reviewEvidenceId":"complete","checksOverrides":{"base_sha":"5555555555555555555555555555555555555555"},"checksStatus":"PASS"},"expectedError":"checks base_sha does not match review evidence"},
+    {"id":"open-stale-checks-lifecycle","input":{"lifecycle":"OPEN","candidateIds":[],"reviewEvidenceId":"complete","checksOverrides":{"lifecycle":"MERGED"},"checksStatus":"PASS"},"expectedError":"checks lifecycle does not match review evidence"},
+    {"id":"open-stale-candidate-head","input":{"lifecycle":"OPEN","candidateIds":["stale-head-candidate"],"reviewEvidenceId":"complete","checksStatus":"PASS"},"expectedError":"candidate authority does not match review evidence revision"},
+    {"id":"open-stale-evidence-lifecycle","input":{"lifecycle":"OPEN","reviewEvidenceLifecycle":"MERGED","candidateIds":[],"reviewEvidenceId":"complete","checksStatus":"PASS"},"expectedError":"review evidence lifecycle does not match aggregate lifecycle"}
   ],
   "publicationScenarios": [
     {"id":"open-approved-no-write-authority","aggregateId":"open-zero-finding","writeAuthorized":false,"expected":false},
     {"id":"open-approved-write-authorized","aggregateId":"open-zero-finding","writeAuthorized":true,"expected":true},
+    {"id":"open-gap-write-authorized","aggregateId":"open-required-evidence-missing","writeAuthorized":true,"expected":false},
     {"id":"merged-no-follow-up-write-authorized","aggregateId":"merged-zero-finding","writeAuthorized":true,"expected":false},
     {"id":"merged-follow-up-no-write-authority","aggregateId":"merged-proven-finding","writeAuthorized":false,"expected":false},
-    {"id":"merged-follow-up-write-authorized","aggregateId":"merged-proven-finding","writeAuthorized":true,"expected":true}
+    {"id":"merged-follow-up-write-authorized","aggregateId":"merged-proven-finding","writeAuthorized":true,"expected":true},
+    {"id":"stale-publication-pr","aggregateId":"open-zero-finding","writeAuthorized":true,"receiptOverrides":{"pr_number":8},"expectedError":"publication pr_number does not match aggregate"},
+    {"id":"stale-publication-lifecycle","aggregateId":"open-zero-finding","writeAuthorized":true,"receiptOverrides":{"lifecycle":"MERGED"},"expectedError":"publication lifecycle does not match aggregate"},
+    {"id":"stale-publication-base","aggregateId":"open-zero-finding","writeAuthorized":true,"receiptOverrides":{"base_sha":"5555555555555555555555555555555555555555"},"expectedError":"publication base_sha does not match aggregate"},
+    {"id":"stale-publication-head","aggregateId":"open-zero-finding","writeAuthorized":true,"receiptOverrides":{"head_sha":"3333333333333333333333333333333333333333"},"expectedError":"publication head_sha does not match aggregate"}
   ],
   "rendererScenarios": [
     {"id":"render-open","aggregateId":"open-zero-finding"},
-    {"id":"render-merged","aggregateId":"merged-zero-finding"},
-    {"id":"render-closed","aggregateId":"closed-zero-finding"}
+    {"id":"render-open-blocker","aggregateId":"open-blocker"},
+    {"id":"render-merged-finding","aggregateId":"merged-proven-finding"}
   ],
   "findingRendererScenarios": [
     {"id":"render-finding","candidateId":"current-head-blocker","lifecycle":"OPEN"}
