@@ -16,10 +16,13 @@ Re-read current head, base, files, checks, linked requirements, issue/body comme
 
 ## Finding admission record
 
-Admission schema v3 owns exactly these 17 fields:
+Admission schema v3 owns exactly these 20 fields:
 
 ```yaml
 candidate_id:
+pr_number:
+base_sha:
+head_sha:
 authority: CONDUCTOR | SUBREVIEW
 lifecycle: OPEN | MERGED | CLOSED_UNMERGED
 observed_delta:
@@ -38,9 +41,21 @@ disposition: CANDIDATE
 publication_eligible: false
 ```
 
-Evidence-bearing values use `TOKEN: detail`; bare tokens, unknown fields, unknown enums, missing fields, or contradictory fields are schema errors. A candidate is not a final disposition. Only the canonical evaluator may produce a final candidate, and only its provenance-bearing result may enter aggregation.
+Evidence-bearing values use `TOKEN: detail`; bare tokens, unknown fields, unknown enums, missing fields, or contradictory fields are schema errors. A candidate is not a final disposition. Only the canonical evaluator may produce a final candidate, and only its provenance-bearing result may enter aggregation. Candidate, review evidence, checks, and publication receipts must bind the same `pr_number` / `lifecycle` / `base_sha` / `head_sha`.
 
 The record must establish prior decision, base and current-head evidence, governing requirement, scope relation, actual impact, smallest correction, counterargument, and disproof. Missing process evidence is not defect evidence. Difference is not defect. Express a finding as `symptom -> violated contract -> evidence -> impact -> smallest correction`.
+
+## Review evidence schema v3
+
+Review evidence is evaluator-produced exact data, not caller booleans:
+
+- required fields: `pr_number`, `lifecycle`, `base_sha`, `head_sha`, `review_risk`, `semantic_coverage`, `counterexample`
+- checks evidence requires the same revision binding plus `status` and `justification`
+- publication uses a same-process live receipt and an eligible publication decision; worker self-report is never publication authority
+
+## Semantic coverage matrix
+
+Before High/Critical zero-finding publication, every in-scope changed surface must have semantic coverage rows and a concrete counterexample with restoration proof. Coverage verdicts are `COVERED | GAP | NOT_APPLICABLE`. Counterexample status values are `PASSED | VIOLATION_PASSED | BLOCKED | NOT_RUN`. Gaps, unproven N/A, `VIOLATION_PASSED`, unrun probes, and status/actual contradictions fail closed.
 
 ## Candidate disposition and review outcome are separate axes
 
@@ -92,6 +107,9 @@ Summary and finding share one privacy chokepoint. Validate raw text and an NFKC 
 A zero-finding review is valid only with substantive validation evidence. Filtered Low/nit notes remain internal rather than being collapsed into a public details section.
 
 ## Review brief
+
+The review brief must capture PR number, Base SHA, Head SHA, checks Head SHA, lifecycle, authority boundaries, Forbidden side effects, semantic coverage matrix, and concrete counterexample pass requirements before review starts.
+
 
 Every delegated brief includes lifecycle, base/head SHAs, diff scope, linked requirements, checks, prior decisions/comments, applicable gates, forbidden side effects, expected Admission schema v3 record, and the instruction that SUBREVIEW output is only a candidate. The conductor re-runs admission, aggregation, publication, and rendering; worker self-report is never publication authority.
 
