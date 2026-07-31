@@ -182,6 +182,10 @@
               "latest_conclusion": {
                 "enum": ["none", "pending", "approve", "changes_requested"]
               },
+              "final_verdict": {
+                "enum": ["none", "approve", "change request", "comment", "blocked"],
+                "description": "Review Quality Contract v2 verdict. Separate from the GitHub formal-review conclusion axis."
+              },
               "conclusion_head_sha": { "type": "string" },
               "comment_url": { "type": "string" },
               "stale_reason": { "type": "string" }

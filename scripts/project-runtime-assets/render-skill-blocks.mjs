@@ -154,6 +154,7 @@ const referenceGroupByName = new Map([
   ["quality-lens-router.md", "gates"],
   ["ralplan-critic-consensus.md", "gates"],
   ["regression-library.md", "gates"],
+  ["review-quality-contract.md", "gates"],
   ["retrospective-workflow.md", "workflow"],
   ["retrospective.md", "workflow"],
   ["review-comment-style.md", "workflow"],

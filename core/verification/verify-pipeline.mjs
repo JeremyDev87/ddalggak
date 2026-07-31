@@ -109,6 +109,12 @@ export const verifyPipelineStages = [
         args: ["run", "test:conditional-command-assets"],
         npmScript: "test:conditional-command-assets",
       },
+      {
+        label: "review quality fixture and fail-closed tests",
+        command: "npm",
+        args: ["run", "test:review-quality-eval"],
+        npmScript: "test:review-quality-eval",
+      },
     ],
   },
   {

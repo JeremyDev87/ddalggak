@@ -1,0 +1,492 @@
+{
+  "version": 1,
+  "description": "Synthetic, provider-neutral review-quality observations. No raw prompts, private diffs, credentials, or live PR payloads.",
+  "cases": [
+    {
+      "id": "seed-assertion-weakening",
+      "kind": "seeded-defect",
+      "riskTier": "high",
+      "currentHead": "0000000000000000000000000000000000000001",
+      "expected": {
+        "intakeDecision": "ready-for-review",
+        "allowedVerdicts": [
+          "change request"
+        ],
+        "findings": [
+          {
+            "id": "assertion-weakening",
+            "severity": "high"
+          }
+        ]
+      },
+      "observed": {
+        "reviewedHead": "0000000000000000000000000000000000000001",
+        "intakeDecision": "ready-for-review",
+        "verdict": "change request",
+        "coverage": [
+          {
+            "criterion": "Invalid payment requests remain rejected.",
+            "changedSurface": "tests/payment.test.js:42",
+            "callerImpact": "Payment submission and retry callers depend on rejection.",
+            "failureMode": "Given a declined card, the rewritten fixture returns success and the test still passes.",
+            "evidence": "Green CI and unchanged test count were checked; neither proves assertion strength.",
+            "verdict": "gap"
+          }
+        ],
+        "findings": [
+          {
+            "id": "assertion-weakening",
+            "severity": "high",
+            "claim": "The changed assertion accepts the broken success path instead of preserving the rejection contract.",
+            "path": "tests/payment.test.js",
+            "line": 42,
+            "failingScenario": "Given a declined card, the rewritten fixture returns success and the test still passes.",
+            "impact": "Invalid charges can be treated as completed.",
+            "minimalFix": "Restore the rejection assertion and add the declined-card negative case.",
+            "confidence": "high",
+            "counterevidenceChecked": "Green CI and unchanged test count were checked; neither proves assertion strength."
+          }
+        ],
+        "humanOwner": "accountable-human-reviewer"
+      }
+    },
+    {
+      "id": "seed-silent-fallback",
+      "kind": "seeded-defect",
+      "riskTier": "high",
+      "currentHead": "0000000000000000000000000000000000000002",
+      "expected": {
+        "intakeDecision": "ready-for-review",
+        "allowedVerdicts": [
+          "change request"
+        ],
+        "findings": [
+          {
+            "id": "silent-fallback",
+            "severity": "high"
+          }
+        ]
+      },
+      "observed": {
+        "reviewedHead": "0000000000000000000000000000000000000002",
+        "intakeDecision": "ready-for-review",
+        "verdict": "change request",
+        "coverage": [
+          {
+            "criterion": "Provider failures remain observable to callers.",
+            "changedSurface": "src/search/provider.js:61",
+            "callerImpact": "Search UI and retry policy distinguish failure from no results.",
+            "failureMode": "When the provider times out, the function returns an empty array and callers render a valid no-results state.",
+            "evidence": "The happy-path provider test was checked and does not exercise timeout semantics.",
+            "verdict": "gap"
+          }
+        ],
+        "findings": [
+          {
+            "id": "silent-fallback",
+            "severity": "high",
+            "claim": "The new catch branch converts a required provider failure into an empty success result.",
+            "path": "src/search/provider.js",
+            "line": 61,
+            "failingScenario": "When the provider times out, the function returns an empty array and callers render a valid no-results state.",
+            "impact": "Operational failures become silent false successes.",
+            "minimalFix": "Propagate the typed failure or return the existing explicit failure result.",
+            "confidence": "high",
+            "counterevidenceChecked": "The happy-path provider test was checked and does not exercise timeout semantics."
+          }
+        ],
+        "humanOwner": "accountable-human-reviewer"
+      }
+    },
+    {
+      "id": "seed-scope-expansion",
+      "kind": "seeded-defect",
+      "riskTier": "high",
+      "currentHead": "0000000000000000000000000000000000000003",
+      "expected": {
+        "intakeDecision": "ready-for-review",
+        "allowedVerdicts": [
+          "change request"
+        ],
+        "findings": [
+          {
+            "id": "scope-expansion",
+            "severity": "high"
+          }
+        ]
+      },
+      "observed": {
+        "reviewedHead": "0000000000000000000000000000000000000003",
+        "intakeDecision": "ready-for-review",
+        "verdict": "change request",
+        "coverage": [
+          {
+            "criterion": "Only the profile response field changes.",
+            "changedSurface": "src/shared/serialize.js:18",
+            "callerImpact": "Billing and export endpoints share this serializer.",
+            "failureMode": "A billing export now omits null fields although the issue only authorizes profile output changes.",
+            "evidence": "The linked issue non-goals and shared caller list were checked.",
+            "verdict": "gap"
+          }
+        ],
+        "findings": [
+          {
+            "id": "scope-expansion",
+            "severity": "high",
+            "claim": "The shared serializer change alters an unrelated API outside the issue-owned surface.",
+            "path": "src/shared/serialize.js",
+            "line": 18,
+            "failingScenario": "A billing export now omits null fields although the issue only authorizes profile output changes.",
+            "impact": "Unrelated public responses change without acceptance coverage.",
+            "minimalFix": "Move the behavior to the profile adapter and leave the shared serializer unchanged.",
+            "confidence": "high",
+            "counterevidenceChecked": "The linked issue non-goals and shared caller list were checked."
+          }
+        ],
+        "humanOwner": "accountable-human-reviewer"
+      }
+    },
+    {
+      "id": "seed-auth-short-circuit",
+      "kind": "seeded-defect",
+      "riskTier": "critical",
+      "currentHead": "0000000000000000000000000000000000000004",
+      "expected": {
+        "intakeDecision": "ready-for-review",
+        "allowedVerdicts": [
+          "change request"
+        ],
+        "findings": [
+          {
+            "id": "auth-short-circuit",
+            "severity": "critical"
+          }
+        ]
+      },
+      "observed": {
+        "reviewedHead": "0000000000000000000000000000000000000004",
+        "intakeDecision": "ready-for-review",
+        "verdict": "change request",
+        "coverage": [
+          {
+            "criterion": "Cached and uncached requests enforce the same authorization policy.",
+            "changedSurface": "src/auth/authorize.js:27",
+            "callerImpact": "Every protected route calls authorize before serving cached data.",
+            "failureMode": "Given a warm cache and a revoked user, the early return serves protected data without the permission check.",
+            "evidence": "The uncached authorization tests and cache-hit tests were checked separately; their intersection is missing.",
+            "verdict": "gap"
+          }
+        ],
+        "findings": [
+          {
+            "id": "auth-short-circuit",
+            "severity": "critical",
+            "claim": "The reordered guard returns before authorization is evaluated for cached requests.",
+            "path": "src/auth/authorize.js",
+            "line": 27,
+            "failingScenario": "Given a warm cache and a revoked user, the early return serves protected data without the permission check.",
+            "impact": "Revoked users can read protected data.",
+            "minimalFix": "Move authorization ahead of the cache return and add a revoked-user warm-cache test.",
+            "confidence": "high",
+            "counterevidenceChecked": "The uncached authorization tests and cache-hit tests were checked separately; their intersection is missing."
+          }
+        ],
+        "humanOwner": "accountable-human-reviewer"
+      }
+    },
+    {
+      "id": "seed-stale-evidence-acceptance",
+      "kind": "seeded-defect",
+      "riskTier": "high",
+      "currentHead": "0000000000000000000000000000000000000005",
+      "expected": {
+        "intakeDecision": "ready-for-review",
+        "allowedVerdicts": [
+          "change request"
+        ],
+        "findings": [
+          {
+            "id": "stale-evidence-acceptance",
+            "severity": "high"
+          }
+        ]
+      },
+      "observed": {
+        "reviewedHead": "0000000000000000000000000000000000000005",
+        "intakeDecision": "ready-for-review",
+        "verdict": "change request",
+        "coverage": [
+          {
+            "criterion": "Approval evidence is bound to the current PR head.",
+            "changedSurface": "src/review/evidence.js:73",
+            "callerImpact": "The verdict reducer trusts this evidence freshness predicate.",
+            "failureMode": "Given evidence for head A and current head B, the predicate returns fresh and permits approval.",
+            "evidence": "Timestamps and check names were checked; neither substitutes for head identity.",
+            "verdict": "gap"
+          }
+        ],
+        "findings": [
+          {
+            "id": "stale-evidence-acceptance",
+            "severity": "high",
+            "claim": "The review helper accepts validation recorded for a different source revision.",
+            "path": "src/review/evidence.js",
+            "line": 73,
+            "failingScenario": "Given evidence for head A and current head B, the predicate returns fresh and permits approval.",
+            "impact": "A changed PR can inherit obsolete green evidence.",
+            "minimalFix": "Require exact full-SHA equality before evidence contributes to approval.",
+            "confidence": "high",
+            "counterevidenceChecked": "Timestamps and check names were checked; neither substitutes for head identity."
+          }
+        ],
+        "humanOwner": "accountable-human-reviewer"
+      }
+    },
+    {
+      "id": "seed-guard-false-pass",
+      "kind": "seeded-defect",
+      "riskTier": "high",
+      "currentHead": "0000000000000000000000000000000000000006",
+      "expected": {
+        "intakeDecision": "ready-for-review",
+        "allowedVerdicts": [
+          "change request"
+        ],
+        "findings": [
+          {
+            "id": "guard-false-pass",
+            "severity": "high"
+          }
+        ]
+      },
+      "observed": {
+        "reviewedHead": "0000000000000000000000000000000000000006",
+        "intakeDecision": "ready-for-review",
+        "verdict": "change request",
+        "coverage": [
+          {
+            "criterion": "All declared source-of-truth keys remain identical.",
+            "changedSurface": "tests/source-truth-sync.test.js:55",
+            "callerImpact": "Generated skill projections consume the guarded key set.",
+            "failureMode": "Replace one expected key with an unknown key while preserving count; the guard still passes.",
+            "evidence": "A disposable key-substitution mutation was applied and the guard remained green.",
+            "verdict": "gap"
+          }
+        ],
+        "findings": [
+          {
+            "id": "guard-false-pass",
+            "severity": "high",
+            "claim": "The new guard compares only collection counts and misses key substitution.",
+            "path": "tests/source-truth-sync.test.js",
+            "line": 55,
+            "failingScenario": "Replace one expected key with an unknown key while preserving count; the guard still passes.",
+            "impact": "Projection drift can ship despite a green guard.",
+            "minimalFix": "Compare normalized key sets and retain the count assertion only as a secondary diagnostic.",
+            "confidence": "high",
+            "counterevidenceChecked": "A disposable key-substitution mutation was applied and the guard remained green."
+          }
+        ],
+        "humanOwner": "accountable-human-reviewer"
+      }
+    },
+    {
+      "id": "seed-rendered-state-missing",
+      "kind": "seeded-defect",
+      "riskTier": "high",
+      "currentHead": "0000000000000000000000000000000000000007",
+      "expected": {
+        "intakeDecision": "ready-for-review",
+        "allowedVerdicts": [
+          "change request"
+        ],
+        "findings": [
+          {
+            "id": "rendered-state-missing",
+            "severity": "high"
+          }
+        ]
+      },
+      "observed": {
+        "reviewedHead": "0000000000000000000000000000000000000007",
+        "intakeDecision": "ready-for-review",
+        "verdict": "change request",
+        "coverage": [
+          {
+            "criterion": "A completed review exposes its verdict and next action visibly.",
+            "changedSurface": "src/components/ReviewResult.tsx:88",
+            "callerImpact": "The route renders ReviewResult after the request completes.",
+            "failureMode": "Given a successful response, state updates but the component falls through to the loading branch.",
+            "evidence": "The API success test was checked; it does not assert DOM output.",
+            "verdict": "gap"
+          }
+        ],
+        "findings": [
+          {
+            "id": "rendered-state-missing",
+            "severity": "high",
+            "claim": "The success state is stored but never rendered by the changed component branch.",
+            "path": "src/components/ReviewResult.tsx",
+            "line": 88,
+            "failingScenario": "Given a successful response, state updates but the component falls through to the loading branch.",
+            "impact": "Users cannot see or act on completed review results.",
+            "minimalFix": "Return the success branch before the loading fallback and add a rendered-state assertion.",
+            "confidence": "high",
+            "counterevidenceChecked": "The API success test was checked; it does not assert DOM output."
+          }
+        ],
+        "humanOwner": "accountable-human-reviewer"
+      }
+    },
+    {
+      "id": "seed-public-api-break",
+      "kind": "seeded-defect",
+      "riskTier": "high",
+      "currentHead": "0000000000000000000000000000000000000008",
+      "expected": {
+        "intakeDecision": "ready-for-review",
+        "allowedVerdicts": [
+          "change request"
+        ],
+        "findings": [
+          {
+            "id": "public-api-break",
+            "severity": "high"
+          }
+        ]
+      },
+      "observed": {
+        "reviewedHead": "0000000000000000000000000000000000000008",
+        "intakeDecision": "ready-for-review",
+        "verdict": "change request",
+        "coverage": [
+          {
+            "criterion": "Existing callers remain source-compatible.",
+            "changedSurface": "src/public/review.js:14",
+            "callerImpact": "CLI dispatch and third-party imports call review() without the new options object.",
+            "failureMode": "An existing zero-argument caller now throws while constructing options.",
+            "evidence": "New-call-site tests were checked; legacy invocation coverage is absent.",
+            "verdict": "gap"
+          }
+        ],
+        "findings": [
+          {
+            "id": "public-api-break",
+            "severity": "high",
+            "claim": "The exported function now requires an argument that existing callers omit.",
+            "path": "src/public/review.js",
+            "line": 14,
+            "failingScenario": "An existing zero-argument caller now throws while constructing options.",
+            "impact": "Published consumers and the CLI break at runtime.",
+            "minimalFix": "Default the options parameter or add a compatibility wrapper with a deprecation path.",
+            "confidence": "high",
+            "counterevidenceChecked": "New-call-site tests were checked; legacy invocation coverage is absent."
+          }
+        ],
+        "humanOwner": "accountable-human-reviewer"
+      }
+    },
+    {
+      "id": "clean-direct-validation",
+      "kind": "clean-control",
+      "riskTier": "low",
+      "currentHead": "0000000000000000000000000000000000000009",
+      "expected": {
+        "intakeDecision": "ready-for-review",
+        "allowedVerdicts": [
+          "approve",
+          "comment"
+        ],
+        "findings": []
+      },
+      "observed": {
+        "reviewedHead": "0000000000000000000000000000000000000009",
+        "intakeDecision": "ready-for-review",
+        "verdict": "approve",
+        "coverage": [
+          {
+            "criterion": "Reject an empty command name.",
+            "changedSurface": "src/validate.js:12",
+            "callerImpact": "CLI parser calls validation before dispatch.",
+            "failureMode": "An empty name is rejected with the existing typed error.",
+            "evidence": "Focused negative test and unchanged callers prove the direct validation.",
+            "verdict": "covered"
+          }
+        ],
+        "findings": []
+      }
+    },
+    {
+      "id": "clean-intentional-fallback",
+      "kind": "clean-control",
+      "riskTier": "medium",
+      "currentHead": "000000000000000000000000000000000000000a",
+      "expected": {
+        "intakeDecision": "ready-for-review",
+        "allowedVerdicts": [
+          "approve",
+          "comment"
+        ],
+        "findings": []
+      },
+      "observed": {
+        "reviewedHead": "000000000000000000000000000000000000000a",
+        "intakeDecision": "ready-for-review",
+        "verdict": "approve",
+        "coverage": [
+          {
+            "criterion": "Optional analytics failure must not block the primary result.",
+            "changedSurface": "src/analytics.js:30",
+            "callerImpact": "The primary operation records analytics best-effort after success.",
+            "failureMode": "Analytics timeout is logged and the already-completed primary result is preserved.",
+            "evidence": "Issue non-goal, typed log event, and timeout test establish the intentional fallback.",
+            "verdict": "covered"
+          }
+        ],
+        "findings": []
+      }
+    },
+    {
+      "id": "block-missing-intent",
+      "kind": "admission-blocker",
+      "riskTier": "medium",
+      "currentHead": "000000000000000000000000000000000000000b",
+      "expected": {
+        "intakeDecision": "needs-intent",
+        "allowedVerdicts": [
+          "blocked"
+        ],
+        "findings": []
+      },
+      "observed": {
+        "reviewedHead": "000000000000000000000000000000000000000b",
+        "intakeDecision": "needs-intent",
+        "verdict": "blocked",
+        "coverage": [],
+        "findings": [],
+        "blockerReason": "The PR does not state purpose, acceptance criteria, or non-goals."
+      }
+    },
+    {
+      "id": "block-missing-critical-owner",
+      "kind": "admission-blocker",
+      "riskTier": "critical",
+      "currentHead": "000000000000000000000000000000000000000c",
+      "expected": {
+        "intakeDecision": "blocked-human-owner",
+        "allowedVerdicts": [
+          "blocked"
+        ],
+        "findings": []
+      },
+      "observed": {
+        "reviewedHead": "000000000000000000000000000000000000000c",
+        "intakeDecision": "blocked-human-owner",
+        "verdict": "blocked",
+        "coverage": [],
+        "findings": [],
+        "blockerReason": "The auth migration has no accountable merge and rollback owner."
+      }
+    }
+  ]
+}

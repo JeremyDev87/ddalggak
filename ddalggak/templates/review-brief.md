@@ -5,15 +5,25 @@
 - Base SHA:
 - Head SHA:
 - checks Head SHA:
-- Linked issue contract:
+- Linked issue contract / acceptance criteria:
 - Lifecycle:
 - Authority boundary:
+- Purpose / non-goals:
+
+## Review Intake
+- Risk tier: `low | medium | high | critical`
+- Tier evidence: blast radius / code lifetime / future owners / sensitive boundaries
+- Human owner for High/Critical:
+- Review Quality sensor decision: `ready-for-review | needs-intent | needs-evidence | needs-split | blocked-human-owner`
 
 ## Review Scope
-- Files:
+- Changed files and symbols:
+- Callers / consumers:
 - Validation evidence already provided:
-- Checks/CI state:
+- Current-head checks/CI state:
 - Forbidden side effects:
+- Triggered conditional references:
+- Skipped gates and reasons:
 
 ## Gates
 - Scope & ownership:
@@ -24,13 +34,25 @@
 - Failure semantics:
 - Evidence Contract:
 - Domain-specific gates if applicable:
-- Finding signal gate (3문 트리아지; 통과분만 inline, 걸러진 후보는 비차단 메모 또는 drop 로그):
+- Human feedback / CI / security / regression conditional gates:
+- Finding signal gate drops:
 
 ## Semantic coverage matrix
-- criterion_id / changed_surface / caller_or_consumer / failure_mode / test_or_evidence / verdict:
+| criterion_id | changed_surface | caller_or_consumer | failure_mode | test_or_evidence | verdict |
+| --- | --- | --- | --- | --- | --- |
 
 ## Concrete counterexample pass
-- claim / probe / expected_result / actual_result / restoration_proof / status:
+- claim:
+- Test diff reviewed first: yes / no / not-applicable
+- probe:
+- expected_result:
+- actual_result:
+- restoration_proof:
+- status:
+- High/Critical zero-finding challenger: used / not-triggered / blocked
+
+## Quality sensor findings (internal)
+For each observed quality finding record severity, claim, changed-line/file anchor, reproducible failing scenario, impact, minimal fix, confidence, and counterevidence checked. These are sensor inputs only. Before aggregation, the conductor must map a reproduced finding into the exact 20-field Admission schema v3 record in `references/cross-review-loop.md`; this section defines neither publication eligibility nor write authority.
 
 ## Candidate defaults (non-publication)
 ```yaml
@@ -41,6 +63,9 @@ publication_eligible: false
 Worker output has no publication authority.
 
 ## Output
+- Internal Review Quality sensor verdict: `approve | change request | comment | blocked`
+- Canonical lifecycle outcome and public rendering: `references/cross-review-loop.md` plus `references/review-output-contract.md`
+
 `REVIEW_DONE PR#<num>: <APPROVE|CHANGES_REQUESTED> critical=N high=N medium=N low=N head=<sha>`
 
-finding 0건 리뷰도 유효한 완료다 (finding signal gate 참조).
+A zero-finding review is valid only with semantic coverage evidence. High/Critical zero-finding reviews additionally require the documented counterexample/challenger rule in `references/review-quality-contract.md`.

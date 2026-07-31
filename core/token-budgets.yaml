@@ -21,7 +21,7 @@
 subcommand_token_budgets:
   claude:
     start: 23000
-    review: 29000
+    review: 33000
     status: 10500
     plan: 20000
     issue: 10000
@@ -43,7 +43,7 @@ subcommand_token_budgets:
     gjc-team: 14000
   codex:
     start: 24000
-    review: 29000
+    review: 33500
     status: 11000
     plan: 21000
     issue: 10500
@@ -68,11 +68,10 @@ subcommand_token_budgets:
 # ddalggak/references/*.md file to be EITHER measured (named in some command's
 # required_references, so it counts against that subcommand's budget) OR
 # exempted here with an absolute per-reference cap (#283). Without this a
-# reference that no required_references names is unbudgeted: it can grow
-# without bound while admission stays green. The three conditional gates below
-# are reachable only through the always-loaded references/quality-lens-router.md
-# pointer, so they are not in any base required_references, but max_tokens still
-# bounds their growth. max_tokens uses the same estimator as the budget report
+# reference that no required or conditional command reference names is
+# unbudgeted: it can grow without bound while admission stays green. References
+# declared through conditional_references are measured and must not also be
+# exempted. max_tokens uses the same estimator as the budget report
 # (ceil(ascii_chars / 4 + multibyte_chars x 1.5)) measured on the source root.
 reference_budget_exemptions:
   - reference: frontend-design-gate.md
