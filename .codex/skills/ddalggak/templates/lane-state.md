@@ -82,6 +82,7 @@ validation:
 review:
   required_for_head_sha: "<head sha that must be reviewed>"
   latest_conclusion: "none|pending|approve|changes_requested"
+  final_verdict: "none|approve|change request|comment|blocked"
   conclusion_head_sha: "<head sha named by latest conclusion or empty>"
   comment_url: "<review/comment URL or empty>"
   stale_reason: "<empty or why stale>"

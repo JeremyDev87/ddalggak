@@ -30,7 +30,8 @@ artifacts:
   review_comments:
     - url: "<comment-url-or-empty>"
       head_sha: "<sha>"
-      conclusion: "approve|change request|comment|pending"
+      conclusion: "none|pending|approve|changes_requested"
+      final_verdict: "approve|change request|comment|blocked"
 omissions:
   - artifact: "<artifact name>"
     reason: "<why safely absent>"
