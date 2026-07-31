@@ -38,6 +38,8 @@ For bug reports, feature requests, or questions, please open a [GitHub Issue](ht
 6. Quality Lens Router Output이 applicable gate families, skipped gates, repo/product conventions를 기록하도록 유지합니다.
 7. CLI `SUBCOMMANDS`, dispatch `DOC_SECTION`, Claude skill H2 heading이 같은 서브커맨드 계약을 가리킵니다.
 
+Review 계약을 변경하는 PR은 `npm run test:review-contract`와 `npm run verify:projections`를 반드시 통과해야 합니다. Unicode credential/session 또는 private locator 경계를 변경했다면 `npm run test:review-contract:exhaustive`도 실행합니다.
+
 ## Packaging 변경 검증
 
 `package.json`의 `files`나 package artifact 포함 범위를 바꾸는 PR은 아래 dry-run으로 실제 포함 대상을 확인합니다.

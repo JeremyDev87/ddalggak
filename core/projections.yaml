@@ -46,7 +46,11 @@ parity_ledger:
   - path: references/core-invariants.md
     class: must-match
   - path: references/cross-review-loop.md
-    class: may-localize
+    class: must-match
+  - path: references/review-output-contract.md
+    class: must-match
+  - path: references/review-admission-fixtures.json
+    class: must-match
   - path: references/deep-interview-readiness-gate.md
     class: must-match
   - path: references/evidence-contract.md
@@ -134,6 +138,16 @@ parity_ledger:
   - path: references/wiki-context-preflight.md
     class: must-match
   - path: references/wiki-growth-triage.md
+    class: must-match
+  - path: scripts/review-contract-policy.mjs
+    class: must-match
+  - path: scripts/test-review-policy-layers.mjs
+    class: must-match
+  - path: scripts/verify-review-contract.mjs
+    class: must-match
+  - path: scripts/test-review-contract-verifier.mjs
+    class: must-match
+  - path: scripts/test-review-contract-exhaustive.mjs
     class: must-match
   - path: agents/openai.yaml
     class: root-specific

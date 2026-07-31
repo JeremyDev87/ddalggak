@@ -114,7 +114,7 @@ export function runCliReadmeDriftChecks({
       "commit/push/PR/evidence/blocking gaps",
     ],
     review: [
-      "Full procedure: `references/cross-review-loop.md`; wiki authority: `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`; delegated-review만 `templates/review-brief.md`를 로드한다.",
+      "Full procedure: `references/cross-review-loop.md`; public renderer: `references/review-output-contract.md` + `references/review-comment-style.md`; wiki authority: `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`; delegated-review만 `templates/review-brief.md`를 로드한다.",
       "Execution contract index:",
       "live PR state",
       "diff/files/checks",
@@ -123,9 +123,9 @@ export function runCliReadmeDriftChecks({
       "wiki-context preflight",
       "Router/Evidence는 base",
       "activation evidence applies",
-      "top-level comment with SHA",
-      "validation",
-      "conclusion",
+      "admission schema v3",
+      "aggregate-member canonical candidate",
+      "deterministic fixed summary",
     ],
   };
   for (const [subcommand, anchors] of Object.entries(compactShowDocContracts)) {
@@ -182,13 +182,15 @@ export function runCliReadmeDriftChecks({
       "validation/PR evidence",
     ],
     review: [
-      "Full procedure: `references/cross-review-loop.md`; wiki authority: `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`; delegated review only loads `templates/review-brief.md`.",
+      "Full procedure: `references/cross-review-loop.md`; public renderer: `references/review-output-contract.md` + `references/review-comment-style.md`; wiki authority: `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`; delegated review only loads `templates/review-brief.md`.",
       "Execution contract index:",
       "live PR/diff/files/checks/issue/head SHA",
       "Wiki Context Preflight",
       "base Router/Evidence",
       "activation-bound optional gates",
-      "top-level conclusion comment",
+      "Admission schema v3",
+      "canonical-candidate-bound five-line findings",
+      "deterministic fixed summary",
     ],
   };
   const codexCompactHeadings = {

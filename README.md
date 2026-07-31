@@ -343,6 +343,8 @@ npm run verify
 
 `npm run verify` runs the CLI smoke suite, Codex skill verifier, ddalggak readiness eval fixtures, release helper tests, release drafter tests, manual release bump tests, release candidate tests, release publish tests, security posture evidence tests/report, PR check evidence bundle tests, and npm package artifact inspection. For focused diagnostics, maintainers can still run each underlying check directly:
 
+The default verification pipeline also runs the deterministic review-contract schema, lifecycle, provenance, publication, renderer, privacy, and semantic-mutation gate. Use `npm run test:review-contract:exhaustive` for the slower assigned-Unicode separator/delimiter and private-locator cross-product proof.
+
 ```bash
 npm test
 npm run verify:codex-skill

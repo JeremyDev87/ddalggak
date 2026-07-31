@@ -156,6 +156,8 @@ const referenceGroupByName = new Map([
   ["regression-library.md", "gates"],
   ["retrospective-workflow.md", "workflow"],
   ["retrospective.md", "workflow"],
+  ["review-comment-style.md", "workflow"],
+  ["review-output-contract.md", "workflow"],
   ["security-posture-gate.md", "gates"],
   ["ship.md", "workflow"],
   ["simplicity-deletability-gate.md", "gates"],

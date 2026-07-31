@@ -1,0 +1,123 @@
+{
+  "version": 3,
+  "description": "Layered deterministic admission, aggregate, publication, and renderer cases for the packaged ddalggak review contract.",
+  "requiredAdmissionFields": [
+    "candidate_id", "authority", "lifecycle", "observed_delta", "governing_contract", "scope_relation",
+    "prior_decision", "base_state", "current_head_evidence", "diff_causality", "impact", "counterargument",
+    "counterargument_disproof", "minimum_correction", "severity", "disposition", "publication_eligible"
+  ],
+  "requiredContractMarkers": [
+    "## Lifecycle gate",
+    "## Finding admission record",
+    "Admission schema v3",
+    "Candidate disposition and review outcome are separate axes",
+    "Publication authority is independent from content eligibility",
+    "Deterministic public renderer",
+    "checksStatus: PASS | FAIL | PENDING | NOT_APPLICABLE",
+    "candidate is not a final disposition",
+    "Missing process evidence is not defect evidence",
+    "Difference is not defect",
+    "OPEN: `APPROVE | CHANGES_REQUESTED | BLOCKED`",
+    "MERGED: `NO_FOLLOW_UP | FOLLOW_UP_REQUIRED | BLOCKED`",
+    "CLOSED_UNMERGED: `NO_ACTION | FOLLOW_UP_REQUIRED | BLOCKED`",
+    "symptom -> violated contract -> evidence -> impact -> smallest correction",
+    "Internal manifests never enter the public review body",
+    "Public output excludes internal evidence inventories",
+    "checksJustification",
+    "provenance-bearing result",
+    "it cannot disappear as `DROP`",
+    "`UNKNOWN` prior decisions cannot publish a blocker",
+    "generic secret/session assignments",
+    "unique candidate_id",
+    "same-process evaluator-produced",
+    "aggregate-member candidate",
+    "NFKC",
+    "raw text and an NFKC",
+    "NFKC-equivalent colon/equal assignment delimiter",
+    "Unicode-aware punctuation-adjacent repository/issue shorthand",
+    "named-user tilde homes",
+
+    "before accepted/base DROP"
+  ],
+  "prohibitedContractMarkers": [
+    "Start with `change request` only if the workflow still expects that verdict string",
+    "After verified GitHub review, Slack/Discord final is exactly",
+    "<summary>Gate / Wiki / Scope 상세</summary>",
+    "Final verdict field may contain only",
+    "If formal approval is inappropriate, use a top-level comment"
+    ,"ddalggak-review-contract:v1"
+    ,"<summary>검증 근거 / Checks</summary>"
+  ],
+  "baseCandidate": {
+    "candidate_id": "fixture-candidate",
+    "authority": "CONDUCTOR",
+    "lifecycle": "OPEN",
+    "observed_delta": "DEFECT: changed behavior",
+    "governing_contract": "PROVEN: linked requirement",
+    "scope_relation": "IN_SCOPE: changed surface",
+    "prior_decision": "NONE: no prior decision",
+    "base_state": "ABSENT: not present in base",
+    "current_head_evidence": "PROVEN: reproduced on current head",
+    "diff_causality": "NEW: introduced by current diff",
+    "impact": "PROVEN: concrete user impact",
+    "counterargument": "ADDRESSED: intentional trade-off considered",
+    "counterargument_disproof": "PROVEN: contract and reproduction refute it",
+    "minimum_correction": "PROPOSED: smallest scoped fix",
+    "severity": "HIGH",
+    "disposition": "CANDIDATE",
+    "publication_eligible": false
+  },
+  "candidateScenarios": [
+    {"id":"current-head-blocker","overrides":{},"expected":{"disposition":"BLOCKING","publication_eligible":true}},
+    {"id":"accepted-tradeoff-repeated","overrides":{"prior_decision":"ACCEPTED_NO_COUNTEREVIDENCE: accepted trade-off remains current","counterargument_disproof":"NOT_APPLICABLE: no fresh counterevidence exists"},"expected":{"disposition":"DROP","publication_eligible":false}},
+    {"id":"accepted-tradeoff-unresolved-current-evidence","overrides":{"prior_decision":"ACCEPTED_NO_COUNTEREVIDENCE: accepted trade-off cannot be revalidated","governing_contract":"UNKNOWN: current contract not recovered","scope_relation":"UNKNOWN: current scope unresolved","base_state":"UNKNOWN: base not inspected","current_head_evidence":"UNKNOWN: current head not reproduced","diff_causality":"UNKNOWN: diff causality unresolved","impact":"UNKNOWN: impact unresolved","counterargument":"UNKNOWN: intent not recovered","counterargument_disproof":"UNKNOWN: fresh counterevidence not checked","minimum_correction":"UNKNOWN: correction cannot be scoped"},"expected":{"disposition":"REVIEW_BLOCKED","publication_eligible":false}},
+    {"id":"unknown-prior-decision-blocks-high","overrides":{"prior_decision":"UNKNOWN: review history unavailable"},"expected":{"disposition":"REVIEW_BLOCKED","publication_eligible":false}},
+    {"id":"required-process-evidence-missing","overrides":{"observed_delta":"PROCESS_GAP: required acceptance evidence is absent","governing_contract":"PROVEN: acceptance contract requires the evidence","current_head_evidence":"UNKNOWN: required evidence unavailable","diff_causality":"UNRELATED: process evidence is not a code delta","impact":"UNKNOWN: completion cannot be established","counterargument":"NOT_APPLICABLE: no defect claim","counterargument_disproof":"NOT_APPLICABLE: no counterclaim","minimum_correction":"UNKNOWN: evidence must be supplied","severity":"NONE"},"expected":{"disposition":"REVIEW_BLOCKED","publication_eligible":false}},
+    {"id":"required-process-gap-prior-accepted","overrides":{"observed_delta":"PROCESS_GAP: required acceptance evidence is absent","governing_contract":"PROVEN: acceptance contract requires the evidence","prior_decision":"ACCEPTED_NO_COUNTEREVIDENCE: prior review accepted the state","current_head_evidence":"PROVEN: required artifact is absent","diff_causality":"UNRELATED: process evidence is not a code delta","impact":"NOT_APPLICABLE: completion evidence rather than product impact","counterargument":"NOT_APPLICABLE: no defect claim","counterargument_disproof":"NOT_APPLICABLE: no counterclaim","minimum_correction":"PROPOSED: provide the required artifact","severity":"NONE"},"expected":{"disposition":"REVIEW_BLOCKED","publication_eligible":false}},
+    {"id":"required-process-gap-base-unchanged","overrides":{"observed_delta":"PROCESS_GAP: required acceptance evidence is absent","governing_contract":"PROVEN: acceptance contract requires the evidence","base_state":"UNCHANGED: artifact was also absent in base","scope_relation":"OUT_OF_SCOPE: code ownership is unchanged","current_head_evidence":"PROVEN: required artifact is absent","diff_causality":"UNCHANGED: current diff did not change the artifact","impact":"NOT_APPLICABLE: completion evidence rather than product impact","counterargument":"NOT_APPLICABLE: no defect claim","counterargument_disproof":"NOT_APPLICABLE: no counterclaim","minimum_correction":"PROPOSED: provide the required artifact","severity":"NONE"},"expected":{"disposition":"REVIEW_BLOCKED","publication_eligible":false}},
+    {"id":"base-same-out-of-scope","overrides":{"base_state":"UNCHANGED: same behavior in base","scope_relation":"OUT_OF_SCOPE: linked issue does not own it","diff_causality":"UNCHANGED: current diff did not worsen it"},"expected":{"disposition":"DROP","publication_eligible":false}},
+    {"id":"intentional-style-difference","overrides":{"observed_delta":"STYLE_DIFFERENCE: intentional visual choice","governing_contract":"NOT_APPLICABLE: no mandatory style contract","impact":"NOT_PROVEN: no user impact","severity":"NONE"},"expected":{"disposition":"DROP","publication_eligible":false}},
+    {"id":"privacy-surface-only","overrides":{"observed_delta":"PRIVACY_SURFACE_ONLY: privacy-related code exists without exposure","governing_contract":"NOT_APPLICABLE: no exposure contract is violated","impact":"NOT_PROVEN: no new exposure path","severity":"NONE"},"expected":{"disposition":"DROP","publication_eligible":false}},
+    {"id":"privacy-new-exposure","overrides":{"observed_delta":"PRIVACY_EXPOSURE: current diff expands disclosure","base_state":"WORSENED_OR_EXPOSED: base did not expose this data","diff_causality":"WORSENED: current diff expands reachability","severity":"CRITICAL"},"expected":{"disposition":"BLOCKING","publication_eligible":true}},
+    {"id":"nonrequired-process-gap","overrides":{"observed_delta":"PROCESS_GAP: optional artifact is absent","governing_contract":"NOT_APPLICABLE: artifact is not required","current_head_evidence":"NOT_APPLICABLE: no code defect to reproduce","diff_causality":"UNRELATED: process artifact is outside the diff","impact":"NOT_APPLICABLE: no product impact","counterargument":"NOT_APPLICABLE: no defect claim remains","counterargument_disproof":"NOT_APPLICABLE: no counterclaim to disprove","minimum_correction":"NOT_APPLICABLE: no correction is required","severity":"NONE"},"expected":{"disposition":"DROP","publication_eligible":false}},
+    {"id":"unsupported-subreview","overrides":{"authority":"SUBREVIEW","current_head_evidence":"UNKNOWN: conductor has not reproduced it"},"expected":{"disposition":"REVIEW_BLOCKED","publication_eligible":false}},
+    {"id":"proven-subreview-unpromoted","overrides":{"authority":"SUBREVIEW"},"expected":{"disposition":"REVIEW_BLOCKED","publication_eligible":false}},
+    {"id":"medium-proven-defect","overrides":{"severity":"MEDIUM"},"expected":{"disposition":"NON_BLOCKING","publication_eligible":true}},
+    {"id":"medium-missing-current-head","overrides":{"severity":"MEDIUM","current_head_evidence":"UNKNOWN: current-head reproduction is missing"},"expected":{"disposition":"QUESTION","publication_eligible":false}},
+    {"id":"unknown-blocking-evidence","overrides":{"counterargument_disproof":"UNKNOWN: counterargument has not been disproved"},"expected":{"disposition":"REVIEW_BLOCKED","publication_eligible":false}}
+  ],
+  "negativeAdmissionScenarios": [
+    {"id":"accepted-decision-worsened-head-contradiction","overrides":{"prior_decision":"ACCEPTED_NO_COUNTEREVIDENCE: accepted before the current regression","base_state":"WORSENED_OR_EXPOSED: current head expands exposure","diff_causality":"WORSENED: current diff worsens the accepted state"},"expectedError":"accepted-no-counterevidence contradicts current-head worsening"},
+    {"id":"accepted-decision-proven-counterevidence-contradiction","overrides":{"prior_decision":"ACCEPTED_NO_COUNTEREVIDENCE: accepted trade-off","counterargument_disproof":"PROVEN: fresh evidence disproves the trade-off"},"expectedError":"accepted-no-counterevidence contradicts proven counterevidence"}
+  ],
+  "aggregateScenarios": [
+    {"id":"open-zero-finding","input":{"lifecycle":"OPEN","candidateIds":[],"requiredEvidenceMissing":false,"substantiveReview":true,"checksStatus":"PASS"},"expected":{"outcome":"APPROVE","reviewCompletionEligible":true}},
+    {"id":"open-pending-checks","input":{"lifecycle":"OPEN","candidateIds":[],"requiredEvidenceMissing":false,"substantiveReview":true,"checksStatus":"PENDING"},"expected":{"outcome":"BLOCKED","reviewCompletionEligible":false}},
+    {"id":"open-failed-checks","input":{"lifecycle":"OPEN","candidateIds":[],"requiredEvidenceMissing":false,"substantiveReview":true,"checksStatus":"FAIL"},"expected":{"outcome":"BLOCKED","reviewCompletionEligible":false}},
+    {"id":"open-blocker","input":{"lifecycle":"OPEN","candidateIds":["current-head-blocker"],"requiredEvidenceMissing":false,"substantiveReview":true,"checksStatus":"PASS"},"expected":{"outcome":"CHANGES_REQUESTED","reviewCompletionEligible":true}},
+    {"id":"open-blocker-pending-checks","input":{"lifecycle":"OPEN","candidateIds":["current-head-blocker"],"requiredEvidenceMissing":false,"substantiveReview":true,"checksStatus":"PENDING"},"expected":{"outcome":"BLOCKED","reviewCompletionEligible":false}},
+    {"id":"open-unresolved-subreview","input":{"lifecycle":"OPEN","candidateIds":["unsupported-subreview"],"requiredEvidenceMissing":false,"substantiveReview":true,"checksStatus":"PASS"},"expected":{"outcome":"BLOCKED","reviewCompletionEligible":false}},
+    {"id":"open-required-evidence-missing","input":{"lifecycle":"OPEN","candidateIds":[],"requiredEvidenceMissing":true,"substantiveReview":true,"checksStatus":"PASS"},"expected":{"outcome":"BLOCKED","reviewCompletionEligible":false}},
+    {"id":"merged-zero-finding","input":{"lifecycle":"MERGED","candidateIds":[],"requiredEvidenceMissing":false,"substantiveReview":true,"checksStatus":"PASS"},"expected":{"outcome":"NO_FOLLOW_UP","reviewCompletionEligible":true}},
+    {"id":"merged-pending-checks","input":{"lifecycle":"MERGED","candidateIds":[],"requiredEvidenceMissing":false,"substantiveReview":true,"checksStatus":"PENDING"},"expected":{"outcome":"BLOCKED","reviewCompletionEligible":false}},
+    {"id":"merged-proven-finding","input":{"lifecycle":"MERGED","candidateIds":["medium-proven-defect"],"requiredEvidenceMissing":false,"substantiveReview":true,"checksStatus":"PASS"},"expected":{"outcome":"FOLLOW_UP_REQUIRED","reviewCompletionEligible":true}},
+    {"id":"closed-zero-finding","input":{"lifecycle":"CLOSED_UNMERGED","candidateIds":[],"requiredEvidenceMissing":false,"substantiveReview":true,"checksStatus":"PASS"},"expected":{"outcome":"NO_ACTION","reviewCompletionEligible":true}},
+    {"id":"closed-proven-finding","input":{"lifecycle":"CLOSED_UNMERGED","candidateIds":["medium-proven-defect"],"requiredEvidenceMissing":false,"substantiveReview":true,"checksStatus":"PASS"},"expected":{"outcome":"FOLLOW_UP_REQUIRED","reviewCompletionEligible":true}},
+    {"id":"open-not-applicable-checks-justified","input":{"lifecycle":"OPEN","candidateIds":[],"requiredEvidenceMissing":false,"substantiveReview":true,"checksStatus":"NOT_APPLICABLE","checksJustification":"No executable checks apply to this documentation-only review."},"expected":{"outcome":"APPROVE","reviewCompletionEligible":true}}
+  ],
+  "publicationScenarios": [
+    {"id":"open-approved-no-write-authority","aggregateId":"open-zero-finding","writeAuthorized":false,"expected":false},
+    {"id":"open-approved-write-authorized","aggregateId":"open-zero-finding","writeAuthorized":true,"expected":true},
+    {"id":"merged-no-follow-up-write-authorized","aggregateId":"merged-zero-finding","writeAuthorized":true,"expected":false},
+    {"id":"merged-follow-up-no-write-authority","aggregateId":"merged-proven-finding","writeAuthorized":false,"expected":false},
+    {"id":"merged-follow-up-write-authorized","aggregateId":"merged-proven-finding","writeAuthorized":true,"expected":true}
+  ],
+  "rendererScenarios": [
+    {"id":"render-open","aggregateId":"open-zero-finding"},
+    {"id":"render-merged","aggregateId":"merged-zero-finding"},
+    {"id":"render-closed","aggregateId":"closed-zero-finding"}
+  ],
+  "findingRendererScenarios": [
+    {"id":"render-finding","candidateId":"current-head-blocker","lifecycle":"OPEN"}
+  ]
+}

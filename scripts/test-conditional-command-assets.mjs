@@ -75,6 +75,20 @@ for (const doc of [byName.get("plan"), byName.get("start"), byName.get("review")
 }
 console.log("[PASS] conditional assets remain in both package projection roots");
 
+const reviewContractAssets = [
+  "references/review-admission-fixtures.json",
+  "references/review-output-contract.md",
+  "scripts/review-contract-policy.mjs",
+  "scripts/test-review-contract-exhaustive.mjs",
+  "scripts/test-review-contract-verifier.mjs",
+  "scripts/test-review-policy-layers.mjs",
+  "scripts/verify-review-contract.mjs",
+];
+for (const root of ["ddalggak", ".codex/skills/ddalggak"]) {
+  for (const asset of reviewContractAssets) assert(packaged.has(`${root}/${asset}`), `${root}/${asset}: review contract asset must remain package-required`);
+}
+console.log("[PASS] deterministic review contract assets remain package-required in both roots");
+
 for (const skillPath of ["ddalggak/SKILL.md", ".codex/skills/ddalggak/SKILL.md"]) {
   const skill = readFileSync(skillPath, "utf8");
   assert(skill.includes("delegated-review→templates/review-brief.md"));

@@ -38,6 +38,12 @@ export const verifyPipelineStages = [
         args: ["run", "verify:projections"],
         npmScript: "verify:projections",
       },
+      {
+        label: "deterministic review contract gate",
+        command: "npm",
+        args: ["run", "test:review-contract"],
+        npmScript: "test:review-contract",
+      },
     ],
   },
   {
