@@ -1,0 +1,21 @@
+schema_version: "1.0"
+target:
+  id: ddalggak
+  root: .
+policy:
+  id: harness-readiness
+  version: "1"
+  path: evals/heimdall-readiness/harness-readiness-v1.yaml
+isolation: trusted-local
+command:
+  argv:
+    - node
+    - scripts/heimdall-readiness.mjs
+  timeout_seconds: 120
+  env:
+    DDALGGAK_NO_UPDATE: "1"
+checks:
+  - id: readiness-result
+    kind: file_equals
+    path: .ddalggak/heimdall-readiness/result.txt
+    expected: "ok\n"

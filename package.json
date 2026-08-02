@@ -20,6 +20,7 @@
     "test:verify-robustness": "node scripts/test-verify-robustness.mjs",
     "test:reference-aware-skill-anchors": "node scripts/test-verify-codex-skill-reference-aware.mjs",
     "eval:ddalggak-readiness": "node scripts/eval-ddalggak-readiness.mjs",
+    "test:heimdall-readiness-adapter": "node scripts/test-heimdall-readiness-adapter.mjs",
     "eval:model-migration": "node scripts/eval-model-migration.mjs",
     "test:model-migration-eval": "node scripts/test-eval-model-migration.mjs",
     "test:conditional-command-assets": "node scripts/test-conditional-command-assets.mjs",

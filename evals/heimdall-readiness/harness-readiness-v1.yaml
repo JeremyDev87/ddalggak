@@ -1,0 +1,12 @@
+schema_version: "1.0"
+id: harness-readiness
+version: "1"
+criteria:
+  - id: contract_fidelity
+    required: true
+  - id: authority_safety
+    required: true
+  - id: outcome_evidence
+    required: true
+  - id: failure_honesty
+    required: false
