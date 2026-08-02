@@ -98,6 +98,12 @@ export const verifyPipelineStages = [
         npmScript: "eval:ddalggak-readiness",
       },
       {
+        label: "Heimdall readiness adapter fail-closed tests",
+        command: "npm",
+        args: ["run", "test:heimdall-readiness-adapter"],
+        npmScript: "test:heimdall-readiness-adapter",
+      },
+      {
         label: "model migration eval fail-closed tests",
         command: "npm",
         args: ["run", "test:model-migration-eval"],

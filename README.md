@@ -349,6 +349,7 @@ The default verification pipeline also runs the deterministic review-contract sc
 npm test
 npm run verify:codex-skill
 npm run eval:ddalggak-readiness
+npm run test:heimdall-readiness-adapter
 npm run test:release-helpers
 npm run test:release-drafter
 npm run test:manual-release-bump
@@ -360,7 +361,14 @@ npm run test:pr-check-evidence
 env npm_config_cache=/tmp/ddalggak-npm-cache npm pack --dry-run --ignore-scripts --loglevel=silent
 ```
 
-Use `npm test` for CLI setup and dispatch behavior, including setup safety/idempotency, `status --local` installed-skill parity states, dispatch quoting edge cases, and every subcommand `--show-doc` surface. Use `npm run verify:codex-skill` for Codex skill source, metadata, Quality Lens Router anchors, subcommand routing changes, progressive-disclosure budgets, required reference/template maps, Claude/Codex payload parity, detail-template regression guards, and npm package artifact inclusion. Use `npm run eval:ddalggak-readiness` for mock JSON replay checks covering no-work mutation suppression, duplicate PR/comment suppression, evidence-gap readiness blocking, URL-beats-cwd mutation blocking, and hard-conflict fallback classification. Use `npm run verify:security-posture` for a read-only GitHub Actions posture inventory covering permissions blocks, action reference pinning, direct untrusted shell interpolation candidates, and official CodeQL/Dependency Review/Scorecard evidence presence. Use `npm run test:pr-check-evidence` for content-light PR check bundle normalization, failure classification, details URL preservation, and secret-like string redaction. Missing official scan evidence is reported separately and must not be described as proof that the repository is safe. Use the pack dry-run as an explicit maintainer-facing package artifact inspection as well.
+Use `npm test` for CLI setup and dispatch behavior, including setup safety/idempotency, `status --local` installed-skill parity states, dispatch quoting edge cases, and every subcommand `--show-doc` surface. Use `npm run verify:codex-skill` for Codex skill source, metadata, Quality Lens Router anchors, subcommand routing changes, progressive-disclosure budgets, required reference/template maps, Claude/Codex payload parity, detail-template regression guards, and npm package artifact inclusion. Use `npm run eval:ddalggak-readiness` for mock JSON replay checks covering no-work mutation suppression, duplicate PR/comment suppression, evidence-gap readiness blocking, URL-beats-cwd mutation blocking, and hard-conflict fallback classification. `npm run test:heimdall-readiness-adapter` verifies that the repository adapter emits its deterministic result only after that eval succeeds and removes stale pass artifacts on failure. With a separately built Heimdall binary, maintainers can exercise the repository checkout as a trusted-local target:
+
+```bash
+heimdall validate heimdall.eval.yaml
+heimdall evaluate heimdall.eval.yaml --out /tmp/ddalggak-heimdall
+```
+
+This pilot manifest is repository-local and is not included in the npm package. Heimdall evaluates a disposable copy and records content-light evidence; `trusted-local` is not an OS sandbox and must not be used for adversarial code. Use `npm run verify:security-posture` for a read-only GitHub Actions posture inventory covering permissions blocks, action reference pinning, direct untrusted shell interpolation candidates, and official CodeQL/Dependency Review/Scorecard evidence presence. Use `npm run test:pr-check-evidence` for content-light PR check bundle normalization, failure classification, details URL preservation, and secret-like string redaction. Missing official scan evidence is reported separately and must not be described as proof that the repository is safe. Use the pack dry-run as an explicit maintainer-facing package artifact inspection as well.
 
 ## Platform Support
 
