@@ -17,6 +17,45 @@ Do not use when: the user only wants a plan or research; use `ulw-plan` or `ulw-
 7. Self-review for Critical or High issues, fix accepted blockers, and rerun the affected checks.
 8. Report evidence, cleanup, unresolved blockers, and `ULW_LOOP_DONE`.
 
+## Durable Phase Continuity Contract
+
+For any loop that can cross a compact, wait, handoff, or session boundary,
+materialize the plan and session state before editing or waiting. The
+authoritative state is `.ddalggak/session-state.json`; the Discord/workcell
+handoff is a compact mirror of `current_phase`, `next_gate`, `plan_hash`, and
+the exact resume command, never a second source of truth.
+
+Use `templates/conductor-state.md` as the exact JSON/template contract:
+
+1. Write the plan artifact with LF-normalized UTF-8 bytes and record its
+   `sha256:<64 lowercase hex>` hash in `phase_ledger.plan_hash`.
+2. Before the first edit, initialize state from a validated draft with
+   `ddalggak state init --from <draft.json> --expected-plan-hash <hash>`.
+   Advance only through `ddalggak state transition --expected-revision <n>
+   --transition-id <stable-id> --phase <current-id> --status <status>`; add
+   `--evidence <ref>` for completion or skip audit evidence, or `--blocker
+   <reason>` for a blocked phase. The writer uses an exclusive owner lock,
+   reclaims dead-owner or aged malformed crash debris, and uses a
+   same-directory temp file with fsync/rename, optimistic revision checking,
+   and exact replay hashes.
+3. After a phase's `exit_condition` has fresh evidence, mark that phase
+   `completed`, record the evidence, and either set exactly one next phase to
+   `planned` plus the next `in_progress` phase, or—after the final phase—mark
+   every phase `completed`/`skipped` with non-empty audit evidence, set the
+   ledger `next_phase_id` to `null`, and point projections to the unique graph
+   terminal phase (the phase whose own `next_phase_id` is `null`). Update
+   `next_gate` and projections in the same state update.
+4. On resume, read and validate the state first, then re-read live git/GitHub
+   facts as applicable. Missing, malformed, schema-invalid, stale, hash-
+   mismatched, or projection-inconsistent state is `NEEDS_RECONCILIATION`.
+   Do not edit, advance a phase, or emit `ULW_LOOP_DONE` from that state.
+5. Only the conductor may advance a phase. A worker may return evidence for
+   the current gate but may not mutate `current_phase_id`, `next_phase_id`, or
+   the completion signal.
+
+The existing legacy state shape remains readable for non-ULW/status use, but a
+new multi-phase ULW loop must not proceed without a valid `phase_ledger`.
+
 ## LazyCodex ultrawork concepts absorbed
 
 See `references/ulw-tier-triage.md` for the ddalggak translation of lazycodex v4.16.0 `ultrawork` / `ulw-loop`:

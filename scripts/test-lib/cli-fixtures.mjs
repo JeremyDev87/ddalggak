@@ -273,7 +273,7 @@ export function writeDoctorFixture() {
   return fixtureRoot;
 }
 
-export function writeSessionStateFixture(content) {
+export function writeSessionStateFixture(content, files = {}) {
   const workspaceRoot = makeTempHome();
   mkdirSync(path.join(workspaceRoot, ".ddalggak"), { recursive: true });
   writeFileSync(
@@ -281,6 +281,11 @@ export function writeSessionStateFixture(content) {
     content,
     "utf8",
   );
+  for (const [relativePath, fileContent] of Object.entries(files)) {
+    const absolutePath = path.join(workspaceRoot, relativePath);
+    mkdirSync(path.dirname(absolutePath), { recursive: true });
+    writeFileSync(absolutePath, fileContent, "utf8");
+  }
   return workspaceRoot;
 }
 
@@ -343,6 +348,35 @@ export function validSessionState(overrides = {}) {
       command: "",
       exit_condition: "review conclusion posted",
     },
+    ...overrides,
+  };
+}
+
+export function validPhaseLedger(overrides = {}) {
+  return {
+    mode: "multi",
+    plan_id: "phase-continuity-v1",
+    plan_hash: `sha256:${"a".repeat(64)}`,
+    current_phase_id: "phase-1",
+    next_phase_id: "phase-2",
+    phases: [
+      {
+        id: "phase-1",
+        status: "in_progress",
+        goal: "write the phase ledger contract",
+        exit_condition: "schema and semantic tests pass",
+        next_phase_id: "phase-2",
+        evidence: [],
+      },
+      {
+        id: "phase-2",
+        status: "planned",
+        goal: "run the full verification gates",
+        exit_condition: "npm run verify exits 0",
+        next_phase_id: null,
+        evidence: [],
+      },
+    ],
     ...overrides,
   };
 }

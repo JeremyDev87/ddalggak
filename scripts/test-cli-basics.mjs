@@ -76,6 +76,7 @@ export const cases = [
         "help should use core/commands purpose text, not the old hand-written start description",
       );
       assertIncludes(result.stdout, "  setup                Install Claude Code skills", "stdout");
+      assertIncludes(result.stdout, "  state                Initialize or transition durable session state", "stdout");
       assertIncludes(result.stdout, "  status --local       Inspect local source/Codex/installed skill parity", "stdout");
     },
   },
@@ -156,6 +157,14 @@ export const cases = [
       const result = runCli(["stats"]);
       assertExit(result, 2);
       assertIncludes(result.stderr, "Did you mean: status?", "stderr");
+    },
+  },
+{
+    name: "unknown command suggests state for a close state typo",
+    run() {
+      const result = runCli(["sate"]);
+      assertExit(result, 2);
+      assertIncludes(result.stderr, "Did you mean: state?", "stderr");
     },
   },
 {

@@ -110,6 +110,12 @@ export const verifyPipelineStages = [
         npmScript: "test:model-migration-eval",
       },
       {
+        label: "durable state writer fail-closed tests",
+        command: "npm",
+        args: ["run", "test:state-writer"],
+        npmScript: "test:state-writer",
+      },
+      {
         label: "conditional command asset routing tests",
         command: "npm",
         args: ["run", "test:conditional-command-assets"],

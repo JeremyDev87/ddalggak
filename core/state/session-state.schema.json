@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://github.com/JeremyDev87/ddalggak/blob/master/core/state/session-state.schema.json",
   "title": "ddalggak session state",
-  "description": "Single source of truth for ddalggak session state. `.ddalggak/session-state.json` must satisfy this schema; `templates/conductor-state.md` and `templates/lane-state.md` are markdown projections of it (conductor sections map to the top-level fields, lane-state Event Record maps to one `lanes[]` entry). Validated by `ddalggak status --local` with the zero-dependency subset validator in bin/lib/status/session-state.mjs: local $ref, type, const, enum, required, properties, items, format=date-time.",
+  "description": "Single source of truth for ddalggak session state. `.ddalggak/session-state.json` must satisfy this schema; `phase_ledger.phases[]` is the canonical multi-phase progression record, while `phase_ledger.current_phase_id` and top-level `phase` are projections that must agree. `templates/conductor-state.md` and `templates/lane-state.md` are markdown projections of it (conductor sections map to the top-level fields, lane-state Event Record maps to one `lanes[]` entry). Validated by `ddalggak status --local` with the zero-dependency subset validator in bin/lib/status/session-state.mjs: local $ref, type, const, enum, required, properties, items, format=date-time.",
   "x-ddalggak": {
     "staleAfterHours": 24,
     "projections": {
@@ -12,7 +12,8 @@
         "Validation Evidence": "validation_evidence[] (per lane: lanes[].validation)",
         "Blocking Gaps": "blocking_gaps[] (per lane: lanes[].validation.blocking_gaps)",
         "Next Gate": "next_gate (per lane: lanes[].next_gate)",
-        "Artifact Manifest": "lanes[].artifact_manifest"
+        "Artifact Manifest": "lanes[].artifact_manifest",
+        "Phase Ledger": "phase_ledger (phases[] is canonical; current_phase_id is a checked projection)"
       },
       "templates/lane-state.md": {
         "recorded_at": "updated_at",
@@ -53,6 +54,45 @@
           "description": "Observable completion signal for leaving the gate, e.g. PR URL read back, checks terminal success/skipped, APPROVE evidence at current head, human answer posted, or manual merge verified."
         }
       }
+    },
+    "phaseEntry": {
+      "type": "object",
+      "required": ["id", "status", "goal", "exit_condition", "next_phase_id", "evidence"],
+      "properties": {
+        "id": { "type": "string" },
+        "status": {
+          "enum": ["planned", "in_progress", "completed", "blocked", "skipped"]
+        },
+        "goal": { "type": "string" },
+        "exit_condition": { "type": "string" },
+        "next_phase_id": { "type": ["string", "null"] },
+        "evidence": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Audit references required for completed and skipped phases; skipped evidence records the reason or decision artifact."
+        },
+        "blocker": { "type": "string" },
+        "attempt_count": {
+          "type": "integer",
+          "description": "Monotonic number of times this phase entered in_progress. Runtime writers initialize the first active attempt to 1 and increment blocked-to-in_progress retries."
+        }
+      }
+    },
+    "phaseLedger": {
+      "type": "object",
+      "required": ["mode", "plan_id", "plan_hash", "current_phase_id", "next_phase_id", "phases"],
+      "properties": {
+        "mode": { "enum": ["single", "multi"] },
+        "plan_id": { "type": "string" },
+        "plan_hash": { "type": "string" },
+        "current_phase_id": { "type": "string" },
+        "next_phase_id": { "type": ["string", "null"] },
+        "phases": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/phaseEntry" },
+          "description": "Canonical phase graph. Exactly one phase must be the graph terminal with next_phase_id null; array order is not semantic."
+        }
+      }
     }
   },
   "required": ["schema", "phase", "updated_at", "lanes"],
@@ -65,6 +105,19 @@
       "type": "string",
       "format": "date-time",
       "description": "ISO-8601 timestamp of the last state write. Drives the stale judgment: older than x-ddalggak.staleAfterHours means the file must not be trusted for resume decisions."
+    },
+    "revision": {
+      "type": "integer",
+      "description": "Monotonic optimistic-concurrency revision maintained by `ddalggak state`. Optional for backward-compatible read-only state; required by the deterministic writer."
+    },
+    "last_transition": {
+      "type": ["object", "null"],
+      "description": "Last applied transition id and canonical request hash for exact idempotent replay.",
+      "required": ["id", "request_hash"],
+      "properties": {
+        "id": { "type": "string" },
+        "request_hash": { "type": "string" }
+      }
     },
     "phase": {
       "type": "string",
@@ -210,6 +263,7 @@
       "type": "string",
       "description": "What the session is currently waiting on (human decision, external job, merge)."
     },
-    "next_gate": { "$ref": "#/$defs/nextGate" }
+    "next_gate": { "$ref": "#/$defs/nextGate" },
+    "phase_ledger": { "$ref": "#/$defs/phaseLedger" }
   }
 }

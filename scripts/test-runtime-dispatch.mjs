@@ -27,6 +27,7 @@ import {
   os,
   path,
   pkg,
+  rootDir,
   readInstalledManifest,
   readme,
   sha256File,
@@ -69,6 +70,47 @@ export const cases = [
         const result = runCli([subcommand, "--print", "demo"]);
         assertExit(result, 0);
         assertStdout(result, `/ddalggak ${subcommand} demo\n`);
+      }
+    },
+  },
+  {
+    name: "ULW phase continuity contract exposes durable state anchors",
+    run() {
+      const plan = readFileSync(
+        path.join(rootDir, "ddalggak", "references", "ulw-plan.md"),
+        "utf8",
+      );
+      const loop = readFileSync(
+        path.join(rootDir, "ddalggak", "references", "ulw-loop.md"),
+        "utf8",
+      );
+      const conductor = readFileSync(
+        path.join(rootDir, "ddalggak", "templates", "conductor-state.md"),
+        "utf8",
+      );
+      for (const marker of [
+        "## Phase Execution Ledger",
+        "lanes[].artifacts.plan",
+        "phase_ledger.phases[]",
+        "sha256:<64 lowercase hex>",
+      ]) {
+        assertIncludes(plan, marker, `ulw-plan marker ${marker}`);
+      }
+      for (const marker of [
+        "## Durable Phase Continuity Contract",
+        "ddalggak state init",
+        "optimistic revision checking",
+        "Discord/workcell",
+      ]) {
+        assertIncludes(loop, marker, `ulw-loop marker ${marker}`);
+      }
+      for (const marker of [
+        '"phase_ledger": {',
+        '"current_phase_id": "phase-1"',
+        '"next_phase_id": "phase-2"',
+        "do not infer progress from chat history",
+      ]) {
+        assertIncludes(conductor, marker, `conductor template marker ${marker}`);
       }
     },
   },

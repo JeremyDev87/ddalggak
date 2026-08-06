@@ -260,7 +260,7 @@ export function runVerifyCodexSkill() {
       if (line.includes("--local")) {
         continue;
       }
-      if (match && !["setup", "doctor", "profile"].includes(match[1])) {
+      if (match && !["setup", "doctor", "profile", "state"].includes(match[1])) {
         commands.push(match[1]);
       }
     }

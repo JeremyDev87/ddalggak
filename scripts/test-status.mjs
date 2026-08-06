@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import {
   assert,
   assertExit,
@@ -15,6 +17,7 @@ import {
   skillDirFor,
   symlinkSync,
   validSessionState,
+  validPhaseLedger,
   writeDoctorFixture,
   writeExistingInstall,
   writeFileSync,
@@ -31,6 +34,28 @@ import {
   DOCTOR_FIXTURE_ROOTS,
   writeSessionStateFixture,
 } from "./test-lib/cli-fixtures.mjs";
+
+const PHASE_PLAN = "# phase continuity fixture\n";
+const PHASE_PLAN_HASH = `sha256:${createHash("sha256")
+  .update(Buffer.from(PHASE_PLAN, "utf8"))
+  .digest("hex")}`;
+
+function writePhaseState(overrides = {}) {
+  const base = validSessionState();
+  const state = validSessionState({
+    phase: "phase-1",
+    lanes: base.lanes.map((lane) => ({
+      ...lane,
+      artifacts: { ...(lane.artifacts || {}), plan: "plan.md" },
+    })),
+    phase_ledger: validPhaseLedger({ plan_hash: PHASE_PLAN_HASH }),
+    ...overrides,
+  });
+  return writeSessionStateFixture(
+    `${JSON.stringify(state, null, 2)}\n`,
+    { "plan.md": PHASE_PLAN },
+  );
+}
 
 export const cases = [
 {
@@ -326,34 +351,169 @@ export const cases = [
     },
   },
 {
-    name: "status --local --json reports valid session state evidence",
-    run() {
-      const workspaceRoot = writeSessionStateFixture(
-        `${JSON.stringify(validSessionState(), null, 2)}\n`,
-      );
-      const status = runStatusWithSessionState(workspaceRoot);
-      assert(
-        status.sessionState.status === "valid",
-        `expected valid session state, got ${status.sessionState.status}\nviolations:\n${status.sessionState.violations.join("\n")}`,
-      );
-      assert(
-        status.sessionState.violations.length === 0,
-        "expected no violations for valid session state",
-      );
-      assert(
-        typeof status.sessionState.ageHours === "number" &&
-          status.sessionState.ageHours >= 0 &&
-          status.sessionState.ageHours <
-            status.sessionState.staleAfterHours,
-        `expected fresh ageHours, got ${status.sessionState.ageHours}`,
-      );
-      assertIncludes(
-        status.sessionState.action,
-        "fresh enough to trust",
-        "session state action",
-      );
-    },
+  name: "status --local --json reports valid session state evidence",
+  run() {
+    const workspaceRoot = writeSessionStateFixture(
+      `${JSON.stringify(validSessionState(), null, 2)}\n`,
+    );
+    const status = runStatusWithSessionState(workspaceRoot);
+    assert(
+      status.sessionState.status === "valid",
+      `expected valid session state, got ${status.sessionState.status}\nviolations:\n${status.sessionState.violations.join("\n")}`,
+    );
+    assert(
+      status.sessionState.violations.length === 0,
+      "expected no violations for valid session state",
+    );
+    assert(
+      typeof status.sessionState.ageHours === "number" &&
+        status.sessionState.ageHours >= 0 &&
+        status.sessionState.ageHours <
+          status.sessionState.staleAfterHours,
+      `expected fresh ageHours, got ${status.sessionState.ageHours}`,
+    );
+    assertIncludes(
+      status.sessionState.action,
+      "fresh enough to trust",
+      "session state action",
+    );
   },
+},
+{
+  name: "status --local --json validates a phase ledger and exposes projections",
+  run() {
+    const workspaceRoot = writePhaseState();
+    const status = runStatusWithSessionState(workspaceRoot);
+    assert(status.sessionState.status === "valid", `expected valid phase ledger, got ${status.sessionState.status}\n${status.sessionState.violations.join("\n")}`);
+    assert(status.sessionState.phaseLedger.status === "valid", "expected valid phase ledger evidence");
+    assert(status.sessionState.phaseLedger.currentPhaseId === "phase-1", "expected current phase projection");
+    assert(status.sessionState.phaseLedger.nextPhaseId === "phase-2", "expected next phase projection");
+  },
+},
+{
+  name: "status --local --json accepts a blocked current phase as resumable",
+  run() {
+    const ledger = validPhaseLedger({
+      plan_hash: PHASE_PLAN_HASH,
+      phases: validPhaseLedger().phases.map((phase) => phase.id === "phase-1"
+        ? { ...phase, status: "blocked", blocker: "approval pending", attempt_count: 1 }
+        : { ...phase, attempt_count: 0 }),
+    });
+    const status = runStatusWithSessionState(writePhaseState({ phase_ledger: ledger }));
+    assert(status.sessionState.status === "valid", `expected blocked current phase to remain resumable, got ${status.sessionState.status}\n${status.sessionState.violations.join("\n")}`);
+    assert(status.sessionState.phaseLedger.currentPhaseId === "phase-1", "expected blocked current phase projection");
+  },
+},
+{
+  name: "status --local --json accepts a terminal all-completed phase ledger",
+  run() {
+    const base = validPhaseLedger();
+    const terminalLedger = {
+      ...base,
+      plan_hash: PHASE_PLAN_HASH,
+      current_phase_id: "phase-2",
+      next_phase_id: null,
+      phases: base.phases.map((phase) => ({
+        ...phase,
+        status: "completed",
+        evidence: [`${phase.id} exit evidence`],
+      })),
+    };
+    const status = runStatusWithSessionState(
+      writePhaseState({ phase: "phase-2", phase_ledger: terminalLedger }),
+    );
+    assert(status.sessionState.status === "valid", `expected terminal ledger to be valid, got ${status.sessionState.status}\n${status.sessionState.violations.join("\n")}`);
+    assert(status.sessionState.phaseLedger.nextPhaseId === null, "expected terminal next phase projection to be null");
+  },
+},
+{
+  name: "status --local --json accepts a single-mode terminal phase ledger",
+  run() {
+    const singleLedger = {
+      mode: "single",
+      plan_id: "single-terminal-v1",
+      plan_hash: PHASE_PLAN_HASH,
+      current_phase_id: "phase-1",
+      next_phase_id: null,
+      phases: [
+        {
+          id: "phase-1",
+          status: "completed",
+          goal: "complete the bounded single phase",
+          exit_condition: "single phase evidence is recorded",
+          next_phase_id: null,
+          evidence: ["single phase exit evidence"],
+        },
+      ],
+    };
+    const status = runStatusWithSessionState(
+      writePhaseState({ phase: "phase-1", phase_ledger: singleLedger }),
+    );
+    assert(status.sessionState.status === "valid", `expected single terminal ledger to be valid, got ${status.sessionState.status}\n${status.sessionState.violations.join("\n")}`);
+  },
+},
+{
+  name: "status --local --json rejects completed phase without evidence",
+  run() {
+    const base = validPhaseLedger();
+    const terminalLedger = {
+      ...base,
+      plan_hash: PHASE_PLAN_HASH,
+      current_phase_id: "phase-2",
+      next_phase_id: null,
+      phases: base.phases.map((phase) => ({
+        ...phase,
+        status: "completed",
+        evidence: phase.id === "phase-1" ? [] : [`${phase.id} exit evidence`],
+      })),
+    };
+    const status = runStatusWithSessionState(
+      writePhaseState({ phase: "phase-2", phase_ledger: terminalLedger }),
+    );
+    assert(status.sessionState.status === "invalid", "expected missing completed-phase evidence to be invalid");
+    assert(status.sessionState.violations.some((violation) => violation.includes("completed phase requires evidence")), "expected completed evidence violation");
+  },
+},
+{
+  name: "status --local --json fails closed on plan artifact hash mismatch",
+  run() {
+    const workspaceRoot = writePhaseState({
+      phase_ledger: validPhaseLedger({ plan_hash: `sha256:${"b".repeat(64)}` }),
+    });
+    const status = runStatusWithSessionState(workspaceRoot);
+    assert(status.sessionState.status === "invalid", "expected plan hash mismatch to be invalid");
+    assert(status.sessionState.violations.some((violation) => violation.includes("actual sha256:")), "expected actual plan hash evidence");
+  },
+},
+{
+  name: "status --local --json fails closed on phase projection mismatch",
+  run() {
+    const workspaceRoot = writePhaseState({ phase: "phase-2" });
+    const status = runStatusWithSessionState(workspaceRoot);
+    assert(status.sessionState.status === "invalid", "expected projection mismatch to be invalid");
+    assert(status.sessionState.violations.some((violation) => violation.includes("does not match phase_ledger active phase")), "expected phase projection violation");
+  },
+},
+{
+  name: "status --local --json fails closed on duplicate active or unknown next phase",
+  run() {
+    const base = validPhaseLedger();
+    const ledger = {
+      ...base,
+      next_phase_id: "missing",
+      phases: base.phases.map((phase) => ({
+        ...phase,
+        status: phase.id === "phase-2" ? "in_progress" : phase.status,
+        next_phase_id: phase.id === "phase-1" ? "missing" : phase.next_phase_id,
+      })),
+    };
+    const workspaceRoot = writePhaseState({ phase_ledger: ledger });
+    const status = runStatusWithSessionState(workspaceRoot);
+    assert(status.sessionState.status === "invalid", "expected invalid phase ledger");
+    assert(status.sessionState.violations.some((violation) => violation.includes("unknown phase")), "expected unknown next phase violation");
+    assert(status.sessionState.violations.some((violation) => violation.includes("exactly one in_progress")), "expected duplicate active phase violation");
+  },
+},
 {
     name: "status --local --json reports malformed session state file",
     run() {

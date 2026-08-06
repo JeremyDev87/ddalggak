@@ -17,29 +17,42 @@ const METRIC_FIELDS = Object.freeze([
 ]);
 
 const CONTROL_FIELDS = Object.freeze([
+  "experimentFamily",
   "modelRole",
   "provider",
   "model",
+  "apiSurface",
+  "transport",
+  "capabilityRef",
   "reasoning",
   "harness",
   "promptRef",
   "toolsetRef",
   "runtimeRef",
+  "workflowMode",
   "captureSource",
+  "observedAt",
+  "validUntil",
 ]);
 
 const EXPECTED_COMPARISONS = Object.freeze([
-  ["baseline-reasoning-full", "baseline-high-full", "baseline-medium-full", "reasoning"],
-  ["baseline-harness-high", "baseline-high-full", "baseline-high-lean", "harness"],
-  ["baseline-reasoning-lean", "baseline-high-lean", "baseline-medium-lean", "reasoning"],
-  ["candidate-reasoning-full", "candidate-high-full", "candidate-medium-full", "reasoning"],
-  ["candidate-harness-high", "candidate-high-full", "candidate-high-lean", "harness"],
-  ["candidate-reasoning-lean", "candidate-high-lean", "candidate-medium-lean", "reasoning"],
-  ["model-high-full", "baseline-high-full", "candidate-high-full", "model"],
-  ["model-high-lean", "baseline-high-lean", "candidate-high-lean", "model"],
-  ["model-medium-full", "baseline-medium-full", "candidate-medium-full", "model"],
-  ["model-medium-lean", "baseline-medium-lean", "candidate-medium-lean", "model"],
+  ["model-nominal", "model-baseline--baseline", "model-baseline--candidate", "model"],
+  ["prompt-zero-kernel", "prompt-ablation--zero", "prompt-ablation--kernel", "prompt"],
+  ["prompt-kernel-addback", "prompt-ablation--kernel", "prompt-ablation--addback", "prompt"],
+  ["prompt-zero-addback", "prompt-ablation--zero", "prompt-ablation--addback", "prompt"],
+  ["orchestration-single-goal", "orchestration--single", "orchestration--goal", "orchestration"],
+  ["orchestration-single-workflow", "orchestration--single", "orchestration--workflow", "orchestration"],
+  ["orchestration-goal-workflow", "orchestration--goal", "orchestration--workflow", "orchestration"],
+  ["stack-optimized", "stack-optimization--baseline", "stack-optimization--optimized", "stack"],
 ]);
+const EXPECTED_VARIANT_ORDER = Object.freeze([
+  "model-baseline--baseline", "model-baseline--candidate",
+  "prompt-ablation--zero", "prompt-ablation--kernel", "prompt-ablation--addback",
+  "orchestration--single", "orchestration--goal", "orchestration--workflow",
+  "stack-optimization--baseline", "stack-optimization--optimized",
+]);
+const EXPERIMENT_FAMILIES = new Set(["model-baseline", "prompt-ablation", "orchestration", "stack-optimization"]);
+const COMPARISON_AXES = new Set(["model", "prompt", "orchestration", "stack"]);
 
 const MANIFEST_KEYS = new Set(["version", "captureMode", "conditionalReferenceUniverse", "matrix", "cases"]);
 const MATRIX_KEYS = new Set(["variants", "comparisons"]);
@@ -121,6 +134,10 @@ function isControlledRef(value, kind) {
   return immutable.test(suffix) || placeholder.test(suffix);
 }
 
+function isIsoDateTime(value) {
+  return typeof value === "string" && Number.isFinite(Date.parse(value));
+}
+
 function rejectUnknownKeys(value, allowed, path, failures) {
   if (!isObject(value)) return;
   for (const key of Object.keys(value)) {
@@ -168,7 +185,7 @@ function scanSensitive(value, path = "$", failures = []) {
 
 function validateManifest(manifest) {
   const failures = [];
-  if (!isObject(manifest) || manifest.version !== 1) return ["manifest.version must equal 1"];
+  if (!isObject(manifest) || manifest.version !== 2) return ["manifest.version must equal 2"];
   requireExactKeys(manifest, MANIFEST_KEYS, "manifest", failures);
   if (!uniqueStrings(manifest.conditionalReferenceUniverse)) {
     failures.push("manifest.conditionalReferenceUniverse must be a unique string list");
@@ -180,8 +197,8 @@ function validateManifest(manifest) {
   if (!["synthetic-template", "live"].includes(manifest.captureMode)) {
     failures.push("manifest.captureMode must be synthetic-template or live");
   }
-  if (!isObject(manifest.matrix) || !Array.isArray(manifest.matrix.variants) || manifest.matrix.variants.length !== 8) {
-    failures.push("manifest.matrix.variants must contain exactly eight baseline/candidate variants");
+  if (!isObject(manifest.matrix) || !Array.isArray(manifest.matrix.variants) || manifest.matrix.variants.length !== EXPECTED_VARIANT_ORDER.length) {
+    failures.push(`manifest.matrix.variants must contain exactly ${EXPECTED_VARIANT_ORDER.length} canonical experiment variants`);
   }
   requireExactKeys(manifest.matrix, MATRIX_KEYS, "manifest.matrix", failures);
   const variantIds = new Set();
@@ -196,37 +213,37 @@ function validateManifest(manifest) {
     for (const field of CONTROL_FIELDS) {
       if (typeof variant[field] !== "string" || variant[field].length === 0) failures.push(`variant ${variant.id}: ${field} must be a non-empty string`);
     }
-    const [expectedRole, expectedReasoning, expectedHarness] = variant.id.split("-");
-    if (variant.modelRole !== expectedRole || variant.reasoning !== expectedReasoning || variant.harness !== expectedHarness) {
-      failures.push(`variant ${variant.id}: modelRole/reasoning/harness must match its canonical id`);
+    if (!EXPERIMENT_FAMILIES.has(variant.experimentFamily)) failures.push(`variant ${variant.id}: unknown experimentFamily`);
+    if (!variant.id.startsWith(`${variant.experimentFamily}--`)) failures.push(`variant ${variant.id}: id must be namespaced by experimentFamily`);
+    if (![variant.provider, variant.model, variant.apiSurface, variant.transport, variant.captureSource].every(isNormalizedIdentifier)) {
+      failures.push(`variant ${variant.id}: provider/model/apiSurface/transport/captureSource must be normalized identifiers`);
     }
-    if (!isNormalizedIdentifier(variant.provider) || !isNormalizedIdentifier(variant.model) || !isNormalizedIdentifier(variant.captureSource)) {
-      failures.push(`variant ${variant.id}: provider/model/captureSource must be normalized identifiers`);
-    }
-    if (!isControlledRef(variant.promptRef, "sha256") || !isControlledRef(variant.toolsetRef, "sha256") || !isControlledRef(variant.runtimeRef, "git")) {
-      failures.push(`variant ${variant.id}: prompt/tool/runtime refs must be immutable hashes or uppercase synthetic placeholders`);
+    if (!isControlledRef(variant.capabilityRef, "sha256") || !isControlledRef(variant.promptRef, "sha256") || !isControlledRef(variant.toolsetRef, "sha256") || !isControlledRef(variant.runtimeRef, "git")) {
+      failures.push(`variant ${variant.id}: capability/prompt/tool/runtime refs must be immutable hashes or uppercase synthetic placeholders`);
     }
     if (!["baseline", "candidate"].includes(variant.modelRole)) failures.push(`variant ${variant.id}: modelRole must be baseline or candidate`);
+    if (!["zero", "kernel", "addback", "full"].includes(variant.harness)) failures.push(`variant ${variant.id}: unsupported harness profile`);
+    if (!["single", "goal", "workflow"].includes(variant.workflowMode)) failures.push(`variant ${variant.id}: unsupported workflowMode`);
+    if (!isIsoDateTime(variant.observedAt) || !isIsoDateTime(variant.validUntil) || Date.parse(variant.observedAt) >= Date.parse(variant.validUntil)) {
+      failures.push(`variant ${variant.id}: observedAt and validUntil must be ordered ISO date-times`);
+    }
     if (manifest.captureMode === "live") {
-      if (/^(?:replace:|.*(?:PLACEHOLDER|PINNED|_PROMPT|_TOOLSET).*)/i.test(variant.provider) || /^(?:replace:|.*(?:PLACEHOLDER|BASELINE_MODEL|CANDIDATE_MODEL).*)/i.test(variant.model)) {
-        failures.push(`variant ${variant.id}: live provider/model identifiers must be concrete`);
+      if ([variant.provider, variant.model, variant.apiSurface, variant.transport].some((value) => /^(?:replace:|.*(?:PLACEHOLDER|PINNED|_PROMPT|_TOOLSET).*)/i.test(value))) {
+        failures.push(`variant ${variant.id}: live provider/model/API-surface/transport identifiers must be concrete`);
       }
-      if (!/^sha256:[a-f0-9]{64}$/.test(variant.promptRef) || !/^sha256:[a-f0-9]{64}$/.test(variant.toolsetRef) || !/^git:[a-f0-9]{40}$/.test(variant.runtimeRef)) {
-        failures.push(`variant ${variant.id}: live prompt/tool/runtime references must be immutable hashes`);
+      if (![variant.capabilityRef, variant.promptRef, variant.toolsetRef].every((value) => /^sha256:[a-f0-9]{64}$/.test(value)) || !/^git:[a-f0-9]{40}$/.test(variant.runtimeRef)) {
+        failures.push(`variant ${variant.id}: live capability/prompt/tool/runtime references must be immutable hashes`);
       }
       if (!/^attested:sha256:[a-f0-9]{64}$/.test(variant.captureSource)) {
         failures.push(`variant ${variant.id}: live captureSource must be an attested sha256 digest`);
       }
-    } else if (variant.captureSource !== "synthetic-fixture-v1") {
-      failures.push(`variant ${variant.id}: synthetic captureSource must be synthetic-fixture-v1`);
+      if (Date.parse(variant.validUntil) <= Date.now()) failures.push(`variant ${variant.id}: live evidence expired at validUntil`);
+    } else if (variant.captureSource !== "synthetic-fixture-v2") {
+      failures.push(`variant ${variant.id}: synthetic captureSource must be synthetic-fixture-v2`);
     }
   }
-  const expectedOrder = [
-    "baseline-high-full", "baseline-medium-full", "baseline-high-lean", "baseline-medium-lean",
-    "candidate-high-full", "candidate-medium-full", "candidate-high-lean", "candidate-medium-lean",
-  ];
   const actualOrder = array(manifest.matrix?.variants).map((variant) => variant.id);
-  if (JSON.stringify(actualOrder) !== JSON.stringify(expectedOrder)) failures.push(`matrix variants must be ordered ${expectedOrder.join(" -> ")}`);
+  if (JSON.stringify(actualOrder) !== JSON.stringify(EXPECTED_VARIANT_ORDER)) failures.push(`matrix variants must be ordered ${EXPECTED_VARIANT_ORDER.join(" -> ")}`);
 
   const comparisons = array(manifest.matrix?.comparisons);
   if (comparisons.length !== EXPECTED_COMPARISONS.length) {
@@ -235,7 +252,7 @@ function validateManifest(manifest) {
   for (const [index, comparison] of comparisons.entries()) {
     requireExactKeys(comparison, COMPARISON_KEYS, `comparison ${comparison?.id || index}`, failures);
     if (!variantIds.has(comparison.left) || !variantIds.has(comparison.right)) failures.push(`comparison ${comparison.id || "<missing>"}: unknown variant`);
-    if (!["reasoning", "harness", "model"].includes(comparison.axis)) failures.push(`comparison ${comparison.id || "<missing>"}: axis must be reasoning, harness, or model`);
+    if (!COMPARISON_AXES.has(comparison.axis)) failures.push(`comparison ${comparison.id || "<missing>"}: axis must be model, prompt, orchestration, or stack`);
     const expected = EXPECTED_COMPARISONS[index];
     if (expected && JSON.stringify([comparison.id, comparison.left, comparison.right, comparison.axis]) !== JSON.stringify(expected)) {
       failures.push(`comparison ${index}: expected controlled pair ${expected.join(" | ")}`);
@@ -376,17 +393,21 @@ function checkComparisonAxes(manifest) {
     const left = variants.get(comparison.left);
     const right = variants.get(comparison.right);
     if (!left || !right) continue;
-    const allowed = comparison.axis === "reasoning"
-      ? new Set(["reasoning"])
-      : comparison.axis === "harness"
-        ? new Set(["harness", "promptRef", "toolsetRef"])
-        : new Set(["modelRole", "provider", "model"]);
+    const allowedByAxis = {
+      model: new Set(["modelRole", "provider", "model", "capabilityRef"]),
+      prompt: new Set(["harness", "promptRef"]),
+      orchestration: new Set(["runtimeRef", "workflowMode"]),
+      stack: new Set(["modelRole", "provider", "apiSurface", "transport", "capabilityRef", "reasoning", "harness", "promptRef", "toolsetRef", "runtimeRef", "workflowMode"]),
+    };
+    const allowed = allowedByAxis[comparison.axis] || new Set();
     for (const field of CONTROL_FIELDS) {
       if (!allowed.has(field) && left[field] !== right[field]) failures.push(`comparison ${comparison.id}: top-level controlled drift ${field}`);
     }
-    if (comparison.axis === "reasoning" && left.reasoning === right.reasoning) failures.push(`comparison ${comparison.id}: reasoning axis did not change`);
-    if (comparison.axis === "harness" && left.harness === right.harness) failures.push(`comparison ${comparison.id}: harness axis did not change`);
     if (comparison.axis === "model" && (left.modelRole === right.modelRole || left.model === right.model)) failures.push(`comparison ${comparison.id}: model axis did not change baseline/candidate identity`);
+    if (comparison.axis === "prompt" && (left.harness === right.harness || left.promptRef === right.promptRef)) failures.push(`comparison ${comparison.id}: prompt axis must change harness and promptRef`);
+    if (comparison.axis === "orchestration" && left.workflowMode === right.workflowMode) failures.push(`comparison ${comparison.id}: orchestration axis did not change workflowMode`);
+    if (comparison.axis === "stack" && left.model !== right.model) failures.push(`comparison ${comparison.id}: optimized-stack axis must keep model identity fixed`);
+    if (comparison.axis === "stack" && [...allowed].every((field) => left[field] === right[field])) failures.push(`comparison ${comparison.id}: optimized-stack axis did not change`);
   }
   return failures;
 }

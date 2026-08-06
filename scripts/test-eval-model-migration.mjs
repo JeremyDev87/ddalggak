@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 
 import { loadCommandContracts } from "../bin/lib/command-contracts.mjs";
@@ -20,15 +21,22 @@ function validResults(candidateManifest = manifest) {
         caseId: testCase.id,
         variantId: variant.id,
         controls: Object.fromEntries([
+          "experimentFamily",
           "provider",
           "modelRole",
           "model",
+          "apiSurface",
+          "transport",
+          "capabilityRef",
           "reasoning",
           "harness",
           "promptRef",
           "toolsetRef",
           "runtimeRef",
+          "workflowMode",
           "captureSource",
+          "observedAt",
+          "validUntil",
         ].map((field) => [field, variant[field]])),
         observed: {
           outputSections: [...testCase.requiredOutputSections],
@@ -62,13 +70,21 @@ function validResults(candidateManifest = manifest) {
 function attestedLiveManifest() {
   const candidateManifest = clone(manifest);
   candidateManifest.captureMode = "live";
+  const immutableSha = (value) => createHash("sha256").update(value).digest("hex");
+  const immutableGit = (value) => createHash("sha1").update(value).digest("hex");
+  const concrete = (value) => `live-${createHash("sha256").update(value).digest("hex").slice(0, 16)}`;
   for (const variant of candidateManifest.matrix.variants) {
-    variant.provider = variant.modelRole === "baseline" ? "baseline-provider" : "candidate-provider";
-    variant.model = variant.modelRole === "baseline" ? "baseline-model" : "candidate-model";
-    variant.promptRef = `sha256:${"a".repeat(64)}`;
-    variant.toolsetRef = `sha256:${"b".repeat(64)}`;
-    variant.runtimeRef = `git:${"c".repeat(40)}`;
+    variant.provider = concrete(variant.provider);
+    variant.model = concrete(variant.model);
+    variant.apiSurface = concrete(variant.apiSurface);
+    variant.transport = concrete(variant.transport);
+    variant.capabilityRef = `sha256:${immutableSha(variant.capabilityRef)}`;
+    variant.promptRef = `sha256:${immutableSha(variant.promptRef)}`;
+    variant.toolsetRef = `sha256:${immutableSha(variant.toolsetRef)}`;
+    variant.runtimeRef = `git:${immutableGit(variant.runtimeRef)}`;
     variant.captureSource = `attested:sha256:${"d".repeat(64)}`;
+    variant.observedAt = "2099-01-01T00:00:00.000Z";
+    variant.validUntil = "2099-02-01T00:00:00.000Z";
   }
   return candidateManifest;
 }
@@ -105,7 +121,7 @@ function assertManifestFailure(name, mutate, expected) {
 
 {
   const modelComparisons = manifest.matrix.comparisons.filter((entry) => entry.axis === "model");
-  assert.equal(modelComparisons.length, 4);
+  assert.equal(modelComparisons.length, 1);
   for (const comparison of modelComparisons) {
     const left = manifest.matrix.variants.find((entry) => entry.id === comparison.left);
     const right = manifest.matrix.variants.find((entry) => entry.id === comparison.right);
@@ -113,15 +129,28 @@ function assertManifestFailure(name, mutate, expected) {
     assert.equal(right.modelRole, "candidate");
     assert.equal(left.reasoning, right.reasoning);
     assert.equal(left.harness, right.harness);
+    assert.equal(left.promptRef, right.promptRef);
+    assert.equal(left.toolsetRef, right.toolsetRef);
+    assert.equal(left.runtimeRef, right.runtimeRef);
+    assert.equal(left.workflowMode, right.workflowMode);
   }
   console.log("[PASS] model migration compares baseline/candidate under matched harness and reasoning controls");
 }
 
+{
+  const counts = Object.fromEntries(["model", "prompt", "orchestration", "stack"].map((axis) => [
+    axis,
+    manifest.matrix.comparisons.filter((entry) => entry.axis === axis).length,
+  ]));
+  assert.deepEqual(counts, { model: 1, prompt: 3, orchestration: 3, stack: 1 });
+  console.log("[PASS] model, prompt, orchestration, and optimized-stack experiments stay separate");
+}
+
 assertManifestFailure("model comparison exact set cannot be reduced", (candidateManifest) => {
   candidateManifest.matrix.comparisons = candidateManifest.matrix.comparisons.filter(
-    (entry) => entry.id !== "model-medium-lean",
+    (entry) => entry.id !== "stack-optimized",
   );
-}, "must contain exactly 10 controlled pairs");
+}, "must contain exactly 8 controlled pairs");
 
 assertManifestFailure("canonical case set cannot be reduced with regenerated runs", (candidateManifest) => {
   candidateManifest.cases = candidateManifest.cases.filter((entry) => entry.id !== "conditional-reference-routing");
@@ -179,7 +208,7 @@ assertManifestFailure("conditional universe cannot be reduced with regenerated r
 {
   const liveManifest = attestedLiveManifest();
   const results = validResults(liveManifest);
-  results.runs[0].observed.validationEvidence.push({ status: "fail", artifactRef: "evidence/baseline-high-full/failed-check.json" });
+  results.runs[0].observed.validationEvidence.push({ status: "fail", artifactRef: `evidence/${liveManifest.matrix.variants[0].id}/failed-check.json` });
   const report = scoreComparison(liveManifest, results);
   assert.equal(report.pass, false);
   assert(report.hardGateFailures.some((failure) => failure.includes("validation evidence reported failure")));
@@ -237,7 +266,17 @@ for (const [name, mutate, expected] of [
 
 assertManifestFailure("variant identifiers cannot carry free text", (candidateManifest) => {
   candidateManifest.matrix.variants[0].provider = "raw private provider payload";
-}, "provider/model/captureSource must be normalized identifiers");
+}, "provider/model/apiSurface/transport/captureSource must be normalized identifiers");
+
+{
+  const staleManifest = attestedLiveManifest();
+  for (const variant of staleManifest.matrix.variants) variant.validUntil = "2000-01-01T00:00:00.000Z";
+  const report = scoreComparison(staleManifest, validResults(staleManifest));
+  assert.equal(report.pass, false);
+  assert(report.hardGateFailures.some((failure) => failure.includes("live evidence expired")));
+  assert.equal(report.promotionEligible, false);
+  console.log("[PASS] stale live evidence cannot promote");
+}
 
 assertFailure("token-like values are rejected", (results) => {
   results.runs[0].observed.note = ["github", "pat", "a".repeat(24)].join("_");
