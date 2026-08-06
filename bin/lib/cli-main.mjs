@@ -66,7 +66,7 @@ function levenshtein(a, b) {
 }
 
 function suggestCandidate(input) {
-  const pool = ["setup", "doctor", ...SUBCOMMANDS];
+  const pool = ["setup", "doctor", ...SUBCOMMANDS, "state"];
   let best = null;
   let bestDist = Infinity;
   for (const cand of pool) {
@@ -140,6 +140,14 @@ const COMMAND_ROUTES = [
     argsTransform: (_first, rest) => [rest],
     missingHint: () =>
       "ddalggak doctor: implementation not installed yet.\n(./bin/lib/doctor.mjs is missing - this CLI is in active development.)",
+  },
+  {
+    name: "state",
+    module: "./state.mjs",
+    matches: (first) => first === "state",
+    argsTransform: (_first, rest) => [rest],
+    missingHint: () =>
+      "ddalggak state: implementation not installed yet.\n(./bin/lib/state.mjs is missing - this CLI is in active development.)",
   },
   {
     name: "status-local",

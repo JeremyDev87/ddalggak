@@ -105,6 +105,7 @@ Codex App:
 Subcommands:
   setup                Install Claude Code skills to ~/.claude/skills/
   doctor               Run repo-source health checks (reachability, dead pointers, signals, root parity)
+  state                Initialize or transition durable session state
 ${commandLines}
   status --local       Inspect local source/Codex/installed skill parity
   profile hermes       Propose a Hermes-style Claude global profile patch (dry-run only)

@@ -23,6 +23,7 @@
     "test:heimdall-readiness-adapter": "node scripts/test-heimdall-readiness-adapter.mjs",
     "eval:model-migration": "node scripts/eval-model-migration.mjs",
     "test:model-migration-eval": "node scripts/test-eval-model-migration.mjs",
+    "test:state-writer": "node scripts/test-state-writer.mjs",
     "test:conditional-command-assets": "node scripts/test-conditional-command-assets.mjs",
     "eval:review-quality": "node scripts/eval-review-quality.mjs",
     "test:review-quality-eval": "node scripts/test-review-quality-eval.mjs",
