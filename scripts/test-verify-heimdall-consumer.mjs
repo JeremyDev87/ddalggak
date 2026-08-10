@@ -36,7 +36,7 @@ function fixture(overrides = {}) {
   };
 }
 
-function runCase(name, overrides, expectedStatus) {
+function runCase(name, overrides, expectedStatus, envOverrides = {}) {
   const artifactsDir = mkdtempSync(
     path.join(os.tmpdir(), "ddalggak-heimdall-consumer-test-"),
   );
@@ -64,6 +64,7 @@ function runCase(name, overrides, expectedStatus) {
       HEIMDALL_REPORT_DIGEST: reportDigest,
       HEIMDALL_BINARY_VERSION: "0.1.0",
       HEIMDALL_BINARY_COMMIT: binaryCommit,
+      ...envOverrides,
     },
   });
 
@@ -80,6 +81,12 @@ function runCase(name, overrides, expectedStatus) {
 }
 
 runCase("valid evidence remains accepted", {}, 0);
+runCase(
+  "malformed Action digest output fails closed",
+  {},
+  1,
+  { HEIMDALL_EVIDENCE_DIGEST: "evidence-fixture" },
+);
 runCase(
   "missing target digests fail closed",
   { evidence: { target: { id: "ddalggak", no_write: true } } },
