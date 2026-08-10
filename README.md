@@ -370,6 +370,10 @@ heimdall evaluate heimdall.eval.yaml --out /tmp/ddalggak-heimdall
 
 This pilot manifest is repository-local and is not included in the npm package. Heimdall evaluates a disposable copy and records content-light evidence; `trusted-local` is not an OS sandbox and must not be used for adversarial code. Use `npm run verify:security-posture` for a read-only GitHub Actions posture inventory covering permissions blocks, action reference pinning, direct untrusted shell interpolation candidates, and official CodeQL/Dependency Review/Scorecard evidence presence. Use `npm run test:pr-check-evidence` for content-light PR check bundle normalization, failure classification, details URL preservation, and secret-like string redaction. Missing official scan evidence is reported separately and must not be described as proof that the repository is safe. Use the pack dry-run as an explicit maintainer-facing package artifact inspection as well.
 
+## Hosted Heimdall consumer lane
+
+The `Heimdall consumer` workflow runs only on owner-controlled `master` pushes or explicit manual dispatch (never on `pull_request`) and evaluates the repository-local readiness manifest through the immutable composite Action commit [`7acd9ec`](https://github.com/JeremyDev87/heimdall/commit/7acd9ec1166c9bd96810075bae58f1ba09dade74). It separately checks that the published `report.json` and `evidence.json` digests match the Action outputs, the report is `PASS`, the target digest is unchanged, and the evidence records `no_write=true` and `outside_workspace_write=false`. The workflow uploads the runner-temporary artifacts for inspection; these artifacts are evidence, not durable storage or approval authority. The Action's four-state mapping remains governed by the Heimdall Action contract; this consumer lane is intentionally a PASS-only readiness gate for the owner-controlled repository.
+
 ## Platform Support
 
 macOS and Linux are the primary supported platforms. Windows support is best-effort when Node.js and the `claude` CLI environment are compatible.

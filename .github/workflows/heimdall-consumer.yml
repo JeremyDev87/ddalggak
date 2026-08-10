@@ -1,0 +1,48 @@
+name: Heimdall consumer
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  consumer:
+    name: Heimdall consumer / Linux real target
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out ddalggak
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+
+      - name: Evaluate ddalggak with the immutable Heimdall Action
+        id: heimdall
+        uses: JeremyDev87/heimdall@7acd9ec1166c9bd96810075bae58f1ba09dade74
+        with:
+          manifest: heimdall.eval.yaml
+
+      - name: Verify consumer evidence contract
+        if: always()
+        env:
+          ARTIFACTS_DIR: ${{ steps.heimdall.outputs.artifacts-dir }}
+          HEIMDALL_STATE: ${{ steps.heimdall.outputs.state }}
+          HEIMDALL_EXIT_CODE: ${{ steps.heimdall.outputs.exit-code }}
+          HEIMDALL_EVIDENCE_DIGEST: ${{ steps.heimdall.outputs.evidence-digest }}
+          HEIMDALL_REPORT_DIGEST: ${{ steps.heimdall.outputs.report-digest }}
+          HEIMDALL_BINARY_VERSION: ${{ steps.heimdall.outputs.binary-version }}
+          HEIMDALL_BINARY_COMMIT: ${{ steps.heimdall.outputs.binary-commit }}
+        run: node scripts/verify-heimdall-consumer.mjs
+
+      - name: Upload Heimdall consumer evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: ddalggak-heimdall-consumer-${{ github.sha }}
+          path: ${{ steps.heimdall.outputs.artifacts-dir }}
+          if-no-files-found: warn
+          retention-days: 14
