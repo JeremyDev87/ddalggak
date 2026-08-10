@@ -104,6 +104,12 @@ export const verifyPipelineStages = [
         npmScript: "test:heimdall-readiness-adapter",
       },
       {
+        label: "Heimdall consumer verifier fail-closed tests",
+        command: "npm",
+        args: ["run", "test:heimdall-consumer-verifier"],
+        npmScript: "test:heimdall-consumer-verifier",
+      },
+      {
         label: "model migration eval fail-closed tests",
         command: "npm",
         args: ["run", "test:model-migration-eval"],
