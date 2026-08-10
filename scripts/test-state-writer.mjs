@@ -5,10 +5,13 @@ import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 
 import { initState, transitionState } from "../bin/lib/state.mjs";
 import { validPhaseLedger, validSessionState } from "./test-lib/cli-fixtures.mjs";
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 const roots = [];
 const makeRoot = () => {
   const root = mkdtempSync(path.join(os.tmpdir(), "ddalggak-state-writer-"));
@@ -204,7 +207,7 @@ try {
   {
     const { root, draft, hash } = fixture();
     const result = spawnSync(process.execPath, ["bin/ddalggak.js", "state", "init", "--from", draft, "--expected-plan-hash", hash], {
-      cwd: path.resolve(import.meta.dirname, ".."),
+      cwd: path.resolve(__dirname, ".."),
       env: { ...process.env, DDALGGAK_WORKSPACE_ROOT: root },
       encoding: "utf8",
     });
