@@ -21,6 +21,7 @@
     "test:reference-aware-skill-anchors": "node scripts/test-verify-codex-skill-reference-aware.mjs",
     "eval:ddalggak-readiness": "node scripts/eval-ddalggak-readiness.mjs",
     "test:heimdall-readiness-adapter": "node scripts/test-heimdall-readiness-adapter.mjs",
+    "test:heimdall-consumer-verifier": "node scripts/test-verify-heimdall-consumer.mjs",
     "eval:model-migration": "node scripts/eval-model-migration.mjs",
     "test:model-migration-eval": "node scripts/test-eval-model-migration.mjs",
     "test:state-writer": "node scripts/test-state-writer.mjs",

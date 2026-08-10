@@ -11,14 +11,26 @@ const required = [
   "HEIMDALL_BINARY_VERSION",
   "HEIMDALL_BINARY_COMMIT",
 ];
+const sha256Pattern = /^[0-9a-f]{64}$/;
 
 function fail(message) {
   throw new Error(message);
 }
 
+function requireSha256(value, label) {
+  if (typeof value !== "string" || !sha256Pattern.test(value)) {
+    fail(`${label} must be a lowercase SHA-256 digest`);
+  }
+}
+
 for (const name of required) {
   if (!process.env[name]) fail(`${name} is required`);
 }
+requireSha256(
+  process.env.HEIMDALL_EVIDENCE_DIGEST,
+  "HEIMDALL_EVIDENCE_DIGEST",
+);
+requireSha256(process.env.HEIMDALL_REPORT_DIGEST, "HEIMDALL_REPORT_DIGEST");
 
 const artifactsDir = path.resolve(process.env.ARTIFACTS_DIR);
 if (!path.isAbsolute(process.env.ARTIFACTS_DIR)) {
@@ -57,18 +69,28 @@ if (
 }
 
 if (report.state !== "PASS") fail(`report state is not PASS: ${report.state}`);
+requireSha256(report.semantic_digest, "report.semantic_digest");
 if (report.semantic_digest !== process.env.HEIMDALL_REPORT_DIGEST) {
   fail("report digest output does not match report.json semantic_digest");
 }
-if (!report.semantic_digest) fail("report semantic_digest is empty");
-if (
-  evidence.semantic_digest !== process.env.HEIMDALL_EVIDENCE_DIGEST ||
-  !evidence.semantic_digest
-) {
+requireSha256(evidence.semantic_digest, "evidence.semantic_digest");
+if (evidence.semantic_digest !== process.env.HEIMDALL_EVIDENCE_DIGEST) {
   fail("evidence digest output does not match evidence.json semantic_digest");
 }
 
 if (evidence.target?.id !== "ddalggak") fail("unexpected evidence target id");
+if (report.target?.id !== evidence.target?.id) {
+  fail("report and evidence target ids do not match");
+}
+requireSha256(evidence.target?.digest_before, "evidence.target.digest_before");
+requireSha256(evidence.target?.digest_after, "evidence.target.digest_after");
+requireSha256(report.target?.digest, "report.target.digest");
+if (
+  report.target.digest !== evidence.target.digest_before ||
+  report.target.digest !== evidence.target.digest_after
+) {
+  fail("report and evidence target digests do not match");
+}
 if (evidence.target?.no_write !== true) fail("target no_write must be true");
 if (evidence.target?.digest_before !== evidence.target?.digest_after) {
   fail("target digest changed during evaluation");
