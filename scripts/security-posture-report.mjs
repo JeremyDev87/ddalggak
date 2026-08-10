@@ -150,6 +150,13 @@ const ACTION_PIN_EXCEPTION_LEDGER = {
       status: "compliant",
     },
     {
+      action: "JeremyDev87/heimdall",
+      currentRef: "7acd9ec1166c9bd96810075bae58f1ba09dade74",
+      pinClass: "sha-pinned",
+      reason: "Owner-controlled Heimdall consumer Action pinned to the reviewed merged main commit for Linux readiness admission",
+      status: "compliant",
+    },
+    {
       action: "actions/upload-artifact",
       currentRef: "ea165f8d65b6e75b540449e92b4886f43607fa02",
       pinClass: "sha-pinned",
