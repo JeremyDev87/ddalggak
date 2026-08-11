@@ -106,9 +106,17 @@ function makePackageFixture() {
     "utf8",
   );
   writeFileSync(path.join(root, "bin", "ddalggak.js"), "process.exit(0);\n", "utf8");
+  writeFileSync(
+    path.join(root, "scripts", "test-ulw-runtime-parity.mjs"),
+    "process.exit(0);\n",
+    "utf8",
+  );
 
   // Trailing "--" keeps stubs tolerant of forwarded args (e.g. "-- --admission").
-  const scripts = { test: 'node -e "process.exit(0)"' };
+  const scripts = {
+    test: 'node -e "process.exit(0)"',
+    "test:ulw-runtime-parity": 'node scripts/test-ulw-runtime-parity.mjs',
+  };
   for (const name of runStepNames) {
     scripts[name] = 'node -e "process.exit(0)" --';
   }

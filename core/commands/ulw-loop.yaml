@@ -7,6 +7,8 @@ purpose: "ULW implement."
 mode: "source-edit"
 write_side_effects: "Scoped edits; no GitHub."
 stop_condition: "Stop after evidence/blockers."
+runtime_entrypoint: "core/ulw-loop/runtime.mjs"
+runtime_subcommands: "create-goals,status,complete-goals,checkpoint,steer,add-goal,criteria,record-evidence,record-review-blockers,hook"
 required_references:
   - wiki-context-preflight.md
   - ulw-loop.md

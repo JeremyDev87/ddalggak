@@ -1,0 +1,9 @@
+{
+  "component": "codex-ulw-loop",
+  "upstream": "https://github.com/code-yeongyu/codex-ulw-loop",
+  "oracle_repository_revision": "ee81ab7c5150fbe027b0b79b411093a30e1d7353",
+  "upstream_package_version": "5.0.0-beta.5",
+  "license": "MIT",
+  "vendored_form": "compiled JavaScript generated from the upstream TypeScript source",
+  "local_changes": "No changes inside vendor/dist; ddalggak integration is in ../runtime.mjs"
+}

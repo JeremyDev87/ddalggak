@@ -6,6 +6,16 @@ Do not use when: the user has already chosen an implementation path; use `ulw-lo
 
 `ulw-research` investigates claims until the answer is evidence-bound or explicitly blocked.
 
+## Executable clean-room runtime
+
+`ddalggak ulw-research init|accept-format|wave|claim|record-evidence|finalize|status` maintains an isolated session under `.omo/ulw-research/<session-id>/`. This ddalggak-native implementation was written from observable requirements and does not copy SUL-licensed prose.
+
+`init` records at least three orthogonal axes and a proposed deliverable/template; `accept-format` is mandatory before any worker return can be journaled. Every EXPAND return carries an explicit expansion tail, the first wave covers every axis, leads are deduplicated and closed explicitly, and convergence requires two EXPAND waves with no open leads. High-risk non-code claims require two source domains, two observer groups, temporal validity, primary backing, and counter-search evidence. Finalization binds the accepted format, non-empty artifact/assets, and an independent rendered-page plus proofread QA receipt to exact SHA-256 digests. Self-reports, stale digests, symlinks, missing expansion tails, premature convergence, and mismatched QA receipts fail closed.
+
+## OMO origin and parity boundary
+
+The behavioral reference is oh-my-openagent `v3.8.3` at `84e103c41f9863ea32533b9532b013a796053587`, especially its Librarian and search/analyze surfaces. That release has no named `ulw-research` command: this is a clean-room ddalggak translation, not an exact command or prompt-text copy. The CLI journals and validates worker returns; the surrounding Hermes skill procedure still owns source retrieval, parallel worker dispatch, synthesis, and citations. See `core/ulw-research/SOURCE.json` for the pinned source map and non-claims.
+
 ## Procedure
 
 1. Split the question into independent research axes.
