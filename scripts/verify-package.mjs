@@ -165,6 +165,7 @@ function verifyArtifactContents() {
 }
 
 try {
+  runStep("ULW runtime behavioral parity", npmCommand, ["run", "test:ulw-runtime-parity"]);
   for (const stage of verifyPipelineStages) {
     console.log(`\n[verify-package] stage: ${stage.title}`);
     for (const step of stage.steps) {

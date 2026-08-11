@@ -5,8 +5,10 @@ source_edit_allowed: false
 github_write_allowed: false
 purpose: "ULW research."
 mode: "read-only"
-write_side_effects: "Research only; no writes."
+write_side_effects: "Writes only .omo research journals/receipts; no source or GitHub."
 stop_condition: "Stop after cited claims/gaps."
+runtime_entrypoint: "core/ulw-research/runtime.mjs"
+runtime_subcommands: "init,accept-format,wave,claim,record-evidence,finalize,status"
 required_references:
   - wiki-context-preflight.md
   - ulw-research.md

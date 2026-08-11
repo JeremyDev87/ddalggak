@@ -6,6 +6,16 @@ Do not use when: the user has authorized implementation now; use `ulw-loop`.
 
 `ulw-plan` turns a goal into a bounded execution plan without editing source files.
 
+## Executable artifact runtime
+
+`ddalggak ulw-plan scaffold <slug> [--clear|--unclear] [--review-required]` creates only a resume-safe draft and gate state under `.omo/`. Explicit `approve` creates the plan artifact; before that `.omo/plans/<slug>.md` must not exist. The remaining state transitions are `review-init`, `review-receipt`, `finalize`, and `status`. These writes are plan artifacts, not source edits.
+
+Finalization fails closed until the draft approval binds its digest. When review is required, both `momus` and `independent` receipts must match the current round, launch, session, target, and plan SHA-256; duplicate, stale, mismatched, or post-review-modified plans are rejected.
+
+## OMO origin and parity boundary
+
+The behavioral reference is oh-my-openagent `v3.8.3` at `84e103c41f9863ea32533b9532b013a796053587`, especially its Prometheus interview and plan-generation surfaces. That release has no named `ulw-plan` command: this is a clean-room ddalggak translation, not an exact command or prompt-text copy. The CLI state machine preserves durable gates; the surrounding Hermes skill procedure still owns investigation, clarification, and reviewer orchestration. See `core/ulw-plan/SOURCE.json` for the pinned source map and non-claims.
+
 ## Procedure
 
 1. Read the relevant repo, issue, docs, and evidence surfaces.
@@ -84,4 +94,4 @@ Topology lock happens before detailed planning: list the 1-6 independent compone
 
 ## Non-goals
 
-Do not import lazycodex `.omo` CLI state, `scaffold-plan.mjs`, Codex teammode, or source-edit authority. Plan-only remains no source edits and no GitHub writes unless a separate ddalggak command explicitly grants them.
+Do not import Codex teammode or source-edit authority. The ddalggak-native runtime may write only its `.omo/drafts`, `.omo/plans`, and `.omo/ulw-plan` artifacts. Plan-only remains no source edits and no GitHub writes unless a separate ddalggak command explicitly grants them.

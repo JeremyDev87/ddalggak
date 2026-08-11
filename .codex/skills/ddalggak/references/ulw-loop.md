@@ -6,6 +6,12 @@ Do not use when: the user only wants a plan or research; use `ulw-plan` or `ulw-
 
 `ulw-loop` executes the smallest faithful implementation loop on top of ddalggak's existing evidence and simplicity gates.
 
+## Executable runtime
+
+`ddalggak ulw-loop <runtime-subcommand>` enters the vendored MIT runtime instead of emitting a slash prompt. Supported subcommands are `create-goals`, `status`, `complete-goals`, `checkpoint`, `steer`, `add-goal`, `criteria`, `record-evidence`, and `record-review-blockers`; `hook user-prompt-submit|pre-tool-use|stop|pre-tool-use-spawn` exposes the lifecycle hooks. Every command accepts `--session-id` and isolates append-only state under `.omo/ulw-loop/<session>/`. The unscoped compatibility path remains `.omo/ulw-loop/`.
+
+This runtime comes from `codex-ulw-loop` 5.0.0-beta.5 under MIT. See `core/ulw-loop/ATTRIBUTION.md`, the vendored `LICENSE`, and `SOURCE.json`. The package requires Node.js 20 or newer, matching upstream.
+
 ## Procedure
 
 1. Define observable success criteria and non-goals.
@@ -64,7 +70,7 @@ See `references/ulw-tier-triage.md` for the ddalggak translation of lazycodex v4
 - Execution loop: `PIN -> RED -> GREEN -> SURFACE -> CLEAN` for every success criterion.
 - Manual-QA channels: HTTP, tmux, browser, computer-use, and auxiliary CLI/data/docs surfaces with exact artifact capture.
 
-Do not import `.omo` CLI state, Codex `teammode`, or `multi_agent_v1` as dependencies; translate them to ddalggak worker briefs, Hermes `todo`, `delegate_task`, evidence-contract, and handoff/conductor notes.
+Do not make Codex `teammode` or `multi_agent_v1` dependencies. The explicit CLI runtime may use its isolated `.omo/ulw-loop` state; prompt-routed execution still translates coordination to ddalggak worker briefs, Hermes `todo`, evidence contracts, and handoff/conductor notes.
 
 ## Persistent-surface loops
 

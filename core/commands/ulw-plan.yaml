@@ -5,8 +5,10 @@ source_edit_allowed: false
 github_write_allowed: false
 purpose: "ULW plan."
 mode: "plan-only"
-write_side_effects: "Plan only; no writes."
+write_side_effects: "Writes only .omo plan artifacts/state; no source or GitHub."
 stop_condition: "Stop after criteria/blockers."
+runtime_entrypoint: "core/ulw-plan/runtime.mjs"
+runtime_subcommands: "scaffold,approve,review-init,review-receipt,finalize,status"
 required_references:
   - wiki-context-preflight.md
   - ulw-plan.md

@@ -117,6 +117,29 @@ function normalizeExitCode(code) {
   return typeof code === "number" ? code : 0;
 }
 
+const ULW_RUNTIME_COMMANDS = {
+  "ulw-loop": new Set([
+    "help", "create-goals", "status", "complete-goals", "checkpoint", "steer",
+    "add-goal", "criteria", "record-evidence", "record-review-blockers", "hook",
+  ]),
+  "ulw-plan": new Set(["help", "scaffold", "approve", "review-init", "review-receipt", "finalize", "status"]),
+  "ulw-research": new Set(["help", "init", "accept-format", "wave", "claim", "record-evidence", "finalize", "status"]),
+};
+
+function isUlwRuntimeInvocation(first, rest) {
+  return ULW_RUNTIME_COMMANDS[first]?.has(rest[0] ?? "") === true;
+}
+
+async function runUlwRuntime(first, rest) {
+  const runtime = first === "ulw-loop"
+    ? await import("../../core/ulw-loop/runtime.mjs")
+    : first === "ulw-plan"
+      ? await import("../../core/ulw-plan/runtime.mjs")
+      : await import("../../core/ulw-research/runtime.mjs");
+  const entrypoint = runtime.runUlwLoopRuntime || runtime.runUlwPlan || runtime.runUlwResearch;
+  return normalizeExitCode(await entrypoint(rest));
+}
+
 async function runModule(route, first, rest) {
   const mod = await loadLib(route.module, route.missingHint(first));
   const args = route.argsTransform ? route.argsTransform(first, rest) : rest;
@@ -197,6 +220,10 @@ export async function runCli(argv = process.argv.slice(2)) {
   if (first === "--version" || first === "-v") {
     printVersion();
     return 0;
+  }
+
+  if (isUlwRuntimeInvocation(first, rest)) {
+    return runUlwRuntime(first, rest);
   }
 
   const route = COMMAND_ROUTES.find((candidate) => candidate.matches(first, rest));

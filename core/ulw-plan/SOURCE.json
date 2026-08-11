@@ -1,0 +1,27 @@
+{
+  "component": "ddalggak ulw-plan",
+  "behavioral_upstream": "https://github.com/code-yeongyu/oh-my-openagent",
+  "upstream_tag": "v3.8.3",
+  "upstream_commit": "84e103c41f9863ea32533b9532b013a796053587",
+  "upstream_license": "Sustainable Use License 1.0",
+  "observed_source_paths": [
+    "src/agents/prometheus/interview-mode.ts",
+    "src/agents/prometheus/plan-generation.ts",
+    "src/agents/prometheus/plan-template.ts",
+    "src/agents/prometheus/system-prompt.ts"
+  ],
+  "upstream_named_command": "absent",
+  "implementation": "ddalggak-native clean-room behavioral translation; no upstream code or prompt prose copied",
+  "parity_scope": [
+    "planning-only boundary",
+    "clarification before final plan",
+    "durable plan artifact",
+    "gap and reviewer gates",
+    "explicit finalization"
+  ],
+  "non_claims": [
+    "not an exact command-port because oh-my-openagent v3.8.3 has no ulw-plan command",
+    "not a byte-for-byte or prompt-text copy",
+    "runtime state transitions supplement rather than replace Hermes skill orchestration"
+  ]
+}
