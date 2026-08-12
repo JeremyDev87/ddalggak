@@ -1,14 +1,14 @@
 # ULW Loop
 Use when: a user asks ddalggak to implement a bounded goal through an evidence-led loop.
 Required by: `ulw-loop`
-Side effects: source edits inside the stated goal scope only; no GitHub writes.
+Side effects: agent-workflow execution may edit source inside the stated goal scope; explicit CLI runtime subcommands additionally write bounded `.omo/ulw-loop/` state; no GitHub writes.
 Do not use when: the user only wants a plan or research; use `ulw-plan` or `ulw-research`.
 
 `ulw-loop` executes the smallest faithful implementation loop on top of ddalggak's existing evidence and simplicity gates.
 
 ## Executable runtime
 
-`ddalggak ulw-loop <runtime-subcommand>` enters the vendored MIT runtime instead of emitting a slash prompt. Supported subcommands are `create-goals`, `status`, `complete-goals`, `checkpoint`, `steer`, `add-goal`, `criteria`, `record-evidence`, and `record-review-blockers`; `hook user-prompt-submit|pre-tool-use|stop|pre-tool-use-spawn` exposes the lifecycle hooks. Every command accepts `--session-id` and isolates append-only state under `.omo/ulw-loop/<session>/`. The unscoped compatibility path remains `.omo/ulw-loop/`.
+`ddalggak ulw-loop <runtime-subcommand>` enters the vendored MIT runtime instead of emitting a slash prompt. Supported subcommands are `create-goals`, `status`, `complete-goals`, `checkpoint`, `steer`, `add-goal`, `criteria`, `record-evidence`, and `record-review-blockers`; `hook user-prompt-submit|pre-tool-use|stop|pre-tool-use-spawn` exposes the lifecycle hooks. Every command accepts `--session-id` and isolates mutable snapshots plus an append-only ledger under `.omo/ulw-loop/<session>/`. The unscoped compatibility path remains `.omo/ulw-loop/`.
 
 This runtime comes from `codex-ulw-loop` 5.0.0-beta.5 under MIT. See `core/ulw-loop/ATTRIBUTION.md`, the vendored `LICENSE`, and `SOURCE.json`. The package requires Node.js 20 or newer, matching upstream.
 

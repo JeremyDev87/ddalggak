@@ -1,7 +1,7 @@
 # ULW Plan
 Use when: a user wants a decision-complete implementation plan before source edits.
 Required by: `ulw-plan`
-Side effects: none
+Side effects: agent-workflow planning is response-only; explicit CLI runtime subcommands write bounded `.omo/drafts`, `.omo/plans`, and `.omo/ulw-plan` artifacts/state.
 Do not use when: the user has authorized implementation now; use `ulw-loop`.
 
 `ulw-plan` turns a goal into a bounded execution plan without editing source files.

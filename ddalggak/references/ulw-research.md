@@ -1,7 +1,7 @@
 # ULW Research
 Use when: a user asks for exhaustive research, cited investigation, or evidence gathering before a decision.
 Required by: `ulw-research`
-Side effects: none
+Side effects: agent-workflow research is response-only; explicit CLI runtime subcommands write bounded `.omo/ulw-research/<session-id>/` journals and receipts.
 Do not use when: the user has already chosen an implementation path; use `ulw-loop`.
 
 `ulw-research` investigates claims until the answer is evidence-bound or explicitly blocked.
@@ -10,7 +10,7 @@ Do not use when: the user has already chosen an implementation path; use `ulw-lo
 
 `ddalggak ulw-research init|accept-format|wave|claim|record-evidence|finalize|status` maintains an isolated session under `.omo/ulw-research/<session-id>/`. This ddalggak-native implementation was written from observable requirements and does not copy SUL-licensed prose.
 
-`init` records at least three orthogonal axes and a proposed deliverable/template; `accept-format` is mandatory before any worker return can be journaled. Every EXPAND return carries an explicit expansion tail, the first wave covers every axis, leads are deduplicated and closed explicitly, and convergence requires two EXPAND waves with no open leads. High-risk non-code claims require two source domains, two observer groups, temporal validity, primary backing, and counter-search evidence. Finalization binds the accepted format, non-empty artifact/assets, and an independent rendered-page plus proofread QA receipt to exact SHA-256 digests. Self-reports, stale digests, symlinks, missing expansion tails, premature convergence, and mismatched QA receipts fail closed.
+`init` records at least three orthogonal axes and a proposed deliverable/template; `accept-format` is mandatory before any worker return can be journaled. Every EXPAND return carries an explicit expansion tail, the first wave covers every axis, leads are deduplicated and closed explicitly, and convergence requires two EXPAND waves with no open leads. High-risk non-code claims require two source domains, two observer groups, temporal validity, primary backing, and counter-search evidence. Finalization binds the accepted format, non-empty artifact/assets, and a caller-supplied rendered-page/proofread QA receipt to exact SHA-256 digests. The runtime validates receipt structure, reviewer label, booleans, and artifact hashes; it does **not** prove that a separate reviewer process or session produced the receipt. Surrounding Hermes execution must retain independent reviewer launch/session evidence before reporting independent QA. Stale digests, symlinks, missing expansion tails, premature convergence, and mismatched QA receipts fail closed.
 
 ## OMO origin and parity boundary
 
