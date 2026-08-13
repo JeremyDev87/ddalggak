@@ -4,7 +4,7 @@
   "requiredAdmissionFields": [
     "candidate_id", "pr_number", "base_sha", "head_sha", "authority", "lifecycle", "observed_delta", "governing_contract", "scope_relation",
     "prior_decision", "base_state", "current_head_evidence", "diff_causality", "impact", "counterargument",
-    "counterargument_disproof", "minimum_correction", "severity", "disposition", "publication_eligible"
+    "counterargument_disproof", "minimum_correction", "severity", "disposition", "publication_eligible", "public_finding"
   ],
   "requiredReviewEvidenceFields": ["pr_number", "lifecycle", "base_sha", "head_sha", "review_risk", "semantic_coverage", "counterexample"],
   "requiredChecksEvidenceFields": ["pr_number", "lifecycle", "base_sha", "head_sha", "status", "justification"],
@@ -49,7 +49,7 @@
     "worker self-report is never publication authority"
   ],
   "requiredContractMarkersByFile": {
-    "references/cross-review-loop.md": ["exactly these 20 fields", "## Semantic coverage matrix", "## Review evidence schema v3", "pr_number", "base_sha", "head_sha", "evaluator-produced exact", "same-process live", "eligible publication decision", "## Review brief"],
+    "references/cross-review-loop.md": ["exactly these 21 fields", "## Semantic coverage matrix", "## Review evidence schema v3", "pr_number", "base_sha", "head_sha", "evaluator-produced exact", "same-process live", "eligible publication decision", "## Review brief"],
     "templates/review-brief.md": ["PR number", "Base SHA", "Head SHA", "checks Head SHA", "## Semantic coverage matrix", "## Concrete counterexample pass", "Forbidden side effects", "authority: SUBREVIEW", "disposition: CANDIDATE", "publication_eligible: false", "Worker output has no publication authority", "REVIEW_DONE"]
   },
   "prohibitedContractMarkers": [
@@ -81,7 +81,17 @@
     "minimum_correction": "PROPOSED: smallest scoped fix",
     "severity": "HIGH",
     "disposition": "CANDIDATE",
-    "publication_eligible": false
+    "publication_eligible": false,
+    "public_finding": {
+      "status": "RENDERABLE",
+      "anchor": "ddalggak/scripts/review-contract-policy.mjs:42",
+      "failure": "the changed behavior violates the linked contract",
+      "impact": "callers can observe an incorrect result",
+      "correction": "restore the contract and add the focused regression test",
+      "validation": "run the focused review test",
+      "reason": "",
+      "suggestion": null
+    }
   },
   "baseReviewEvidence": {
     "pr_number": 7,

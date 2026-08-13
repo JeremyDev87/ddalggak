@@ -59,7 +59,7 @@ A quality-sensor finding must include all fields:
 - `confidence`: `high | medium | low` with uncertainty stated;
 - `counterevidence checked`: evidence that could have disproved the claim.
 
-These fields are deterministic Review Quality sensor inputs, not the canonical finding admission or public renderer schema. Before aggregation or publication, the conductor must independently reproduce the observation and map it into the exact 20-field Admission schema v3 record in `references/cross-review-loop.md`; sensor acceptance grants no publication eligibility or write authority.
+These fields are deterministic Review Quality sensor inputs, not the canonical finding admission or public renderer schema. Before aggregation or publication, the conductor must independently reproduce the observation and map it into the exact 21-field Admission schema v3 record in `references/cross-review-loop.md`; sensor acceptance grants no publication eligibility or write authority.
 
 Missing fields, hypothetical concerns without a reproducible scenario, restated PR text, and style preferences without repo/product evidence do not pass the finding signal gate. Evidence gaps stay in the top-level gap list unless they map to a changed-line defect.
 

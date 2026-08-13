@@ -22,7 +22,9 @@ Outcome: `<lifecycle-valid outcome>`
 └─ Next: <human action, follow-up condition, or none>
 ```
 
-The deterministic top-level renderer emits exactly the summary shape above plus the terminal marker; arbitrary extra lines or ad-hoc `<details>` blocks fail validation. Inline finding bodies use exactly five allowlisted lines in this order: `Symptom`, `Violated contract`, `Current-head evidence`, `Impact`, `Smallest correction`. The renderer accepts only a same-process evaluator-produced, publication-eligible candidate that is an aggregate-member candidate, then derives all five values from that candidate rather than caller prose. Each value must be a non-empty single line and passes the same privacy/output validator.
+Conductor and renderer responsibilities remain separate: the candidate preserves exact finding identity and evidence, aggregate preserves admitted finding count, and publication preserves same-process authority. Finding output is one plain-text line with exactly two complete sentences. Sentence one states what fails and who/what is affected; sentence two states the smallest correction and how it will be validated. Internal workflow labels, candidate IDs, severity/confidence labels, evidence inventories, and private paths never appear.
+
+A finding is `UNRENDERABLE` when any required meaning slot is absent, ambiguous, stale, or unsafe to express in those two sentences. `UNRENDERABLE` is a blocking publication gap and cannot be dropped, approved, or replaced by caller prose. A suggestion is optional and must be a single anchored, contiguous, complete replacement with focused `PROVEN:` validation evidence; otherwise it is rejected fail-closed.
 
 Public output excludes internal evidence inventories. Wiki Context Manifest, gate names, candidate ledger, hidden completion signals, source inventories, and private workflow labels stay in the internal review brief.
 
