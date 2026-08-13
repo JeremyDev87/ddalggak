@@ -42,6 +42,7 @@ export const ADMISSION_FIELDS = Object.freeze([
   "severity",
   "disposition",
   "publication_eligible",
+  "public_finding",
 ]);
 
 export const REVIEW_EVIDENCE_FIELDS = Object.freeze([
@@ -71,6 +72,24 @@ export const COUNTEREXAMPLE_FIELDS = Object.freeze([
   "restoration_proof",
   "status",
 ]);
+export const PUBLIC_FINDING_FIELDS = Object.freeze([
+  "status",
+  "anchor",
+  "failure",
+  "impact",
+  "correction",
+  "validation",
+  "reason",
+  "suggestion",
+]);
+export const SUGGESTION_FIELDS = Object.freeze([
+  "path",
+  "start_line",
+  "end_line",
+  "old_text",
+  "new_text",
+  "validation",
+]);
 
 const admissionFieldSet = new Set(ADMISSION_FIELDS);
 const reviewEvidenceFieldSet = new Set(REVIEW_EVIDENCE_FIELDS);
@@ -78,6 +97,8 @@ const checkEvidenceFieldSet = new Set(CHECK_EVIDENCE_FIELDS);
 const publicationReceiptFieldSet = new Set(PUBLICATION_RECEIPT_FIELDS);
 const semanticCoverageFieldSet = new Set(SEMANTIC_COVERAGE_FIELDS);
 const counterexampleFieldSet = new Set(COUNTEREXAMPLE_FIELDS);
+const publicFindingFieldSet = new Set(PUBLIC_FINDING_FIELDS);
+const suggestionFieldSet = new Set(SUGGESTION_FIELDS);
 const producedCandidates = new WeakSet();
 const producedReviewEvidence = new WeakSet();
 const producedChecksEvidence = new WeakSet();
@@ -167,6 +188,70 @@ function token(value) {
   return value.slice(0, value.indexOf(":"));
 }
 
+function validatePublicFindingInput(finding) {
+  if (!finding || typeof finding !== "object" || Array.isArray(finding)) throw new Error("public finding must be an object");
+  for (const key of Object.keys(finding)) if (!publicFindingFieldSet.has(key)) throw new Error(`unknown public finding field: ${key}`);
+  for (const key of PUBLIC_FINDING_FIELDS) {
+    if (!(key in finding)) throw new Error(`missing public finding field: ${key}`);
+  }
+  requireEnum("public finding status", finding.status, new Set(["RENDERABLE", "UNRENDERABLE"]));
+  if (typeof finding.anchor !== "string" || !/^([^:\r\n]+):(\d+)$/.test(finding.anchor)) throw new Error("public finding anchor must be path:line");
+  const anchorLine = Number(finding.anchor.slice(finding.anchor.lastIndexOf(":") + 1));
+  if (anchorLine < 1) throw new Error("public finding anchor line is invalid");
+  const validatePublicField = (field, value) => {
+    if (typeof value !== "string") throw new Error(`public finding ${field} must be a string`);
+    if (/\r|\n/.test(value)) throw new Error(`public finding ${field} must be one line`);
+    if (value.length > 240) throw new Error(`public finding ${field} exceeds 240 characters`);
+    // Privacy is checked on the final rendered body, after evaluator provenance and
+    // publication eligibility are established. This keeps admission structural and
+    // prevents a caller-supplied candidate from bypassing the renderer chokepoint.
+    if (field === "anchor" || field === "reason") validatePublicContent(value);
+  };
+  validatePublicField("anchor", finding.anchor);
+  for (const field of ["failure", "impact", "correction", "validation"]) {
+    validatePublicField(field, finding[field]);
+  }
+  if (typeof finding.reason !== "string" || /\r|\n/.test(finding.reason) || finding.reason.length > 240) {
+    throw new Error("public finding reason must be one line");
+  }
+  if (finding.reason) validatePublicContent(finding.reason);
+  if (finding.status === "RENDERABLE") {
+    for (const field of ["anchor", "failure", "impact", "correction", "validation"]) {
+      if (!finding[field].trim()) throw new Error(`public finding ${field} is required for RENDERABLE`);
+    }
+    if (finding.reason.trim()) throw new Error("RENDERABLE public finding cannot include an unrenderable reason");
+  } else if (!finding.reason.trim()) {
+    throw new Error("UNRENDERABLE public finding requires a reason");
+  }
+  if (finding.suggestion !== null) validateSuggestion(finding.suggestion);
+  return finding;
+}
+
+function validateSuggestion(suggestion) {
+  if (!suggestion || typeof suggestion !== "object" || Array.isArray(suggestion)) throw new Error("suggestion must be an object or null");
+  for (const key of Object.keys(suggestion)) if (!suggestionFieldSet.has(key)) throw new Error(`unknown suggestion field: ${key}`);
+  for (const key of SUGGESTION_FIELDS) if (!(key in suggestion)) throw new Error(`missing suggestion field: ${key}`);
+  if (typeof suggestion.path !== "string" || !suggestion.path || suggestion.path.startsWith("/") || suggestion.path.includes("\\\\") || suggestion.path.split("/").includes("..")) {
+    throw new Error("suggestion path must be a relative repository path");
+  }
+  if (!Number.isInteger(suggestion.start_line) || !Number.isInteger(suggestion.end_line) || suggestion.start_line < 1 || suggestion.end_line < suggestion.start_line) {
+    throw new Error("suggestion line range is invalid");
+  }
+  for (const field of ["old_text", "new_text", "validation"]) {
+    if (typeof suggestion[field] !== "string" || !suggestion[field].trim()) throw new Error(`suggestion ${field} is required`);
+    if (field === "validation") {
+      if (!suggestion[field].startsWith("PROVEN:")) throw new Error("suggestion validation must be PROVEN");
+    }
+  }
+  if (suggestion.old_text === suggestion.new_text) throw new Error("suggestion must change the selected text");
+  if (/\r|\n/.test(suggestion.validation)) throw new Error("suggestion validation must be one line");
+  return suggestion;
+}
+
+export function validatePublicFindingInputRecord(finding) {
+  return validatePublicFindingInput(finding);
+}
+
 export function validateAdmissionRecord(record) {
   if (!record || typeof record !== "object" || Array.isArray(record)) throw new Error("admission record must be an object");
   for (const key of Object.keys(record)) {
@@ -195,6 +280,7 @@ export function validateAdmissionRecord(record) {
   requireEnum("severity", record.severity, SEVERITIES);
   requireEnum("disposition", record.disposition, CANDIDATE_DISPOSITIONS);
   if (typeof record.publication_eligible !== "boolean") throw new Error("publication_eligible must be boolean");
+  if (record.public_finding !== undefined) validatePublicFindingInput(record.public_finding);
   if (record.disposition === "CANDIDATE" && record.publication_eligible) throw new Error("unresolved candidate cannot be publication eligible");
   const defectDelta = observedDelta === "DEFECT" || observedDelta === "PRIVACY_EXPOSURE";
   if (!defectDelta && record.severity !== "NONE") throw new Error("severity requires a defect delta");
@@ -216,6 +302,7 @@ function finalize(record, disposition, publicationEligible) {
 
 export function evaluateCandidate(record) {
   validateAdmissionRecord(record);
+  if (record.public_finding?.status === "UNRENDERABLE") return finalize(record, "REVIEW_BLOCKED", false);
   if (record.disposition !== "CANDIDATE") throw new Error("candidate evaluator requires CANDIDATE disposition");
 
   const facts = {
@@ -597,37 +684,26 @@ export function renderPublicFinding(input) {
   if (!input.candidate.publication_eligible || !["BLOCKING", "NON_BLOCKING"].includes(input.candidate.disposition)) {
     throw new Error("candidate is not publication eligible");
   }
-  const detail = (value) => value.slice(value.indexOf(":") + 1).trim();
-  const fields = {
-    symptom: detail(input.candidate.observed_delta),
-    violatedContract: detail(input.candidate.governing_contract),
-    evidence: detail(input.candidate.current_head_evidence),
-    impact: detail(input.candidate.impact),
-    smallestCorrection: detail(input.candidate.minimum_correction),
-  };
-  for (const [name, value] of Object.entries(fields)) validateSingleLine(name, value, 240);
-  const body = [
-    `**Symptom:** ${fields.symptom}`,
-    `**Violated contract:** ${fields.violatedContract}`,
-    `**Current-head evidence:** ${fields.evidence}`,
-    `**Impact:** ${fields.impact}`,
-    `**Smallest correction:** ${fields.smallestCorrection}`,
-  ].join("\n");
+  const finding = input.candidate.public_finding;
+  if (!finding) throw new Error("publication-eligible candidate requires public finding evidence");
+  validatePublicFindingInput(finding);
+  if (finding.status !== "RENDERABLE") throw new Error("candidate public finding is UNRENDERABLE");
+  const body = `${finding.failure}, so ${finding.impact}. ${finding.correction}, then ${finding.validation}.`;
   validatePublicFinding(body);
+  if (finding.suggestion) {
+    validateSuggestion(finding.suggestion);
+    validatePublicContent(`${body}\nSuggestion: ${finding.suggestion.path}`);
+  }
   return body;
 }
 
 export function validatePublicFinding(body) {
   if (typeof body !== "string" || !body.trim()) throw new Error("public finding body must be a non-empty string");
   validatePublicContent(body);
-  const labels = ["Symptom", "Violated contract", "Current-head evidence", "Impact", "Smallest correction"];
-  const lines = body.split("\n");
-  if (lines.length !== labels.length) throw new Error("finding body must match the deterministic allowlist");
-  for (let index = 0; index < labels.length; index += 1) {
-    const prefix = `**${labels[index]}:** `;
-    if (!lines[index].startsWith(prefix)) throw new Error("finding body must match the deterministic allowlist");
-    validateSingleLine(labels[index], lines[index].slice(prefix.length), 240);
-  }
+  const sentences = body.match(/[^.!?]+[.!?]+/gu) ?? [];
+  if (sentences.length !== 2 || sentences.join("") !== body) throw new Error("finding body must contain exactly two complete sentences");
+  for (const sentence of sentences) validateSingleLine("finding sentence", sentence.trim(), 400);
+  if (body.includes("\n")) throw new Error("finding body must be one line");
   return { valid: true };
 }
 

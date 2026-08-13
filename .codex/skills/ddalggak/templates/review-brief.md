@@ -52,7 +52,7 @@
 - High/Critical zero-finding challenger: used / not-triggered / blocked
 
 ## Quality sensor findings (internal)
-For each observed quality finding record severity, claim, changed-line/file anchor, reproducible failing scenario, impact, minimal fix, confidence, and counterevidence checked. These are sensor inputs only. Before aggregation, the conductor must map a reproduced finding into the exact 20-field Admission schema v3 record in `references/cross-review-loop.md`; this section defines neither publication eligibility nor write authority.
+For each observed quality finding record severity, claim, changed-line/file anchor, reproducible failing scenario, impact, minimal fix, confidence, and counterevidence checked. These are sensor inputs only. Before aggregation, the conductor must map a reproduced finding into the exact 21-field Admission schema v3 record in `references/cross-review-loop.md`; this section defines neither publication eligibility nor write authority.
 
 ## Candidate defaults (non-publication)
 ```yaml

@@ -83,11 +83,20 @@ function candidate(overrides = {}) {
     severity: "HIGH",
     disposition: "CANDIDATE",
     publication_eligible: false,
+    public_finding: {
+      status: "RENDERABLE",
+      anchor: "src/review.js:42",
+      failure: "the changed behavior violates the linked contract",
+      impact: "callers can observe an incorrect result",
+      correction: "restore the contract and add the focused regression test",
+      validation: "run the focused review test",
+      reason: "",
+      suggestion: null,
+    },
     ...overrides,
   };
 }
 
-assert.equal(ADMISSION_FIELDS.length, 20);
 assert.deepEqual(Object.keys(candidate()), ADMISSION_FIELDS);
 
 assert.throws(() => validateAdmissionRecord(candidate({ authority: "unknown" })), /unknown authority/);
@@ -304,7 +313,10 @@ const blockingAggregate = aggregateReview({ lifecycle: "OPEN", candidates: [bloc
 const blockingPublication = publish(blockingAggregate);
 const findingBody = renderPublicFinding({ publicationDecision: blockingPublication, candidate: blocking });
 assert.equal(validatePublicFinding(findingBody).valid, true);
-const sessionLeakCandidate = evaluateCandidate(candidate({ candidate_id: "candidate-session-leak", current_head_evidence: "PROVEN: session-id=synthetic-session-value" }));
+const sessionLeakCandidate = evaluateCandidate(candidate({
+  candidate_id: "candidate-session-leak",
+  public_finding: { ...candidate().public_finding, failure: "session-id=synthetic-session-value" },
+}));
 const sessionLeakAggregate = aggregateReview({ lifecycle: "OPEN", candidates: [sessionLeakCandidate], reviewEvidence: completeReviewEvidence, checksEvidence: checks() });
 assert.throws(() => renderPublicFinding({ publicationDecision: publish(sessionLeakAggregate), candidate: sessionLeakCandidate }), /prohibited public pattern/);
 for (const [index, leakedValue] of [
@@ -342,12 +354,15 @@ for (const [index, leakedValue] of [
   "ͅhttps://github.com/synthetic-private/repository/issues/1",
   "ͅgit@github.com:synthetic-private/repository.git",
 ].entries()) {
-  const candidateWithLeak = evaluateCandidate(candidate({ candidate_id: `candidate-adjacent-leak-${index}`, current_head_evidence: `PROVEN: ${leakedValue}` }));
+  const candidateWithLeak = evaluateCandidate(candidate({
+    candidate_id: `candidate-adjacent-leak-${index}`,
+    public_finding: { ...candidate().public_finding, failure: leakedValue },
+  }));
   const aggregateWithLeak = aggregateReview({ lifecycle: "OPEN", candidates: [candidateWithLeak], reviewEvidence: completeReviewEvidence, checksEvidence: checks() });
   assert.throws(() => renderPublicFinding({ publicationDecision: publish(aggregateWithLeak), candidate: candidateWithLeak }), /prohibited public pattern/);
 }
 assert.throws(() => renderPublicFinding({ symptom: "fabricated", violatedContract: "fabricated", evidence: "fabricated", impact: "fabricated", smallestCorrection: "fabricated" }), /publicationDecision and candidate are required/);
 assert.throws(() => renderPublicFinding({ publicationDecision: blockingPublication, candidate: evaluateCandidate(candidate({ candidate_id: "candidate-unbound" })) }), /candidate is not a member of aggregate/);
-assert.throws(() => validatePublicFinding(`${findingBody}\nextra detail`), /finding body must match the deterministic allowlist/);
+assert.throws(() => validatePublicFinding(`${findingBody}\nextra detail`), /finding body must contain exactly two complete sentences/);
 
 console.log("[test-review-policy-layers] passed: schema, candidate, aggregate, publication, renderer");

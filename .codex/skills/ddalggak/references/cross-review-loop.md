@@ -67,7 +67,7 @@ Every review verdict and every fix result is tied to a concrete PR head SHA.
 
 ## Finding admission record
 
-Admission schema v3 owns exactly these 20 fields:
+Admission schema v3 owns exactly these 21 fields:
 
 ```yaml
 candidate_id:
@@ -90,7 +90,18 @@ minimum_correction:
 severity: NONE | LOW | MEDIUM | HIGH | CRITICAL
 disposition: CANDIDATE
 publication_eligible: false
+public_finding:
+  status: RENDERABLE | UNRENDERABLE
+  anchor:
+  failure:
+  impact:
+  correction:
+  validation:
+  reason:
+  suggestion: null | { path, start_line, end_line, old_text, new_text, validation }
 ```
+
+`public_finding` is render evidence attached to the candidate; `UNRENDERABLE` is a blocking publication state and cannot be silently dropped.
 
 Evidence-bearing values use `TOKEN: detail`; bare tokens, unknown fields, unknown enums, missing fields, or contradictory fields are schema errors. A candidate is not a final disposition. Only the canonical evaluator may produce a final candidate, and only its provenance-bearing result may enter aggregation. Candidate, review evidence, checks, and publication receipts must bind the same `pr_number` / `lifecycle` / `base_sha` / `head_sha`.
 
@@ -147,7 +158,7 @@ Publication authority is independent from content eligibility. Publishing requir
 - exact zero unresolved publication gaps for a publishable conclusion;
 - explicit write authorization for the external action.
 
-Caller authorization cannot repair invalid content. Content eligibility cannot grant write authority. For inline findings, the renderer accepts only the exact aggregate-member candidate identity; arbitrary or reconstructed five-line text is rejected.
+Caller authorization cannot repair invalid content. Content eligibility cannot grant write authority. For inline findings, the renderer accepts only the exact aggregate-member candidate identity; arbitrary or reconstructed two-sentence text is rejected.
 
 ## Finding signal gate (게시 전 트리아지)
 
@@ -163,15 +174,17 @@ finding 후보는 게시 전에 3문 트리아지를 통과해야 한다(Counter
 
 ## Inline finding publication
 
-트리아지를 통과한 observation도 즉시 게시할 수 없다. Conductor가 현재 head에서 재현하고 exact Admission schema v3 candidate로 승격한 뒤, 동일 aggregate member와 publication decision provenance를 받은 경우에만 deterministic finding renderer가 exactly five allowlisted lines를 생성한다.
+A triaged observation is public only after conductor promotion into an exact Admission schema v3 candidate, current-head reproduction, and same aggregate-member/publication provenance. The candidate carries a structured `public_finding` record with `RENDERABLE | UNRENDERABLE` status. `RENDERABLE` requires a live anchor, failure behavior, concrete impact, minimal correction, and focused validation; `UNRENDERABLE` requires a reason and is a publication blocker, never a silent DROP or approval input.
 
-- caller prose, arbitrary `suggestion` blocks, 재구성한 candidate, 추가 세부 섹션은 renderer 입력이나 public body에 허용하지 않는다.
-- line/file anchor와 단일 review 제출 같은 GitHub transport 선택은 renderer 결과를 바꾸거나 publication authority를 보충하지 못한다.
-- top-level summary는 `references/review-output-contract.md`의 fixed v3 shape와 terminal marker만 사용한다. 내부 `REVIEW_DONE` completion signal이나 비차단 메모를 public summary에 덧붙이지 않는다.
+The deterministic renderer emits one plain-text line containing exactly two complete sentences: the first states the failure and impact, and the second states the correction and validation. It rejects caller prose, missing meaning slots, internal workflow vocabulary, reconstructed candidates, stale revisions, duplicate IDs, and arbitrary sections. An optional suggestion is accepted only as one relative repository path, one contiguous line range, complete old/new replacement text, and `PROVEN:` focused validation evidence; it is never inferred from prose and is never emitted when any gate is missing.
+
+- process evidence gaps remain aggregate gaps rather than inline prose;
+- finding 0건 remains valid only with substantive coverage and detector evidence;
+- partial publication/readback counts are blocking evidence, not success.
 
 ## Deterministic public renderer
 
-Load `review-output-contract.md` and `review-comment-style.md` immediately before constructing a public body. The summary uses the fixed v3 allowlist and terminal marker. Each inline finding derives exactly five public lines from its canonical aggregate-member candidate. Internal manifests never enter the public review body. Public output excludes internal evidence inventories, Wiki paths, gate labels, candidate IDs, raw ledger fields, arbitrary sections, and caller-supplied suggestions.
+Load `review-output-contract.md` and `review-comment-style.md` immediately before constructing a public body. The summary uses the fixed v3 allowlist and terminal marker. Each inline finding derives exactly two complete sentences from its canonical aggregate-member candidate. Internal manifests never enter the public review body. Public output excludes internal evidence inventories, Wiki paths, gate labels, candidate IDs, raw ledger fields, arbitrary sections, and caller-supplied suggestions.
 
 Summary and finding share one privacy chokepoint. Validate raw text and an NFKC canonical form, including cross-normalization where token and delimiter normalize differently. Reject generic secret/session assignments, every NFKC-equivalent colon/equal assignment delimiter, provider/private-key material, host-local paths including named-user tilde homes, private URI/SCP/scheme-less locators, and Unicode-aware punctuation-adjacent repository/issue shorthand. URI start boundaries use Unicode letter/number semantics rather than ASCII word boundaries.
 

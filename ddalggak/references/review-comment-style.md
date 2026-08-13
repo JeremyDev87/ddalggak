@@ -4,22 +4,23 @@ Required by: cross-review-loop finding signal gate (on-demand pointer)
 Side effects: none
 Do not use when: 게시 없는 read-only 판단.
 
-독자는 ddalggak reference를 한 줄도 읽지 않은 PR 저자다. 코멘트는 그 독자가 한 번 읽고 바로 고칠 수 있어야 한다.
+독자는 reference를 읽지 않은 PR 저자다. 바로 고칠 수 있게 쓴다.
 
-## 규칙
+## 공개 finding 문체 계약
 
-1. 첫 문장은 이 코드에 무슨 일이 생기는지 평문으로 쓴다. 시스템 어휘를 쓰지 않는다.
-2. 순서를 고정한다: 증상 → 근거(파일:라인, 실측값) → 제안. 결론을 뒤로 미루지 않는다.
-3. 한 문장에 절 하나. 삽입 괄호는 문장당 1개까지.
-4. 명사구로 끝내지 않는다. "~할 소지", "~위험" 대신 무슨 일이 생기는지 동사로 쓴다.
-5. 내부 용어는 독자 언어로 바꾼다.
+- 평문 한 줄에 정확히 두 문장: 첫 문장은 실패와 영향, 둘째 문장은 수정과 검증이다.
+- `severity`, `confidence`, `candidate`, `evidence-gap`, `gate`는 쓰지 않는다.
+- 의미 슬롯이 빠지거나 불확실하면 줄이지 말고 `UNRENDERABLE`로 막는다.
+- suggestion은 단일 치환과 focused validation이 확인된 경우에만 허용한다.
 
-| 내부 용어 | 코멘트에 쓸 표현 |
+예: "공급자가 timeout되면 실패를 빈 결과로 바꿔 호출자가 정상적인 결과 없음으로 처리합니다. 명시적 실패를 반환하고 timeout 회귀 테스트를 실행하세요."
+
+| 내부 용어 | 코멘트 표현 |
 |---|---|
 | evidence-gap | 검증 자료가 없다 |
 | verdict / blockers | 결론 / 머지를 막는 문제 N건 |
 | head SHA | 이 리뷰가 본 커밋 |
-| gate 이름·완료 신호명 | 본문에 쓰지 않는다 (트레일러 줄 제외) |
+| gate·완료 신호 | 본문에 쓰지 않는다 |
 
 ## 변환 예시
 

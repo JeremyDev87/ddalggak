@@ -149,6 +149,8 @@ parity_ledger:
     class: must-match
   - path: scripts/test-review-contract-verifier.mjs
     class: must-match
+  - path: scripts/test-review-finding-two-sentence.mjs
+    class: must-match
   - path: scripts/test-review-contract-exhaustive.mjs
     class: must-match
   - path: agents/openai.yaml

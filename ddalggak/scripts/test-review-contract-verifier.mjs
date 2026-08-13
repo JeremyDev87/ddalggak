@@ -422,8 +422,8 @@ const mutations = [
   {
     name: "public finding structural allowlist",
     file: "scripts/review-contract-policy.mjs",
-    oldText: 'if (lines.length !== labels.length) throw new Error("finding body must match the deterministic allowlist");',
-    newText: 'if (false && lines.length !== labels.length) throw new Error("finding body must match the deterministic allowlist");',
+    oldText: 'if (sentences.length !== 2 || sentences.join("") !== body) throw new Error("finding body must contain exactly two complete sentences");',
+    newText: 'if (false && (sentences.length !== 2 || sentences.join("") !== body)) throw new Error("finding body must contain exactly two complete sentences");',
   },
   {
     name: "classified evidence detail",
