@@ -125,7 +125,7 @@ Use Codex App orchestration names in briefs/state: `spawn_agent`, `send_input`, 
 - **Simplicity / Deletability Gate**: `references/simplicity-deletability-gate.md` is mandatory for code-shape decisions. Start with small direct change first and ask why any proposed abstraction is necessary.
 - **Core Invariants Reference**: `references/core-invariants.md` owns long-form guardrail rationale for Counterargument Pass, privacy, knowledge extraction, rendered evidence, component methodology gate, raw UTF-8, Self-created complexity is a defect, and no silent fallback.
 - **Conditional gates stay conditional**: frontend design, Vercel agent skills, and regression-library references load only when applicable; React code quality references also load only when applicable, with explicit backend-only or lightweight skip reasons.
-- **Review policy layers**: every review candidate passes Admission schema v3 before candidate disposition, lifecycle aggregate outcome, and publication authority are evaluated separately. Aggregates and public renderers require same-process provenance, and canonical-candidate-bound two-sentence finding output uses only the deterministic validator in `references/review-output-contract.md`.
+- **Review policy layers**: every review candidate passes Admission schema v3 before candidate disposition, lifecycle aggregate outcome, and publication authority are evaluated separately. Aggregates and public renderers require same-process provenance; canonical two-sentence findings use the deterministic validator in `references/review-output-contract.md`.
 
 ## Required Reference Map
 
