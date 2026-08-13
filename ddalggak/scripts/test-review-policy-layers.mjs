@@ -313,12 +313,13 @@ const blockingAggregate = aggregateReview({ lifecycle: "OPEN", candidates: [bloc
 const blockingPublication = publish(blockingAggregate);
 const findingBody = renderPublicFinding({ publicationDecision: blockingPublication, candidate: blocking });
 assert.equal(validatePublicFinding(findingBody).valid, true);
-const sessionLeakCandidate = evaluateCandidate(candidate({
-  candidate_id: "candidate-session-leak",
-  public_finding: { ...candidate().public_finding, failure: "session-id=synthetic-session-value" },
-}));
-const sessionLeakAggregate = aggregateReview({ lifecycle: "OPEN", candidates: [sessionLeakCandidate], reviewEvidence: completeReviewEvidence, checksEvidence: checks() });
-assert.throws(() => renderPublicFinding({ publicationDecision: publish(sessionLeakAggregate), candidate: sessionLeakCandidate }), /prohibited public pattern/);
+assert.throws(
+  () => evaluateCandidate(candidate({
+    candidate_id: "candidate-session-leak",
+    public_finding: { ...candidate().public_finding, failure: "session-id=synthetic-session-value" },
+  })),
+  /prohibited public pattern|two valid sentences/,
+);
 for (const [index, leakedValue] of [
   "sess ion-id=synthetic-session-value",
   "sess​ion-id=synthetic-session-value",
@@ -354,12 +355,14 @@ for (const [index, leakedValue] of [
   "ͅhttps://github.com/synthetic-private/repository/issues/1",
   "ͅgit@github.com:synthetic-private/repository.git",
 ].entries()) {
-  const candidateWithLeak = evaluateCandidate(candidate({
-    candidate_id: `candidate-adjacent-leak-${index}`,
-    public_finding: { ...candidate().public_finding, failure: leakedValue },
-  }));
-  const aggregateWithLeak = aggregateReview({ lifecycle: "OPEN", candidates: [candidateWithLeak], reviewEvidence: completeReviewEvidence, checksEvidence: checks() });
-  assert.throws(() => renderPublicFinding({ publicationDecision: publish(aggregateWithLeak), candidate: candidateWithLeak }), /prohibited public pattern/);
+  assert.throws(
+    () => evaluateCandidate(candidate({
+      candidate_id: `candidate-adjacent-leak-${index}`,
+      public_finding: { ...candidate().public_finding, failure: leakedValue },
+    })),
+    /prohibited public pattern|two valid sentences/,
+    `public finding leak was accepted at admission: ${JSON.stringify(leakedValue)}`,
+  );
 }
 assert.throws(() => renderPublicFinding({ symptom: "fabricated", violatedContract: "fabricated", evidence: "fabricated", impact: "fabricated", smallestCorrection: "fabricated" }), /publicationDecision and candidate are required/);
 assert.throws(() => renderPublicFinding({ publicationDecision: blockingPublication, candidate: evaluateCandidate(candidate({ candidate_id: "candidate-unbound" })) }), /candidate is not a member of aggregate/);

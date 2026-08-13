@@ -12,7 +12,7 @@
     "test:verify-package": "node scripts/test-verify-package.mjs",
     "verify:codex-skill": "node scripts/verify-codex-skill.mjs",
     "verify:projections": "node scripts/verify-projections.mjs",
-    "test:review-contract": "node ddalggak/scripts/test-review-policy-layers.mjs && node ddalggak/scripts/verify-review-contract.mjs && node ddalggak/scripts/test-review-contract-verifier.mjs",
+    "test:review-contract": "node ddalggak/scripts/test-review-policy-layers.mjs && node ddalggak/scripts/verify-review-contract.mjs && node ddalggak/scripts/test-review-contract-verifier.mjs && node ddalggak/scripts/test-review-finding-two-sentence.mjs",
     "test:review-contract:exhaustive": "node ddalggak/scripts/test-review-contract-exhaustive.mjs",
     "project:runtime-assets": "node scripts/project-runtime-assets.mjs",
     "test:token-budget-coverage": "node scripts/test-token-budget-coverage.mjs",

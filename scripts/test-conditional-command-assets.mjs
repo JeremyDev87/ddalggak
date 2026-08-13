@@ -81,6 +81,7 @@ const reviewContractAssets = [
   "scripts/review-contract-policy.mjs",
   "scripts/test-review-contract-exhaustive.mjs",
   "scripts/test-review-contract-verifier.mjs",
+  "scripts/test-review-finding-two-sentence.mjs",
   "scripts/test-review-policy-layers.mjs",
   "scripts/verify-review-contract.mjs",
 ];

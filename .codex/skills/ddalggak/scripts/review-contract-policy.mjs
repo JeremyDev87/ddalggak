@@ -188,6 +188,10 @@ function token(value) {
   return value.slice(0, value.indexOf(":"));
 }
 
+function assemblePublicFindingBody(finding) {
+  return `${finding.failure}, so ${finding.impact}. ${finding.correction}, then ${finding.validation}.`;
+}
+
 function validatePublicFindingInput(finding) {
   if (!finding || typeof finding !== "object" || Array.isArray(finding)) throw new Error("public finding must be an object");
   for (const key of Object.keys(finding)) if (!publicFindingFieldSet.has(key)) throw new Error(`unknown public finding field: ${key}`);
@@ -202,9 +206,8 @@ function validatePublicFindingInput(finding) {
     if (typeof value !== "string") throw new Error(`public finding ${field} must be a string`);
     if (/\r|\n/.test(value)) throw new Error(`public finding ${field} must be one line`);
     if (value.length > 240) throw new Error(`public finding ${field} exceeds 240 characters`);
-    // Privacy is checked on the final rendered body, after evaluator provenance and
-    // publication eligibility are established. This keeps admission structural and
-    // prevents a caller-supplied candidate from bypassing the renderer chokepoint.
+    // Structural slot checks stay here; assembled-body privacy/sentence rules run for
+    // RENDERABLE below so publication_eligible cannot precede a renderable body.
     if (field === "anchor" || field === "reason") validatePublicContent(value);
   };
   validatePublicField("anchor", finding.anchor);
@@ -220,6 +223,13 @@ function validatePublicFindingInput(finding) {
       if (!finding[field].trim()) throw new Error(`public finding ${field} is required for RENDERABLE`);
     }
     if (finding.reason.trim()) throw new Error("RENDERABLE public finding cannot include an unrenderable reason");
+    // Fail closed before evaluateCandidate can mark publication_eligible: a RENDERABLE
+    // record must already assemble into the deterministic two-sentence public body.
+    try {
+      validatePublicFinding(assemblePublicFindingBody(finding));
+    } catch (error) {
+      throw new Error(`RENDERABLE public finding must assemble into two valid sentences: ${error.message}`);
+    }
   } else if (!finding.reason.trim()) {
     throw new Error("UNRENDERABLE public finding requires a reason");
   }
@@ -688,7 +698,7 @@ export function renderPublicFinding(input) {
   if (!finding) throw new Error("publication-eligible candidate requires public finding evidence");
   validatePublicFindingInput(finding);
   if (finding.status !== "RENDERABLE") throw new Error("candidate public finding is UNRENDERABLE");
-  const body = `${finding.failure}, so ${finding.impact}. ${finding.correction}, then ${finding.validation}.`;
+  const body = assemblePublicFindingBody(finding);
   validatePublicFinding(body);
   if (finding.suggestion) {
     validateSuggestion(finding.suggestion);
