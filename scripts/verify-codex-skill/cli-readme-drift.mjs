@@ -189,7 +189,7 @@ export function runCliReadmeDriftChecks({
       "base Router/Evidence",
       "activation-bound optional gates",
       "Admission schema v3",
-      "canonical-candidate-bound five-line findings",
+      "canonical-candidate-bound two-sentence findings",
       "deterministic fixed summary",
     ],
   };

@@ -315,6 +315,32 @@ const findingBody = renderPublicFinding({ publicationDecision: blockingPublicati
 assert.equal(validatePublicFinding(findingBody).valid, true);
 assert.throws(
   () => evaluateCandidate(candidate({
+    candidate_id: "candidate-oversized-clause",
+    public_finding: {
+      ...candidate().public_finding,
+      failure: `A${"A".repeat(237)}`,
+      impact: `I${"I".repeat(238)}`,
+    },
+  })),
+  /public finding (failure|impact) exceeds 237 characters/,
+);
+const boundaryCandidate = evaluateCandidate(candidate({
+  candidate_id: "candidate-boundary-clause",
+  public_finding: {
+    ...candidate().public_finding,
+    failure: `A${"A".repeat(236)}`,
+    impact: `I${"I".repeat(236)}`,
+    correction: `C${"C".repeat(235)}`,
+    validation: `V${"V".repeat(235)}`,
+  },
+}));
+const boundaryAggregate = aggregateReview({ lifecycle: "OPEN", candidates: [boundaryCandidate], reviewEvidence: completeReviewEvidence, checksEvidence: checks() });
+const boundaryPublication = publish(boundaryAggregate);
+const boundaryBody = renderPublicFinding({ publicationDecision: boundaryPublication, candidate: boundaryCandidate });
+assert.equal(validatePublicFinding(boundaryBody).valid, true);
+assert.equal(`${boundaryCandidate.public_finding.failure}, so ${boundaryCandidate.public_finding.impact}`.length, 479);
+assert.throws(
+  () => evaluateCandidate(candidate({
     candidate_id: "candidate-session-leak",
     public_finding: { ...candidate().public_finding, failure: "session-id=synthetic-session-value" },
   })),

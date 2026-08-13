@@ -192,6 +192,10 @@ function assemblePublicFindingBody(finding) {
   return `${finding.failure}, so ${finding.impact}. ${finding.correction}, then ${finding.validation}.`;
 }
 
+const FINDING_SENTENCE_MAX = 480;
+// The renderer adds ", so " or ", then " between clauses.
+const FINDING_CLAUSE_MAX = Math.floor((FINDING_SENTENCE_MAX - 6) / 2);
+
 function validatePublicFindingInput(finding) {
   if (!finding || typeof finding !== "object" || Array.isArray(finding)) throw new Error("public finding must be an object");
   for (const key of Object.keys(finding)) if (!publicFindingFieldSet.has(key)) throw new Error(`unknown public finding field: ${key}`);
@@ -205,7 +209,8 @@ function validatePublicFindingInput(finding) {
   const validatePublicField = (field, value) => {
     if (typeof value !== "string") throw new Error(`public finding ${field} must be a string`);
     if (/\r|\n/.test(value)) throw new Error(`public finding ${field} must be one line`);
-    if (value.length > 240) throw new Error(`public finding ${field} exceeds 240 characters`);
+    const maxLength = ["failure", "impact", "correction", "validation"].includes(field) ? FINDING_CLAUSE_MAX : 240;
+    if (value.length > maxLength) throw new Error(`public finding ${field} exceeds ${maxLength} characters`);
     // Structural slot checks stay here; assembled-body privacy/sentence rules run for
     // RENDERABLE below so publication_eligible cannot precede a renderable body.
     if (field === "anchor" || field === "reason") validatePublicContent(value);
@@ -223,6 +228,10 @@ function validatePublicFindingInput(finding) {
       if (!finding[field].trim()) throw new Error(`public finding ${field} is required for RENDERABLE`);
     }
     if (finding.reason.trim()) throw new Error("RENDERABLE public finding cannot include an unrenderable reason");
+    // Reject combinations the renderer cannot publish so admission never outruns
+    // the final public-body length limit.
+    validateSingleLine("public finding sentence 1", `${finding.failure}, so ${finding.impact}`, FINDING_SENTENCE_MAX);
+    validateSingleLine("public finding sentence 2", `${finding.correction}, then ${finding.validation}`, FINDING_SENTENCE_MAX);
     // Fail closed before evaluateCandidate can mark publication_eligible: a RENDERABLE
     // record must already assemble into the deterministic two-sentence public body.
     try {
@@ -712,7 +721,7 @@ export function validatePublicFinding(body) {
   validatePublicContent(body);
   const sentences = body.match(/[^.!?]+[.!?]+/gu) ?? [];
   if (sentences.length !== 2 || sentences.join("") !== body) throw new Error("finding body must contain exactly two complete sentences");
-  for (const sentence of sentences) validateSingleLine("finding sentence", sentence.trim(), 400);
+  for (const sentence of sentences) validateSingleLine("finding sentence", sentence.trim(), FINDING_SENTENCE_MAX);
   if (body.includes("\n")) throw new Error("finding body must be one line");
   return { valid: true };
 }
