@@ -73,7 +73,7 @@ user-invocable: true
 - Wiki Bridge: `getwiki` read-only retrieval, `setwiki` approval-gated write; `references/wiki-bridge.md` owns admission/approval boundary.
 - Evidence Contract: `references/evidence-contract.md` 기준이며 Blocking evidence gaps가 있으면 PR ready/APPROVE 금지다.
 - Conditional gate loading: `plan`/`start`/`review`는 Router와 Evidence Contract만 base로 둔다. Simplicity/Core Invariants, deep-interview, RALPLAN, frontend/React/Vercel, regression/security는 activation evidence가 있을 때만 로드하고 skip/lightweight reason을 남긴다. Code-shape: small direct change first; why is this abstraction necessary?
-- Review policy layers: 모든 review 후보는 Admission schema v3를 통과한 뒤 candidate disposition, lifecycle aggregate outcome, publication authority를 분리한다. Aggregate와 public renderer는 same-process provenance를 요구하며, summary/finding은 `references/review-output-contract.md`의 deterministic validator만 사용한다.
+- Review policy layers: 모든 review 후보는 Admission schema v3를 통과한 뒤 candidate disposition, lifecycle aggregate outcome, publication authority를 분리한다. Aggregate와 public renderer는 same-process provenance를 요구하며, canonical-candidate-bound two-sentence finding과 summary는 `references/review-output-contract.md`의 deterministic validator만 사용한다.
 
 ## 서브커맨드 분기
 

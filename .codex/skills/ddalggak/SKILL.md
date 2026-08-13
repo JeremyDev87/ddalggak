@@ -125,7 +125,7 @@ Use Codex App orchestration names in briefs/state: `spawn_agent`, `send_input`, 
 - **Simplicity / Deletability Gate**: `references/simplicity-deletability-gate.md` is mandatory for code-shape decisions. Start with small direct change first and ask why any proposed abstraction is necessary.
 - **Core Invariants Reference**: `references/core-invariants.md` owns long-form guardrail rationale for Counterargument Pass, privacy, knowledge extraction, rendered evidence, component methodology gate, raw UTF-8, Self-created complexity is a defect, and no silent fallback.
 - **Conditional gates stay conditional**: frontend design, Vercel agent skills, and regression-library references load only when applicable; React code quality references also load only when applicable, with explicit backend-only or lightweight skip reasons.
-- **Review policy layers**: every review candidate passes Admission schema v3 before candidate disposition, lifecycle aggregate outcome, and publication authority are evaluated separately. Aggregates and public renderers require same-process provenance, and summary/finding output uses only the deterministic validator in `references/review-output-contract.md`.
+- **Review policy layers**: every review candidate passes Admission schema v3 before candidate disposition, lifecycle aggregate outcome, and publication authority are evaluated separately. Aggregates and public renderers require same-process provenance, and canonical-candidate-bound two-sentence finding output uses only the deterministic validator in `references/review-output-contract.md`.
 
 ## Required Reference Map
 
@@ -177,7 +177,7 @@ Command contract: mode `review-fix`; source edits are allowed only for accepted 
 
 Full procedure: `references/cross-review-loop.md`; public renderer: `references/review-output-contract.md` + `references/review-comment-style.md`; wiki authority: `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`; delegated review only loads `templates/review-brief.md`.
 
-Execution contract index: live PR/diff/files/checks/issue/head SHA, Wiki Context Preflight, base Router/Evidence, activation-bound optional gates, Admission schema v3, candidate disposition, lifecycle aggregate, publication authority, canonical-candidate-bound five-line findings, deterministic fixed summary, zero-finding substantive validation, and a top-level conclusion comment when formal approval is inappropriate.
+Execution contract index: live PR/diff/files/checks/issue/head SHA, Wiki Context Preflight, base Router/Evidence, activation-bound optional gates, Admission schema v3, candidate disposition, lifecycle aggregate, publication authority, canonical-candidate-bound two-sentence findings, deterministic fixed summary, zero-finding substantive validation, and a top-level conclusion comment when formal approval is inappropriate.
 
 ## `status` - Current State Snapshot
 
