@@ -132,4 +132,20 @@ assert.throws(
   /suggestion/,
 );
 
+assert.throws(
+  () => evaluateCandidate(candidate({
+    candidate_id: "finding-internal-period",
+    public_finding: {
+      ...PUBLIC_FINDING,
+      failure: "The changed assertion accepts a declined card as success e.g. timeout",
+    },
+  })),
+  /two valid sentences|exactly two complete sentences/,
+);
+
+assert.throws(
+  () => validatePublicFinding("One sentence only."),
+  /exactly two complete sentences/,
+);
+
 console.log("[test-review-finding-two-sentence] passed");
