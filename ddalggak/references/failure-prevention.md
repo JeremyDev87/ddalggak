@@ -4,7 +4,7 @@ Required by: plan, start, review, ship, status.
 Side effects: none.
 Do not use when: a narrower gate fully covers the risk and no shared failure-prevention rule applies.
 
-> Source of truth for Claude Code ddalggak details. The always-loaded SKILL.md keeps only router/invariant anchors and points here for low-frequency detail.
+> Source of truth for shared Claude Code and Hermes Agent ddalggak details. The always-loaded SKILL.md keeps only router/invariant anchors and points here for low-frequency detail.
 
 ## 실패 모드 예방
 

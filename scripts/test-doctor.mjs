@@ -242,7 +242,7 @@ export const cases = [
       assertExit(result, 1);
       assertIncludes(
         result.stdout,
-        "core/projections.yaml line 10: unparseable parity_ledger line: - SKILL.md",
+        "core/projections.yaml line 13: unparseable parity_ledger line: - SKILL.md",
         "stdout",
       );
     },
@@ -268,7 +268,7 @@ export const cases = [
       assertExit(result, 1);
       assertIncludes(
         result.stdout,
-        "core/projections.yaml line 9: unsupported inline structure for key: parity_ledger",
+        "core/projections.yaml line 12: unsupported inline structure for key: parity_ledger",
         "stdout",
       );
     },

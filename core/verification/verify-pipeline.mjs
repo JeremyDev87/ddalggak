@@ -33,6 +33,18 @@ export const verifyPipelineStages = [
         npmScript: "verify:codex-skill",
       },
       {
+        label: "Hermes shared skill verifier",
+        command: "npm",
+        args: ["run", "verify:hermes-skill"],
+        npmScript: "verify:hermes-skill",
+      },
+      {
+        label: "Hermes shared skill fail-closed tests",
+        command: "npm",
+        args: ["run", "test:hermes-skill"],
+        npmScript: "test:hermes-skill",
+      },
+      {
         label: "projection verifier",
         command: "npm",
         args: ["run", "verify:projections"],

@@ -1,7 +1,7 @@
 {
   "name": "@jeremyfellaz/ddalggak",
   "version": "0.1.0",
-  "description": "Codex and Claude Code workflow skill for planned, reviewed, recoverable GitHub issue implementation",
+  "description": "Hermes Agent, Codex, and Claude Code workflow skill for planned, reviewed, recoverable GitHub issue implementation",
   "type": "module",
   "bin": {
     "ddalggak": "./bin/ddalggak.js"
@@ -11,6 +11,8 @@
     "test:auto-update": "node scripts/run-auto-update-tests.mjs",
     "test:verify-package": "node scripts/test-verify-package.mjs",
     "verify:codex-skill": "node scripts/verify-codex-skill.mjs",
+    "verify:hermes-skill": "node scripts/verify-hermes-skill.mjs",
+    "test:hermes-skill": "node scripts/test-verify-hermes-skill.mjs",
     "verify:projections": "node scripts/verify-projections.mjs",
     "test:review-contract": "node ddalggak/scripts/test-review-policy-layers.mjs && node ddalggak/scripts/verify-review-contract.mjs && node ddalggak/scripts/test-review-contract-verifier.mjs && node ddalggak/scripts/test-review-finding-two-sentence.mjs",
     "test:review-contract:exhaustive": "node ddalggak/scripts/test-review-contract-exhaustive.mjs",
@@ -69,6 +71,7 @@
     "ai-agents",
     "claude-code",
     "codex",
+    "hermes-agent",
     "code-review",
     "developer-tools",
     "github-issues",

@@ -130,11 +130,15 @@ function assertRuntimeProjectionContract(runtimeName, projectionsByRuntime) {
     return;
   }
 
-  const declaredRoots = new Set([...projectionsByRuntime.values()].filter(Boolean));
+  const declaredRuntimeRoot = projectionsByRuntime.get(runtimeName);
+  if (!declaredRuntimeRoot) {
+    fail(`core/projections.yaml must declare a root for runtime ${runtimeName}`);
+    return;
+  }
   for (const [index, runtimeRoot] of runtime.projection_roots.entries()) {
-    if (!declaredRoots.has(runtimeRoot)) {
+    if (runtimeRoot !== declaredRuntimeRoot) {
       fail(
-        `${relativePath} projection_roots[${index}] (${runtimeRoot}) is not declared as a root in core/projections.yaml; use install_targets for install-only paths`,
+        `${relativePath} projection_roots[${index}] (${runtimeRoot}) must match the ${runtimeName} root declared in core/projections.yaml (${declaredRuntimeRoot}); use install_targets for install-only paths`,
       );
     }
   }
@@ -332,12 +336,11 @@ if (!projectionsText.includes("source_root: ddalggak")) {
 if (!projectionsText.includes(".codex/skills/ddalggak")) {
   fail("core/projections.yaml must include Codex skill projection root");
 }
-if (!projectionsText.includes("execution_runtime: false")) {
-  fail("core/projections.yaml must mark Hermes parity target as non-execution runtime");
-}
-
 const parityLedgerEntryCount = runParityLedgerCheck(projectionsText);
 const projectionsByRuntime = parseDeclaredProjectionRoots(projectionsText);
+if (projectionsByRuntime.get("hermes") !== "ddalggak") {
+  fail("core/projections.yaml must declare Hermes as a shared consumer of ddalggak");
+}
 
 const runtimeFiles = readdirSync(runtimeDir).filter((name) => name.endsWith(".yaml"));
 for (const runtimeName of ["claude.yaml", "codex.yaml", "hermes.yaml"]) {
@@ -345,19 +348,8 @@ for (const runtimeName of ["claude.yaml", "codex.yaml", "hermes.yaml"]) {
     fail(`core/runtimes/${runtimeName} missing`);
   }
 }
-for (const runtimeName of ["claude", "codex"]) {
+for (const runtimeName of ["claude", "codex", "hermes"]) {
   assertRuntimeProjectionContract(runtimeName, projectionsByRuntime);
-}
-const hermesRuntime = parseSimpleYaml(
-  readText(path.join(runtimeDir, "hermes.yaml")),
-  "core/runtimes/hermes.yaml",
-  { onError: fail },
-);
-if (hermesRuntime.execution_runtime !== false) {
-  fail("core/runtimes/hermes.yaml must set execution_runtime: false");
-}
-if (hermesRuntime.kind !== "parity_target_contract") {
-  fail("core/runtimes/hermes.yaml must be kind: parity_target_contract");
 }
 
 const commandFiles = readdirSync(commandDir).filter((name) => name.endsWith(".yaml"));
@@ -400,5 +392,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  `[verify:projections] passed: ${requiredCommands.length} command contracts, ${runtimeFiles.length} runtimes, 2 projection roots, ${parityLedgerEntryCount} parity ledger entries, AGENTS.md projection artifact guard`
+  `[verify:projections] passed: ${requiredCommands.length} command contracts, ${runtimeFiles.length} execution runtimes, ${new Set(projectionsByRuntime.values()).size} physical projection roots, ${parityLedgerEntryCount} parity ledger entries, AGENTS.md projection artifact guard`
 );

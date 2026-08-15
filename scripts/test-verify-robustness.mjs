@@ -357,8 +357,50 @@ for (const [fixtureName, expectedMessage] of [
   const output = `${result.stdout}\n${result.stderr}`;
   assert(result.status === 1, `runtime projection-root drift must fail, got exit ${result.status}\n${output}`);
   assert(
-    output.includes("core/runtimes/claude.yaml projection_roots[1] (.claude/skills/ddalggak) is not declared as a root in core/projections.yaml"),
+    output.includes("core/runtimes/claude.yaml projection_roots[1] (.claude/skills/ddalggak) must match the claude root declared in core/projections.yaml (ddalggak)"),
     `expected runtime projection-root drift diagnostic\n${output}`,
+  );
+}
+
+{
+  const tempDir = copyRepo();
+  const runtimePath = path.join(tempDir, "core", "runtimes", "hermes.yaml");
+  const runtime = readFileSync(runtimePath, "utf8");
+  const drifted = runtime.replace(
+    "projection_roots:\n  - ddalggak",
+    "projection_roots:\n  - .codex/skills/ddalggak",
+  );
+  assert(drifted !== runtime, "fixture setup: expected Hermes to declare the shared ddalggak root");
+  writeFileSync(runtimePath, drifted, "utf8");
+
+  const result = runProjectionVerifier(tempDir);
+  const output = `${result.stdout}\n${result.stderr}`;
+  assert(result.status === 1, `Hermes root drift must fail, got exit ${result.status}\n${output}`);
+  assert(
+    output.includes(
+      "core/runtimes/hermes.yaml projection_roots[0] (.codex/skills/ddalggak) must match the hermes root declared in core/projections.yaml (ddalggak)",
+    ),
+    `expected Hermes shared-root drift diagnostic\n${output}`,
+  );
+}
+
+{
+  const tempDir = copyRepo();
+  const projectionsPath = path.join(tempDir, "core", "projections.yaml");
+  const projections = readFileSync(projectionsPath, "utf8");
+  const drifted = projections.replace(
+    "  hermes:\n    root: ddalggak\n    runtime: hermes",
+    "  hermes:\n    root: .codex/skills/ddalggak\n    runtime: hermes",
+  );
+  assert(drifted !== projections, "fixture setup: expected Hermes projection consumer declaration");
+  writeFileSync(projectionsPath, drifted, "utf8");
+
+  const result = runProjectionVerifier(tempDir);
+  const output = `${result.stdout}\n${result.stderr}`;
+  assert(result.status === 1, `Hermes projection consumer drift must fail, got exit ${result.status}\n${output}`);
+  assert(
+    output.includes("core/projections.yaml must declare Hermes as a shared consumer of ddalggak"),
+    `expected Hermes projection consumer diagnostic\n${output}`,
   );
 }
 

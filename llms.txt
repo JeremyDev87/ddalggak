@@ -6,7 +6,7 @@
 
 - [README](./README.md): project overview, supported CLI usage, release helper surfaces, and maintainer-facing package guidance.
 - [Codex skill](./.codex/skills/ddalggak/SKILL.md): Codex App skill entrypoint and compact hot-path routing contract.
-- [Claude Code skill](./ddalggak/SKILL.md): Claude Code skill entrypoint and compact hot-path routing contract.
+- [Shared Claude Code / Hermes Agent skill](./ddalggak/SKILL.md): shared skill entrypoint and compact hot-path routing contract.
 
 ## Workflow references
 
@@ -23,6 +23,7 @@
 - [Runtime projections](./core/projections.yaml): package/runtime projection targets.
 - [Skill contract manifest](./core/verification/skill-contract-manifest.mjs): verifier-owned required assets, disclosure maps, and package artifact expectations.
 - [Package verifier](./scripts/verify-package.mjs): npm artifact inclusion and release-safe verification gate.
+- [Hermes skill verifier](./scripts/verify-hermes-skill.mjs): shared-root frontmatter, support-file reachability, and package inclusion gate.
 - [Smoke tests](./scripts/smoke.mjs): CLI and package contract regression tests.
 
 ## Retrieval notes

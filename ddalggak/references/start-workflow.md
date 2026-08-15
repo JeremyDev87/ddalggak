@@ -5,7 +5,7 @@ Side effects: source-edit
 Do not use when: the user asked only for `plan`, `status`, `check`, `prompt`, or another read-only subcommand.
 
 
-> Source of truth for Claude Code ddalggak details. The always-loaded SKILL.md keeps only router/invariant anchors and points here for low-frequency detail.
+> Source of truth for shared Claude Code and Hermes Agent ddalggak details. The always-loaded SKILL.md keeps only router/invariant anchors and points here for low-frequency detail.
 
 ## Start Workflow
 

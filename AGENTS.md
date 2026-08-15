@@ -5,13 +5,13 @@ The authoritative workflow policy is in:
 
 - [`README.md`](./README.md) — user-facing usage and verification commands
 - [`.codex/skills/ddalggak/SKILL.md`](./.codex/skills/ddalggak/SKILL.md) — agent runtime contract for the Codex runtime
-- [`ddalggak/SKILL.md`](./ddalggak/SKILL.md) — agent runtime contract for the Claude Code runtime
+- [`ddalggak/SKILL.md`](./ddalggak/SKILL.md) — shared agent runtime contract for Claude Code and Hermes Agent
 
 This file does not duplicate or extend those policies. If this file and the canonical sources conflict, treat the canonical sources as authoritative and report the divergence.
 
 ## Projection roots
 
-`ddalggak/` (Claude Code) and `.codex/skills/ddalggak/` (Codex) are hand-maintained projections of the same skill; each root is canonical only for its own runtime. The per-file parity contract between them (`must-match` / `may-localize` / `root-specific`) is declared in the `parity_ledger` block of [`core/projections.yaml`](./core/projections.yaml) and enforced by `npm run verify` (`scripts/verify-projections.mjs`).
+`ddalggak/` (Claude Code and Hermes Agent) and `.codex/skills/ddalggak/` (Codex) are the two hand-maintained physical projections of the same skill. The per-file parity contract (`must-match` / `may-localize` / `root-specific`) and three-runtime consumer mapping are declared in [`core/projections.yaml`](./core/projections.yaml) and enforced by `npm run verify` (`scripts/verify-projections.mjs`).
 
 ## Verification
 
