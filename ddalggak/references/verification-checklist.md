@@ -4,7 +4,7 @@ Required by: ship, review, status; plan/start before declaring readiness when va
 Side effects: none.
 Do not use when: the command is an early discovery-only no-op with no validation or readiness claim.
 
-> Source of truth for Claude Code ddalggak details. The always-loaded SKILL.md keeps only router/invariant anchors and points here for low-frequency detail.
+> Source of truth for shared Claude Code and Hermes Agent ddalggak details. The always-loaded SKILL.md keeps only router/invariant anchors and points here for low-frequency detail.
 
 ## Verification Checklist
 

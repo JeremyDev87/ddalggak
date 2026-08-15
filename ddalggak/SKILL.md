@@ -7,7 +7,7 @@ user-invocable: true
 
 # ddalggak — 딸깍 워크플로우
 
-딸깍은 GitHub Issue → 계획 → 구현 → 리뷰 → 회고 thin router다. 긴 절차·템플릿은 references/templates/scripts에 둔다.
+딸깍은 GitHub Issue → 계획 → 구현 → 리뷰 → 회고 thin router다. 긴 절차·템플릿은 references, templates, scripts 디렉터리에 둔다.
 
 ## 표준 워크플로우와 코드 수정 권한 (전역 invariant)
 
@@ -43,7 +43,7 @@ user-invocable: true
 
 ## Hot-Path Target Architecture
 
-항상 로드되는 본문은 routing, 권한, guardrails, dispatch/reference map, stop/verify만 담고 상세 절차는 references/templates/scripts/eval로 넘긴다.
+항상 로드되는 본문은 routing, 권한, guardrails, dispatch/reference map, stop/verify만 담고 상세 절차는 references, templates, scripts, eval 디렉터리로 넘긴다.
 
 ## Routing Invariant
 

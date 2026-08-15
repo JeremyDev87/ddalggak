@@ -10,7 +10,7 @@ Do not use when: the work would write any path inside the repository, or a wiki 
 
 canonical 계약은 `core/commands/retro.yaml`의 `write_side_effects`이며, retro가 파일을 쓸 수 있는 위치는 repo 외부로 한정된다.
 
-- **허용**: `~/workspace/retrospective/`(또는 `RETRO_DIR` override 경로)의 회고 노트 파일(Step 3), 그리고 메모리 디렉토리(`~/.claude/projects/.../memory/`)의 메모리 파일과 `MEMORY.md` 인덱스(Step 4).
+- **허용**: `~/workspace/retrospective/`(또는 `RETRO_DIR` override 경로)의 회고 노트 파일(Step 3), 그리고 현재 실행 runtime이 제공하는 메모리 저장 경로의 메모리 파일 또는 메모리 업데이트 요청 artifact(Step 4). Claude Code에서는 `~/.claude/projects/.../memory/`; Hermes Agent에서는 해당 profile의 memory tool/저장소를 사용하며 경로를 추측하거나 직접 하드코딩하지 않는다.
 - **금지**: repo 내 파일은 소스·문서·설정을 불문하고 어떤 경로에도 쓰지 않는다(생성·수정 모두). 예외 없음 — 권한 표의 소스 코드 수정 ❌는 repo 내 모든 경로에 적용된다.
 - **wiki**: 직접 쓰지 않는다. `wiki-bridge.md`의 approval-gated `/setwiki` 제안으로만 처리한다(Step 6).
 - skill·권한 표 등 ddalggak 자체 개선점은 회고 노트 안의 제안(proposal)으로만 남기고 직접 반영하지 않는다.
@@ -119,7 +119,7 @@ gh pr view <확정된-PR-번호> --json number,state,mergedAt,title
 - 이번 PR에만 해당하는 일회성 맥락
 - PR numbers, commit SHAs, single-session completion logs처럼 특정 incident records에 속하고 아직 durable reusable knowledge로 일반화되지 않은 산출물
 
-각 메모리 파일은 `~/.claude/projects/.../memory/`에 저장하고 `MEMORY.md` 인덱스를 업데이트한다.
+메모리 반영은 현재 runtime의 공식 memory surface를 사용한다. Claude Code에서는 `~/.claude/projects/.../memory/`와 `MEMORY.md` 인덱스를 사용하고, Hermes Agent에서는 활성 profile의 memory tool/저장소를 사용한다. 서로 다른 runtime/profile 경로를 복사하거나 추측하지 않는다.
 
 ## Step 5. 완료 보고
 

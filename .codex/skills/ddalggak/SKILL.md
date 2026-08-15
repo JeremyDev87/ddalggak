@@ -310,7 +310,7 @@ Stop when source edits fall outside the routed subcommand, a lane needs files ou
 
 ## Reference Contract Summary
 
-The following compact contract keeps hot-path guardrails operational while detailed procedure moves to references/templates/scripts. Each item is a required review or routing concept, not a standalone checklist to satisfy mechanically:
+The following compact contract keeps hot-path guardrails operational while detailed procedure moves to the references, templates, and scripts directories. Each item is a required review or routing concept, not a standalone checklist to satisfy mechanically:
 
 - URL beats cwd
 - GitHub URL handling criteria

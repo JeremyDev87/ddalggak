@@ -24,11 +24,23 @@ function collectParitySurface(absRoot) {
 
 export function checkRootParity(layout) {
   const findings = [];
-  if (layout.projectionRoots.length < 2) {
+  const rootsByPath = new Map();
+  for (const entry of layout.projectionRoots) {
+    const key = path.resolve(entry.abs);
+    const existing = rootsByPath.get(key);
+    if (existing) {
+      existing.names.add(entry.name);
+      continue;
+    }
+    rootsByPath.set(key, { ...entry, names: new Set([entry.name]) });
+  }
+  const physicalRoots = [...rootsByPath.values()];
+
+  if (physicalRoots.length < 2) {
     return { findings }; // nothing to compare; layout check reports empty roots
   }
 
-  const surfaces = layout.projectionRoots.map((entry) => ({
+  const surfaces = physicalRoots.map((entry) => ({
     ...entry,
     files: collectParitySurface(entry.abs),
   }));
@@ -62,7 +74,7 @@ export function checkRootParity(layout) {
     if (
       ledgerEntry?.class === "root-specific" &&
       have.length === 1 &&
-      have[0].name === ledgerEntry.root
+      have[0].names.has(ledgerEntry.root)
     ) {
       continue;
     }

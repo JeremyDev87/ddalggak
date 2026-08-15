@@ -11,17 +11,15 @@ projection_roots:
     runtime: claude
     generated: false
     verifier_required: true
-parity_targets:
   hermes:
+    root: ddalggak
     runtime: hermes
     generated: false
-    execution_runtime: false
-    # Declared parity target only: verify-projections.mjs guards this
-    # declaration's invariants (execution_runtime stays false, hermes.yaml
-    # contract shape) but no script verifies actual hermes parity.
-    status: aspirational
+    verifier_required: true
+    # Hermes consumes the same physical source root as Claude. Promotion to
+    # verified support remains gated on the latest-Hermes native install E2E.
     verified: false
-# Per-file parity class ledger across the two projection roots.
+# Per-file parity class ledger across the two physical projection roots.
 # Classes:
 # - must-match: byte-identical in both roots.
 # - may-localize: present in both roots; bodies may be language-localized, but

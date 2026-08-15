@@ -20,6 +20,8 @@ export const requiredPackageArtifactPaths = [
   "scripts/project-runtime-assets.mjs",
   "scripts/smoke.mjs",
   "scripts/verify-codex-skill.mjs",
+  "scripts/verify-hermes-skill.mjs",
+  "scripts/test-verify-hermes-skill.mjs",
   "scripts/verify-package.mjs",
   "scripts/verify-projections.mjs",
   "scripts/test-verify-codex-skill-reference-aware.mjs",

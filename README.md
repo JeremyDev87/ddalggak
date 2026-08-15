@@ -2,7 +2,7 @@
 
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 
-ddalggak is a workflow skill for turning GitHub issues into planned, parallel, reviewed, and recoverable implementation work. This repository projects one skill to two co-equal runtimes: the Codex App skill source (`.codex/skills/ddalggak/`) and the Claude Code skill (`ddalggak/`, with a CLI bridge for setup). Each root is canonical for its own runtime, and `npm run verify:projections` enforces parity between them.
+ddalggak is a workflow skill for turning GitHub issues into planned, parallel, reviewed, and recoverable implementation work. This repository projects one skill to three execution runtimes across two physical roots: Codex App uses `.codex/skills/ddalggak/`, while Claude Code and Hermes Agent share `ddalggak/`. `npm run verify:projections` enforces the runtime-to-root contract and parity between the two physical roots.
 
 > npm release status: this package is being prepared for publication, but this README does not claim a live npm package until registry visibility is proven by the release follow-up audit.
 
@@ -30,7 +30,7 @@ Example invocations:
 [$ddalggak] status
 ```
 
-ddalggak supports these subcommands (the same set in both runtimes):
+ddalggak supports these subcommands across all three execution runtimes:
 
 - `start`: run issue-based implementation lanes.
 - `review`: run independent review as an AI code quality gate, checking not only correctness but also scope, existing patterns, failure semantics, simplicity, and human reviewability before accepted-fix loops.
@@ -48,7 +48,22 @@ ddalggak supports these subcommands (the same set in both runtimes):
 - `getwiki`: retrieve related wiki pages as read-only context for plan/review work.
 - `setwiki`: save a source into the wiki through an approval-gated write workflow.
 
-Codex App loads the skill from `.codex/skills/ddalggak/`; Claude Code loads it from `ddalggak/`. Neither root outranks the other — each is canonical for its own runtime, and the per-file parity contract is declared in `core/projections.yaml` and enforced by `npm run verify:projections`. The Claude Code setup path is described below.
+Codex App loads the skill from `.codex/skills/ddalggak/`; Claude Code and Hermes Agent load the shared `ddalggak/` root. Neither physical root outranks the other, and Hermes does not introduce a third payload copy. The per-file parity and runtime-consumer contracts are declared in `core/projections.yaml` and enforced by `npm run verify:projections`.
+
+## Hermes Agent
+
+Hermes Agent uses its native, profile-aware Skills Hub lifecycle rather than `ddalggak setup` or direct writes to `~/.hermes`. Replace `<profile>` with the target profile name; omit `-p <profile>` to use the active default profile.
+
+```bash
+hermes -p <profile> skills inspect JeremyDev87/ddalggak/ddalggak
+hermes -p <profile> skills install JeremyDev87/ddalggak/ddalggak --yes
+hermes -p <profile> skills check ddalggak
+hermes -p <profile> skills update ddalggak
+```
+
+After installation or update, run `/reload-skills` in the current Hermes session. Use `/reset` or start a new session when the routing index or current conversation context must also be rebuilt. Skills and lock state are isolated by Hermes profile; installing into one named profile does not install ddalggak into another.
+
+`npm run verify:hermes-skill` validates the shared root's required frontmatter, command-asset reachability, and npm package inclusion without depending on extension fields such as `user-invocable` or `argument-hint`. The runtime ledger remains `verified: false` until the latest upstream Hermes native install/load E2E records an installed payload and lock entry.
 
 ## Review as Quality Gate
 
@@ -139,9 +154,9 @@ node bin/ddalggak.js profile hermes --dry-run
 
 When the `claude` CLI is not on `PATH`, or when the current terminal is non-interactive, the CLI prints the slash command to paste into Claude Code instead of spawning Claude Code.
 
-### Hermes-style Profile Proposal
+### Hermes-style Claude Profile Proposal
 
-`ddalggak profile hermes` proposes a global Claude Code profile change as a dry-run only. It reads the existing `$CLAUDE_HOME/CLAUDE.md` or `~/.claude/CLAUDE.md` when present, then prints a unified diff proposal. It never writes `CLAUDE.md`, never writes `settings.json`, and intentionally has no `--apply` mode.
+`ddalggak profile hermes` is not Hermes Agent installation or configuration. It proposes a global Claude Code profile change with Hermes-style behavior as a dry-run only. It reads the existing `$CLAUDE_HOME/CLAUDE.md` or `~/.claude/CLAUDE.md` when present, then prints a unified diff proposal. It never writes `CLAUDE.md`, never writes `settings.json`, and intentionally has no `--apply` mode.
 
 ```bash
 node bin/ddalggak.js profile hermes --dry-run
@@ -150,7 +165,7 @@ node bin/ddalggak.js profile hermes --print-claude-md-patch
 
 The proposed profile adds Korean honorific/truth-first defaults, GitHub issue body/labels/comments checks, the ddalggak issue → plan → start → ship → review cycle, `getwiki` before plan/review, approval-gated `setwiki`, and a never-merge / never-auto-merge policy.
 
-Note that Hermes is an unverified, aspirational parity target: it is declared in `core/projections.yaml` (`status: aspirational`, `verified: false`), but no script in this repository verifies Hermes parity, so `npm run verify` does not validate this profile against any runtime.
+This Claude profile proposal is independent from the Hermes execution projection and its native Skills Hub installation described above.
 
 ### Setup
 
@@ -219,9 +234,9 @@ Install path priority is `--target <path>`, then `$CLAUDE_HOME`, then `~/.claude
 
 ### GitHub master auto-update
 
-Packaged installations check `https://github.com/JeremyDev87/ddalggak.git` `master` before each CLI invocation. The updater resolves an exact commit SHA, validates a detached Git checkout in a SHA-keyed immutable cache, atomically switches the active SHA pointer, syncs already-installed Claude and Codex `ddalggak` skill payloads, and re-executes the original command once from that immutable SHA path with its argv, working directory, environment, and exit status preserved. Source/development checkouts containing `.git` skip this bootstrap so branch-local work is never replaced.
+Packaged installations check `https://github.com/JeremyDev87/ddalggak.git` `master` before each CLI invocation. The updater resolves an exact commit SHA, validates a detached Git checkout in a SHA-keyed immutable cache, atomically switches the active SHA pointer, syncs already-installed Claude and Codex `ddalggak` skill payloads, and re-executes the original command once from that immutable SHA path with its argv, working directory, environment, and exit status preserved. Source/development checkouts containing `.git` skip this bootstrap so branch-local work is never replaced. Hermes installations are intentionally excluded: `hermes skills check/update` owns their profile lock, update, and rollback semantics.
 
-Existing installations need one bootstrap update containing this updater. After that, CLI, `core/`, Claude skill, and Codex skill changes on GitHub `master` are used without rerunning `setup`. An absent runtime skill is not created implicitly; run `setup` for the first Claude installation or install the Codex skill through its normal runtime path first.
+Existing installations need one bootstrap update containing this updater. After that, CLI, `core/`, Claude skill, and Codex skill changes on GitHub `master` are used without rerunning `setup`. An absent runtime skill is not created implicitly; run `setup` for the first Claude installation, install the Codex skill through its normal runtime path, or use Hermes Skills Hub for a Hermes profile.
 
 If GitHub is offline, rate-limited, invalid, or serves an incomplete checkout, ddalggak keeps the last validated cache (or the installed package when no cache exists) and prints a warning to stderr. Concurrent invocations share an atomic update lock, and failed activation restores the previous cache. Use `--no-update` for one invocation or `DDALGGAK_NO_UPDATE=1` for an environment-level opt-out. The cache defaults to `$XDG_CACHE_HOME/ddalggak` or `~/.cache/ddalggak`; `DDALGGAK_UPDATE_CACHE_DIR` overrides it.
 
