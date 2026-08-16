@@ -31,6 +31,39 @@ const requiredCommands = loadCommandContracts(rootDir).map((doc) => doc.command)
 
 const failures = [];
 
+function runHermesVerifiedEvidenceCheck(projectionsText) {
+  const lines = projectionsText.split(/\r?\n/);
+  const projectionStarts = lines
+    .map((line, index) => (line === "projection_roots:" ? index : -1))
+    .filter((index) => index >= 0);
+  if (projectionStarts.length !== 1) {
+    fail("core/projections.yaml must declare exactly one top-level projection_roots mapping");
+    return;
+  }
+  const projectionStart = projectionStarts[0];
+  const projectionEnd = lines.findIndex((line, index) => index > projectionStart && /^\S/.test(line));
+  const projectionLines = projectionStart >= 0
+    ? lines.slice(projectionStart + 1, projectionEnd === -1 ? lines.length : projectionEnd)
+    : [];
+  const hermesStarts = projectionLines
+    .map((line, index) => (/^  hermes:\s*$/.test(line) ? index : -1))
+    .filter((index) => index >= 0);
+  const verified = [];
+  if (hermesStarts.length === 1) {
+    const start = hermesStarts[0] + 1;
+    for (let index = start; index < projectionLines.length && !/^  [A-Za-z0-9_-]+:\s*$/.test(projectionLines[index]); index += 1) {
+      const match = projectionLines[index].match(/^    verified:\s*(true|false)\s*$/);
+      if (match) verified.push(match[1]);
+    }
+  }
+  if (hermesStarts.length !== 1 || verified.length !== 1) {
+    fail("core/projections.yaml must declare exactly one hermes.verified boolean");
+    return;
+  }
+  if (verified[0] === "false") return;
+  fail("repository-local evidence cannot authorize hermes.verified promotion; a trusted external attestation verifier is required");
+}
+
 function runGeneratedBlockCheck() {
   const result = spawnSync(
     process.execPath,
@@ -337,6 +370,7 @@ if (!projectionsText.includes(".codex/skills/ddalggak")) {
   fail("core/projections.yaml must include Codex skill projection root");
 }
 const parityLedgerEntryCount = runParityLedgerCheck(projectionsText);
+runHermesVerifiedEvidenceCheck(projectionsText);
 const projectionsByRuntime = parseDeclaredProjectionRoots(projectionsText);
 if (projectionsByRuntime.get("hermes") !== "ddalggak") {
   fail("core/projections.yaml must declare Hermes as a shared consumer of ddalggak");

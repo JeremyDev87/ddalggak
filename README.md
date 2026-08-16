@@ -52,18 +52,18 @@ Codex App loads the skill from `.codex/skills/ddalggak/`; Claude Code and Hermes
 
 ## Hermes Agent
 
-Hermes Agent uses its native, profile-aware Skills Hub lifecycle rather than `ddalggak setup` or direct writes to `~/.hermes`. Replace `<profile>` with the target profile name; omit `-p <profile>` to use the active default profile.
+Hermes Agent uses its native, profile-aware Skills Hub lifecycle rather than `ddalggak setup` or direct writes to `~/.hermes`. Replace `<profile>` with the target profile name and use `-p default` explicitly for the default profile; omitting `-p` can follow a sticky active profile.
 
 ```bash
 hermes -p <profile> skills inspect JeremyDev87/ddalggak/ddalggak
-hermes -p <profile> skills install JeremyDev87/ddalggak/ddalggak --yes
+hermes -p <profile> skills install JeremyDev87/ddalggak/ddalggak --yes --force
 hermes -p <profile> skills check ddalggak
 hermes -p <profile> skills update ddalggak
 ```
 
 After installation or update, run `/reload-skills` in the current Hermes session. Use `/reset` or start a new session when the routing index or current conversation context must also be rebuilt. Skills and lock state are isolated by Hermes profile; installing into one named profile does not install ddalggak into another.
 
-`npm run verify:hermes-skill` validates the shared root's required frontmatter, command-asset reachability, and npm package inclusion without depending on extension fields such as `user-invocable` or `argument-hint`. The runtime ledger remains `verified: false` until the latest upstream Hermes native install/load E2E records an installed payload and lock entry.
+`npm run verify:hermes-skill` validates the shared root's required frontmatter, command-asset reachability, and npm package inclusion without depending on extension fields such as `user-invocable` or `argument-hint`. `npm run test:hermes-native-e2e` exercises the fail-closed evidence contract; the online verifier additionally checks immutable/raw and repository/profile lifecycle lanes. Repository-local JSON can prove schema and Git binding but cannot attest that the native run occurred, so the runtime ledger remains `verified: false`; promotion requires a separately implemented trusted external attestation verifier.
 
 ## Review as Quality Gate
 

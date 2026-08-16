@@ -22,6 +22,8 @@ export const requiredPackageArtifactPaths = [
   "scripts/verify-codex-skill.mjs",
   "scripts/verify-hermes-skill.mjs",
   "scripts/test-verify-hermes-skill.mjs",
+  "scripts/verify-hermes-native-e2e.mjs",
+  "scripts/test-verify-hermes-native-e2e.mjs",
   "scripts/verify-package.mjs",
   "scripts/verify-projections.mjs",
   "scripts/test-verify-codex-skill-reference-aware.mjs",

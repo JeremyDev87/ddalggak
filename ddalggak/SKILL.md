@@ -187,7 +187,7 @@ Full procedure: `references/issue-ready-plan.md`; wiki preflight: `references/wi
 
 Execution contract index:
 - Identify Goal, Source Of Truth, Non-Goals, Context Recovery Anchors, Assumptions/Unknowns.
-- Include Wiki Context Manifest, Router Output, and Evidence Contract; all other gates follow when activation evidence applies.
+- Provide the Wiki Context Manifest, Router Output, and Evidence Contract; all other gates follow when activation evidence applies.
 - Add Frontend/Vercel/Regression details only when applicable, plus React code quality details only when applicable, with skip or lightweight reason otherwise.
 - Plan Issue-PR Strategy: one PR per issue by default, conflict fallback only with proof, Parallelization Decision, Must not touch, evidence, commit message.
 

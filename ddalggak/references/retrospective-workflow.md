@@ -93,7 +93,7 @@ gh pr view <확정된-PR-번호> --json number,state,mergedAt,title
 
 파일명 형식: `YYYY-MM-DD-pr<N>-<slug>.md`.
 
-저장 경로는 `CLAUDE.md`에 `RETRO_DIR: ~/custom/path`가 지정되어 있으면 그 경로를 사용하고, 미지정 시 기본값을 사용한다.
+저장 경로는 프로젝트 지침의 `RETRO_DIR` 값, 미지정 시 기본값을 사용한다.
 
 ```text
 ~/workspace/retrospective/YYYY-MM-DD-pr<N>-<slug>.md
@@ -115,7 +115,7 @@ gh pr view <확정된-PR-번호> --json number,state,mergedAt,title
 
 저장하지 않는 것:
 
-- 이미 코드나 CLAUDE.md에 반영된 것
+- 이미 코드나 프로젝트 지침에 반영된 것
 - 이번 PR에만 해당하는 일회성 맥락
 - PR numbers, commit SHAs, single-session completion logs처럼 특정 incident records에 속하고 아직 durable reusable knowledge로 일반화되지 않은 산출물
 

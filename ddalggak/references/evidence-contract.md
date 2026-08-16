@@ -30,7 +30,7 @@ Every plan, worker brief, review packet, and PR/readiness conclusion must carry 
 | Work type | Required evidence |
 | --- | --- |
 | UI/design/frontend | Route or screen path, desktop/mobile viewport matrix, rendered DOM or accessibility state, screenshot or visual artifact, fallback/empty/loading/error state evidence, and contract graph for shared component/data dependencies. |
-| Deploy/release/env | Preview or live URL, deployment state, environment/project context, version or commit deployed, and any rollback or token-safety check that applies. |
+| Deploy/release/environment | Preview or live URL, deployment state, environment/project context, version or commit deployed, and any rollback or token-safety check that applies. |
 | Performance | Before/after measurement, focused benchmark or profiling result, tested dataset/fixture size, threshold or budget, and note about noise or repeatability. |
 | Bugfix/regression | Reproduction or failing regression test first, fix evidence, passing regression log, and adjacent edge/error case coverage. |
 | Security/auth/privacy | Adversarial cases, authorization/authentication boundary tests, privacy allowlist/denylist evidence, denied cases, and confirmation that secrets or sensitive user input are not exposed. |
