@@ -406,6 +406,59 @@ for (const [fixtureName, expectedMessage] of [
 
 {
   const tempDir = copyRepo();
+  const projectionsPath = path.join(tempDir, "core", "projections.yaml");
+  const projections = readFileSync(projectionsPath, "utf8");
+  const promoted = projections.replace("    verified: false", "    verified: true");
+  assert(promoted !== projections, "fixture setup: expected Hermes verified flag");
+  writeFileSync(projectionsPath, promoted, "utf8");
+
+  const result = runProjectionVerifier(tempDir);
+  const output = `${result.stdout}\n${result.stderr}`;
+  assert(result.status === 1, `Hermes promotion without native evidence must fail, got exit ${result.status}\n${output}`);
+  assert(
+    output.includes("repository-local evidence cannot authorize hermes.verified promotion"),
+    `expected attestation-required promotion diagnostic\n${output}`,
+  );
+}
+
+{
+  const tempDir = copyRepo();
+  const projectionsPath = path.join(tempDir, "core", "projections.yaml");
+  const projections = readFileSync(projectionsPath, "utf8");
+  const duplicated = projections.replace(
+    "    verified: false",
+    "    verified: false\n    verified: true",
+  );
+  assert(duplicated !== projections, "fixture setup: expected duplicate Hermes verified declaration");
+  writeFileSync(projectionsPath, duplicated, "utf8");
+
+  const result = runProjectionVerifier(tempDir);
+  const output = `${result.stdout}\n${result.stderr}`;
+  assert(result.status === 1, `duplicate Hermes verified declarations must fail, got exit ${result.status}\n${output}`);
+  assert(
+    output.includes("exactly one hermes.verified boolean"),
+    `expected strict Hermes verified declaration diagnostic\n${output}`,
+  );
+}
+
+{
+  const tempDir = copyRepo();
+  const projectionsPath = path.join(tempDir, "core", "projections.yaml");
+  const projections = readFileSync(projectionsPath, "utf8");
+  const duplicated = `${projections}\nprojection_roots:\n  hermes:\n    root: ddalggak\n    runtime: hermes\n    verified: true\n`;
+  writeFileSync(projectionsPath, duplicated, "utf8");
+
+  const result = runProjectionVerifier(tempDir);
+  const output = `${result.stdout}\n${result.stderr}`;
+  assert(result.status === 1, `duplicate top-level projection_roots must fail, got exit ${result.status}\n${output}`);
+  assert(
+    output.includes("exactly one top-level projection_roots mapping"),
+    `expected duplicate top-level projection_roots diagnostic\n${output}`,
+  );
+}
+
+{
+  const tempDir = copyRepo();
   const referencePath = path.join(
     tempDir,
     ".codex",

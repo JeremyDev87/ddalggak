@@ -38,7 +38,7 @@ The final plan must include `Consensus decision` with either `ACCEPT`, `NARROW`,
 
 Before writing the plan, run `references/wiki-context-preflight.md`.
 
-The plan must include the canonical Wiki Context Manifest from
+The plan must contain the canonical Wiki Context Manifest from
 `references/wiki-context-preflight.md`; do not duplicate a shorter local field
 set here.
 

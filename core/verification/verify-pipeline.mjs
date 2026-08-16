@@ -45,6 +45,12 @@ export const verifyPipelineStages = [
         npmScript: "test:hermes-skill",
       },
       {
+        label: "Hermes native E2E evidence fail-closed tests",
+        command: "npm",
+        args: ["run", "test:hermes-native-e2e"],
+        npmScript: "test:hermes-native-e2e",
+      },
+      {
         label: "projection verifier",
         command: "npm",
         args: ["run", "verify:projections"],

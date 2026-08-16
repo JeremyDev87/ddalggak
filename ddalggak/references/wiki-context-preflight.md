@@ -43,7 +43,7 @@ After the Brain v0 migration/hardening batches, ddalggak wiki preflight must app
 
 ## Manifest
 
-Every subcommand output must include a wiki context manifest before its completion signal (record `Wiki: none-found` when retrieval returns nothing relevant):
+Every subcommand response must contain the Wiki Context Manifest before its completion signal (record `Wiki: none-found` when retrieval returns nothing relevant):
 
 ```markdown
 ### Wiki Context Manifest

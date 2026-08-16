@@ -24,6 +24,7 @@
 - [Skill contract manifest](./core/verification/skill-contract-manifest.mjs): verifier-owned required assets, disclosure maps, and package artifact expectations.
 - [Package verifier](./scripts/verify-package.mjs): npm artifact inclusion and release-safe verification gate.
 - [Hermes skill verifier](./scripts/verify-hermes-skill.mjs): shared-root frontmatter, support-file reachability, and package inclusion gate.
+- [Hermes native E2E verifier](./scripts/verify-hermes-native-e2e.mjs): exact-revision Skills Hub install, lock/provenance, update, loader, and profile-isolation evidence gate.
 - [Smoke tests](./scripts/smoke.mjs): CLI and package contract regression tests.
 
 ## Retrieval notes
