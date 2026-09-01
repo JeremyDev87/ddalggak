@@ -18,13 +18,22 @@ Load human-feedback, CI-triage, security-posture, and regression references only
 
 ## Lifecycle gate
 
-Resolve the live lifecycle before evaluating candidates:
+Resolve the live lifecycle before evaluating candidates. Re-check it at intake, after every delegated or long-running review phase, and immediately before every fix, push, formal/inline review, or top-level GitHub comment write.
 
 - OPEN: `APPROVE | CHANGES_REQUESTED | BLOCKED`
 - MERGED: `NO_FOLLOW_UP | FOLLOW_UP_REQUIRED | BLOCKED`
 - CLOSED_UNMERGED: `NO_ACTION | FOLLOW_UP_REQUIRED | BLOCKED`
 
-Re-read current head, base, files, checks, linked requirements, issue/body comments, prior review decisions, and Wiki Context Preflight. `checksStatus: PASS | FAIL | PENDING | NOT_APPLICABLE`; `NOT_APPLICABLE` requires a non-empty `checksJustification`. FAIL or PENDING makes the aggregate BLOCKED and completion-ineligible.
+`state=MERGED` or a non-null `mergedAt` is a hard stop sentinel. Immediately:
+
+1. Record authoritative readback for `state`, `mergedAt`, `mergeCommit`, and `headRefOid`.
+2. Emit `REVIEW_STOPPED_PR_MERGED` and attempt to stop any in-flight delegated review work.
+3. Stop all further probes, candidate evaluation, delegation, fixes, source edits, pushes, formal/inline reviews, and top-level GitHub comments.
+4. Return `MERGED / NO_FOLLOW_UP` by default. A follow-up requires fresh live evidence of a material residual defect and separate authorization; it is not a continuation of the stopped review.
+
+If lifecycle lookup fails or is ambiguous, return `BLOCKED` and perform no mutation or publication. Never infer OPEN from a stale brief, worker report, or earlier readback.
+
+For an OPEN PR, re-read current head, base, files, checks, linked requirements, issue/body comments, prior review decisions, and Wiki Context Preflight. `checksStatus: PASS | FAIL | PENDING | NOT_APPLICABLE`; `NOT_APPLICABLE` requires a non-empty `checksJustification`. FAIL or PENDING makes the aggregate BLOCKED and completion-ineligible.
 
 ## Accepted finding authority
 
