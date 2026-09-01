@@ -7,7 +7,7 @@ github_write_allowed: true
 purpose: "Risk-adaptive current-head semantic review and accepted fix loop."
 mode: "review-fix"
 write_side_effects: "Top-level review comment plus inline line-anchored review comments for every triage-passing finding in one COMMENT-event batch; accepted Critical/High fixes may edit source and push to the reviewed PR branch."
-stop_condition: "Stop before approve if intake is not ready, current-head CI is not terminal green/skipped, semantic coverage has gaps, blockers remain, or wiki/evidence preflight has blocking gaps."
+stop_condition: "Re-check lifecycle at intake, after delegated work, and before writes. On state=MERGED or mergedAt, emit REVIEW_STOPPED_PR_MERGED and stop review/writes. Uncertain lifecycle is BLOCKED."
 required_references:
   - wiki-context-preflight.md
   - 2026-06-04-brain-v0-wiki-authority-in-ddalggak.md
