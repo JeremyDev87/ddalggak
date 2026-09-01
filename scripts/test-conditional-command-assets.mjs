@@ -30,6 +30,8 @@ assert(byName.get("plan").conditional_references.includes("ambiguous-intent=deep
 assert.equal(byName.get("start").required_templates.length, 0);
 assert(byName.get("start").conditional_templates.includes("delegated-work=worker-brief.md"));
 assert(byName.get("review").conditional_references.includes("package-workflow-release-or-security-posture=security-posture-gate.md"));
+assert(byName.get("review").stop_condition.includes("REVIEW_STOPPED_PR_MERGED"));
+assert(byName.get("review").stop_condition.includes("state=MERGED"));
 console.log("[PASS] expensive gates/templates are absent from the base hot path and activation-bound");
 
 assert.deepEqual(parseConditionalAssetSpec("package-workflow-release-or-security-posture=security-posture-gate.md"), {
@@ -98,6 +100,19 @@ for (const skillPath of ["ddalggak/SKILL.md", ".codex/skills/ddalggak/SKILL.md"]
   assert(!skill.includes("structured-review→templates/review-brief.md"));
 }
 console.log("[PASS] rendered skills keep conditional routing and prose aligned");
+
+for (const root of ["ddalggak", ".codex/skills/ddalggak"]) {
+  for (const asset of [
+    "SKILL.md",
+    "references/cross-review-loop.md",
+    "references/review-output-contract.md",
+    "templates/review-brief.md",
+  ]) {
+    const text = readFileSync(`${root}/${asset}`, "utf8");
+    assert(text.includes("REVIEW_STOPPED_PR_MERGED"), `${root}/${asset}: merged-review stop sentinel must remain projected`);
+  }
+}
+console.log("[PASS] merged-during-review hard stop remains projected across both runtime roots");
 
 const router = readFileSync("ddalggak/references/quality-lens-router.md", "utf8");
 assert(router.includes("`security-posture` | Package manifests/admission"));
