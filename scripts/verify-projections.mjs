@@ -1,8 +1,11 @@
 import { spawnSync } from "node:child_process";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
+import { isDeepStrictEqual } from "node:util";
+import { commandDocMetadata } from "./project-runtime-assets/render-command-docs.mjs";
+import { assertSafeInstallationPath } from "./project-runtime-assets/render-package-manifest.mjs";
 
-import { commandReferenceNames, commandTemplateNames } from "../core/conditional-assets.mjs";
+import { commandContractReference, commandReferenceNames, commandTemplateNames } from "../core/conditional-assets.mjs";
 
 import { sideEffectBoundaryAgentsForbiddenSentinels } from "../core/verification/side-effect-boundary-policy.mjs";
 import { requiredReferenceAdmissionHeaderFields } from "../core/verification/skill-contract-manifest.mjs";
@@ -101,6 +104,18 @@ function readText(filePath) {
 function assertSkillPayload(root, label, commandDoc) {
   if (!exists(path.join(root, "SKILL.md"))) {
     fail(`${label}: SKILL.md missing`);
+  }
+
+  const contractPath = path.join(root, "references", commandContractReference(commandDoc.command));
+  const contractText = readText(contractPath);
+  const metadataBlocks = [...contractText.matchAll(/^```json\n([\s\S]*?)\n```$/gm)];
+  try {
+    if (metadataBlocks.length !== 1
+      || !isDeepStrictEqual(JSON.parse(metadataBlocks[0][1]), commandDocMetadata(commandDoc))) {
+      fail(`${path.relative(rootDir, contractPath)}: command metadata differs from complete YAML contract`);
+    }
+  } catch (error) {
+    fail(`${path.relative(rootDir, contractPath)}: invalid command metadata (${error.message})`);
   }
 
   for (const ref of commandReferenceNames(commandDoc)) {
@@ -252,6 +267,13 @@ function runParityLedgerCheck(projectionsText) {
 
   const ledger = new Map();
   for (const entry of entries) {
+    try { assertSafeInstallationPath(entry.path); } catch (error) {
+      fail(`core/projections.yaml line ${entry.line}: ${error.message}`);
+      continue;
+    }
+    if (/^references\/command-.*\.md$/.test(entry.path) && entry.class !== "may-localize") {
+      fail(`core/projections.yaml: ${entry.path} command documents must be may-localize`);
+    }
     if (ledger.has(entry.path)) {
       fail(`core/projections.yaml line ${entry.line}: duplicate parity_ledger path: ${entry.path}`);
       continue;

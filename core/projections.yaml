@@ -31,6 +31,48 @@ projection_roots:
 parity_ledger:
   - path: SKILL.md
     class: may-localize
+  - path: references/command-start.md
+    class: may-localize
+  - path: references/command-review.md
+    class: may-localize
+  - path: references/command-status.md
+    class: may-localize
+  - path: references/command-plan.md
+    class: may-localize
+  - path: references/command-issue.md
+    class: may-localize
+  - path: references/command-clean.md
+    class: may-localize
+  - path: references/command-ship.md
+    class: may-localize
+  - path: references/command-retro.md
+    class: may-localize
+  - path: references/command-prompt.md
+    class: may-localize
+  - path: references/command-tune.md
+    class: may-localize
+  - path: references/command-forge.md
+    class: may-localize
+  - path: references/command-spark.md
+    class: may-localize
+  - path: references/command-check.md
+    class: may-localize
+  - path: references/command-getwiki.md
+    class: may-localize
+  - path: references/command-setwiki.md
+    class: may-localize
+  - path: references/command-ulw-loop.md
+    class: may-localize
+  - path: references/command-ulw-plan.md
+    class: may-localize
+  - path: references/command-ulw-research.md
+    class: may-localize
+  - path: references/command-gjc-plan.md
+    class: may-localize
+  - path: references/command-gjc-execute.md
+    class: may-localize
+  - path: references/command-gjc-team.md
+    class: may-localize
   - path: references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md
     class: must-match
   - path: references/agent-runtime-contract.md

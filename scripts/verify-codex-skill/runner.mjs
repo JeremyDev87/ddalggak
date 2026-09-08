@@ -1,4 +1,6 @@
 import { spawnSync } from "node:child_process";
+import { loadLayout } from "../../bin/lib/doctor/layout.mjs";
+import { checkSignalRegistry } from "../../bin/lib/doctor/signals.mjs";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -7,7 +9,7 @@ import { runCliReadmeDriftChecks } from "./cli-readme-drift.mjs";
 import { runFrontmatterChecks } from "./frontmatter.mjs";
 import { runHotPathBudgetChecks } from "./hot-path-budget.mjs";
 import { runReferenceAdmissionChecks } from "./reference-admission.mjs";
-import { runSemanticAnchorChecks } from "./semantic-anchors.mjs";
+import { commandDocumentFindings, runSemanticAnchorChecks } from "./semantic-anchors.mjs";
 import { sideEffectBoundarySkillSemanticAnchorGuards } from "../../core/verification/side-effect-boundary-policy.mjs";
 import {
   requiredDisclosureAssetsBySubcommand,
@@ -43,6 +45,7 @@ import {
   requiredWikiBridgeReferenceAnchors,
   requiredReadmeQualityAnchors,
 } from "../../core/verification/skill-contract-manifest.mjs";
+import { commandContractReference } from "../../core/conditional-assets.mjs";
 import { escapeRegExp } from "../lib/escape-regexp.mjs";
 import { parseSimpleYaml } from "../lib/parse-simple-yaml.mjs";
 
@@ -423,6 +426,7 @@ export function runVerifyCodexSkill() {
       if (!Array.isArray(groups.templates)) {
         fail(`requiredDisclosureAssetsBySubcommand.${subcommand}.templates must be an array.`);
       }
+      for (const root of skillPayloadRoots) assets.add(`${root}/references/${commandContractReference(subcommand)}`);
       const contractReferences = subcommandExecutionContracts[subcommand]?.requiredReferences || [];
       for (const reference of contractReferences) {
         for (const root of skillPayloadRoots) {
@@ -497,7 +501,8 @@ export function runVerifyCodexSkill() {
         continue;
       }
       const text = readText(absolutePath);
-      const firstBlock = text.split(/\n\n/)[0] || "";
+      const headerText = text.replace(/^<!-- ddalggak:generated:file command-doc:[a-z0-9-]+ -->\n# Command: [a-z0-9-]+\n\n/, "");
+      const firstBlock = headerText.split(/\n\n/)[0] || "";
       if (firstBlock.trimStart().startsWith("---")) {
         fail(`${relativePath} must use plaintext admission header fields, not frontmatter.`);
       }
@@ -597,72 +602,17 @@ export function runVerifyCodexSkill() {
     }
   }
 
-  function assertRenderedSubcommandContracts({ label, text }) {
-    const permissionRows = parseCodePermissionRows(extractGeneratedBlock(text, "code-permission-table"));
-    const contractRows = parseSubcommandContractRows(extractGeneratedBlock(text, "subcommand-table"));
-    const sourceEditAuthorityPatterns = [
-      /\bmay edit source\b/i,
-      /\bmay modify source\b/i,
-      /\bsource edits are allowed\b/i,
-      /Repo source edits/i,
-      /accepted .* fixes may edit source/i,
-    ];
+  function readCommandDocument(root, command) {
+    const relativePath = `${root}/references/${commandContractReference(command)}`;
+    const absolutePath = path.join(rootDir, relativePath);
+    return statSync(absolutePath, { throwIfNoEntry: false })?.isFile() ? readText(absolutePath) : "";
+  }
 
-    for (const subcommand of requiredSubcommands) {
-      const manifestContract = subcommandExecutionContracts[subcommand];
-      const permission = permissionRows.get(subcommand);
-      const renderedContract = contractRows.get(subcommand);
-      if (!permission) {
-        fail(`${label} code permission table missing '${subcommand}'.`);
-        continue;
-      }
-      if (!renderedContract) {
-        fail(`${label} subcommand contract table missing '${subcommand}'.`);
-        continue;
-      }
-
-      if (permission.mayModify !== manifestContract.sourceEditAllowed) {
-        fail(
-          `${label} code permission table for '${subcommand}' drifted from manifest sourceEditAllowed=${manifestContract.sourceEditAllowed}.`,
-        );
-      }
-      if (!renderedContract.mode || renderedContract.mode !== manifestContract.mode) {
-        fail(
-          `${label} subcommand table mode for '${subcommand}' drifted. Expected '${manifestContract.mode}', got '${renderedContract.mode}'.`,
-        );
-      }
-      if (!renderedContract.stopCondition) {
-        fail(`${label} subcommand table stop condition for '${subcommand}' must be non-empty.`);
-      } else if (renderedContract.stopCondition !== manifestContract.stopCondition) {
-        fail(
-          `${label} subcommand table stop condition for '${subcommand}' drifted. Expected '${manifestContract.stopCondition}', got '${renderedContract.stopCondition}'.`,
-        );
-      }
-      for (const reference of manifestContract.requiredReferences) {
-        if (!renderedContract.requiredReferences.includes(reference)) {
-          fail(`${label} subcommand table for '${subcommand}' missing required reference '${reference}'.`);
-        }
-      }
-      // Reverse direction: the rendered (yaml-derived) set must not exceed the
-      // manifest either. Without this, a reference present in core/commands/*.yaml
-      // but absent from the manifest is unguarded — it can be deleted from the
-      // yaml and verify stays green (e.g. review's security-posture-gate.md).
-      // Both loops together enforce yaml ↔ manifest set equality (#279).
-      for (const reference of renderedContract.requiredReferences) {
-        if (!manifestContract.requiredReferences.includes(reference)) {
-          fail(
-            `${label} subcommand table for '${subcommand}' lists required reference '${reference}' absent from skill-contract-manifest subcommandExecutionContracts.${subcommand}.requiredReferences; required_references must match the manifest exactly.`,
-          );
-        }
-      }
-
-      const renderedAuthorityText = `${permission.allowedArtifacts}\n${renderedContract.sideEffects}`;
-      const grantsSourceAuthority = sourceEditAuthorityPatterns.some((pattern) => pattern.test(renderedAuthorityText));
-      if (!manifestContract.sourceEditAllowed && grantsSourceAuthority) {
-        fail(
-          `${label} non-source-edit subcommand '${subcommand}' contains unnegated source-edit authority wording.`,
-        );
-      }
+  function assertRenderedSubcommandContracts({ root }) {
+    for (const doc of commandContractDocsBySubcommand().values()) {
+      const label = `${root}/references/${commandContractReference(doc.command)}`;
+      const text = readCommandDocument(root, doc.command);
+      for (const finding of commandDocumentFindings(text || null, doc, label)) fail(finding);
     }
   }
 
@@ -780,15 +730,6 @@ export function runVerifyCodexSkill() {
     }
 
     return lines.slice(startIdx, endIdx).join("\n");
-  }
-
-  function extractGeneratedBlock(text, name) {
-    const escapedName = escapeRegExp(name);
-    const pattern = new RegExp(
-      `<!-- ddalggak:generated:start ${escapedName} -->\\n([\\s\\S]*?)\\n<!-- ddalggak:generated:end ${escapedName} -->`,
-    );
-    const match = text.match(pattern);
-    return match ? match[1] : "";
   }
 
   function parseMarkdownTableRows(block) {
@@ -915,37 +856,6 @@ export function runVerifyCodexSkill() {
         `${contract.referenceFile} ## Activation for ${gateFamily} is missing router activation contract keyword(s):\n${formatAnchorList(missingFromGate)}`,
       );
     }
-  }
-
-  function parseCodePermissionRows(block) {
-    const rows = new Map();
-    for (const line of parseMarkdownTableRows(block)) {
-      const cells = line.split("|").slice(1, -1).map((cell) => cell.trim());
-      const subcommand = cells[0]?.match(/`([^`]+)`/)?.[1];
-      if (!subcommand) continue;
-      const mayModify = /^(✅|yes)$/.test(cells[1]);
-      rows.set(subcommand, { mayModify, allowedArtifacts: cells[2] || "" });
-    }
-    return rows;
-  }
-
-  function parseSubcommandContractRows(block) {
-    const rows = new Map();
-    for (const line of parseMarkdownTableRows(block)) {
-      const cells = line.split("|").slice(1, -1).map((cell) => cell.trim());
-      const subcommand = cells[0]?.match(/`([^`]+)`/)?.[1];
-      if (!subcommand) continue;
-      const requiredReferences = [...(cells[6] || "").matchAll(/`references\/([^`]+\.md)`/g)].map(
-        (match) => match[1],
-      );
-      rows.set(subcommand, {
-        mode: cells[1] || "",
-        sideEffects: cells[4] || "",
-        stopCondition: cells[5] || "",
-        requiredReferences,
-      });
-    }
-    return rows;
   }
 
   function missingAnchors(text, anchors) {
@@ -1208,6 +1118,7 @@ export function runVerifyCodexSkill() {
     }
   }
 
+  for (const finding of checkSignalRegistry(loadLayout(rootDir)).findings) fail(finding);
   runHotPathBudgetChecks({ skillBudgets, assertSkillBudget });
   runReferenceAdmissionChecks({
     skillPayloadRoots,
@@ -1285,6 +1196,7 @@ export function runVerifyCodexSkill() {
     extractClaudeSection,
     extractMarkdownSection,
     assertRenderedSubcommandContracts,
+    readCommandDocument,
     assertForbiddenTermsAbsent,
     readText,
     statSync,

@@ -23,6 +23,8 @@ conditional_references:
   - human-feedback=human-review-feedback-loop.md
   - failing-ci=ci-failure-triage-loop.md
   - package-workflow-release-or-security-posture=security-posture-gate.md
+  - public-body=review-output-contract.md
+  - public-body=review-comment-style.md
 
 required_templates:
   []

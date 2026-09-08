@@ -1,0 +1,92 @@
+{
+  "version": 1,
+  "id": "backend",
+  "checks": [
+    "http-quantities",
+    "scope",
+    "executed-checks"
+  ],
+  "allowedFiles": [
+    "app.mjs"
+  ],
+  "seededFindings": [],
+  "cleanControls": [],
+  "cases": [
+    {
+      "input": [
+        2,
+        3,
+        4
+      ],
+      "status": 200,
+      "body": {
+        "total": 9
+      }
+    },
+    {
+      "input": [],
+      "status": 200,
+      "body": {
+        "total": 0
+      }
+    },
+    {
+      "input": [
+        0,
+        7
+      ],
+      "status": 200,
+      "body": {
+        "total": 7
+      }
+    },
+    {
+      "input": [
+        -1
+      ],
+      "status": 400,
+      "body": {
+        "error": "invalid-quantities"
+      }
+    },
+    {
+      "input": [
+        1.5
+      ],
+      "status": 400,
+      "body": {
+        "error": "invalid-quantities"
+      }
+    },
+    {
+      "input": [
+        "2"
+      ],
+      "status": 400,
+      "body": {
+        "error": "invalid-quantities"
+      }
+    },
+    {
+      "input": null,
+      "status": 400,
+      "body": {
+        "error": "invalid-quantities"
+      }
+    },
+    {
+      "input": {},
+      "status": 400,
+      "body": {
+        "error": "invalid-quantities"
+      }
+    }
+  ],
+  "malformed": {
+    "raw": "{",
+    "status": 400,
+    "body": {
+      "error": "invalid-quantities"
+    }
+  }
+}

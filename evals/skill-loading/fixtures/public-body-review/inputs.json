@@ -1,0 +1,75 @@
+{
+  "candidate": {
+    "candidate_id": "failure-handling",
+    "pr_number": 17,
+    "lifecycle": "OPEN",
+    "base_sha": "1111111111111111111111111111111111111111",
+    "head_sha": "0123456789abcdef0123456789abcdef01234567",
+    "authority": "CONDUCTOR",
+    "observed_delta": "DEFECT: provider rejection now becomes empty success",
+    "governing_contract": "PROVEN: context requires provider failure propagation",
+    "scope_relation": "IN_SCOPE: changed load function",
+    "prior_decision": "NONE: no previous acceptance",
+    "base_state": "ABSENT: before load propagated provider errors",
+    "current_head_evidence": "PROVEN: provider-rejection probe returns an empty array on after source",
+    "diff_causality": "NEW: added catch returns empty success",
+    "impact": "PROVEN: callers cannot distinguish outage from a valid empty result",
+    "counterargument": "ADDRESSED: empty results and optional analytics are valid controls",
+    "counterargument_disproof": "PROVEN: primary provider failure is required to propagate unlike optional analytics",
+    "minimum_correction": "PROPOSED: propagate the provider error and test rejection",
+    "severity": "HIGH",
+    "disposition": "CANDIDATE",
+    "publication_eligible": false,
+    "public_finding": {
+      "status": "RENDERABLE",
+      "anchor": "src/load.mjs:3",
+      "failure": "provider failures become empty successful results",
+      "impact": "callers hide an outage as no data",
+      "correction": "propagate the provider error",
+      "validation": "run the provider rejection and empty result checks",
+      "reason": "",
+      "suggestion": null
+    }
+  },
+  "reviewEvidence": {
+    "pr_number": 17,
+    "lifecycle": "OPEN",
+    "base_sha": "1111111111111111111111111111111111111111",
+    "head_sha": "0123456789abcdef0123456789abcdef01234567",
+    "review_risk": "HIGH",
+    "semantic_coverage": [
+      {
+        "criterion_id": "failure-handling",
+        "changed_surface": "src/load.mjs:3",
+        "caller_or_consumer": "load callers",
+        "failure_mode": "provider error treated as empty success",
+        "test_or_evidence": "PROVEN: provider-rejection probe reproduced the defect and both clean controls passed",
+        "verdict": "COVERED"
+      }
+    ],
+    "counterexample": {
+      "claim": "provider errors must not become successful empty data",
+      "probe": "before and after provider-rejection checks",
+      "expected_result": "VIOLATION_REJECTED: reject the after source as a defect",
+      "actual_result": "VIOLATION_REJECTED: after source failed propagation",
+      "restoration_proof": "PROVEN: before and after source snapshots remained unchanged",
+      "status": "PASSED"
+    }
+  },
+  "checksEvidence": {
+    "pr_number": 17,
+    "lifecycle": "OPEN",
+    "base_sha": "1111111111111111111111111111111111111111",
+    "head_sha": "0123456789abcdef0123456789abcdef01234567",
+    "status": "PASS",
+    "justification": ""
+  },
+  "publicationReceipt": {
+    "pr_number": 17,
+    "lifecycle": "OPEN",
+    "base_sha": "1111111111111111111111111111111111111111",
+    "head_sha": "0123456789abcdef0123456789abcdef01234567"
+  },
+  "reason": "Provider errors are hidden as successful empty results.",
+  "nextAction": "Propagate errors and rerun focused checks."
+}

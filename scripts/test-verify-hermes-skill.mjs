@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readFileSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
+import { readFileSync, readdirSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import { runNodeScript } from "./test-lib/process.mjs";
@@ -21,6 +21,12 @@ function withRepo(run) {
     prefix: "ddalggak-hermes-skill-",
   });
   try {
+    const generated = runNodeScript("scripts/project-runtime-assets.mjs", ["--write"], { cwd: tempDir });
+    assert(generated.status === 0, `${generated.stdout}\n${generated.stderr}`);
+    const skillPath = path.join(tempDir, "ddalggak/SKILL.md");
+    const inventory = ["references", "templates", "scripts"].flatMap((kind) =>
+      readdirSync(path.join(tempDir, "ddalggak", kind)).map((name) => `${kind}/${name}`)).sort();
+    writeFileSync(skillPath, `${readFileSync(skillPath, "utf8")}\n${inventory.map((file) => `- [${file}](${file})`).join("\n")}\n`);
     return run(tempDir);
   } finally {
     rmSync(tempDir, { recursive: true, force: true });
@@ -28,6 +34,32 @@ function withRepo(run) {
 }
 
 const tests = [
+  {
+    name: "rejects a selected command document no longer directly linked",
+    run() {
+      withRepo((tempDir) => {
+        const skillPath = path.join(tempDir, "ddalggak/SKILL.md");
+        writeFileSync(skillPath, readFileSync(skillPath, "utf8").split("references/command-status.md").join("references/status.md"));
+        const result = runVerifier(tempDir);
+        const output = `${result.stdout}\n${result.stderr}`;
+        assert(result.status === 1, output);
+        assert(output.includes("references/command-status.md"), output);
+      });
+    },
+  },
+  {
+    name: "rejects a renderer dependency no longer directly linked",
+    run() {
+      withRepo((tempDir) => {
+        const skillPath = path.join(tempDir, "ddalggak/SKILL.md");
+        writeFileSync(skillPath, readFileSync(skillPath, "utf8").split("scripts/review-contract-policy.mjs").join("references/review-output-contract.md"));
+        const result = runVerifier(tempDir);
+        const output = `${result.stdout}\n${result.stderr}`;
+        assert(result.status === 1, output);
+        assert(output.includes("scripts/review-contract-policy.mjs"), output);
+      });
+    },
+  },
   {
     name: "accepts the shared Hermes skill payload",
     run() {

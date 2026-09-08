@@ -1,6 +1,7 @@
 import path from "node:path";
 
 import { extractDocLinks } from "../../../scripts/lib/markdown-links.mjs";
+import { commandContractReference } from "../../../core/conditional-assets.mjs";
 import { isFile, tryReadText } from "./lib.mjs";
 
 export function checkReachability(layout) {
@@ -22,6 +23,7 @@ export function checkReachability(layout) {
     for (const link of extractDocLinks(layout.skillText)) seed(link);
   }
   for (const cmd of layout.commands) {
+    seed(`references/${commandContractReference(cmd.file.replace(/\.yaml$/, ""))}`);
     for (const name of cmd.requiredReferences) seed(`references/${name}`);
     for (const name of cmd.requiredTemplates) seed(`templates/${name}`);
   }

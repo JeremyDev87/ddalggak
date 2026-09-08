@@ -11,9 +11,25 @@ import {
   validateHermesNativeRepositoryBinding,
 } from "./verify-hermes-native-e2e.mjs";
 import { runNodeScript } from "./test-lib/process.mjs";
+import { withTempRepo } from "./test-lib/repo-fixture.mjs";
 
 const rootDir = process.cwd();
 const expected = buildExpectedBundle(rootDir);
+withTempRepo({ rootDir, prefix: "ddalggak-native-direct-links-", run(repo) {
+  const skillPath = path.join(repo, "ddalggak/SKILL.md");
+  const original = readFileSync(skillPath, "utf8");
+  for (const file of ["references/command-status.md", "references/start-workflow.md", "scripts/review-contract-policy.mjs"]) {
+    writeFileSync(skillPath, original.split(file).join("references/status.md"));
+    let message = "";
+    try { buildExpectedBundle(repo); } catch (error) { message = error.message; }
+    assert(message.includes(file), `missing direct link ${file} must reject, got ${message}`);
+    console.log(`[PASS] rejects incomplete direct installation inventory: ${file}`);
+  }
+  writeFileSync(skillPath, `${original}\n[unsafe](references/../outside.md)\n`);
+  let message = "";
+  try { buildExpectedBundle(repo); } catch (error) { message = error.message; }
+  assert(message.includes("unsafe support path"), `path traversal must reject, got ${message}`);
+} });
 const commit = "1".repeat(40);
 const repoTree = "2".repeat(40);
 const skillTree = "3".repeat(40);

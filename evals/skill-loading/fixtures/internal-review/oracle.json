@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "id": "internal-review",
+  "checks": [
+    "failure-handling",
+    "scope-write",
+    "clean-controls",
+    "internal-only"
+  ],
+  "allowedFiles": [],
+  "seededFindings": [
+    {
+      "id": "failure-handling",
+      "path": "src/load.mjs",
+      "line": 3,
+      "scenario": "provider-rejection",
+      "impact": "failure-disguised-as-empty-success"
+    },
+    {
+      "id": "scope-write",
+      "path": "src/export.mjs",
+      "line": 2,
+      "scenario": "read-only-export",
+      "impact": "unauthorized-settings-write"
+    }
+  ],
+  "cleanControls": [
+    {
+      "id": "optional-analytics",
+      "path": "src/analytics.mjs",
+      "line": 3,
+      "scenario": "analytics-rejection",
+      "expected": "primary-result-preserved-and-error-recorded"
+    },
+    {
+      "id": "empty-result",
+      "path": "src/load.mjs",
+      "line": 2,
+      "scenario": "empty-provider-result",
+      "expected": "empty-success"
+    }
+  ],
+  "outcome": "change request",
+  "publicBodyAllowed": false,
+  "externalWriteAuthorized": false
+}

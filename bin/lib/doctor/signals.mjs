@@ -1,4 +1,5 @@
 import path from "node:path";
+import { commandDocumentFindings } from "../../../scripts/verify-codex-skill/semantic-anchors.mjs";
 
 import { extractMarkdownSection } from "../../../scripts/lib/markdown-links.mjs";
 import { extractSignals, tryReadText } from "./lib.mjs";
@@ -15,31 +16,50 @@ export function checkSignalRegistry(layout) {
     return { findings }; // layout check already reported the missing input
   }
 
-  const section = extractSection(layout.skillText, NAMING_SECTION_TITLE);
-  if (section === null) {
-    findings.push(
-      `signal registry: ${layout.sourceRootRel}/SKILL.md has no "## ${NAMING_SECTION_TITLE}" section to audit`,
-    );
-    return { findings };
-  }
-
-  const registry = new Set();
-  for (const cmd of layout.commands) {
-    if (cmd.completionSignal) registry.add(cmd.completionSignal);
-  }
-  for (const name of layout.templateFiles) {
-    const text = tryReadText(path.join(layout.sourceRoot, "templates", name));
-    if (text === null) continue;
-    for (const signal of extractSignals(text)) {
-      registry.add(signal.raw);
+  const registry = new Set(layout.commands.map((cmd) => cmd.completionSignal).filter(Boolean));
+  const handoffs = { "worker-brief.md": "LANE_READY", "review-brief.md": "REVIEW_DONE", "fix-brief.md": "FIX_DONE" };
+  const roots = new Map([[layout.sourceRootRel, layout.sourceRoot], ...layout.projectionRoots.map((root) => [root.root, root.abs])]);
+  for (const [rootRel, root] of roots) {
+    const rootRegistry = new Set(registry);
+    for (const name of layout.templateFiles || []) {
+      const text = tryReadText(path.join(root, "templates", name));
+      if (text !== null) for (const signal of extractSignals(text)) rootRegistry.add(signal.raw);
+    }
+    for (const [template, signal] of Object.entries(handoffs)) {
+      const text = tryReadText(path.join(root, "templates", template));
+      if (text === null || !extractSignals(text).some(({ raw }) => raw === signal)) {
+        findings.push(`missing handoff signal: "${signal}" in ${rootRel}/templates/${template}`);
+      }
+    }
+    const title = rootRel === layout.sourceRootRel ? NAMING_SECTION_TITLE : "Completion Signals";
+    const skill = tryReadText(path.join(root, "SKILL.md"));
+    const section = skill === null ? null : extractSection(skill, title);
+    if (section === null) {
+      findings.push(`signal registry: ${rootRel}/SKILL.md has no "## ${title}" section to audit`);
+    } else {
+      for (const signal of Object.values(handoffs)) {
+        if (!extractSignals(section).some(({ raw }) => raw === signal)) {
+          findings.push(`missing handoff signal: "${signal}" in ${rootRel}/SKILL.md ${title}`);
+        }
+      }
+      auditSignals(section, `${rootRel}/SKILL.md ${title}`, rootRegistry);
+    }
+    for (const cmd of layout.commands) {
+      if (cmd.malformed || !cmd.commandReference) continue; // layout reports invalid YAML
+      const label = `${rootRel}/references/${cmd.commandReference}`;
+      const text = tryReadText(path.join(root, "references", cmd.commandReference));
+      findings.push(...commandDocumentFindings(text, cmd.doc, label));
+      if (text !== null) auditSignals(text, label, rootRegistry);
     }
   }
 
-  for (const signal of extractSignals(section)) {
-    if (!registry.has(signal.raw)) {
-      findings.push(
-        `undefined completion signal: "${signal.raw}" is named in SKILL.md ${NAMING_SECTION_TITLE} but has no core/commands completion_signal or templates/*.md definition (check space vs underscore spelling)`,
-      );
+  function auditSignals(text, label, registry) {
+    for (const signal of extractSignals(text)) {
+      if (!registry.has(signal.raw)) {
+        findings.push(
+          `undefined completion signal: "${signal.raw}" is named in ${label} but has no core/commands completion_signal or templates/*.md definition (check space vs underscore spelling)`,
+        );
+      }
     }
   }
   return { findings };

@@ -14,6 +14,8 @@ import {
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { loadCommandContracts } from "../bin/lib/command-contracts.mjs";
+import { assertSafeInstallationPath, installationInventory } from "./project-runtime-assets/render-package-manifest.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const defaultRoot = path.resolve(path.dirname(__filename), "..");
@@ -51,7 +53,9 @@ export function referencedSupportFiles(skillText) {
   const files = new Set();
   for (const match of skillText.matchAll(SUPPORT_LINK_RE)) {
     const relPath = match[1].replace(/[.,;:]+$/, "");
-    invariant(!relPath.split("/").includes(".."), `unsafe support path: ${relPath}`);
+    try { assertSafeInstallationPath(relPath); } catch (error) {
+      throw new Error(`unsafe support path: ${relPath} (${error.message})`);
+    }
     files.add(relPath);
   }
   return [...files].sort();
@@ -60,6 +64,7 @@ export function referencedSupportFiles(skillText) {
 export function contentHash(skillRoot, files) {
   const hash = createHash("sha256");
   for (const relPath of [...files].sort()) {
+    assertSafeInstallationPath(relPath);
     const absolutePath = path.join(skillRoot, relPath);
     invariant(existsSync(absolutePath) && statSync(absolutePath).isFile(), `missing expected bundle file: ${relPath}`);
     hash.update(Buffer.from(`${relPath}\0`, "utf8"));
@@ -71,7 +76,14 @@ export function contentHash(skillRoot, files) {
 export function buildExpectedBundle(rootDir = defaultRoot) {
   const skillRoot = path.join(rootDir, "ddalggak");
   const skillText = readFileSync(path.join(skillRoot, "SKILL.md"), "utf8");
-  const files = ["SKILL.md", ...referencedSupportFiles(skillText)].sort();
+  const linked = referencedSupportFiles(skillText);
+  const inventory = installationInventory(loadCommandContracts(rootDir), {
+    projectionsText: readFileSync(path.join(rootDir, "core/projections.yaml"), "utf8"),
+  });
+  for (const file of inventory) {
+    invariant(linked.includes(file), `ddalggak/SKILL.md does not directly link installation asset: ${file}`);
+  }
+  const files = ["SKILL.md", ...linked].sort();
   return {
     files,
     content_hash: contentHash(skillRoot, files),

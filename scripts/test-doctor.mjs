@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import {
   assert,
   assertExit,
@@ -31,6 +32,21 @@ import {
 } from "./test-lib/cli-fixtures.mjs";
 
 export const cases = [
+{
+    name: "doctor seeds command documents independently of SKILL links",
+    run() {
+      const fixtureRoot = writeDoctorFixture();
+      for (const root of DOCTOR_FIXTURE_ROOTS) {
+        const owner = path.join(fixtureRoot, root, "references/command-start.md");
+        writeFileSync(owner, `${readFileSync(owner, "utf8")}\nRead \`references/command-only.md\`.\n`);
+        writeFileSync(path.join(fixtureRoot, root, "references/command-only.md"), "# command-only asset\n");
+      }
+      const result = runCli(["doctor", "--root", fixtureRoot, "--json"]);
+      assertExit(result, 0);
+      const report = parseJsonStdout(result);
+      assert(report.checks.reachability.ok, JSON.stringify(report.checks.reachability));
+    },
+  },
 {
     name: "doctor passes on clean fixture",
     run() {
@@ -344,3 +360,11 @@ export const cases = [
     },
   }
 ];
+
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  for (const test of cases) {
+    await test.run();
+    console.log(`[PASS] ${test.name}`);
+  }
+  console.log(`[test:doctor] passed: ${cases.length}/${cases.length}`);
+}

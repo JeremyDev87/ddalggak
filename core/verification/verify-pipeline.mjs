@@ -140,6 +140,42 @@ export const verifyPipelineStages = [
         npmScript: "test:state-writer",
       },
       {
+        label: "skill-loading-baseline portable tests",
+        command: "npm",
+        args: ["run", "test:skill-loading-baseline"],
+        npmScript: "test:skill-loading-baseline",
+      },
+      {
+        label: "selected-command-assets portable tests",
+        command: "npm",
+        args: ["run", "test:selected-command-assets"],
+        npmScript: "test:selected-command-assets",
+      },
+      {
+        label: "command-doc-fragments portable tests",
+        command: "npm",
+        args: ["run", "test:command-doc-fragments"],
+        npmScript: "test:command-doc-fragments",
+      },
+      {
+        label: "command-doc-projections portable tests",
+        command: "npm",
+        args: ["run", "test:command-doc-projections"],
+        npmScript: "test:command-doc-projections",
+      },
+      {
+        label: "skill-loading-fixtures portable tests",
+        command: "npm",
+        args: ["run", "test:skill-loading-fixtures"],
+        npmScript: "test:skill-loading-fixtures",
+      },
+      {
+        label: "command-package-projections portable tests",
+        command: "npm",
+        args: ["run", "test:command-package-projections"],
+        npmScript: "test:command-package-projections",
+      },
+      {
         label: "conditional command asset routing tests",
         command: "npm",
         args: ["run", "test:conditional-command-assets"],

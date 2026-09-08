@@ -2,6 +2,10 @@ import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:f
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+import assert from "node:assert/strict";
+import { loadCommandContracts } from "../bin/lib/command-contracts.mjs";
+import { commandDocumentFindings } from "./verify-codex-skill/semantic-anchors.mjs";
+import { extractMarkdownSection as extractSection } from "./lib/markdown-links.mjs";
 
 const rootDir = process.cwd();
 const nodeCommand = process.execPath;
@@ -25,6 +29,7 @@ function runVerifier(tempDir) {
     stdio: ["ignore", "pipe", "pipe"],
     env: {
       ...process.env,
+      DDALGGAK_NO_UPDATE: "1",
       npm_config_cache: process.env.npm_config_cache || path.join(os.tmpdir(), "ddalggak-npm-cache"),
     },
   });
@@ -63,11 +68,74 @@ function assertFail(name, result, expectedMessage) {
 function withTempRepo(name, fn) {
   const tempDir = copyRepo();
   try {
+    const generated = spawnSync(nodeCommand, ["scripts/project-runtime-assets.mjs", "--write"], {
+      cwd: tempDir, encoding: "utf8", env: { ...process.env, DDALGGAK_NO_UPDATE: "1" },
+    });
+    assertPass("temporary command projection", generated);
     fn(tempDir);
   } finally {
     rmSync(tempDir, { recursive: true, force: true });
   }
 }
+
+withTempRepo("complete metadata and per-owner contracts for all 21 commands", (tempDir) => {
+  const commands = loadCommandContracts(tempDir);
+  assert.equal(commands.length, 21);
+  let mutations = 0;
+  for (const root of ["ddalggak", ".codex/skills/ddalggak"]) {
+    for (const doc of commands) {
+      const label = `${root}/references/command-${doc.command}.md`;
+      const text = readFileSync(path.join(tempDir, label), "utf8");
+      assert.deepEqual(commandDocumentFindings(text, doc, label), []);
+      assert.deepEqual(commandDocumentFindings(`${text}\nLocalized supplementary notes.\n`, doc, label), []);
+      const block = text.match(/^```json\n([\s\S]*?)^```/m);
+      const metadata = JSON.parse(block[1]);
+      const reject = (changed) => {
+        const findings = commandDocumentFindings(text.replace(block[1], `${JSON.stringify(changed, null, 2)}\n`), doc, label);
+        assert.ok(findings.some((finding) => finding.includes(label) && finding.includes("command metadata drift")), `${label}: ${JSON.stringify(changed)}`);
+        mutations++;
+      };
+      for (const key of Object.keys(metadata)) {
+        const deleted = structuredClone(metadata);
+        delete deleted[key];
+        reject(deleted);
+        const changed = structuredClone(metadata);
+        changed[key] = typeof changed[key] === "boolean" ? !changed[key] : typeof changed[key] === "number" ? changed[key] + 1 : Array.isArray(changed[key]) ? [...changed[key], "UNDECLARED.md"] : typeof changed[key] === "object" ? { ...changed[key], completion_signal: "UNDEFINED_DONE" } : `${changed[key]} drift`;
+        reject(changed);
+      }
+      reject({ ...metadata, undeclared_field: true });
+      assert.ok(commandDocumentFindings(null, doc, label).some((finding) => finding.includes("missing required command owner")));
+      assert.ok(commandDocumentFindings(`${text}\n${block[0]}\n`, doc, label).some((finding) => finding.includes("exactly one JSON block")));
+      assert.ok(commandDocumentFindings(text.replace(block[1], "invalid JSON\n"), doc, label).some((finding) => finding.includes("command metadata drift")));
+      const sibling = commands.find((candidate) => candidate.command !== doc.command);
+      assert.ok(commandDocumentFindings(text, sibling, label).length > 0);
+    }
+  }
+  console.log(`[PASS] 42 owner documents, ${mutations} complete-metadata rejection controls`);
+});
+
+withTempRepo("command anchors cannot be rescued by SKILL or sibling documents", (tempDir) => {
+  for (const root of ["ddalggak", ".codex/skills/ddalggak"]) {
+    const owner = path.join(tempDir, root, "references/command-review.md");
+    replaceInFile(owner, "Execution contract index:", "Removed owner index:");
+  }
+  assertFail("command anchors cannot be rescued by SKILL or sibling documents", runVerifier(tempDir), "compact contract missing anchor: Execution contract index:");
+});
+
+withTempRepo("may-localize notes retain independent prose", (tempDir) => {
+  const fragments = path.join(tempDir, "core/command-docs/codex.md");
+  const section = extractSection(readFileSync(fragments, "utf8"), "status", { level: 1 });
+  assert.ok(section);
+  replaceInFile(fragments, section, `${section}\nLocalized supplementary notes.\n`);
+  assertPass("localized source projection", spawnSync(nodeCommand, ["scripts/project-runtime-assets.mjs", "--write"], { cwd: tempDir, encoding: "utf8" }));
+  assertPass("may-localize notes retain independent prose", runVerifier(tempDir));
+});
+
+withTempRepo("command metadata is checked at its owner", (tempDir) => {
+  const owner = path.join(tempDir, "ddalggak/references/command-status.md");
+  replaceInFile(owner, '"source_edit_allowed": false', '"source_edit_allowed": true');
+  assertFail("command metadata is checked at its owner", runVerifier(tempDir), "command metadata drift");
+});
 
 withTempRepo("reference-only anchor can leave SKILL.md", (tempDir) => {
   for (const skillRelativePath of [".codex/skills/ddalggak/SKILL.md", "ddalggak/SKILL.md"]) {

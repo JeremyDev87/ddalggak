@@ -18,6 +18,8 @@ import { buildSlashString, quoteIfNeeded } from "../../bin/lib/dispatch/slash.mj
 import { executableCandidates, resolveExecutable } from "../../bin/lib/process/resolve-executable.mjs";
 import { loadCommandContracts } from "../../bin/lib/command-contracts.mjs";
 import { COMMAND_CONTRACT_UNKNOWN_KEY_POLICY, validateCommandContract } from "../lib/command-contract-schema.mjs";
+import { parseSimpleYaml } from "../lib/parse-simple-yaml.mjs";
+import { commandDocMetadata } from "../project-runtime-assets/render-command-docs.mjs";
 
 export const rootDir = process.cwd();
 export const cliPath = path.join(rootDir, "bin", "ddalggak.js");
@@ -229,23 +231,36 @@ export function writeDoctorFixture() {
       "    reason: fixture root-specific regression asset",
       "  - path: templates/brief.md",
       "    class: must-match",
+      "  - path: references/command-start.md",
+      "    class: may-localize",
+      ...["worker-brief.md", "review-brief.md", "fix-brief.md"].flatMap((name) => [
+        `  - path: templates/${name}`,
+        "    class: must-match",
+      ]),
       "",
     ].join("\n"),
   );
-  write(
-    "core/commands/start.yaml",
-    [
-      "command: start",
-      "required_references:",
-      "  - wiki-context-preflight.md",
-      "  - alpha.md",
-      "required_templates:",
-      "  - brief.md",
-      "output_contract:",
-      '  completion_signal: "ISSUE_PR_READY"',
-      "",
-    ].join("\n"),
-  );
+  const contract = [
+    "command: start",
+    "required_references:",
+    "  - wiki-context-preflight.md",
+    "  - alpha.md",
+    "required_templates:",
+    "  - brief.md",
+    "output_contract:",
+    '  completion_signal: "ISSUE_PR_READY"',
+    "",
+  ].join("\n");
+  write("core/commands/start.yaml", contract);
+  const commandOwner = [
+    "<!-- ddalggak:generated:file command-doc:start -->",
+    "# Command: start",
+    "",
+    "```json",
+    JSON.stringify(commandDocMetadata(parseSimpleYaml(contract, "core/commands/start.yaml")), null, 2),
+    "```",
+    "",
+  ].join("\n");
   const skill = [
     "# fixture skill",
     "",
@@ -255,19 +270,24 @@ export function writeDoctorFixture() {
     "## 명명 규칙",
     "",
     "Completion signals distinguish ISSUE_PR_READY and LANE DONE.",
+    "Handoffs: LANE_READY in `templates/worker-brief.md`, REVIEW_DONE in `templates/review-brief.md`, FIX_DONE in `templates/fix-brief.md`.",
     "",
   ].join("\n");
   const alpha = "# alpha\n\nUse `templates/brief.md`.\n";
   const wikiPreflight = "# wiki preflight\n\nFixture wiki-context preflight.\n";
   const brief = "# brief\n\nEnd with LANE DONE.\n";
   for (const root of DOCTOR_FIXTURE_ROOTS) {
-    write(path.join(root, "SKILL.md"), skill);
+    write(path.join(root, "SKILL.md"), root === "ddalggak" ? skill : skill.replace("## 명명 규칙", "## Completion Signals"));
+    write(path.join(root, "references", "command-start.md"), commandOwner);
     write(path.join(root, "references", "alpha.md"), alpha);
     write(
       path.join(root, "references", "wiki-context-preflight.md"),
       wikiPreflight,
     );
     write(path.join(root, "templates", "brief.md"), brief);
+    for (const [name, signal] of [["worker", "LANE_READY"], ["review", "REVIEW_DONE"], ["fix", "FIX_DONE"]]) {
+      write(path.join(root, "templates", `${name}-brief.md`), `# ${name} brief\n\nEnd with ${signal}.\n`);
+    }
   }
   write(
     path.join("ddalggak", "references", "claude-only.md"),

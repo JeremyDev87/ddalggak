@@ -1,4 +1,4 @@
-import { parseConditionalAssetSpec } from "../../core/conditional-assets.mjs";
+import { commandReferenceNames, commandTemplateNames } from "../../core/conditional-assets.mjs";
 
 const REQUIRED_STRING_FIELDS = Object.freeze([
   "command",
@@ -76,21 +76,13 @@ export function validateCommandContract(doc, label) {
   for (const field of OPTIONAL_CONDITIONAL_LIST_FIELDS) {
     if (doc[field] === undefined) continue;
     validateStringList(doc, field, failures);
-    if (!Array.isArray(doc[field])) continue;
-    const seen = new Set();
-    for (const [index, spec] of doc[field].entries()) {
-      if (typeof spec !== "string") continue;
-      try {
-        const parsed = parseConditionalAssetSpec(spec, `${field}[${index}]`);
-        if (seen.has(spec)) failures.push(`${field} must not contain duplicate specs: ${spec}`);
-        seen.add(spec);
-        const baseField = field === "conditional_references" ? "required_references" : "required_templates";
-        if (Array.isArray(doc[baseField]) && doc[baseField].includes(parsed.asset)) {
-          failures.push(`${field} asset ${parsed.asset} must not also be listed in ${baseField}`);
-        }
-      } catch (error) {
-        failures.push(error.message);
-      }
+  }
+
+  for (const names of [commandReferenceNames, commandTemplateNames]) {
+    try {
+      names(doc);
+    } catch (error) {
+      failures.push(error.message);
     }
   }
 

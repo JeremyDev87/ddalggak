@@ -1,0 +1,26 @@
+{
+  "branch": "feature/quantity-total",
+  "pr": {
+    "number": 17,
+    "state": "OPEN",
+    "headRefName": "feature/quantity-total",
+    "headRefOid": "0123456789abcdef0123456789abcdef01234567",
+    "statusCheckRollup": [
+      {
+        "name": "unit",
+        "status": "IN_PROGRESS",
+        "conclusion": null
+      }
+    ],
+    "reviewDecision": "REVIEW_REQUIRED",
+    "mergeStateStatus": "BLOCKED"
+  },
+  "blockers": [
+    {
+      "id": "B-1",
+      "resolved": false,
+      "reason": "Quantity failure path needs verification"
+    }
+  ],
+  "wiki": "unavailable"
+}

@@ -1,3 +1,39 @@
+import { isDeepStrictEqual } from "node:util";
+import { commandContractReference } from "../../core/conditional-assets.mjs";
+import { assertCommandDocOwnership, commandDocMetadata } from "../project-runtime-assets/render-command-docs.mjs";
+
+// One owner, one complete YAML-derived metadata object; locale prose is not parity.
+export function commandDocumentFindings(text, doc, label) {
+  if (text === null) return [`missing required command owner: ${label}`];
+  const findings = [];
+  try {
+    commandContractReference(doc.command);
+    assertCommandDocOwnership(text, { path: label, marker: `<!-- ddalggak:generated:file command-doc:${doc.command} -->` });
+    if (!text.startsWith(`<!-- ddalggak:generated:file command-doc:${doc.command} -->\n# Command: ${doc.command}\n`)) {
+      findings.push(`${label}: command owner heading drift`);
+    }
+    const blocks = [...text.matchAll(/^```json\r?\n([\s\S]*?)^```[ \t]*$/gm)];
+    if (blocks.length !== 1) {
+      findings.push(`${label}: command metadata drift: expected exactly one JSON block`);
+    } else if (!isDeepStrictEqual(JSON.parse(blocks[0][1]), commandDocMetadata(doc))) {
+      findings.push(`${label}: command metadata drift from core/commands/${doc.command}.yaml (including allowed_artifact)`);
+    }
+  } catch (error) {
+    findings.push(`${label}: command metadata drift: ${error.message}`);
+  }
+  const sourceEditAuthorityPatterns = [
+    /\bmay edit source\b/i,
+    /\bmay modify source\b/i,
+    /\bsource edits are allowed\b/i,
+    /Repo source edits/i,
+    /accepted .* fixes may edit source/i,
+  ];
+  if (!doc.source_edit_allowed && sourceEditAuthorityPatterns.some((pattern) => pattern.test(text))) {
+    findings.push(`${label} non-source-edit subcommand '${doc.command}' contains unnegated source-edit authority wording.`);
+  }
+  return findings;
+}
+
 export const domain = "semantic-anchors";
 export const checks = ["reference anchor contracts", "gate stage headings", "section-scoped anchors"];
 
