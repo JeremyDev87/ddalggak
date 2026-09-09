@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import assert from "node:assert/strict";
-import { readFileSync, writeFileSync, mkdirSync, cpSync, lstatSync, realpathSync, rmSync, renameSync, mkdtempSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, cpSync, chmodSync, lstatSync, realpathSync, rmSync, renameSync, mkdtempSync, existsSync } from "node:fs";
 import { spawn, spawnSync } from "node:child_process";
 import net from "node:net";
 import { once } from "node:events";
@@ -35,6 +35,11 @@ export function prepareSandbox(config, slot, parent) {
   }
   const visible = sourceSnapshot(workspace);
   assert(!Object.keys(visible).some(file => /(^|\/)(oracle(?:\.|\/)|solution\/)/.test(file)), "oracle/solution leaked into model sandbox");
+  for (const name of fixtures.find(fixture => fixture.id === slot.fixtureId).allowedFiles) {
+    const target = path.join(workspace, name), stat = lstatSync(target);
+    assert(stat.isFile() && realpathSync(target).startsWith(realpathSync(workspace) + path.sep), "denied: writable source escapes fixture");
+    chmodSync(target, (stat.mode & 0o7777) | 0o200);
+  }
   return { workspace, before: visible };
 }
 

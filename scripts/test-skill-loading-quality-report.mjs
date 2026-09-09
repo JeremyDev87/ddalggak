@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, cpSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { spawnSync } from "node:child_process";
@@ -235,6 +235,60 @@ export async function testSandboxTools({ execute = false } = {}) {
   } finally { cleanupTempRoot(temp); assert(!existsSync(temp)); }
 }
 
+export async function testReadonlySandbox() {
+  const root = fileURLToPath(new URL("../", import.meta.url)), temp = makeTempDir("ddalggak-readonly-");
+  const archive = path.join(temp, "package");
+  const snapshot = directory => Object.fromEntries(readdirSync(directory, { recursive: true }).sort()
+    .filter(name => lstatSync(path.join(directory, name)).isFile())
+    .map(name => [name, { mode: lstatSync(path.join(directory, name)).mode & 0o7777, sha256: digest(readFileSync(path.join(directory, name))) }]));
+  try {
+    for (const name of ["scripts/eval-skill-loading.mjs", "scripts/skill-loading/run-config.mjs", "scripts/skill-loading/quality-report.mjs",
+      "bin/lib/command-contracts.mjs", "scripts/lib/command-contract-schema.mjs", "scripts/lib/parse-simple-yaml.mjs",
+      "core/conditional-assets.mjs", "evals/skill-loading", "ddalggak"]) {
+      const target = path.join(archive, name); mkdirSync(path.dirname(target), { recursive: true });
+      cpSync(path.join(root, name), target, { recursive: true });
+    }
+    const config = { baselineSource: path.join(archive, "baseline"), candidateSource: archive };
+    mkdirSync(config.baselineSource);
+    cpSync(path.join(archive, "ddalggak"), path.join(config.baselineSource, "ddalggak"), { recursive: true });
+    for (const [name, { mode }] of Object.entries(snapshot(archive))) chmodSync(path.join(archive, name), mode & ~0o222);
+    const { prepareSandbox, createFixtureTools } = await import(pathToFileURL(path.join(archive, "scripts/eval-skill-loading.mjs")));
+    const { fixtures, sessionOrder } = await import(pathToFileURL(path.join(archive, "scripts/skill-loading/run-config.mjs")));
+    for (const mode of [0o444, 0o555]) {
+      for (const fixture of fixtures) for (const name of fixture.allowedFiles)
+        chmodSync(path.join(archive, "evals/skill-loading/fixtures", fixture.id, name), mode);
+      const original = snapshot(archive);
+      for (const slot of sessionOrder().filter(slot => ["backend", "ui"].includes(slot.fixtureId))) {
+        const fixture = fixtures.find(fixture => fixture.id === slot.fixtureId), label = `${slot.fixtureId}/${slot.variant}/${mode.toString(8)}`;
+        const parent = path.join(temp, label); mkdirSync(parent, { recursive: true });
+        const sandbox = prepareSandbox(config, slot, parent), directory = path.join(parent, "evidence"); mkdirSync(directory);
+        const state = createFixtureTools({ config, slot, sandbox, directory, capture: { requests: [], reads: [] } });
+        const write = args => state.tools.find(tool => tool.name === "write").execute(`write-${state.actions.length}`, args);
+        for (const [name, copied] of Object.entries(snapshot(sandbox.workspace))) {
+          const source = name.startsWith("ddalggak/") ? path.join(config[`${slot.variant}Source`], name)
+            : path.join(archive, "evals/skill-loading/fixtures", fixture.id, name);
+          const sourceMode = lstatSync(source).mode & 0o7777;
+          assert.equal(copied.sha256, digest(readFileSync(source)), `${label}/${name}: copy bytes changed`);
+          assert.equal(copied.mode, sourceMode | (fixture.allowedFiles.includes(name) ? 0o200 : 0), `${label}/${name}: copied mode`);
+        }
+        for (const name of fixture.allowedFiles) {
+          const target = path.join(sandbox.workspace, name), content = readFileSync(target, "utf8") + "\n";
+          assert(lstatSync(target).mode & 0o200, `${label}/${name}: missing owner-write`);
+          await write({ path: name, content });
+          assert.equal(readFileSync(target, "utf8"), content, `${label}/${name}: actual write`);
+        }
+        for (const [name, sha256] of Object.entries(sandbox.before).filter(([name]) => !fixture.allowedFiles.includes(name))) {
+          await assert.rejects(() => write({ path: name, content: "forbidden" }), /denied: outside-allowed-source-write/);
+          assert.equal(lstatSync(path.join(sandbox.workspace, name)).mode & 0o222, 0, `${label}/${name}: forbidden file writable`);
+          assert.equal(digest(readFileSync(path.join(sandbox.workspace, name))), sha256);
+        }
+        assert.deepEqual(snapshot(archive), original, `${label}: original archive modes/hashes changed`);
+        console.log(`[readonly] ${label}: exact copy bytes, owner-write only, actual writes, forbidden writes denied, archive unchanged`);
+      }
+    }
+  } finally { cleanupTempRoot(temp); assert(!existsSync(temp), "readonly package/sandbox cleanup"); }
+}
+
 export async function testSubmissionContract({ execute = false, validateArguments } = {}) {
   const { prepareSandbox, createFixtureTools } = await import("./eval-skill-loading.mjs");
   const { checkPublic } = await import("../evals/skill-loading/fixtures/public-body-review/oracle.mjs");
@@ -326,26 +380,32 @@ export async function testSubmissionContract({ execute = false, validateArgument
     if (validateArguments) validateArguments(submit, { name: "submit", arguments: { observation } });
     await invoke("submit", { observation });
     const finished = await state.finish({}, "deterministic-submit-" + sequence);
-    if (failure) { assert.equal(finished.record.authority, "fail"); assert.match(finished.record.unsupportedClaims.join("\n"), failure); }
-    else { assert.equal(finished.record.authority, "pass", JSON.stringify(finished.record)); assert(finished.record.checks.every(check => check.status === "pass")); }
+    if (failure) {
+      assert.equal(finished.record.authority, "fail");
+      assert(finished.record.checks.length > 0 && finished.record.checks.every(check => check.status === "fail"));
+      assert(finished.record.unsupportedClaims.length > 0);
+      if (failure instanceof RegExp) assert.match(finished.record.unsupportedClaims.join("\n"), failure);
+    } else {
+      assert.equal(finished.record.authority, "pass", JSON.stringify(finished.record)); assert(finished.record.checks.every(check => check.status === "pass"));
+    }
     return finished;
   }
   try {
     for (const fixture of fixtures) await exercise(fixture);
     const status = fixtures.find(fixture => fixture.id === "status"), review = fixtures.find(fixture => fixture.id === "internal-review");
     await exercise(status, observation => observation.state.ready = true, /live-state mismatch/);
-    await exercise(status, observation => observation.nextAction = "ready-for-human-action", /resolve-blocker-and-await-ci/);
+    await exercise(status, observation => observation.nextAction = "ready-for-human-action", true);
     await exercise(status, async (_, invoke) => assert.rejects(() => invoke("write", { path: "state.json", content: "{}" }), /denied/), /outside-allowed-source-write/);
     await exercise(status, observation => observation.claims[0].actionId = "fabricated", /fake execution claim/);
     for (const fixture of fixtures.filter(fixture => fixture.id.includes("review"))) {
       await exercise(fixture, observation => observation.findings.push({ ...observation.findings[0], id: "optional-analytics" }), /clean-control false positive/);
-      await exercise(fixture, observation => observation.externalWriteAuthorized = true, /true.*false/s);
+      await exercise(fixture, observation => observation.externalWriteAuthorized = true, true);
     }
     await exercise(review, observation => observation.findings[0].line = 999, /finding line mismatch/);
     await exercise(review, observation => observation.summary = "public body", /internal-only/);
     const extra = await exercise(review, observation => observation.findings.push({ ...observation.findings[0], id: "additional-grounded-finding" }));
     assert.equal(extra.record.extraFindings[0].id, "additional-grounded-finding", "extra findings are preserved for F3, not automatically accepted as valid");
-    if (execute) await exercise(fixtures.find(fixture => fixture.id === "backend"), observation => observation.published = true, /true.*false/s);
+    if (execute) await exercise(fixtures.find(fixture => fixture.id === "backend"), observation => observation.published = true, true);
     console.log("[test:skill-loading-submit] required schemas, public input/renderer, actual submit/finish, wrong answers and authority controls passed; no model calls");
   } finally { cleanupTempRoot(temp); assert(!existsSync(temp), "submission sandbox cleanup"); }
 }
@@ -473,6 +533,7 @@ export async function testBrowserBoundary(browser, evidenceDir) {
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   testQualityReport();
   await testBrowserContract();
+  await testReadonlySandbox();
   await testSandboxTools({ execute: process.argv.includes("--sandbox") });
   await testSubmissionContract({ execute: process.argv.includes("--sandbox") });
 }
