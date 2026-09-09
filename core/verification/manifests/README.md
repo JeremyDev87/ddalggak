@@ -9,4 +9,8 @@ This directory owns domain-specific contract data consumed by the ddalggak verif
 - `reference-anchors.mjs`: reference-document, regression-library, wiki/readme anchor contracts.
 - `package-files.mjs`: generated required package-file list.
 
+The package list includes the 42 command documents, localized fragment sources,
+fixture/oracle files, and portable offline quality harness. Runtime distributions,
+plugin directories, and private authentication data are never packaged.
+
 `../skill-contract-manifest.mjs` remains a compatibility adapter and should stay path-light; add new domain data here instead of growing the adapter.

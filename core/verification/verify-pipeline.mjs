@@ -170,6 +170,12 @@ export const verifyPipelineStages = [
         npmScript: "test:skill-loading-fixtures",
       },
       {
+        label: "skill-loading capture protocol portable tests",
+        command: "npm",
+        args: ["run", "test:skill-loading-runtime:portable"],
+        npmScript: "test:skill-loading-runtime:portable",
+      },
+      {
         label: "command-package-projections portable tests",
         command: "npm",
         args: ["run", "test:command-package-projections"],
@@ -186,6 +192,12 @@ export const verifyPipelineStages = [
         command: "npm",
         args: ["run", "test:review-quality-eval"],
         npmScript: "test:review-quality-eval",
+      },
+      {
+        label: "skill-loading quality report portable tests",
+        command: "npm",
+        args: ["run", "test:skill-loading-quality-report"],
+        npmScript: "test:skill-loading-quality-report",
       },
     ],
   },
