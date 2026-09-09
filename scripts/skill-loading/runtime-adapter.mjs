@@ -4,6 +4,19 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { sha256 } from './capture-extension.mjs';
 
+// Deliberately allowlist diagnostics: SDK messages may embed credentials, headers or private requests.
+export function summarizeFailure(error, stage) {
+  const stopReason = ['error', 'aborted'].includes(error?.stopReason) ? error.stopReason : undefined;
+  const code = ['ERR_ASSERTION', 'ETIMEDOUT', 'ECONNRESET', 'ECONNREFUSED', 'ENOENT', 'EACCES', 'ENOSPC'].includes(error?.code) ? error.code : undefined;
+  const status = error?.status ?? Number(/^[45]\d\d\b/.exec(error?.errorMessage ?? error?.message ?? '')?.[0]);
+  const httpStatus = Number.isInteger(status) && status >= 400 && status <= 599 ? status : undefined;
+  const category = stopReason === 'aborted' || error?.name === 'AbortError' ? 'cancelled' :
+    error?.name === 'TimeoutError' || code === 'ETIMEDOUT' ? 'timeout' : httpStatus ? 'provider-error' :
+    code === 'ERR_ASSERTION' ? 'assertion' : stopReason === 'error' ? 'assistant-error' : 'runtime-error';
+  return { stage, category, diagnostic: httpStatus ? `provider HTTP ${httpStatus}` : code ?? category,
+    ...(stopReason ? { stopReason } : {}), ...(httpStatus ? { status: httpStatus } : {}), ...(code ? { code } : {}) };
+}
+
 export async function loadInstalledRuntime({ runtimeDist, pluginPath }) {
   assert(runtimeDist && pluginPath, 'unresolved: explicit runtimeDist and pluginPath required');
   runtimeDist = await realpath(runtimeDist);
@@ -94,24 +107,34 @@ export async function createCapturedSession({ runtime, cwd, agentDir, model, aut
       let off, timer;
       const settled = new Promise((resolve, reject) => {
         off = session.subscribe(event => { if (event.type === 'agent_settled') resolve(); });
-        timer = setTimeout(() => reject(new Error('agent_settled timeout')), timeoutMs);
+        timer = setTimeout(() => reject(Object.assign(new Error('agent_settled timeout'), { code: 'ETIMEDOUT' })), timeoutMs);
       });
       try {
         await Promise.all([settled, session.prompt(text)]);
         const last = session.messages.filter(message => message.role === 'assistant').at(-1);
-        assert(last && !['error', 'aborted'].includes(last.stopReason), `runtime turn failed: ${last?.stopReason}`);
+        if (!last || ['error', 'aborted'].includes(last.stopReason)) {
+          throw Object.assign(new Error(`runtime turn failed: ${last?.stopReason ?? 'missing-assistant'}`), summarizeFailure(last, 'prompt'));
+        }
         return { settled: receipt.settled, requests: capture.requests.length, stopReason: last.stopReason };
       } catch (error) {
-        await session.abort();
+        try { await session.abort(); } catch (abortError) { receipt.abortFailure = summarizeFailure(abortError, 'prompt-abort'); }
         throw error;
       } finally { clearTimeout(timer); off(); }
     },
     async close() {
       if (!closed) {
-        await session.abort();
-        try { await session.extensionRunner.emit({ type: 'session_shutdown', reason: 'quit' }); }
-        finally { unsubscribe(); session.dispose(); closed = true; }
-        receipt.cleanup = { aborted: true, shutdown: capture.events.some(event => event.type === 'session_shutdown'), disposed: true };
+        const cleanup = receipt.cleanup = { aborted: false, shutdown: false, disposed: false, failures: [] };
+        for (const [stage, operation] of [
+          ['abort', async () => { await session.abort(); cleanup.aborted = true; }],
+          ['shutdown', async () => { await session.extensionRunner.emit({ type: 'session_shutdown', reason: 'quit' });
+            cleanup.shutdown = capture.events.some(event => event.type === 'session_shutdown'); }],
+          ['unsubscribe', () => unsubscribe()],
+          ['dispose', () => { session.dispose(); cleanup.disposed = true; }],
+        ]) {
+          try { await operation(); } catch (error) { cleanup.failures.push(summarizeFailure(error, stage)); }
+        }
+        closed = true;
+        if (cleanup.failures.length) throw new Error('runtime cleanup failed');
       }
       return receipt.cleanup;
     },

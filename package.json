@@ -34,6 +34,7 @@
     "test:command-doc-fragments": "node scripts/test-command-doc-fragments.mjs",
     "test:command-doc-projections": "node scripts/test-command-doc-projections.mjs",
     "test:skill-loading-fixtures": "node scripts/test-skill-loading-fixtures.mjs",
+    "test:skill-loading-session-failure:portable": "node scripts/test-skill-loading-session-failure.mjs --mode portable",
     "test:skill-loading-runtime:portable": "node scripts/test-skill-loading-runtime.mjs --mode portable",
     "test:command-package-projections": "node scripts/test-command-package-projections.mjs",
     "test:conditional-command-assets": "node scripts/test-conditional-command-assets.mjs",

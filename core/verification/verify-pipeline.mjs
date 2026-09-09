@@ -170,6 +170,12 @@ export const verifyPipelineStages = [
         npmScript: "test:skill-loading-fixtures",
       },
       {
+        label: "skill-loading session-failure portable tests",
+        command: "npm",
+        args: ["run", "test:skill-loading-session-failure:portable"],
+        npmScript: "test:skill-loading-session-failure:portable",
+      },
+      {
         label: "skill-loading capture protocol portable tests",
         command: "npm",
         args: ["run", "test:skill-loading-runtime:portable"],

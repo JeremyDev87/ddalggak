@@ -27,6 +27,15 @@ export async function checkUi(browser, htmlPath, { evidenceDir, widths = [375, 7
   const receipts = [];
   const faults = [];
   const externalRequests = [];
+  let failure;
+  // Browser operations are evaluated before this wrapper; only these trusted assertions get the tag.
+  const behavior = (check, ...args) => {
+    try { check(...args); }
+    catch (error) {
+      if (error instanceof assert.AssertionError) error.fixtureFailure = { category: 'verification', code: 'ui-behavior-mismatch' };
+      throw error;
+    }
+  };
   await context.route('**/*', route => {
     if (new URL(route.request().url()).origin !== app.url) { externalRequests.push(route.request().url()); return route.abort(); }
     return route.continue();
@@ -40,11 +49,11 @@ export async function checkUi(browser, htmlPath, { evidenceDir, widths = [375, 7
       await page.goto(app.url, { waitUntil: 'load' });
       const input = page.getByLabel('Name', { exact: true });
       const button = page.getByRole('button', { name: 'Submit', exact: true });
-      assert.equal(await input.count(), 1, 'label must target the input');
-      assert.equal(await input.getAttribute('required') !== null, true, 'required input');
-      assert([null, 'polite'].includes(await page.locator('[role=status]').getAttribute('aria-live')), 'status must retain its implicit or explicit polite live region');
+      behavior(assert.equal, await input.count(), 1, 'label must target the input');
+      behavior(assert.equal, await input.getAttribute('required') !== null, true, 'required input');
+      behavior(assert, [null, 'polite'].includes(await page.locator('[role=status]').getAttribute('aria-live')), 'status must retain its implicit or explicit polite live region');
       const capture = async state => {
-        assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, 'horizontal overflow');
+        behavior(assert.equal, await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, 'horizontal overflow');
         const file = evidenceDir ? path.join(evidenceDir, `task-5-ui-${width}-${state}.png`) : null;
         if (file) {
           await page.screenshot({ path: file });
@@ -57,11 +66,11 @@ export async function checkUi(browser, htmlPath, { evidenceDir, widths = [375, 7
       };
       await capture('idle');
       await page.keyboard.press('Tab');
-      assert.equal(await input.evaluate(element => element === document.activeElement), true, 'keyboard reaches name');
+      behavior(assert.equal, await input.evaluate(element => element === document.activeElement), true, 'keyboard reaches name');
       await page.keyboard.press('Tab');
-      assert.equal(await button.evaluate(element => element === document.activeElement), true, 'keyboard reaches submit');
+      behavior(assert.equal, await button.evaluate(element => element === document.activeElement), true, 'keyboard reaches submit');
       await page.keyboard.press('Enter');
-      assert.equal(await input.evaluate(element => element.validity.valueMissing && element === document.activeElement), true, 'native invalid focus');
+      behavior(assert.equal, await input.evaluate(element => element.validity.valueMissing && element === document.activeElement), true, 'native invalid focus');
       await capture('invalid');
       await page.keyboard.press('Escape'); // Dismiss native validation UI before the next state capture.
       for (const [state, code, name] of [['success', 200, 'Ada'], ['error', 503, 'Grace'], ['retry-success', 200, 'Lin']]) {
@@ -71,24 +80,27 @@ export async function checkUi(browser, htmlPath, { evidenceDir, widths = [375, 7
         await input.press('Enter');
         const [submission] = await submitted;
         await page.evaluate(() => window.stateSignal);
-        assert.deepEqual(submission.input, { name });
-        assert.equal(await button.isDisabled(), true, 'submit disabled while pending');
+        behavior(assert.deepEqual, submission.input, { name });
+        behavior(assert.equal, await button.isDisabled(), true, 'submit disabled while pending');
         await capture(`loading-${state}`);
         await armState(page, code === 200 ? 'success' : 'error');
         submission.complete(code);
         await page.evaluate(() => window.stateSignal);
-        assert.equal(await button.isEnabled(), true, 'submit enabled after completion');
-        assert.equal(await input.evaluate(element => element === document.activeElement), true, 'focus restored');
-        assert((await page.getByRole('status').textContent()).trim().length > 0, 'visible feedback');
+        behavior(assert.equal, await button.isEnabled(), true, 'submit enabled after completion');
+        behavior(assert.equal, await input.evaluate(element => element === document.activeElement), true, 'focus restored');
+        behavior(assert, (await page.getByRole('status').textContent()).trim().length > 0, 'visible feedback');
         await capture(state);
       }
       await page.close();
     }
     assert.deepEqual(faults, [], 'browser runtime errors');
     assert.deepEqual(externalRequests, [], 'browser external network attempts');
-  } finally {
+  } catch (error) { failure = error; throw error; }
+  finally {
     await context.close();
     await app.close();
+    // A behavior mismatch must not conceal faults observed before the context finished closing.
+    if (failure && (faults.length || externalRequests.length)) delete failure.fixtureFailure;
   }
   return { receipts, serverClosed: !app.server.listening, contextClosed: true, faults, externalRequests };
 }

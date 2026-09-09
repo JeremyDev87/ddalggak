@@ -359,6 +359,71 @@ async function run() {
     }
     console.log(`PASS ${id}: ${capture.requests.length} requests, ${capture.reads.length} actual reads`);
   }
+  async function sourceDiscovery(fixtureId, api) {
+    const { prepareSandbox, createFixtureTools } = await import('./eval-skill-loading.mjs');
+    const { sourceSnapshot } = await import('../evals/skill-loading/fixtures/status/oracle.mjs');
+    const id = `discovery-${fixtureId}-${api}`, parent = path.join(home, id); await mkdir(parent);
+    const sandbox = prepareSandbox({ candidateSource: root }, { fixtureId, variant: 'candidate' }, parent);
+    const capture = createCapture({ root: sandbox.workspace });
+    const state = createFixtureTools({ slot: { fixtureId }, sandbox, directory: parent, capture });
+    const prompt = await readFile(path.join(fixtureRoot, 'fixtures', fixtureId, 'prompt.md'), 'utf8');
+    const directories = prompt.match(/\b(before)\/(after)\b/).slice(1);
+    const reason = 'Discover and read the public review inputs';
+    const provider = await startOfflineProvider({ capture, api, actions: [
+      ...['context.md', ...directories].map(path => ({ read: { path, reason } })), { text: 'OFFLINE_DISCOVERY_DONE' },
+    ] });
+    const network = guardOfflineNetwork(provider.baseUrl), listings = [], sources = [];
+    let handle;
+    try {
+      const agentDir = path.join(home, 'agent');
+      const authStorage = await createIsolatedAuthStorage({ runtime, cwd: sandbox.workspace, agentDir: path.join(parent, 'auth'),
+        credentials: { [provider.model.provider]: { type: 'api_key', key: 'offline-dummy-not-a-credential' } } });
+      handle = await createCapturedSession({ runtime, cwd: sandbox.workspace, agentDir, model: provider.model, authStorage, capture,
+        tools: state.tools.map(tool => tool.name), customTools: state.tools,
+        extensionFactories: [{ name: 'scripted-public-discovery', factory(pi) {
+          pi.on('tool_execution_end', event => {
+            assert.equal(event.isError, false, 'public read failed through installed SDK');
+            if (event.result.details?.type === 'directory') {
+              const listing = JSON.parse(event.result.content[0].text);
+              assert.deepEqual(listing.paths, [...new Set(listing.paths)].sort());
+              listings.push(listing);
+              // Filenames enter the script only after the actual advertised tool returns them.
+              provider.actions.splice(provider.actions.length - 1, 0, ...listing.paths.map(path => ({ read: { path, reason } })));
+              sources.push(...listing.paths);
+            }
+          });
+        } }],
+      });
+      await handle.prompt(prompt); capture.assertComplete();
+      assert.equal(listings.length, directories.length);
+      assert.deepEqual(sources.slice().sort(), Object.keys(sandbox.before).filter(file => /^(before|after)\//.test(file)).sort());
+      assert.equal(capture.reads.length, 1 + directories.length + sources.length);
+      for (const read of capture.reads) {
+        assert(!read.isError);
+        if (sources.includes(read.path)) assert.equal(read.sha256, sandbox.before[read.path], 'source bytes changed at SDK boundary');
+        assert(capture.requests.some(request => request.sequence > read.requestSequence && request.toolResults.some(result =>
+          result.toolCallId === (api === 'openai-responses' ? read.toolCallId.split('|')[0] : read.toolCallId) &&
+          result.sha256 === read.sha256 && result.bytes === read.bytes)), 'directory/file result missing from actual subsequent wire body');
+      }
+      assert(state.actions.every(action => action.kind === 'read' && action.status === 'success'));
+      assert.deepEqual(sourceSnapshot(sandbox.workspace), sandbox.before);
+      assert.deepEqual(network.attempts, []); assert.deepEqual(provider.errors, []);
+      assert.equal(provider.consumed, provider.actions.length);
+      assert(!JSON.stringify(listings).match(/oracle|solution|evidence/));
+      await save(`${id}.json`, { layer: 'installed public SDK and loopback wire, not autonomous model quality', modelCalls: 0,
+        listings, sources, actions: state.actions, contextManifest: state.contextManifest, requests: capture.requests, reads: capture.reads, sourceUnchanged: true });
+      results.push({ id, fixtureId, layer: 'scripted installed runtime, not autonomous model quality' });
+      console.log(`PASS ${id}: ${listings.length} directories, ${sources.length} exact source reads delivered to wire`);
+    } finally {
+      try { if (handle) await handle.close(); }
+      finally {
+        const closed = await provider.close(); network.restore(); await rm(parent, { recursive: true, force: true });
+        await save(`${id}-cleanup.json`, { ...closed, session: handle?.receipt.cleanup, tempRemoved: !existsSync(parent) });
+      }
+    }
+  }
+  for (const fixtureId of ['internal-review', 'public-body-review'])
+    for (const api of ['openai-completions', 'openai-responses']) await sourceDiscovery(fixtureId, api);
   for (const fixture of manifest.fixtures) await scenario(fixture.id, { fixtureId: fixture.id, command: fixture.id === 'status' ? 'status' : ['backend', 'ui'].includes(fixture.id) ? 'start' : 'review',
     extra: fixture.id === 'ui' ? ['frontend-design-gate.md'] : [] });
   await scenario('phase-transition', { fixtureId: 'backend', command: 'start', phase: true });

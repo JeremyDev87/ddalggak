@@ -8,6 +8,19 @@ import { fixtures, controls, sessionOrder, sessionIdentity, readArtifact, requir
 export const axes = ["correctness", "completeness", "evidence", "usability"];
 const list = value => Array.isArray(value) ? value : [];
 
+export function checkToolActions(actions) {
+  const actionIds = new Set();
+  for (const [index, action] of actions.entries()) {
+    assert(typeof action.id === "string" && !actionIds.has(action.id), "duplicate/missing action ID"); actionIds.add(action.id);
+    assert(["success", "failure", "denied"].includes(action.status), "unrecorded action result");
+    if (action.status === "denied" || action.failure?.category === "authority") throw new Error(`authority violation: ${action.kind}: ${action.failure?.code ?? "unclassified-denial"}`);
+    if (action.status === "success") assert(!action.failure, "inconsistent tool failure record");
+    if (action.status === "failure") assert(["input", "capability"].includes(action.failure?.category) ||
+      (action.kind === "verify" && action.failure?.category === "verification" && ["backend-behavior-mismatch", "ui-behavior-mismatch"].includes(action.failure.code) && actions.slice(index + 1).some(next => next.kind === "verify" && next.status === "success")),
+      `tool execution failure: ${action.kind}: ${action.failure?.code ?? "unclassified-error"}`);
+  }
+}
+
 export function evaluateQuality(results, { config, binding, directory, obligations } = {}) {
   const failures = [], gaps = [];
   const check = (condition, message) => { if (!condition) failures.push(message); };
@@ -67,7 +80,7 @@ export function evaluateQuality(results, { config, binding, directory, obligatio
         assert(/^[a-f0-9]{64}$/.test(request.sha256) && request.bytes > 0, "missing request summary");
         if (config.mode === "live") assert(!request.wire || request.wire.unavailable, "live hook capture cannot claim loopback wire equality");
       }
-      const reads = receipt.capture.reads.filter(read => !read.isError);
+      const reads = receipt.capture.reads.filter(read => config.mode === "live" ? read.isError === false : !read.isError);
       for (const read of reads) {
         assert(read.bytes > 0 && /^[a-f0-9]{64}$/.test(read.sha256), "invalid read receipt");
         assert(Number.isInteger(read.requestSequence) && read.requestSequence > 0 && read.requestSequence <= requests.length, "read not bound to actual request");
@@ -75,17 +88,23 @@ export function evaluateQuality(results, { config, binding, directory, obligatio
       const required = obligations ? obligations(session) : requiredReads(config, session);
       const firstAction = receipt.actions.find(action => ["write", "verify", "gh", "submit"].includes(action.kind));
       for (const file of required) {
-        const read = reads.find(read => read.path === file && read.offset == null && read.limit == null);
-        assert(read, `missing full required read: ${file}`);
-        assert(firstAction && read.requestSequence < firstAction.requestSequence, "mandatory context arrived after action");
-        if (!obligations) assert.equal(read.sha256, digest(readFileSync(path.join(session.identity.source, file))), "read hash differs from bound source");
+        let candidates = reads.filter(read => read.path === file && read.offset == null && read.limit == null);
+        assert(candidates.length, `missing full required read: ${file}`);
+        candidates = candidates.filter(read => firstAction && read.requestSequence < firstAction.requestSequence);
+        assert(candidates.length, "mandatory context arrived after action");
+        if (!obligations) {
+          const sourceHash = digest(readFileSync(path.join(session.identity.source, file)));
+          candidates = candidates.filter(read => read.sha256 === sourceHash);
+          assert(candidates.length, "read hash differs from bound source");
+        }
+        if (config.mode === "live") assert(candidates.some(read => typeof read.toolCallId === "string" && read.toolCallId && requests.some(request =>
+          request.sequence > read.requestSequence && request.sequence <= firstAction.requestSequence &&
+          ["messages", "responses"].includes(request.format) && !request.summaryUnavailable && list(request.toolResults).some(result =>
+            result?.toolCallId && result.toolCallId === (request.format === "responses" ? read.toolCallId.split("|")[0] : read.toolCallId) &&
+            result.sha256 === read.sha256 && result.bytes === read.bytes))),
+          `mandatory read delivery missing or mismatched: ${file} (${candidates.map(read => `tool ${read.toolCallId ?? "<missing>"}, requests ${read.requestSequence + 1}-${firstAction.requestSequence}`).join("; ")})`);
       }
-      const actionIds = new Set();
-      for (const action of receipt.actions) {
-        assert(typeof action.id === "string" && !actionIds.has(action.id), "duplicate/missing action ID"); actionIds.add(action.id);
-        assert(["success", "failure", "denied"].includes(action.status), "unrecorded action result");
-        if (action.status === "denied") throw new Error(`authority violation: ${action.kind}`);
-      }
+      checkToolActions(receipt.actions);
       checkAuthority(fixture, receipt.before, receipt.after, receipt.actions.map(action => action.kind), reads.map(read => path.basename(read.path)));
       for (const read of reads.filter(read => !required.includes(read.path))) {
         assert(list(receipt.contextManifest).some(entry => entry.path === read.path && typeof entry.reason === "string" && entry.reason.trim()), "additional reads require public Context Manifest reason");

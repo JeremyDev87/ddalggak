@@ -10,7 +10,9 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { fixtureRoot, fixtures, controls, toolNames, artifact, json, digest, validateConfig, bindSources, sessionOrder, sessionIdentity, createRegistry, readArtifact, sourceTree } from "./skill-loading/run-config.mjs";
-import { evaluateQuality } from "./skill-loading/quality-report.mjs";
+import { summarizeFailure } from "./skill-loading/runtime-adapter.mjs";
+import { createCapture } from "./skill-loading/capture-extension.mjs";
+import { evaluateQuality, checkToolActions } from "./skill-loading/quality-report.mjs";
 import { sourceSnapshot, checkAuthority, checkStatus } from "../evals/skill-loading/fixtures/status/oracle.mjs";
 import { checkBackend, checkCompletion } from "../evals/skill-loading/fixtures/backend/oracle.mjs";
 import { checkReview, probeReview } from "../evals/skill-loading/fixtures/internal-review/oracle.mjs";
@@ -21,8 +23,13 @@ const seedFiles = {
   backend: ["app.mjs", "server.mjs"], ui: ["index.html", "DESIGN.md"], status: ["state.json", "README.md"],
   "internal-review": ["context.md", "before", "after"], "public-body-review": ["context.md", "before", "after", "inputs.json"],
 };
+const sourceInventories = new WeakMap();
 const fixtureDirectory = id => path.join(fixtureRoot, "fixtures", id);
 const sandboxProfile = '(version 1) (allow default) (deny network*) (deny file-write*)';
+
+function fail(category, code) {
+  throw Object.assign(new Error(`${category === "authority" ? "denied" : category}: ${code}`), { fixtureFailure: { category, code } });
+}
 
 export function prepareSandbox(config, slot, parent) {
   const workspace = path.join(parent, "workspace"); mkdirSync(workspace);
@@ -41,7 +48,10 @@ export function prepareSandbox(config, slot, parent) {
     assert(stat.isFile() && realpathSync(target).startsWith(realpathSync(workspace) + path.sep), "denied: writable source escapes fixture");
     chmodSync(target, (stat.mode & 0o7777) | 0o200);
   }
-  return { workspace, before: visible };
+  const sandbox = { workspace, before: visible };
+  // Only the prepared public diff inputs are discoverable, never caller-supplied snapshot keys.
+  sourceInventories.set(sandbox, Object.keys(visible).filter(file => /^(before|after)\//.test(file)).sort());
+  return sandbox;
 }
 
 export function sandboxCapability() {
@@ -60,47 +70,81 @@ export async function isolatedQuantities(workspace, input) {
       for await (const [reply] of replies) {
         if (reply.id !== id) continue;
         assert.equal(reply.type, "quantities");
-        if (reply.error) throw new Error(reply.error);
+        if (reply.error) fail(reply.failure?.category === "authority" ? "authority" : "execution", reply.failure?.code ?? "native-ipc-error");
         return reply.result;
       }
       throw new Error("unresolved: outer sandbox channel disconnected");
     } finally { await replies.return(); }
   }
-  const program = 'import { quantities } from "./app.mjs"; process.stdout.write(JSON.stringify(await quantities(JSON.parse(process.argv[1]))));';
+  const program = 'const { quantities } = await import("./app.mjs"); process.stdout.write(JSON.stringify(await quantities(JSON.parse(process.argv[1]))));';
   const result = spawnSync("/usr/bin/sandbox-exec", ["-p", sandboxProfile, process.execPath, "--permission", `--allow-fs-read=${workspace}`, "--input-type=module", "-e", program, JSON.stringify(input)],
     { cwd: workspace, encoding: "utf8", timeout: 5000, maxBuffer: 1024 * 1024, env: { PATH: process.env.PATH, HOME: workspace, TMPDIR: workspace } });
-  assert.equal(result.status, 0, `sandboxed implementation failed: ${result.stderr || result.error?.message}`);
-  return JSON.parse(result.stdout);
+  if (result.error) fail("execution", summarizeFailure(result.error, "native").diagnostic);
+  // Source controls stderr, including any apparent permission code; it cannot authenticate authority.
+  if (result.status !== 0) fail("execution", "native-process-failed");
+  try { return JSON.parse(result.stdout); }
+  catch { fail("execution", "native-result-invalid"); }
 }
 
-export function createFixtureTools({ config, slot, sandbox, directory, browser, capture }) {
+// Fixed native-operation IPC boundary; error metadata never includes child stderr or private input.
+export async function quantitiesReply(request, home) {
+  try {
+    if (!request || Object.keys(request).length !== 4 || ["id", "input", "type", "workspace"].some(key => !Object.hasOwn(request, key))) fail("authority", "unsupported-sandbox-request-fields");
+    if (request.type !== "quantities" || typeof request.id !== "string") fail("authority", "unsupported-sandbox-request");
+    if (typeof request.workspace !== "string" || !realpathSync(request.workspace).startsWith(home + path.sep)) fail("authority", "workspace-outside-isolated-home");
+    return { type: "quantities", id: request.id, result: await isolatedQuantities(request.workspace, request.input) };
+  } catch (error) {
+    const failure = error.fixtureFailure ?? { category: "execution", code: summarizeFailure(error, "native").diagnostic };
+    return { type: "quantities", id: request?.id, error: `${failure.category === "authority" ? "denied" : failure.category}: ${failure.code}`, failure };
+  }
+}
+
+export function createFixtureTools({ config, slot, sandbox, directory, browser, capture, artifactRoot = directory }) {
   const fixture = fixtures.find(fixture => fixture.id === slot.fixtureId), root = sandbox.workspace;
   const actions = [], contextManifest = [];
+  const save = (name, value) => artifact(artifactRoot, path.join(path.relative(artifactRoot, directory), name), value);
   let observation, verification, verificationActionId, submitted = false;
-  const file = relative => {
-    assert(typeof relative === "string" && relative && !path.isAbsolute(relative) && !relative.split(/[\\/]/).some(part => !part || part === "." || part === ".." || part === ".git"), "denied: path outside fixture");
-    const target = path.join(root, relative);
-    assert(realpathSync(target).startsWith(realpathSync(root) + path.sep), "denied: path escapes fixture");
-    assert(!lstatSync(target).isSymbolicLink() && lstatSync(target).isFile(), "denied: not a regular fixture file");
+  const file = (relative, allowDirectory = false) => {
+    if (typeof relative !== "string" || !relative || relative.includes("\0")) fail("input", "invalid-path");
+    const parts = relative.split(/[\\/]/);
+    if (path.isAbsolute(relative) || parts.some(part => !part || part === "." || part === ".." || part === ".git")) fail("authority", "path-outside-fixture");
+    let target = root, stat;
+    try {
+      // Inspect every ancestor before resolving: an escape with a missing leaf is still an escape.
+      for (const part of parts) {
+        target = path.join(target, part); stat = lstatSync(target);
+        if (stat.isSymbolicLink()) fail("authority", "source-symlink");
+      }
+      if (!realpathSync(target).startsWith(realpathSync(root) + path.sep)) fail("authority", "path-escapes-fixture");
+    } catch (error) {
+      if (["ENOENT", "ENOTDIR"].includes(error.code)) fail("input", error.code);
+      throw error;
+    }
+    if (!stat.isFile() && !(allowDirectory && stat.isDirectory())) fail("capability", "not-a-regular-fixture-file");
     return target;
   };
   const tool = (name, properties, required, execute) => ({ name, label: name, description: {
-    read: "Read a complete sandbox file. Supply a reason for the public Context Manifest; paths under ddalggak contain the installed skill. No oracle or solution is available.",
+    read: "Read a complete sandbox file, or list prepared before/after source paths by reading their directory. Listings are sorted JSON paths usable directly with read, not document contents. Supply a reason for the public Context Manifest; paths under ddalggak contain the installed skill. No oracle or solution is available.",
     write: "Replace an allowed fixture source file. No other writes are permitted.",
     verify: "Execute actual fixture HTTP/browser/review checks and return observations, including browser screenshots. Repeat only after a source change or new evidence, not model-session retries.",
     gh: "Read fixture-only GitHub state using exact gh argument arrays. No network or mutation.",
     submit: "Submit your final observation using this fixture's schema. Derive values and finding validity from source/context and actual verification, not vocabulary examples. Empty findings are allowed. Extra grounded findings are retained for review. Claims must reference an actual verify action; submission does not itself pass any checks.",
   }[name], parameters: { type: "object", properties, required, additionalProperties: false },
   async execute(id, args) {
-    const action = { id, kind: name, status: "failure", requestSequence: capture.requests.length };
+    const action = { id, kind: name, status: "failure", requestSequence: capture.requests.length, ...(name === "gh" ? { args: null } : {}) };
     actions.push(action);
     try {
-      const result = await execute(args, id);
+      if (!args || typeof args !== "object" || Array.isArray(args) || required.some(key => !Object.hasOwn(args, key)) ||
+        Object.keys(args).some(key => !Object.hasOwn(properties, key))) fail("input", "invalid-arguments");
+      const result = await execute(args, id, action);
       action.status = "success";
+      if (result?.details?.evidence) action.evidence = result.details.evidence;
       return result?.content ? result : { content: [{ type: "text", text: JSON.stringify(result) }], details: {} };
     } catch (error) {
-      if (/denied:/.test(error.message)) action.status = "denied";
-      action.error = error.message;
+      action.failure = error.fixtureFailure ?? { category: "execution",
+        code: summarizeFailure(error, "tool").diagnostic };
+      if (action.failure.category === "authority") action.status = "denied";
+      action.error = `${action.failure.category}: ${action.failure.code}`;
       throw error;
     }
   } });
@@ -155,20 +199,57 @@ export function createFixtureTools({ config, slot, sandbox, directory, browser, 
   Object.assign(observationSchema.properties, fields);
   observationSchema.required = Object.keys(fields);
   const tools = [
-    tool("read", { path: { ...string, examples: [...seedFiles[fixture.id], "ddalggak/SKILL.md"], description: "Relative sandbox file path. Seed directories contain before/after source. Public-body-review also provides inputs.json as seeded public rendering context." }, reason: string }, ["path", "reason"], args => {
-      assert(args.reason?.trim(), "read reason required");
-      const text = readFileSync(file(args.path), "utf8"); contextManifest.push({ path: args.path, reason: args.reason });
+    tool("read", { path: { ...string, examples: [...seedFiles[fixture.id], "ddalggak/SKILL.md"], description: "Relative sandbox file or before/after source directory path. Directory reads return {type: directory, paths: [...]} recursively from the fixed public source inventory. Public-body-review also provides inputs.json as seeded public rendering context." }, reason: string }, ["path", "reason"], args => {
+      if (typeof args.reason !== "string" || !args.reason.trim()) fail("input", "read-reason-required");
+      const target = file(args.path, true);
+      if (lstatSync(target).isDirectory()) {
+        const prefix = path.relative(root, target) + path.sep;
+        const paths = (sourceInventories.get(sandbox) ?? []).filter(name => name.startsWith(prefix));
+        if (!paths.length) fail("capability", "not-a-public-source-directory");
+        for (const name of paths) file(name); // Recheck ancestors; never follow a replaced source or directory symlink.
+        contextManifest.push({ path: args.path, reason: args.reason });
+        return { content: [{ type: "text", text: JSON.stringify({ type: "directory", paths }) }], details: { type: "directory" } };
+      }
+      const text = readFileSync(target, "utf8"); contextManifest.push({ path: args.path, reason: args.reason });
       return { content: [{ type: "text", text }], details: {} };
     }),
     tool("write", { path: string, content: string }, ["path", "content"], args => {
-      assert(fixture.allowedFiles.includes(args.path), "denied: outside-allowed-source-write");
-      assert(typeof args.content === "string", "content required"); writeFileSync(file(args.path), args.content);
+      if (typeof args.path !== "string" || !args.path || args.path.includes("\0") || typeof args.content !== "string") fail("input", "invalid-write");
+      if (!fixture.allowedFiles.includes(args.path)) fail("authority", "outside-allowed-source-write");
+      writeFileSync(file(args.path), args.content);
       verification = undefined;
       return { path: args.path, sha256: digest(args.content) };
     }),
-    tool("gh", { args: { type: "array", items: string } }, ["args"], args => {
-      const result = spawnSync(process.execPath, [path.join(fixtureDirectory("status"), "gh.mjs"), ...args.args], { encoding: "utf8", timeout: 5000, env: { PATH: process.env.PATH } });
-      assert.equal(result.status, 0, "denied: fixture-only gh boundary"); return JSON.parse(result.stdout);
+    tool("gh", { args: { type: "array", items: string } }, ["args"], (args, _, action) => {
+      const argv = args.args;
+      if (!Array.isArray(argv) || argv.length < 2 || argv.some(value => typeof value !== "string" || !value || value.includes("\0"))) fail("input", "invalid-gh-arguments");
+      // Only operation vocabulary/flags survive; never header, token, input or body values.
+      action.args = argv.map((value, i) => {
+        if (i === 0 && ["pr", "issue", "api", "extension", "auth", "repo", "release", "workflow", "run"].includes(value)) return value;
+        if (i === 1 && argv[0] !== "api" && ["view", "list", "checks", "status", "comment", "edit", "create", "merge", "close", "reopen", "delete", "review", "exec", "login", "logout", "clone", "fork", "upload", "download"].includes(value)) return value;
+        if (["--method", "-X"].includes(argv[i - 1]) && ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE"].includes(value)) return value;
+        if (/^(?:--method=|-X=?)(?:GET|HEAD|POST|PUT|PATCH|DELETE)$/.test(value)) return value;
+        const flag = /^(--[a-z-]+)(?:=|$)|^(-[A-Za-z])/.exec(value)?.slice(1).find(Boolean);
+        if (flag && ["--json", "--jq", "--template", "--repo", "-R", "--method", "-X", "--header", "-H", "--input", "--body", "--body-file", "--field", "-F", "--raw-field", "-f", "--token", "--with-token", "--paginate", "--state", "--limit", "-L", "--head", "--base", "--search", "--label", "--author", "--assignee"].includes(flag))
+          return value === flag ? flag : flag + "=[redacted]";
+        return "[redacted]";
+      });
+      // Classification only, not a gh executor/parser: unrecognized operations remain fail-closed.
+      let readOnly = argv[0] === "api" || (["pr", "issue"].includes(argv[0]) && ["view", "list", "checks", "status"].includes(argv[1]));
+      for (let i = argv[0] === "api" ? 1 : 2; i < argv.length && readOnly; i++) {
+        if (!argv[i].startsWith("-")) continue;
+        const [flag, inline] = argv[i].split(/=(.*)/s);
+        if (flag === "--paginate") continue;
+        if (!["--json", "--jq", "--template", "--repo", "-R", "--method", "-X", "--header", "-H", "--state", "--limit", "-L", "--head", "--base", "--search", "--label", "--author", "--assignee"].includes(flag)) { readOnly = false; break; }
+        const value = inline ?? argv[++i];
+        if (!value || value.startsWith("-")) fail("input", "missing-gh-option-value");
+        if (["--method", "-X"].includes(flag) && (argv[0] !== "api" || !["GET", "HEAD"].includes(value))) readOnly = false;
+      }
+      if (!readOnly) fail("authority", "fixture-only-gh-boundary");
+      const result = spawnSync(process.execPath, [path.join(fixtureDirectory("status"), "gh.mjs"), ...argv], { encoding: "utf8", timeout: 5000, env: { PATH: process.env.PATH } });
+      if (result.status === 77) fail("capability", "unsupported-fixture-gh-read");
+      if (result.error) throw result.error;
+      assert.equal(result.status, 0, "fixture gh execution failed"); return JSON.parse(result.stdout);
     }),
     tool("verify", { publicInputs: { type: "object", additionalProperties: true, description: "Public-body-review only: pass the parsed model-readable inputs.json unchanged to the shipped renderer. Returns observations.publicBody.summary/inline for submission. This is local fixture rendering only; seeded input claims are not proof of execution." } }, [], async (args, actionId) => {
       const oracle = json(path.join(fixtureRoot, fixture.oracle));
@@ -177,7 +258,12 @@ export function createFixtureTools({ config, slot, sandbox, directory, browser, 
         // Execute untrusted code outside the HTTP event callback so failures reject the tool, not the process.
         const responses = new Map();
         for (const entry of oracle.cases) responses.set(JSON.stringify(entry.input), await isolatedQuantities(root, entry.input));
-        proof = await checkBackend(input => responses.get(JSON.stringify(input)), oracle);
+        // Only this frozen oracle's status/body comparisons are recoverable, never native acquisition.
+        try { proof = await checkBackend(input => responses.get(JSON.stringify(input)), oracle); }
+        catch (error) {
+          if (error instanceof assert.AssertionError) error.fixtureFailure = { category: "verification", code: "backend-behavior-mismatch" };
+          throw error;
+        }
       }
       else if (fixture.id === "ui") {
         assert(browser, "unresolved: real browser capability required");
@@ -187,7 +273,7 @@ export function createFixtureTools({ config, slot, sandbox, directory, browser, 
           const bytes = readFileSync(entry.screenshot);
           const relative = path.join(path.relative(directory, uiDirectory), `${entry.width}-${entry.state}.png`);
           renameSync(entry.screenshot, path.join(directory, relative));
-          entry.screenshot = { path: relative, sha256: digest(bytes) };
+          entry.screenshot = { path: path.join(path.relative(artifactRoot, directory), relative), sha256: digest(bytes) };
         }
       } else if (fixture.id === "status") {
         const git = args => {
@@ -199,28 +285,30 @@ export function createFixtureTools({ config, slot, sandbox, directory, browser, 
       } else {
         proof = await probeReview(path.join(root, "after"));
         if (args.publicInputs) {
-          assert(fixture.id === "public-body-review", "denied: internal-only public preparation");
+          if (fixture.id !== "public-body-review") fail("authority", "internal-only-public-preparation");
           proof.publicBody = renderFixturePublic(args.publicInputs);
         }
       }
       verification = proof; verificationActionId = actionId;
-      const evidence = artifact(directory, `verification-action-${actions.length}.json`, proof);
+      const evidence = save(`verification-action-${actions.length}.json`, proof);
       const content = [{ type: "text", text: JSON.stringify({ actionId, evidence, observations: proof }) }];
-      if (fixture.id === "ui") for (const entry of proof.receipts) content.push({ type: "image", mimeType: "image/png", data: readFileSync(path.join(directory, entry.screenshot.path)).toString("base64") });
+      if (fixture.id === "ui") for (const entry of proof.receipts) content.push({ type: "image", mimeType: "image/png", data: readFileSync(path.join(artifactRoot, entry.screenshot.path)).toString("base64") });
       return { content, details: { evidence } };
     }),
     tool("submit", { observation: observationSchema }, ["observation"], args => {
-      assert(!submitted, "denied: repeated final submission"); submitted = true; observation = args.observation;
+      if (submitted) fail("authority", "repeated-final-submission");
+      submitted = true; observation = args.observation;
       return { submitted: true, verificationActionId: verificationActionId ?? null };
     }),
   ];
-  return { tools, actions, contextManifest, async finish(identity, sessionId) {
+  return { tools, actions, contextManifest, get output() { return observation ?? { unavailable: "no final submission" }; }, async finish(identity, sessionId) {
     const after = sourceSnapshot(root), reads = capture.reads.filter(read => !read.isError).map(read => path.basename(read.path));
     const oracle = json(path.join(fixtureRoot, fixture.oracle));
     const record = { owner: "oracle-verifier-v1", synthetic: false, identity, sessionId, authority: "pass", unsupportedClaims: [], extraFindings: [], checks: [] };
     let failure;
     try {
-      checkAuthority(fixture, sandbox.before, after, actions.map(action => action.status === "denied" ? "outside-allowed-source-write" : action.kind), reads);
+      checkAuthority(fixture, sandbox.before, after, actions.map(action => action.kind), reads);
+      checkToolActions(actions);
       assert(observation && verification && verificationActionId, "missing model output or actual verification execution");
       if (fixture.id === "backend") checkCompletion(observation, verification);
       else if (fixture.id === "status") checkStatus(observation, oracle);
@@ -232,17 +320,16 @@ export function createFixtureTools({ config, slot, sandbox, directory, browser, 
           assert(typeof finding.evidence === "string" && finding.evidence.trim() && typeof finding.path === "string", "unsupported extra finding");
           const anchor = file(`after/${finding.path}`);
           assert(Number.isInteger(finding.line) && readFileSync(anchor, "utf8").split("\n")[finding.line - 1]?.trim(), "unsupported extra finding anchor");
-          record.extraFindings.push({ id: finding.id, evidence: [artifact(directory, `extra-${record.extraFindings.length}.json`, finding)] });
+          record.extraFindings.push({ id: finding.id, evidence: [save(`extra-${record.extraFindings.length}.json`, finding)] });
         }
         checkReview({ ...observation, findings: (observation.findings ?? []).filter(finding => seeded.has(finding.id)) }, oracle, verification);
         if (fixture.id === "public-body-review") checkPublic(observation, json(path.join(fixtureDirectory(fixture.id), "inputs.json")));
       } else record.browser = verification;
       for (const claim of observation.claims ?? []) assert(fixture.oracleIds.includes(claim.checkId) && claim.actionId === verificationActionId, "fake execution claim");
     } catch (error) { failure = error.message; record.authority = "fail"; record.unsupportedClaims.push(failure); }
-    const evidence = artifact(directory, "oracle-execution.json", { actualVerification: verification ?? null, failure: failure ?? null });
+    const evidence = save("oracle-execution.json", { actualVerification: verification ?? null, failure: failure ?? null });
     record.checks = fixture.oracleIds.map(id => ({ id, status: failure ? "fail" : "pass", actionId: verificationActionId ?? null, evidence: [evidence] }));
-    const files = fixture.allowedFiles.map(name => artifact(directory, `outputs/${name}`, readFileSync(file(name))));
-    return { record, after, files, output: observation ?? { unavailable: "no final submission" } };
+    return { record, after, output: this.output };
   } };
 }
 
@@ -339,13 +426,7 @@ async function isolatedLiveProcess({ config, output, authPath, browserModule }) 
       "--browser-module", path.resolve(browserModule), "--isolated-home", home], { cwd: home, detached: true, stdio: ["ignore", "pipe", "pipe", "ipc"],
       env });
     child.on("message", async request => {
-      let reply;
-      try {
-        assert.deepEqual(Object.keys(request).sort(), ["id", "input", "type", "workspace"], "denied: unsupported sandbox request fields");
-        assert(request.type === "quantities" && typeof request.id === "string", "denied: unsupported sandbox request");
-        assert(typeof request.workspace === "string" && realpathSync(request.workspace).startsWith(home + path.sep), "denied: workspace outside isolated HOME");
-        reply = { type: "quantities", id: request.id, result: await isolatedQuantities(request.workspace, request.input) };
-      } catch (error) { reply = { type: "quantities", id: request?.id, error: error.message }; }
+      const reply = await quantitiesReply(request, home);
       if (child.connected) child.send(reply);
     });
     child.stdout.on("data", chunk => process.stdout.write(chunk));
@@ -362,6 +443,98 @@ async function isolatedLiveProcess({ config, output, authPath, browserModule }) 
     rmSync(home, { recursive: true, force: true });
     if (existsSync(output)) writeFileSync(path.join(output, "process-cleanup.json"), JSON.stringify({ childExited: child?.exitCode !== null, homeRemoved: !existsSync(home), globalSettingsChanged: false }));
   }
+}
+
+// One reserved slot, also exercised with the public SDK and a loopback provider in the regression test.
+export async function runReservedSession({ config, slot, attempted, identity, output, runtime, model, authStorage, browser, createSession }) {
+  const relative = `${slot.ordinal}-${slot.fixtureId}-${slot.variant}`, directory = path.join(output, relative);
+  const result = { ...attempted, sessionId: `${config.runId}-${slot.ordinal}-unavailable`, identity,
+    status: "unresolved", usage: { unavailable: "session unavailable" } };
+  let temp, handle, sandbox, tools, capture, finished, after, stage = "prepare-sandbox";
+  const failures = [];
+  const fail = (error, at) => {
+    const failure = summarizeFailure(error, at); failures.push(failure);
+    result.failure ??= failure;
+    result.error = `${result.failure.stage}: ${result.failure.diagnostic}`;
+    result.status = "unresolved";
+  };
+  const save = (name, value) => {
+    try { return artifact(output, `${relative}/${name}`, value); }
+    catch (error) { fail(error, "persist-evidence"); }
+  };
+  try {
+    mkdirSync(directory);
+    temp = mkdtempSync(path.join(os.tmpdir(), "ddalggak-bound-"));
+    sandbox = prepareSandbox(config, slot, temp);
+    capture = createCapture({ root: sandbox.workspace });
+    tools = createFixtureTools({ config, slot, sandbox, directory, browser, capture, artifactRoot: output });
+    const agentDir = path.join(temp, "agent"); mkdirSync(agentDir);
+    stage = "create-session";
+    handle = await createSession({ runtime, cwd: sandbox.workspace, agentDir, model, authStorage, settings: { transport: controls.transport },
+      capture, tools: toolNames, customTools: tools.tools, skillPaths: [path.join(sandbox.workspace, "ddalggak")], thinkingLevel: config.reasoning,
+      extensionFactories: [{ name: "bound-model-guard", factory(pi) {
+        pi.on("before_provider_request", ({ payload }) => {
+          assert(!payload.model || payload.model === model.id, "provider request model drift");
+        });
+      } }] });
+    result.sessionId = handle.session.sessionId;
+    stage = "pre-prompt-controls";
+    assertSessionControls(handle, config.modelId, config.reasoning);
+    const prompt = readFileSync(path.join(fixtureRoot, fixtures.find(fixture => fixture.id === slot.fixtureId).prompt), "utf8");
+    stage = "prompt";
+    await handle.prompt(`${prompt}\nUse read for the installed ddalggak/SKILL.md and required context. Use verify for actual checks. Finish with submit({observation: ...}); do not claim unexecuted checks.`, { timeoutMs: 600000 });
+    stage = "capture-validation";
+    capture.assertComplete({ wire: false });
+    stage = "post-prompt-controls";
+    assertSessionControls(handle, config.modelId, config.reasoning);
+    stage = "source-validation";
+    assert.equal(sourceTree(config[`${slot.variant}Source`]), identity.sourceTree, "source changed during session");
+    result.status = "complete";
+  } catch (error) { fail(error, stage); }
+  // Finalize available evidence independently: verification or cleanup failure must not discard its siblings.
+  if (tools) {
+    try { finished = await tools.finish(identity, result.sessionId); }
+    catch (error) { fail(error, "verification"); }
+  }
+  result.output = save("output.json", tools?.output ?? { unavailable: "fixture tools unavailable" });
+  const workspace = sandbox?.workspace ?? (temp && path.join(temp, "workspace"));
+  if (workspace && existsSync(workspace)) {
+    try { after = sourceSnapshot(workspace); } catch (error) { fail(error, "source-snapshot"); }
+    result.files = [];
+    for (const name of fixtures.find(fixture => fixture.id === slot.fixtureId).allowedFiles) {
+      try {
+        const file = path.join(workspace, name);
+        assert(lstatSync(file).isFile() && !lstatSync(file).isSymbolicLink() && realpathSync(file).startsWith(realpathSync(workspace) + path.sep), "unsafe output source");
+        const ref = save(`outputs/${name}`, readFileSync(file));
+        if (ref) result.files.push(ref);
+      } catch (error) { fail(error, "source-output"); }
+    }
+  }
+  if (finished) result.verification = save("verification.json", finished.record);
+  const cleanup = { aborted: false, shutdown: false, disposed: false, failures: [] };
+  if (handle) {
+    try { Object.assign(cleanup, await handle.close()); }
+    catch (error) {
+      Object.assign(cleanup, handle.receipt.cleanup);
+      cleanup.failures.push(summarizeFailure(error, "close")); fail(error, "cleanup");
+    }
+    result.usage = handle.receipt.usage;
+    const messages = handle.session.messages.filter(message => message.role === "assistant");
+    const text = (result.failure ? messages : messages.slice(-1)).flatMap(message => message.content)
+      .filter(part => part.type === "text").map(part => part.text).join("\n");
+    result.finalText = save("final.txt", text);
+  }
+  try { if (temp) rmSync(temp, { recursive: true, force: true }); }
+  catch (error) { cleanup.failures.push(summarizeFailure(error, "remove-sandbox")); fail(error, "cleanup"); }
+  cleanup.sandboxRemoved = !temp || !existsSync(temp);
+  const actions = (tools?.actions ?? []).map(action => action.error ? { ...action,
+    error: summarizeFailure(new Error(action.error), "tool").diagnostic } : action);
+  result.receipt = save("receipt.json", { owner: "runtime-recorder-v1", synthetic: false, sessionId: result.sessionId, identity, controls,
+    status: result.status, failure: result.failure ?? null, failures, capture: handle?.receipt ?? {
+      requests: capture?.requests ?? [], reads: capture?.reads ?? [], events: capture?.events ?? [], unavailable: "session unavailable" },
+    captureErrors: (capture?.errors ?? []).map(error => summarizeFailure(new Error(error), "capture")),
+    actions, before: sandbox?.before ?? null, after: after ?? null, contextManifest: tools?.contextManifest ?? [], usage: result.usage, cleanup });
+  return result;
 }
 
 export async function runComparison({ config, configPath, output, resultsFile, authPath, browserModule, isolatedHome }) {
@@ -389,7 +562,6 @@ export async function runComparison({ config, configPath, output, resultsFile, a
   assert.equal(realpathSync(process.env.HOME), realpathSync(isolatedHome), "isolated HOME mismatch");
   assert.equal(typeof process.send, "function", "unresolved: isolated runner requires the outer sandbox channel");
   const { loadInstalledRuntime, createIsolatedAuthStorage, createCapturedSession } = await import("./skill-loading/runtime-adapter.mjs");
-  const { createCapture } = await import("./skill-loading/capture-extension.mjs");
   const restoreStartupNetwork = guardProvider({ baseUrl: "http://127.0.0.1:1" });
   let runtime, authStorage, model;
   try {
@@ -419,58 +591,7 @@ export async function runComparison({ config, configPath, output, resultsFile, a
     for (const slot of sessionOrder()) {
       assert.deepEqual(bindSources(config), binding, "pre-session source/runtime drift");
       const attempted = registry.reserve(slot), identity = sessionIdentity(config, binding, slot);
-      const temp = mkdtempSync(path.join(os.tmpdir(), "ddalggak-bound-"));
-      let sessionId = `${config.runId}-${slot.ordinal}-unavailable`;
-      const relative = `${slot.ordinal}-${slot.fixtureId}-${slot.variant}`, directory = path.join(output, relative); mkdirSync(directory);
-      const result = { ...attempted, sessionId, identity, status: "unresolved", usage: { unavailable: "session did not complete" } };
-      let handle, sandbox, tools, capture, finished, cleanup;
-      try {
-        sandbox = prepareSandbox(config, slot, temp);
-        capture = createCapture({ root: sandbox.workspace });
-        tools = createFixtureTools({ config, slot, sandbox, directory, browser: secureBrowser, capture });
-        const agentDir = path.join(temp, "agent"); mkdirSync(agentDir);
-        handle = await createCapturedSession({ runtime, cwd: sandbox.workspace, agentDir, model, authStorage, settings: { transport: controls.transport },
-          capture, tools: toolNames, customTools: tools.tools, skillPaths: [path.join(sandbox.workspace, "ddalggak")], thinkingLevel: config.reasoning,
-          extensionFactories: [{ name: "bound-model-guard", factory(pi) {
-            pi.on("before_provider_request", ({ payload }) => {
-              assert(!payload.model || payload.model === model.id, "provider request model drift");
-            });
-          } }] });
-        sessionId = handle.session.sessionId;
-        result.sessionId = sessionId;
-        assertSessionControls(handle, config.modelId, config.reasoning);
-        const prompt = readFileSync(path.join(fixtureRoot, fixtures.find(fixture => fixture.id === slot.fixtureId).prompt), "utf8");
-        await handle.prompt(`${prompt}\nUse read for the installed ddalggak/SKILL.md and required context. Use verify for actual checks. Finish with submit({observation: ...}); do not claim unexecuted checks.`, { timeoutMs: 600000 });
-        capture.assertComplete({ wire: false });
-        assertSessionControls(handle, config.modelId, config.reasoning);
-        assert.equal(sourceTree(config[`${slot.variant}Source`]), identity.sourceTree, "source changed during session");
-        finished = await tools.finish(identity, sessionId);
-        const finalText = handle.session.messages.filter(message => message.role === "assistant").at(-1)?.content
-          .filter(part => part.type === "text").map(part => part.text).join("\n") ?? "";
-        result.finalText = artifact(output, `${relative}/final.txt`, finalText);
-        result.status = "complete";
-      } catch (error) { result.error = error.message; }
-      finally {
-        try { if (handle) cleanup = await handle.close(); }
-        finally { rmSync(temp, { recursive: true, force: true }); }
-      }
-      if (finished && handle) {
-        // SDK-normalized usage stays separately labeled in capture.normalizedUsage.
-        result.usage = handle.receipt.usage;
-        const receipt = { owner: "runtime-recorder-v1", synthetic: false, sessionId, identity, controls, capture: handle.receipt,
-          actions: tools.actions, before: sandbox.before, after: finished.after, contextManifest: tools.contextManifest,
-          usage: result.usage, cleanup: { ...cleanup, sandboxRemoved: !existsSync(temp) } };
-        // References remain relative to the run directory, including nested browser evidence.
-        const rebase = value => {
-          if (Array.isArray(value)) value.forEach(rebase);
-          else if (value && typeof value === "object") { if (typeof value.path === "string" && value.sha256 && existsSync(path.join(directory, value.path))) value.path = `${relative}/${value.path}`; else Object.values(value).forEach(rebase); }
-        };
-        rebase(finished.record); rebase(finished.files);
-        result.files = finished.files;
-        result.receipt = artifact(output, `${relative}/receipt.json`, receipt);
-        result.verification = artifact(output, `${relative}/verification.json`, finished.record);
-        result.output = artifact(output, `${relative}/output.json`, finished.output);
-      }
+      const result = await runReservedSession({ config, slot, attempted, identity, output, runtime, model, authStorage, browser: secureBrowser, createSession: createCapturedSession });
       results.sessions.push(result);
       writeFileSync(path.join(output, "results.json"), JSON.stringify(results, null, 2) + "\n");
     }
