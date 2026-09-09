@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { chmodSync, cpSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, cpSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { spawnSync } from "node:child_process";
@@ -214,10 +214,10 @@ export async function testSandboxTools({ execute = false } = {}) {
         assert(checked.observations.serverClosed && checked.observations.checks.length > 0);
         const outside = path.join(parent, "outside.txt");
         await invoke("write", { path: "app.mjs", content: `import { writeFileSync } from 'node:fs'; export function quantities(){ writeFileSync(${JSON.stringify(outside)}, 'bad'); return {status:200,body:{total:0}}; }` });
-        assert.throws(() => isolatedQuantities(sandbox.workspace, []), /sandboxed implementation failed/);
+        await assert.rejects(() => isolatedQuantities(sandbox.workspace, []), /sandboxed implementation failed/);
         assert(!existsSync(outside), "OS sandbox permitted external write");
         await invoke("write", { path: "app.mjs", content: "import { connect } from 'node:net'; export function quantities(){ const s=connect({host:'127.0.0.1',port:1}); return new Promise((resolve,reject)=>{s.once('connect',()=>reject(Error('network escaped'))); s.once('error',reject);}); }" });
-        assert.throws(() => isolatedQuantities(sandbox.workspace, []), /EPERM|Operation not permitted/);
+        await assert.rejects(() => isolatedQuantities(sandbox.workspace, []), /EPERM|Operation not permitted/);
         console.log("[sandbox] real HTTP checks pass; source bug/external write/network blocked");
       }
       if (fixture.id.includes("review")) {
@@ -287,6 +287,147 @@ export async function testReadonlySandbox() {
       }
     }
   } finally { cleanupTempRoot(temp); assert(!existsSync(temp), "readonly package/sandbox cleanup"); }
+}
+
+// Called by the synthetic SDK import inside the actual live child, before credential/session creation.
+async function testLiveBackendTools({ prepareSandbox, createFixtureTools, isolatedQuantities }, root) {
+  const temp = makeTempDir("ddalggak-backend-boundary-");
+  const listenerCounts = () => ["message", "error", "disconnect"].map(event => process.listenerCount(event)), before = listenerCounts();
+  try {
+    assert.equal(typeof process.send, "function");
+    const config = { candidateSource: root }, slot = { fixtureId: "backend", variant: "candidate" };
+    const sandbox = prepareSandbox(config, slot, temp), directory = path.join(temp, "evidence"); mkdirSync(directory);
+    const state = createFixtureTools({ config, slot, sandbox, directory, capture: { requests: [], reads: [] } });
+    const invoke = (name, args) => state.tools.find(tool => tool.name === name).execute(`${name}-${state.actions.length}`, args);
+    await assert.rejects(() => invoke("verify", {}), /HTTP body/);
+    await invoke("write", { path: "app.mjs", content: readFileSync(path.join(root, "evals/skill-loading/fixtures/backend/solution/app.mjs"), "utf8") });
+    const proof = JSON.parse((await invoke("verify", {})).content[0].text).observations;
+    assert(proof.serverClosed && proof.checks.length > 0);
+    await invoke("write", { path: "app.mjs", content: "export function quantities(input){ return input; }" });
+    assert.deepEqual(await Promise.all([isolatedQuantities(sandbox.workspace, [1]), isolatedQuantities(sandbox.workspace, [2])]), [[1], [2]]);
+    const outside = path.join(temp, "outside.txt");
+    const probes = [
+      ["read", `import {readFileSync} from 'node:fs'; export function quantities(){readFileSync(${JSON.stringify(path.join(root, "package.json"))});}`, /ERR_ACCESS_DENIED/],
+      ["write", `import {writeFileSync} from 'node:fs'; export function quantities(){writeFileSync(${JSON.stringify(outside)},'bad');}`, /ERR_ACCESS_DENIED|EPERM/],
+      ["TCP", "import {Socket} from 'node:net'; export function quantities(){return new Promise((resolve,reject)=>{const s=new Socket();s.once('error',reject);s.once('connect',()=>{s.destroy();resolve('ESCAPED')});s.connect({host:'127.0.0.1',port:1});});}", /EPERM/],
+      ["UDP", "import {createSocket} from 'node:dgram'; export function quantities(){return new Promise((resolve,reject)=>{const s=createSocket('udp4');s.once('error',e=>{s.close();reject(e)});s.send('probe',9,'127.0.0.1',e=>{s.close();e?reject(e):resolve('ESCAPED')});});}", /EPERM/],
+      ["process", "import {spawnSync} from 'node:child_process'; export function quantities(){spawnSync(process.execPath,['--version']);}", /ERR_ACCESS_DENIED/],
+      ["timeout", "export function quantities(){while(true){}}", /ETIMEDOUT/],
+    ];
+    for (const [label, content, error] of probes) {
+      await invoke("write", { path: "app.mjs", content });
+      await assert.rejects(() => isolatedQuantities(sandbox.workspace, []), error, label);
+    }
+    assert(!existsSync(outside));
+    await assert.rejects(() => isolatedQuantities(root, []), /denied:/);
+    await assert.rejects(() => isolatedQuantities(path.join(process.env.HOME, "escape"), []), /denied:/);
+    const { once } = await import("node:events");
+    for (const request of [{ type: "shell", id: "bad-type", workspace: sandbox.workspace, input: [] },
+      { type: "quantities", id: "bad-fields", workspace: sandbox.workspace, input: [], command: "forbidden" }]) {
+      const pending = once(process, "message", { signal: AbortSignal.timeout(10000) }); process.send(request);
+      const [reply] = await pending; assert.equal(reply.id, request.id); assert.match(reply.error, /denied:/);
+    }
+    assert.deepEqual(listenerCounts(), before, "IPC listeners leaked after success/error");
+    return { checks: proof.checks.length, serverClosed: proof.serverClosed, denied: probes.map(([label]) => label),
+      workspaceEscapeDenied: true, fixedOperationOnly: true, concurrentRepliesCorrelated: true, listenersRemoved: true };
+  } finally { cleanupTempRoot(temp); assert(!existsSync(temp)); }
+}
+
+// Explicit macOS bootstrap check: synthetic SDK, missing auth, no installed runtime or model calls.
+export function testLiveBootstrap() {
+  const root = fileURLToPath(new URL("../", import.meta.url)), tempRoot = makeTempDir("ddalggak-bootstrap-"), temp = realpathSync(tempRoot);
+  const commands = [];
+  const env = { PATH: process.env.PATH, HOME: temp, TMPDIR: temp, GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: "/dev/null" };
+  const run = (command, args) => {
+    const result = spawnSync(command, args, { cwd: root, env, encoding: "utf8", timeout: 30000 });
+    commands.push({ command: [command, ...args], status: result.status, signal: result.signal, stdout: result.stdout, stderr: result.stderr, error: result.error?.message });
+    assert.ifError(result.error);
+    return result;
+  };
+  try {
+    const baseline = path.join(temp, "baseline"), candidate = path.join(temp, "candidate"), runtime = path.join(temp, "runtime"), plugin = path.join(temp, "plugin");
+    for (const directory of [baseline, candidate, runtime, plugin]) mkdirSync(directory);
+    const archive = path.join(temp, "baseline.tar");
+    assert.equal(run("git", ["archive", BASELINE_SHA, "-o", archive]).status, 0);
+    assert.equal(run("tar", ["-xf", archive, "-C", baseline]).status, 0);
+    for (const name of ["ddalggak", "core"]) cpSync(path.join(root, name), path.join(candidate, name), { recursive: true });
+    const output = path.join(temp, "output"), registry = path.join(temp, "session-registry"), authPath = path.join(temp, "missing-auth.json");
+    writeFileSync(path.join(plugin, "package.json"), JSON.stringify({ pi: { extensions: ["extension.mjs"] } }));
+    writeFileSync(path.join(plugin, "extension.mjs"), "throw Error('UNEXPECTED_EXTENSION_IMPORT');\n");
+    const browser = path.join(temp, "browser.mjs");
+    writeFileSync(browser, "throw Error('UNEXPECTED_BROWSER_IMPORT');\n");
+    writeFileSync(path.join(runtime, "package.json"), JSON.stringify({ type: "module" }));
+    writeFileSync(path.join(runtime, "index.js"), `
+      import assert from 'node:assert/strict';
+      import { mkdirSync, writeFileSync, readFileSync, existsSync, rmSync, realpathSync, symlinkSync } from 'node:fs';
+      import path from 'node:path';
+      import { makeTempDir, cleanupTempRoot } from ${JSON.stringify(new URL("./test-lib/temp.mjs", import.meta.url).href)};
+      const home = realpathSync(process.env.HOME);
+      assert.equal(home, realpathSync(process.argv[process.argv.indexOf('--isolated-home') + 1]));
+      for (const name of ['OMO_CODING_AGENT_DIR', 'SENPI_CODING_AGENT_DIR', 'PI_CODING_AGENT_DIR']) assert.equal(process.env[name], path.join(home, 'agent'));
+      assert.equal(process.env.TMPDIR, home);
+      const allowed = [home, ${JSON.stringify(output)}, ${JSON.stringify(registry)}];
+      for (const directory of allowed) {
+        mkdirSync(directory, { recursive: true });
+        const file = path.join(directory, 'write-probe');
+        writeFileSync(file, 'allowed', { flag: 'wx' }); rmSync(file);
+      }
+      // These are disposable write probes, never slot reservations or run artifacts.
+      for (const directory of allowed.slice(1)) rmSync(directory, { recursive: true });
+      const denied = [${JSON.stringify(path.join(temp, 'outside'))}, home + '-sibling', ${JSON.stringify(output + '-sibling')}, ${JSON.stringify(registry + '-sibling')}];
+      for (const file of denied) assert.throws(() => writeFileSync(file, 'denied'), { code: 'EPERM' });
+      symlinkSync(${JSON.stringify(temp)}, path.join(home, 'escape'));
+      assert.throws(() => writeFileSync(path.join(home, 'escape', 'symlink-write'), 'denied'), { code: 'EPERM' });
+      // Separate module identity avoids importing the CLI's still-pending top-level await.
+      const tools = await import(${JSON.stringify(new URL("./eval-skill-loading.mjs?bootstrap-probe", import.meta.url).href)});
+      const backend = await (${testLiveBackendTools.toString()})(tools, ${JSON.stringify(root)});
+      console.log(JSON.stringify({ bootstrapProbe: { home, allowed, denied, symlinkDenied: true, backend } }));
+      function forbidden() { console.log(JSON.stringify({ unexpectedSdkCall: true })); throw Error('UNEXPECTED_SDK_CALL'); }
+      export { forbidden as createAgentSession, forbidden as createAgentSessionServices, forbidden as DefaultResourceLoader,
+        forbidden as SessionManager, forbidden as SettingsManager, forbidden as ModelRegistry };
+    `);
+    const config = { runId: "synthetic-bootstrap-only", baselineSource: baseline, candidateSource: candidate, baselineSha: BASELINE_SHA,
+      candidateTree: sourceTree(candidate), runtimeDist: runtime, pluginPath: plugin, modelId: "unconnected/no-model", reasoning: "high",
+      fixtureHash: directoryHash(fileURLToPath(new URL("../evals/skill-loading/", import.meta.url))), sessionLimit: 10, mode: "live" };
+    const configPath = path.join(temp, "config.json"); writeFileSync(configPath, JSON.stringify(config));
+    const args = [path.join(root, "scripts/eval-skill-loading.mjs"), "--mode", "live", "--config", configPath, "--output", output,
+      "--auth-path", authPath, "--browser-module", browser];
+    const result = run(process.execPath, args);
+    assert.equal(result.status, 2, result.stderr);
+    assert.match(result.stderr, /ENOENT/, result.stderr);
+    assert(result.stderr.includes(authPath), result.stderr);
+    const lines = result.stdout.trim().split("\n").map(line => JSON.parse(line));
+    assert.equal(lines.length, 1, result.stdout);
+    const { bootstrapProbe } = lines[0];
+    assert(bootstrapProbe?.symlinkDenied && bootstrapProbe.backend?.workspaceEscapeDenied);
+    assert(!existsSync(bootstrapProbe.home), "isolated child HOME cleanup");
+    assert(!existsSync(output) && !existsSync(registry) && !existsSync(authPath), "no run, slots or credentials");
+    for (const file of [...bootstrapProbe.denied, path.join(temp, "symlink-write")]) assert(!existsSync(file));
+    // A forged child marker must not remove the existing HOME check.
+    const mismatch = run(process.execPath, [...args, "--isolated-home", candidate]);
+    assert.equal(mismatch.status, 2, mismatch.stderr); assert.equal(mismatch.stdout, "");
+    assert(!mismatch.stderr.includes(authPath), mismatch.stderr);
+    const noChannel = run(process.execPath, [...args, "--isolated-home", temp]);
+    assert.equal(noChannel.status, 2, noChannel.stderr); assert.equal(noChannel.stdout, "");
+    assert(!noChannel.stderr.includes(authPath), noChannel.stderr);
+    const unsupported = run(process.execPath, ["--input-type=module", "-e", `
+      import assert from 'node:assert/strict';
+      import { runComparison } from ${JSON.stringify(new URL("./eval-skill-loading.mjs", import.meta.url).href)};
+      Object.defineProperty(process, 'platform', { value: 'linux' });
+      for (const isolatedHome of [undefined, ${JSON.stringify(temp)}])
+        await assert.rejects(() => runComparison({ config: ${JSON.stringify(config)}, output: ${JSON.stringify(output)},
+          authPath: ${JSON.stringify(authPath)}, browserModule: ${JSON.stringify(browser)}, isolatedHome }),
+          { code: 'ERR_ASSERTION', actual: 'linux', expected: 'darwin' });
+      console.log(JSON.stringify({ unsupportedPlatformRejected: 2 }));
+    `]);
+    assert.equal(unsupported.status, 0, unsupported.stderr);
+    assert.deepEqual(JSON.parse(unsupported.stdout), { unsupportedPlatformRejected: 2 });
+    console.log("[test:skill-loading-bootstrap] outer/inner CLI reached missing auth; backend HTTP passed; OS/IPC/HOME/platform boundaries held; no SDK calls or slots");
+    return { commands, bootstrapProbe, sdkCalls: 0, providerCalls: 0, modelCalls: 0, reservedSlots: 0 };
+  } finally {
+    cleanupTempRoot(tempRoot); assert(!existsSync(temp), "bootstrap fixture cleanup");
+    console.log(JSON.stringify({ bootstrapCommands: commands }));
+  }
 }
 
 export async function testSubmissionContract({ execute = false, validateArguments } = {}) {

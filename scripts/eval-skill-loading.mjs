@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import { readFileSync, writeFileSync, mkdirSync, cpSync, chmodSync, lstatSync, realpathSync, rmSync, renameSync, mkdtempSync, existsSync } from "node:fs";
 import { spawn, spawnSync } from "node:child_process";
 import net from "node:net";
-import { once } from "node:events";
+import { once, on } from "node:events";
+import { randomUUID } from "node:crypto";
 import { syncBuiltinESMExports } from "node:module";
 import os from "node:os";
 import path from "node:path";
@@ -49,8 +50,22 @@ export function sandboxCapability() {
   assert.equal(probe.status, 0, "unresolved: OS sandbox unavailable");
 }
 
-export function isolatedQuantities(workspace, input) {
+export async function isolatedQuantities(workspace, input) {
   workspace = realpathSync(workspace);
+  if (process.send) {
+    // The live child cannot nest sandbox-exec; the outer process applies the unchanged per-call boundary.
+    const id = randomUUID(), replies = on(process, "message", { signal: AbortSignal.timeout(10000), close: ["disconnect"] });
+    try {
+      process.send({ type: "quantities", id, workspace, input });
+      for await (const [reply] of replies) {
+        if (reply.id !== id) continue;
+        assert.equal(reply.type, "quantities");
+        if (reply.error) throw new Error(reply.error);
+        return reply.result;
+      }
+      throw new Error("unresolved: outer sandbox channel disconnected");
+    } finally { await replies.return(); }
+  }
   const program = 'import { quantities } from "./app.mjs"; process.stdout.write(JSON.stringify(await quantities(JSON.parse(process.argv[1]))));';
   const result = spawnSync("/usr/bin/sandbox-exec", ["-p", sandboxProfile, process.execPath, "--permission", `--allow-fs-read=${workspace}`, "--input-type=module", "-e", program, JSON.stringify(input)],
     { cwd: workspace, encoding: "utf8", timeout: 5000, maxBuffer: 1024 * 1024, env: { PATH: process.env.PATH, HOME: workspace, TMPDIR: workspace } });
@@ -160,7 +175,8 @@ export function createFixtureTools({ config, slot, sandbox, directory, browser, 
       let proof;
       if (fixture.id === "backend") {
         // Execute untrusted code outside the HTTP event callback so failures reject the tool, not the process.
-        const responses = new Map(oracle.cases.map(entry => [JSON.stringify(entry.input), isolatedQuantities(root, entry.input)]));
+        const responses = new Map();
+        for (const entry of oracle.cases) responses.set(JSON.stringify(entry.input), await isolatedQuantities(root, entry.input));
         proof = await checkBackend(input => responses.get(JSON.stringify(input)), oracle);
       }
       else if (fixture.id === "ui") {
@@ -320,8 +336,18 @@ async function isolatedLiveProcess({ config, output, authPath, browserModule }) 
     const configPath = path.join(home, "config.json"); writeFileSync(configPath, JSON.stringify(config));
     child = spawn("/usr/bin/sandbox-exec", ["-p", profile, process.execPath, fileURLToPath(import.meta.url),
       "--mode", "live", "--config", configPath, "--output", output, "--auth-path", path.resolve(authPath),
-      "--browser-module", path.resolve(browserModule), "--isolated-home", home], { cwd: home, detached: true, stdio: ["ignore", "pipe", "pipe"],
+      "--browser-module", path.resolve(browserModule), "--isolated-home", home], { cwd: home, detached: true, stdio: ["ignore", "pipe", "pipe", "ipc"],
       env });
+    child.on("message", async request => {
+      let reply;
+      try {
+        assert.deepEqual(Object.keys(request).sort(), ["id", "input", "type", "workspace"], "denied: unsupported sandbox request fields");
+        assert(request.type === "quantities" && typeof request.id === "string", "denied: unsupported sandbox request");
+        assert(typeof request.workspace === "string" && realpathSync(request.workspace).startsWith(home + path.sep), "denied: workspace outside isolated HOME");
+        reply = { type: "quantities", id: request.id, result: await isolatedQuantities(request.workspace, request.input) };
+      } catch (error) { reply = { type: "quantities", id: request?.id, error: error.message }; }
+      if (child.connected) child.send(reply);
+    });
     child.stdout.on("data", chunk => process.stdout.write(chunk));
     child.stderr.on("data", chunk => process.stderr.write(chunk));
     let code;
@@ -355,9 +381,13 @@ export async function runComparison({ config, configPath, output, resultsFile, a
   }
   assert(!resultsFile, "live mode cannot accept synthetic results");
   assert(authPath && browserModule, "unresolved: explicit existing --auth-path and --browser-module required before any live attempt");
-  sandboxCapability();
-  if (!isolatedHome) return isolatedLiveProcess({ config, output, authPath, browserModule });
+  if (!isolatedHome) {
+    sandboxCapability();
+    return isolatedLiveProcess({ config, output, authPath, browserModule });
+  }
+  assert.equal(process.platform, "darwin", "unresolved: live execution requires the installed macOS sandbox boundary");
   assert.equal(realpathSync(process.env.HOME), realpathSync(isolatedHome), "isolated HOME mismatch");
+  assert.equal(typeof process.send, "function", "unresolved: isolated runner requires the outer sandbox channel");
   const { loadInstalledRuntime, createIsolatedAuthStorage, createCapturedSession } = await import("./skill-loading/runtime-adapter.mjs");
   const { createCapture } = await import("./skill-loading/capture-extension.mjs");
   const restoreStartupNetwork = guardProvider({ baseUrl: "http://127.0.0.1:1" });
