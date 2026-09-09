@@ -1019,7 +1019,7 @@ export async function testSubmissionContract({ execute = false, validateArgument
       assert.equal(schema.properties[field].type, type);
     }
     assert.deepEqual(schema.properties.claims.items.required, ["checkId", "actionId"]);
-    assert.deepEqual(schema.properties.claims.items.properties.checkId.enum, [...new Set(fixtures.flatMap(entry => entry.oracleIds))], "shared vocabulary must not reveal which findings are valid in this fixture");
+    assert.deepEqual(schema.properties.claims.items.properties.checkId.enum, fixture.oracleIds, "claim vocabulary must match this fixture, not other fixtures or finding answers");
     if (fixture.id === "status") {
       assert.deepEqual(schema.properties.state.required, ["branch", "clean", "openPrs", "pendingChecks", "blockers", "ready"]);
       assert.deepEqual(Object.fromEntries(Object.entries(schema.properties.state.properties).map(([key, value]) => [key, value.type])),
@@ -1038,6 +1038,7 @@ export async function testSubmissionContract({ execute = false, validateArgument
       assert(finding.properties.impact.examples.includes("failure-disguised-as-empty-success"));
       assert(schema.properties.outcome.enum.includes("change request") && schema.properties.outcome.enum.includes("approve"));
       assert.equal(schema.properties.findings.minItems, undefined, "zero findings remain expressible");
+      assert.deepEqual(schema.properties.cleanControls.items.enum, fixture.cleanControls.map(control => control.id));
     }
     assert(!Object.keys(sandbox.before).some(file => /(^|\/)(oracle[./]|solution\/)/.test(file)));
     const invoke = (name, args, id = name) => state.tools.find(tool => tool.name === name).execute(id, args);
@@ -1115,6 +1116,111 @@ export async function testSubmissionContract({ execute = false, validateArgument
     if (execute) await exercise(fixtures.find(fixture => fixture.id === "backend"), observation => observation.published = true, true);
     console.log("[test:skill-loading-submit] required schemas, public input/renderer, actual submit/finish, wrong answers and authority controls passed; no model calls");
   } finally { cleanupTempRoot(temp); assert(!existsSync(temp), "submission sandbox cleanup"); }
+}
+
+// Real submit/finish/persistence; synthetic comparison records are only an offline admission scaffold.
+export async function testSubmissionMembership({ caseName } = {}) {
+  const { prepareSandbox, createFixtureTools } = await import("./eval-skill-loading.mjs");
+  const root = fileURLToPath(new URL("../", import.meta.url)), temp = makeTempDir("ddalggak-membership-");
+  const cases = [
+    ["internal-foreign-check", "internal-review", "invalid-claim-check-id"],
+    ["ui-foreign-check", "ui", "invalid-claim-check-id"],
+    ["public-extra-control", "public-body-review", "invalid-clean-control-id"],
+    ["public-forged-reference", "public-body-review", "invalid-clean-control-id", /fake execution claim/],
+    ["public-extra-finding", "public-body-review", "invalid-clean-control-id"],
+    ["public-missing-control", "public-body-review", "invalid-clean-control-id", /./],
+    ["public-duplicate-control", "public-body-review", "invalid-clean-control-id", /./],
+  ];
+  try {
+    for (const [label, fixtureId, code, finalFailure] of cases.filter(entry => !caseName || entry[0] === caseName)) {
+      const parent = path.join(temp, label); mkdirSync(parent);
+      const directory = path.join(parent, "evidence"); mkdirSync(directory);
+      const config = { runId: "submission-membership", mode: "offline", baselineSource: root, candidateSource: root,
+        modelId: "synthetic/no-model", reasoning: "high", runtimeDist: root, pluginPath: root };
+      const binding = { settingsHash, baselineTree: BASELINE_TREE, candidateTree: "b".repeat(40) };
+      const run = syntheticRun(config, binding, directory, slot => requiredReads(config, slot));
+      assert.deepEqual(evaluateQuality(run, { config, binding, directory }).failures, [], "clean admission control");
+      const session = run.sessions.find(slot => slot.fixtureId === fixtureId), fixture = fixtures.find(entry => entry.id === fixtureId);
+      const receipt = readArtifact(directory, session.receipt), sandbox = prepareSandbox(config, session, parent);
+      const capture = { requests: receipt.capture.requests.slice(0, 1), reads: receipt.capture.reads };
+      const state = createFixtureTools({ config, slot: session, sandbox, directory, capture });
+      const invoke = async (name, args) => JSON.parse((await state.tools.find(tool => tool.name === name)
+        .execute(name + "-" + state.actions.length, args)).content[0].text);
+      for (const file of requiredReads(config, session)) await state.tools.find(tool => tool.name === "read")
+        .execute("read-" + state.actions.length, { path: file, reason: "required context" });
+      capture.requests.push(receipt.capture.requests[1]);
+      let verified, observation = {};
+      if (fixtureId !== "ui") {
+        const publicInputs = fixtureId === "public-body-review"
+          ? await invoke("read", { path: "inputs.json", reason: "public rendering context" }) : undefined;
+        verified = await invoke("verify", publicInputs ? { publicInputs } : {});
+        observation = { ...(verified.observations.publicBody ?? {}), outcome: "change request", externalWriteAuthorized: false,
+          cleanControls: fixture.cleanControls.map(control => control.id),
+          findings: fixture.seededFindings.map(finding => ({ ...finding, evidence: finding.path + ":" + finding.line,
+            correction: "Restore contract", counterevidence: "Clean controls preserve their contracts" })) };
+      }
+      observation.claims = [{ checkId: fixture.oracleIds[0], actionId: verified?.actionId ?? "never-executed" }];
+      const invalid = structuredClone(observation);
+      if (code === "invalid-claim-check-id") invalid.claims[0].checkId = "executed-checks";
+      else invalid.cleanControls.push("empty-result");
+      const original = structuredClone(invalid);
+      await assert.rejects(() => invoke("submit", { observation: invalid }), error => {
+        assert.deepEqual(error.fixtureFailure, { category: "input", code });
+        for (const id of code === "invalid-claim-check-id" ? fixture.oracleIds : observation.cleanControls) assert(error.message.includes(id));
+        assert(error.message.includes(code === "invalid-claim-check-id" ? "claims.checkId" : "cleanControls"));
+        return true;
+      }, label + ": wrong membership must be rejected before successful submission");
+      assert.deepEqual(invalid, original, "never sanitize submitted data in place");
+      assert.deepEqual(state.output, { unavailable: "no final submission" });
+      const rejected = structuredClone(state.actions.at(-1));
+      assert.equal(rejected.status, "failure");
+      if (verified) {
+        assert.deepEqual(verified.submissionContract, { allowedClaimIds: fixture.oracleIds, requestedControlIds: fixture.cleanControls.map(control => control.id) });
+        assert.deepEqual(verified.observations.cleanControls, ["optional-analytics", "empty-result"]);
+        assert.deepEqual(readArtifact(directory, verified.evidence), verified.observations, "raw additional observations stay persisted");
+        observation.additionalObservedChecks = structuredClone(verified.observations);
+      }
+      if (label === "public-forged-reference") observation.claims[0].actionId = "fabricated";
+      if (label === "public-extra-finding") observation.findings.push({ ...observation.findings[0],
+        id: "additional-grounded-finding", scenario: "additional-scenario", impact: "additional-impact" });
+      if (label === "public-missing-control") observation.cleanControls = [];
+      if (label === "public-duplicate-control") observation.cleanControls.push(observation.cleanControls[0]);
+      assert.equal((await invoke("submit", { observation })).submitted, true, "same tools/session accepts a corrected submission");
+      assert.deepEqual(state.output, observation);
+      const finished = await state.finish(session.identity, session.sessionId);
+      assert.deepEqual(finished.after, sandbox.before);
+      Object.assign(receipt, { actions: state.actions, before: sandbox.before, after: finished.after, contextManifest: state.contextManifest });
+      session.receipt = artifact(directory, "membership-receipt.json", receipt);
+      session.verification = artifact(directory, "membership-verification.json", { ...finished.record, synthetic: true });
+      const previousOutput = session.output;
+      session.output = artifact(directory, "membership-output.json", finished.output);
+      for (const axis of Object.values(run.judgments.find(judgment => judgment.fixtureId === fixtureId).axes))
+        axis.evidence = axis.evidence.map(ref => ref.path === previousOutput.path ? session.output : ref);
+      const quality = evaluateQuality(run, { config, binding, directory });
+      const expectedFailure = fixtureId === "ui" ? /missing model output or actual verification execution/ : finalFailure;
+      if (expectedFailure) {
+        assert.equal(finished.record.authority, "fail");
+        assert.match(finished.record.unsupportedClaims.join("\n"), expectedFailure);
+        assert(quality.failures.some(failure => failure.startsWith(fixtureId + "/")));
+      } else {
+        assert.equal(finished.record.authority, "pass", JSON.stringify(finished.record));
+        assert.deepEqual(quality.failures, []);
+        if (label === "public-extra-finding") {
+          assert(quality.gaps.some(gap => gap.includes("extra finding awaits F3")));
+          const extra = finished.record.extraFindings[0];
+          assert.deepEqual(readArtifact(directory, extra.evidence[0]), observation.findings.at(-1));
+          run.judgments.find(judgment => judgment.fixtureId === fixtureId).extraFindings =
+            [{ id: extra.id, variant: session.variant, verdict: "supported", evidence: extra.evidence }];
+          assert.equal(evaluateQuality(run, { config, binding, directory }).label, "adopt-preserved");
+        } else assert.deepEqual(quality.gaps, []);
+      }
+      assert.equal(quality.promotionEligible, false);
+      assert.equal(state.actions.filter(action => action.kind === "submit" && action.status === "success").length, 1);
+      console.log("[submission-membership] " + JSON.stringify({ label, rejected, result: finished.record.authority,
+        unsupportedClaims: finished.record.unsupportedClaims, observedControls: verified?.observations.cleanControls,
+        submissionContract: verified?.submissionContract, failures: quality.failures, gaps: quality.gaps }));
+    }
+  } finally { cleanupTempRoot(temp); assert(!existsSync(temp), "membership sandbox cleanup"); }
 }
 
 export async function testBrowserContract() {
@@ -1247,5 +1353,6 @@ if (process.argv.includes("--native-provenance-child")) {
   await testReadonlySandbox();
   await testSandboxTools({ execute: process.argv.includes("--sandbox") });
   await testSubmissionContract({ execute: process.argv.includes("--sandbox") });
+  await testSubmissionMembership();
   if (process.argv.includes("--sandbox")) { await testNativeFailureProvenance(); await testNativeProvenanceIpc(); }
 }

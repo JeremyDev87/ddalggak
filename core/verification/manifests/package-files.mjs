@@ -383,6 +383,7 @@ export const requiredPackageFiles = [
   "scripts/test-skill-loading-quality-report.mjs",
   "scripts/test-skill-loading-runtime.mjs",
   "scripts/test-skill-loading-session-failure.mjs",
+  "scripts/test-skill-loading-ui-failure.mjs",
   "scripts/test-ulw-runtime-parity.mjs",
 ];
 // <!-- ddalggak:generated:end package-required-asset-list -->

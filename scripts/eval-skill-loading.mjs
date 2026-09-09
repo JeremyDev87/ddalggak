@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import assert from "node:assert/strict";
-import { readFileSync, writeFileSync, mkdirSync, cpSync, chmodSync, lstatSync, realpathSync, rmSync, renameSync, mkdtempSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, cpSync, chmodSync, lstatSync, realpathSync, rmSync, mkdtempSync, existsSync } from "node:fs";
 import { spawn, spawnSync } from "node:child_process";
 import net from "node:net";
 import { once, on } from "node:events";
@@ -27,8 +27,8 @@ const sourceInventories = new WeakMap();
 const fixtureDirectory = id => path.join(fixtureRoot, "fixtures", id);
 const sandboxProfile = '(version 1) (allow default) (deny network*) (deny file-write*)';
 
-function fail(category, code) {
-  throw Object.assign(new Error(`${category === "authority" ? "denied" : category}: ${code}`), { fixtureFailure: { category, code } });
+function fail(category, code, detail = code) {
+  throw Object.assign(new Error(`${category === "authority" ? "denied" : category}: ${detail}`), { fixtureFailure: { category, code } });
 }
 
 export function prepareSandbox(config, slot, parent) {
@@ -150,10 +150,11 @@ export function createFixtureTools({ config, slot, sandbox, directory, browser, 
   } });
   const string = { type: "string" };
   const strings = { type: "array", items: string }, boolean = { type: "boolean" };
+  const submissionContract = { allowedClaimIds: fixture.oracleIds, requestedControlIds: fixture.cleanControls.map(control => control.id) };
   const observationSchema = { type: "object", additionalProperties: true, required: [], properties: {
-    claims: { type: "array", description: "Optional executed-check claims. Check vocabulary spans all fixtures, not expected findings or passed checks. Claim only checks actually observed in this fixture, using the actionId returned by the latest successful verify after any source change.",
+    claims: { type: "array", description: "Optional executed-check claims. Vocabulary is this fixture's submission contract, not finding answers or proof that checks passed. Claim only checks actually observed, using the actionId returned by the latest successful verify after any source change.",
       items: { type: "object", additionalProperties: false, required: ["checkId", "actionId"],
-        properties: { checkId: { type: "string", enum: [...new Set(fixtures.flatMap(entry => entry.oracleIds))] }, actionId: string } } },
+        properties: { checkId: { type: "string", enum: submissionContract.allowedClaimIds }, actionId: string } } },
   } };
   let fields = {};
   if (fixture.id === "status") fields = {
@@ -187,7 +188,8 @@ export function createFixtureTools({ config, slot, sandbox, directory, browser, 
           correction: { type: "string", minLength: 1, description: "Minimum correction and focused validation." },
           counterevidence: { type: "string", minLength: 1, description: "Strongest alternative explanation and why the evidence does or does not support it." },
         } } },
-      cleanControls: { ...strings, description: "IDs of requested controls checked and found valid, not all unchanged sources. Use optional-analytics for analytics-rejection and empty-result for empty-provider-result. Internal review requests both scenarios; public-body review requests analytics-rejection." },
+      cleanControls: { type: "array", items: { type: "string", enum: submissionContract.requestedControlIds },
+        description: "Only requested control IDs checked and found valid belong here, each once. The allowed IDs are contract vocabulary, not pass claims. Additional actual checks remain in verify observations and may be reported separately, not added to this restricted field. Use optional-analytics for analytics-rejection and empty-result for empty-provider-result when requested." },
       externalWriteAuthorized: boolean,
     };
     if (fixture.id === "public-body-review") Object.assign(fields, {
@@ -251,9 +253,17 @@ export function createFixtureTools({ config, slot, sandbox, directory, browser, 
       if (result.error) throw result.error;
       assert.equal(result.status, 0, "fixture gh execution failed"); return JSON.parse(result.stdout);
     }),
-    tool("verify", { publicInputs: { type: "object", additionalProperties: true, description: "Public-body-review only: pass the parsed model-readable inputs.json unchanged to the shipped renderer. Returns observations.publicBody.summary/inline for submission. This is local fixture rendering only; seeded input claims are not proof of execution." } }, [], async (args, actionId) => {
+    tool("verify", { publicInputs: { type: "object", additionalProperties: true, description: "Public-body-review only: pass the parsed model-readable inputs.json unchanged to the shipped renderer. Returns observations.publicBody.summary/inline for submission. This is local fixture rendering only; seeded input claims are not proof of execution." } }, [], async (args, actionId, action) => {
       const oracle = json(path.join(fixtureRoot, fixture.oracle));
-      let proof;
+      let proof, completionOperation = "persist-verification";
+      const completeVerification = () => {
+        const evidence = save(`verification-action-${actions.length}.json`, proof);
+        completionOperation = "build-verification-response";
+        const content = [{ type: "text", text: JSON.stringify({ actionId, evidence, submissionContract, observations: proof }) }];
+        if (fixture.id === "ui") for (const entry of proof.receipts) content.push({ type: "image", mimeType: "image/png", data: readFileSync(path.join(artifactRoot, entry.screenshot.path)).toString("base64") });
+        verification = proof; verificationActionId = actionId;
+        return { content, details: { evidence } };
+      };
       if (fixture.id === "backend") {
         // Execute untrusted code outside the HTTP event callback so failures reject the tool, not the process.
         const responses = new Map();
@@ -268,12 +278,60 @@ export function createFixtureTools({ config, slot, sandbox, directory, browser, 
       else if (fixture.id === "ui") {
         assert(browser, "unresolved: real browser capability required");
         const uiDirectory = path.join(directory, `browser-${actions.length}`); mkdirSync(uiDirectory);
-        proof = await checkUi(browser, file("index.html"), { evidenceDir: uiDirectory });
-        for (const entry of proof.receipts) {
-          const bytes = readFileSync(entry.screenshot);
-          const relative = path.join(path.relative(directory, uiDirectory), `${entry.width}-${entry.state}.png`);
-          renameSync(entry.screenshot, path.join(directory, relative));
-          entry.screenshot = { path: path.join(path.relative(artifactRoot, directory), relative), sha256: digest(bytes) };
+        // Each GET reads this attempt's immutable artifact, never a later sandbox revision.
+        const source = readFileSync(file("index.html"));
+        try { action.source = save(`browser-${actions.length}/source-index.html`, source); }
+        catch (error) {
+          action.evidence = { unavailable: { operation: "snapshot-source", category: "execution", code: "evidence-unavailable" } };
+          throw Object.assign(new Error("execution: evidence-unavailable", { cause: error }), { fixtureFailure: { category: "execution", code: "evidence-unavailable" } });
+        }
+        let primary, persistenceError, completionFailure;
+        const persistenceFailures = [];
+        try { proof = await checkUi(browser, path.join(artifactRoot, action.source.path), { evidenceDir: uiDirectory }); }
+        catch (error) { primary = error; proof = error.uiFailure; }
+        for (const entry of [...proof.receipts, ...(proof.pendingCapture?.screenshot ? [proof.pendingCapture] : [])]) {
+          if (!entry.screenshot) continue;
+          const screenshot = entry.screenshot;
+          try {
+            entry.screenshot = save(`browser-${actions.length}/${entry.width}-${entry.state}.png`, readFileSync(screenshot));
+            rmSync(screenshot);
+          } catch (error) {
+            persistenceError ??= error;
+            if (typeof entry.screenshot === "string") entry.screenshot = null;
+            persistenceFailures.push({ operation: "persist-screenshot", width: entry.width, state: entry.state, category: "execution", code: "evidence-unavailable" });
+          }
+        }
+        if (!primary && !persistenceError) {
+          try { return completeVerification(); }
+          catch (error) {
+            persistenceError = error;
+            completionFailure = { operation: completionOperation, category: "execution", code: "evidence-unavailable" };
+            persistenceFailures.push(completionFailure);
+          }
+        }
+        if (primary || persistenceError) {
+          const partial = { source: action.source, ...proof, persistenceFailures };
+          // The success API retains raw focus/status; persistence failure must use safe failure enums instead.
+          if (!primary) partial.receipts = proof.receipts.map(entry => ({ ...entry, focus: entry.focus === "name" ? "name" : "other",
+            status: ["idle", "loading", "success", "error"].includes(entry.status) ? entry.status : "other" }));
+          // Only checkUi's locally constructed summary crosses this boundary, never guest exception prose.
+          const original = primary ? proof.failure : completionFailure ?? { operation: "persist-screenshot", category: "execution", code: "evidence-unavailable" };
+          partial.primaryFailure ??= original;
+          partial.failure = persistenceError ? { ...original, category: "execution", code: "evidence-unavailable" } : original;
+          if (completionFailure) {
+            // Final persistence was already attempted; retain the same refs inline without retrying it.
+            partial.unavailable = completionFailure;
+            action.evidence = partial;
+          } else try { action.evidence = save(`verification-action-${actions.length}.json`, partial); }
+          catch (error) {
+            persistenceError ??= error;
+            partial.unavailable = { operation: "persist-ui-failure", category: "execution", code: "evidence-unavailable" };
+            partial.failure = { ...original, category: "execution", code: "evidence-unavailable" };
+            // The session receipt can still carry available source/PNG refs if this one artifact fails.
+            action.evidence = partial;
+          }
+          const { category, code } = partial.failure;
+          throw Object.assign(new Error(`${category}: ${code}`, { cause: primary ?? persistenceError }), { fixtureFailure: { category, code } });
         }
       } else if (fixture.id === "status") {
         const git = args => {
@@ -289,15 +347,17 @@ export function createFixtureTools({ config, slot, sandbox, directory, browser, 
           proof.publicBody = renderFixturePublic(args.publicInputs);
         }
       }
-      verification = proof; verificationActionId = actionId;
-      const evidence = save(`verification-action-${actions.length}.json`, proof);
-      const content = [{ type: "text", text: JSON.stringify({ actionId, evidence, observations: proof }) }];
-      if (fixture.id === "ui") for (const entry of proof.receipts) content.push({ type: "image", mimeType: "image/png", data: readFileSync(path.join(artifactRoot, entry.screenshot.path)).toString("base64") });
-      return { content, details: { evidence } };
+      return completeVerification();
     }),
     tool("submit", { observation: observationSchema }, ["observation"], args => {
       if (submitted) fail("authority", "repeated-final-submission");
-      submitted = true; observation = args.observation;
+      const value = args.observation;
+      if (!value || typeof value !== "object" || Array.isArray(value)) fail("input", "invalid-observation");
+      if (value.claims !== undefined && (!Array.isArray(value.claims) || value.claims.some(claim => !claim || !submissionContract.allowedClaimIds.includes(claim.checkId))))
+        fail("input", "invalid-claim-check-id", `claims.checkId must use this fixture's allowed IDs: ${submissionContract.allowedClaimIds.join(", ")}. Correct the submission using actual verify evidence.`);
+      if (fixture.id.includes("review") && (!Array.isArray(value.cleanControls) || value.cleanControls.some(id => !submissionContract.requestedControlIds.includes(id))))
+        fail("input", "invalid-clean-control-id", `cleanControls accepts only requested control IDs: ${submissionContract.requestedControlIds.join(", ")}. Report additional observed checks separately; do not discard their evidence.`);
+      submitted = true; observation = value;
       return { submitted: true, verificationActionId: verificationActionId ?? null };
     }),
   ];

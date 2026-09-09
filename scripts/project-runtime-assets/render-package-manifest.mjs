@@ -48,6 +48,7 @@ export function requiredPackageFiles(commands) {
     "scripts/test-skill-loading-baseline.mjs",
     "scripts/test-skill-loading-fixtures.mjs",
     "scripts/test-skill-loading-session-failure.mjs",
+    "scripts/test-skill-loading-ui-failure.mjs",
     "scripts/test-skill-loading-quality-report.mjs",
     "scripts/test-skill-loading-runtime.mjs",
     "scripts/eval-skill-loading.mjs",
