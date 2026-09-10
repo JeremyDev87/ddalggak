@@ -74,6 +74,7 @@ export async function testFixtures({ evidenceDir, browserModule } = {}) {
     mkdirSync(workspace);
     execFileSync("git", ["init", "--quiet", "--initial-branch=feature/quantity-total", workspace]);
     const git = args => execFileSync("git", ["-C", workspace, ...args], { encoding: "utf8" }).trim();
+    writeFileSync(path.join(temp, "package.json"), JSON.stringify({ type: "module" }) + "\n");
     copyFileSync(path.join(temp, "gh.mjs"), path.join(temp, "gh"));
     chmodSync(path.join(temp, "gh"), 0o755);
     const env = { ...process.env, PATH: `${temp}${path.delimiter}${process.env.PATH}` };
