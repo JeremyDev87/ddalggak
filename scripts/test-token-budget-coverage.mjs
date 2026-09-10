@@ -4,12 +4,14 @@
 // repo into a temp tree, mutates one input, runs the admission gate there, and
 // asserts it fails closed with the expected reason — so a future refactor that
 // drops a check is caught instead of silently degrading the gate to a no-op.
-import { appendFileSync, readFileSync, writeFileSync } from "node:fs";
+import assert from "node:assert/strict";
+import { appendFileSync, readFileSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
 import { runNodeScript } from "./test-lib/process.mjs";
 import { withTempRepo } from "./test-lib/repo-fixture.mjs";
+import { loadCommandContracts } from "../bin/lib/command-contracts.mjs";
 
 const rootDir = process.cwd();
 function runAdmission(tempDir) {
@@ -54,6 +56,89 @@ function assertFail(name, result, expectedMessage) {
 
 const TOKEN_BUDGETS = "core/token-budgets.yaml";
 const EXEMPTIONS_HEADER = "reference_budget_exemptions:\n";
+
+function jsonReport(tempDir, admission = false) {
+  const result = runNodeScript("scripts/project-runtime-assets.mjs", ["--report", "--json", ...(admission ? ["--admission"] : [])], { cwd: tempDir });
+  assert.equal(result.error, undefined);
+  if (!admission) assert.equal(result.status, 0, result.stderr);
+  return { result, report: JSON.parse(result.stdout) };
+}
+
+// Independent file-based oracle: do not reuse the report's selector or estimator.
+function exactRows(tempDir) {
+  const { result, report } = jsonReport(tempDir);
+  assert.equal(result.status, 0, result.stderr);
+  const human = runNodeScript("scripts/project-runtime-assets.mjs", ["--report"], { cwd: tempDir });
+  assert.equal(human.status, 0, human.stderr);
+  const tables = human.stdout.split("\n").filter((line) => line.startsWith("| "));
+  const commands = loadCommandContracts(tempDir);
+  assert.equal(report.rows.length, 42);
+  const estimate = (files) => Math.ceil(files.reduce((sum, file) => sum + Array.from(readFileSync(path.join(tempDir, file), "utf8"))
+    .reduce((tokens, char) => tokens + (char.codePointAt(0) <= 127 ? 0.25 : 1.5), 0), 0));
+  for (const [index, row] of report.rows.entries()) {
+    const root = index < 21 ? "claude" : "codex";
+    const base = root === "claude" ? "ddalggak" : ".codex/skills/ddalggak";
+    const doc = commands[index % 21];
+    const required = ["references", "templates"].flatMap((kind) => doc[`required_${kind}`].map((name) => `${base}/${kind}/${name}`));
+    const conditional = [...new Set(["references", "templates"].flatMap((kind) => (doc[`conditional_${kind}`] || []).map((spec) => `${base}/${kind}/${spec.split("=")[1]}`)))];
+    const files = { bootstrap: `${base}/SKILL.md`, command_doc: `${base}/references/command-${doc.command}.md`, required, conditional };
+    const baseFiles = [files.bootstrap, files.command_doc, ...required];
+    const declared = [...baseFiles, ...conditional];
+    assert.equal(row.root, root);
+    assert.equal(row.command, doc.command);
+    assert.deepEqual(row.files, files);
+    assert.equal(new Set(declared).size, declared.length);
+    assert.equal(row.bootstrap_est_tokens, estimate([files.bootstrap]));
+    assert.equal(row.command_doc_est_tokens, estimate([files.command_doc]));
+    assert.equal(row.required_est_tokens, estimate(required));
+    assert.equal(row.conditional_est_tokens, estimate(conditional));
+    assert.equal(row.base_est_tokens, estimate(baseFiles));
+    assert.equal(row.est_tokens, estimate(declared));
+    assert.equal(row.conditional_delta_est_tokens, estimate(declared) - estimate(baseFiles));
+    assert.equal(row.total_bytes, declared.reduce((sum, file) => sum + statSync(path.join(tempDir, file)).size, 0));
+    const tableOffset = root === "claude" ? 0 : 23;
+    const headings = tables[tableOffset].split("|").slice(1, -1).map((cell) => cell.trim());
+    const cells = tables[tableOffset + 2 + index % 21].split("|").slice(1, -1).map((cell) => cell.trim());
+    for (const [column, heading] of headings.entries()) {
+      assert.equal(cells[column], String(row[heading] ?? "-"), `${root}/${doc.command}/${heading}`);
+    }
+  }
+  const admitted = jsonReport(tempDir, true);
+  assert.deepEqual(admitted.report.rows, report.rows);
+  assert.equal(admitted.result.status, report.overBudget + report.missingBudget + report.extraFailures.length > 0 ? 1 : 0);
+  assert.equal(report.extraFailures.length, 0, JSON.stringify(report.extraFailures));
+  console.log("[PASS] 42 exact file sets, fractional sums, declared/base split, JSON/human/admission parity");
+  return report;
+}
+
+withTempRepo("exact generated command accounting", (tempDir) => {
+  assertPass("generate isolated command documents", runNodeScript("scripts/project-runtime-assets.mjs", ["--write"], { cwd: tempDir }));
+  exactRows(tempDir);
+  // Force quarter-token edges and same basename across kinds. All real command
+  // contracts remain loaded; only review's assets are controlled here.
+  const reviewPath = path.join(tempDir, "core/commands/review.yaml");
+  replaceInFile(reviewPath, "  - code-shape=simplicity-deletability-gate.md", "  - code-shape=simplicity-deletability-gate.md\n  - another-shape=simplicity-deletability-gate.md");
+  replaceInFile(reviewPath, "  - delegated-review=review-brief.md", "  - delegated-review=review-brief.md\n  - another-review=review-brief.md");
+  replaceInFile(reviewPath, "required_templates:\n  []", "required_templates:\n  - review-quality-contract.md");
+  for (const base of ["ddalggak", ".codex/skills/ddalggak"]) {
+    writeFileSync(path.join(tempDir, base, "SKILL.md"), "a");
+    writeFileSync(path.join(tempDir, base, "references/command-review.md"), "한😀a");
+    const review = loadCommandContracts(tempDir).find((doc) => doc.command === "review");
+    for (const kind of ["references", "templates"]) {
+      for (const name of [...review[`required_${kind}`], ...(review[`conditional_${kind}`] || []).map((spec) => spec.split("=")[1])]) {
+        writeFileSync(path.join(tempDir, base, kind, name), "a");
+      }
+    }
+  }
+  const report = exactRows(tempDir);
+  for (const row of report.rows.filter((row) => row.command === "review")) {
+    assert.equal(row.base_est_tokens, 6);
+    assert.equal(row.est_tokens, 8);
+    assert.equal(row.conditional_delta_est_tokens, 2);
+    assert.equal(row.conditional_est_tokens, 3);
+  }
+  console.log("[PASS] OR assets counted once, kinds distinct, sum before ceil, delta is rounded declared minus base");
+});
 
 // Baseline: an unmutated copy must pass so the failing cases prove the mutation,
 // not a broken temp tree.
@@ -136,6 +221,45 @@ withTempRepo("budget above its ceiling fails", (tempDir) => {
     runAdmission(tempDir),
     "budget 40000 exceeds ceiling 30000",
   );
+});
+
+const rejectionCases = [
+  ["missing budget", (dir) => replaceInFile(path.join(dir, TOKEN_BUDGETS), "    status: 10500\n", ""), "claude/status: no budget declared"],
+  ["malformed budget", (dir) => replaceInFile(path.join(dir, TOKEN_BUDGETS), "    status: 10500\n", "    status: invalid\n"), "claude/status: no budget declared"],
+  ["missing ceiling", (dir) => replaceInFile(path.join(dir, TOKEN_BUDGETS), "    start: 34500\n", ""), "claude/start: no ceiling declared"],
+  ["malformed exemption cap", (dir) => replaceInFile(path.join(dir, TOKEN_BUDGETS), "    max_tokens: 2100\n", "    max_tokens: invalid\n"), "missing a positive integer max_tokens cap"],
+  ["duplicate exemption", (dir) => replaceInFile(path.join(dir, TOKEN_BUDGETS), EXEMPTIONS_HEADER, `${EXEMPTIONS_HEADER}  - reference: common-rules.md\n    max_tokens: 500\n`), "duplicate entry for 'common-rules.md'"],
+  ...["review-output-contract.md", "review-comment-style.md", "command-review.md"].map((reference) => [
+    `redundant exemption for ${reference}`,
+    (dir) => replaceInFile(path.join(dir, TOKEN_BUDGETS), EXEMPTIONS_HEADER, `${EXEMPTIONS_HEADER}  - reference: ${reference}\n    max_tokens: 2200\n`),
+    `reference ${reference} is both measured`,
+  ]),
+  ...["ddalggak", ".codex/skills/ddalggak"].flatMap((base) => [
+    [`missing ${base} command document`, (dir) => unlinkSync(path.join(dir, base, "references/command-review.md")), `${base}/references/command-review.md`],
+    [`missing ${base} conditional asset`, (dir) => unlinkSync(path.join(dir, base, "references/review-output-contract.md")), `${base}/references/review-output-contract.md`],
+    [`over-budget ${base} selected document`, (dir) => appendFileSync(path.join(dir, base, "references/command-review.md"), "x".repeat(160000)), "exceeds budget"],
+    [`over-cap ${base} exemption`, (dir) => appendFileSync(path.join(dir, base, "references/frontend-design-gate.md"), "x".repeat(8000)), "exceeds its exemption cap 2100"],
+  ]),
+  ["command document in required assets", (dir) => replaceInFile(path.join(dir, "core/commands/review.yaml"), "required_references:\n", "required_references:\n  - command-review.md\n"), "owned by its command base"],
+  ["malformed conditional declaration", (dir) => replaceInFile(path.join(dir, "core/commands/review.yaml"), "public-body=review-output-contract.md", "public-body=../review-output-contract.md"), "traversal-free Markdown basename"],
+];
+for (const [name, mutate, reason] of rejectionCases) {
+  withTempRepo(name, (tempDir) => {
+    mutate(tempDir);
+    assertFail(name, runAdmission(tempDir), reason);
+    const result = runNodeScript("scripts/project-runtime-assets.mjs", ["--report", "--json", "--admission"], { cwd: tempDir });
+    assertFail(`${name} JSON`, result, reason);
+    if (result.stdout) {
+      const report = JSON.parse(result.stdout);
+      assert.equal(report.rows.length, 42);
+      assert(report.overBudget + report.missingBudget + report.extraFailures.length > 0);
+    }
+  });
+}
+withTempRepo("JSON without report fails without writing", (tempDir) => {
+  const before = readFileSync(path.join(tempDir, "ddalggak/SKILL.md"));
+  assertFail("JSON requires report", runNodeScript("scripts/project-runtime-assets.mjs", ["--json", "--write"], { cwd: tempDir }), "--json requires --report");
+  assert.deepEqual(readFileSync(path.join(tempDir, "ddalggak/SKILL.md")), before);
 });
 
 console.log("\n[test:token-budget-coverage] passed");

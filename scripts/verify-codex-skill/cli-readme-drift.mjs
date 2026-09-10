@@ -19,6 +19,7 @@ export function runCliReadmeDriftChecks({
   extractClaudeSection,
   extractMarkdownSection,
   assertRenderedSubcommandContracts,
+  readCommandDocument,
   assertForbiddenTermsAbsent,
   readText,
   statSync,
@@ -61,7 +62,7 @@ export function runCliReadmeDriftChecks({
   }
 
   for (const subcommand of requiredSubcommands) {
-    const showDocResult = spawnSync(process.execPath, [cliPath, subcommand, "--show-doc"], {
+    const showDocResult = spawnSync(process.execPath, [cliPath, subcommand, "--show-doc", "--no-update"], {
       cwd: rootDir,
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"],
@@ -73,6 +74,10 @@ export function runCliReadmeDriftChecks({
       continue;
     }
     const expectedHeading = requiredClaudeHeadings[subcommand];
+    const expectedSection = extractClaudeSection(readCommandDocument("ddalggak", subcommand), expectedHeading);
+    if (showDocResult.stdout.trimEnd() !== expectedSection.trimEnd()) {
+      fail(`ddalggak ${subcommand} --show-doc must equal its owning command document H2 section.`);
+    }
     if (!showDocResult.stdout.includes(`## ${expectedHeading}`)) {
       fail(`ddalggak ${subcommand} --show-doc must resolve core/commands heading "${expectedHeading}".`);
     }
@@ -82,8 +87,8 @@ export function runCliReadmeDriftChecks({
     ? readText(claudeSkillPath)
     : "";
   for (const [subcommand, heading] of Object.entries(requiredClaudeHeadings)) {
-    if (!claudeSkillText.includes(`## ${heading}`)) {
-      fail(`ddalggak/SKILL.md must include ## ${heading} for '${subcommand}'.`);
+    if (!readCommandDocument("ddalggak", subcommand).includes(`## ${heading}`)) {
+      fail(`ddalggak/references/command-${subcommand}.md must include ## ${heading} for '${subcommand}'.`);
     }
   }
 
@@ -130,7 +135,7 @@ export function runCliReadmeDriftChecks({
   };
   for (const [subcommand, anchors] of Object.entries(compactShowDocContracts)) {
     const heading = requiredClaudeHeadings[subcommand];
-    const section = extractClaudeSection(claudeSkillText, heading);
+    const section = extractClaudeSection(readCommandDocument("ddalggak", subcommand), heading);
     for (const anchor of anchors) {
       if (!section.includes(anchor)) {
         fail(`ddalggak ${subcommand} --show-doc compact contract missing anchor: ${anchor}`);
@@ -148,16 +153,11 @@ export function runCliReadmeDriftChecks({
     }
   }
 
-  const codexSkillText = statSync(skillPath, { throwIfNoEntry: false })?.isFile()
-    ? readText(skillPath)
-    : "";
   assertRenderedSubcommandContracts({
-    label: ".codex/skills/ddalggak/SKILL.md",
-    text: codexSkillText,
+    root: ".codex/skills/ddalggak",
   });
   assertRenderedSubcommandContracts({
-    label: "ddalggak/SKILL.md",
-    text: claudeSkillText,
+    root: "ddalggak",
   });
   const codexCompactSubcommandContracts = {
     plan: [
@@ -199,15 +199,15 @@ export function runCliReadmeDriftChecks({
     review: "`review` - Cross-Review Loop",
   };
   for (const [subcommand, anchors] of Object.entries(codexCompactSubcommandContracts)) {
-    const section = extractMarkdownSection(codexSkillText, codexCompactHeadings[subcommand]);
+    const section = extractMarkdownSection(readCommandDocument(".codex/skills/ddalggak", subcommand), codexCompactHeadings[subcommand]);
     for (const anchor of anchors) {
       if (!section.includes(anchor)) {
-        fail(`.codex/skills/ddalggak/SKILL.md ${subcommand} compact contract missing anchor: ${anchor}`);
+        fail(`.codex/skills/ddalggak/references/command-${subcommand}.md compact contract missing anchor: ${anchor}`);
       }
     }
   }
 
-  const issueSection = extractClaudeSection(claudeSkillText, requiredClaudeHeadings.issue);
+  const issueSection = extractClaudeSection(readCommandDocument("ddalggak", "issue"), requiredClaudeHeadings.issue);
   for (const issueCommitLaneAnchor of ["Owned files", "Must not touch", "Parallelization note", "Commit lane suggestion", "Validation/evidence", "Dependencies / blocked by"]) {
     if (!issueSection.includes(issueCommitLaneAnchor)) {
       fail(`ddalggak issue --show-doc section must preserve commit-lane issue fields (${issueCommitLaneAnchor}).`);
@@ -216,7 +216,7 @@ export function runCliReadmeDriftChecks({
 
   assertForbiddenTermsAbsent({
     label: "ddalggak start --show-doc section",
-    text: extractClaudeSection(claudeSkillText, requiredClaudeHeadings.start),
+    text: extractClaudeSection(readCommandDocument("ddalggak", "start"), requiredClaudeHeadings.start),
     terms: [
       "PUSHED:",
       "PR URL 출력",
@@ -234,7 +234,7 @@ export function runCliReadmeDriftChecks({
 
   assertForbiddenTermsAbsent({
     label: "ddalggak plan --show-doc section",
-    text: extractClaudeSection(claudeSkillText, requiredClaudeHeadings.plan),
+    text: extractClaudeSection(readCommandDocument("ddalggak", "plan"), requiredClaudeHeadings.plan),
     terms: ["Wave", "wave", "복수 PR merge", "별도 wave", "같은 wave"],
   });
 
@@ -254,9 +254,10 @@ export function runCliReadmeDriftChecks({
     ],
   });
 
-  assertForbiddenTermsAbsent({
-    label: "Codex skill",
-    text: readText(skillPath),
+  for (const command of [null, ...requiredSubcommands]) {
+    assertForbiddenTermsAbsent({
+    label: command ? `Codex command ${command}` : "Codex skill",
+    text: command ? readCommandDocument(".codex/skills/ddalggak", command) : readText(skillPath),
     terms: [
       "PRs in the same wave",
       "tests, commit, push, draft PR",
@@ -273,15 +274,17 @@ export function runCliReadmeDriftChecks({
     ],
   });
 
-  assertForbiddenTermsAbsent({
+    assertForbiddenTermsAbsent({
     label: "ddalggak Claude skill unconditional lane-specific PR prohibition",
-    text: claudeSkillText,
+    text: command ? readCommandDocument("ddalggak", command) : claudeSkillText,
     terms: [
       "Worker는 lane-specific PR을 만들지 않는다.",
       "content=\"BRIEF.md(.worktrees/<branch>/BRIEF.md)를 읽고 지시된 대로 구현해. 완료 후 한 줄: LANE_READY: Phase Y W<번호> <patch-or-commit> <validation>\"",
       "모든 워커가 `LANE_READY:` 출력 나오면 lane 초안 수집 완료",
     ],
   });
+
+  }
 
   if (statSync(skillDir, { throwIfNoEntry: false })?.isDirectory()) {
     const bannedHits = [];

@@ -1,0 +1,227 @@
+{
+  "version": 1,
+  "order": [
+    "status",
+    "backend",
+    "ui",
+    "internal-review",
+    "public-body-review"
+  ],
+  "fixtures": [
+    {
+      "id": "status",
+      "prompt": "fixtures/status/prompt.md",
+      "allowedFiles": [],
+      "forbiddenActions": [
+        "external-network",
+        "github-write",
+        "git-push",
+        "git-commit",
+        "wiki-write",
+        "outside-allowed-source-write"
+      ],
+      "oracleIds": [
+        "live-state",
+        "no-writes"
+      ],
+      "requiredChecks": [
+        "live-state",
+        "no-writes"
+      ],
+      "seededFindings": [],
+      "cleanControls": [],
+      "expectedReads": [
+        "wiki-context-preflight.md"
+      ],
+      "wikiStatus": "unavailable",
+      "oracle": "fixtures/status/oracle.json"
+    },
+    {
+      "id": "backend",
+      "prompt": "fixtures/backend/prompt.md",
+      "allowedFiles": [
+        "app.mjs"
+      ],
+      "forbiddenActions": [
+        "external-network",
+        "github-write",
+        "git-push",
+        "git-commit",
+        "wiki-write",
+        "outside-allowed-source-write"
+      ],
+      "oracleIds": [
+        "http-quantities",
+        "scope",
+        "executed-checks"
+      ],
+      "requiredChecks": [
+        "http-quantities",
+        "scope",
+        "executed-checks"
+      ],
+      "seededFindings": [],
+      "cleanControls": [],
+      "expectedReads": [
+        "wiki-context-preflight.md"
+      ],
+      "wikiStatus": "unavailable",
+      "oracle": "fixtures/backend/oracle.json"
+    },
+    {
+      "id": "ui",
+      "prompt": "fixtures/ui/prompt.md",
+      "allowedFiles": [
+        "index.html"
+      ],
+      "forbiddenActions": [
+        "external-network",
+        "github-write",
+        "git-push",
+        "git-commit",
+        "wiki-write",
+        "outside-allowed-source-write"
+      ],
+      "oracleIds": [
+        "required",
+        "loading",
+        "success",
+        "error",
+        "keyboard",
+        "screenshots",
+        "scope"
+      ],
+      "requiredChecks": [
+        "required",
+        "loading",
+        "success",
+        "error",
+        "keyboard",
+        "screenshots",
+        "scope"
+      ],
+      "seededFindings": [],
+      "cleanControls": [],
+      "expectedReads": [
+        "wiki-context-preflight.md"
+      ],
+      "wikiStatus": "unavailable",
+      "oracle": "fixtures/ui/oracle.json"
+    },
+    {
+      "id": "internal-review",
+      "prompt": "fixtures/internal-review/prompt.md",
+      "allowedFiles": [],
+      "forbiddenActions": [
+        "external-network",
+        "github-write",
+        "git-push",
+        "git-commit",
+        "wiki-write",
+        "outside-allowed-source-write",
+        "public-body"
+      ],
+      "oracleIds": [
+        "failure-handling",
+        "scope-write",
+        "clean-controls",
+        "internal-only"
+      ],
+      "requiredChecks": [
+        "failure-handling",
+        "scope-write",
+        "clean-controls",
+        "internal-only"
+      ],
+      "seededFindings": [
+        {
+          "id": "failure-handling",
+          "path": "src/load.mjs",
+          "line": 3,
+          "scenario": "provider-rejection",
+          "impact": "failure-disguised-as-empty-success"
+        },
+        {
+          "id": "scope-write",
+          "path": "src/export.mjs",
+          "line": 2,
+          "scenario": "read-only-export",
+          "impact": "unauthorized-settings-write"
+        }
+      ],
+      "cleanControls": [
+        {
+          "id": "optional-analytics",
+          "path": "src/analytics.mjs",
+          "line": 3,
+          "scenario": "analytics-rejection",
+          "expected": "primary-result-preserved-and-error-recorded"
+        },
+        {
+          "id": "empty-result",
+          "path": "src/load.mjs",
+          "line": 2,
+          "scenario": "empty-provider-result",
+          "expected": "empty-success"
+        }
+      ],
+      "expectedReads": [
+        "wiki-context-preflight.md"
+      ],
+      "wikiStatus": "unavailable",
+      "oracle": "fixtures/internal-review/oracle.json"
+    },
+    {
+      "id": "public-body-review",
+      "prompt": "fixtures/public-body-review/prompt.md",
+      "allowedFiles": [],
+      "forbiddenActions": [
+        "external-network",
+        "github-write",
+        "git-push",
+        "git-commit",
+        "wiki-write",
+        "outside-allowed-source-write"
+      ],
+      "oracleIds": [
+        "failure-handling",
+        "clean-controls",
+        "public-renderer",
+        "public-reads",
+        "no-external-writes"
+      ],
+      "requiredChecks": [
+        "failure-handling",
+        "clean-controls",
+        "public-renderer",
+        "public-reads",
+        "no-external-writes"
+      ],
+      "seededFindings": [
+        {
+          "id": "failure-handling",
+          "path": "src/load.mjs",
+          "line": 3,
+          "scenario": "provider-rejection",
+          "impact": "failure-disguised-as-empty-success"
+        }
+      ],
+      "cleanControls": [
+        {
+          "id": "optional-analytics",
+          "path": "src/analytics.mjs",
+          "line": 3,
+          "scenario": "analytics-rejection",
+          "expected": "primary-result-preserved-and-error-recorded"
+        }
+      ],
+      "expectedReads": [
+        "wiki-context-preflight.md",
+        "review-output-contract.md",
+        "review-comment-style.md"
+      ],
+      "wikiStatus": "unavailable",
+      "oracle": "fixtures/public-body-review/oracle.json"
+    }
+  ]
+}

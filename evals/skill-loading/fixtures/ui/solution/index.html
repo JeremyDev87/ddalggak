@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Name form</title>
+<style>
+:root { --ink: #182230; --page: #f4f6f8; --surface: white; --accent: #174ea6; --space: 8px; }
+* { box-sizing: border-box; }
+body { margin: 0; padding: calc(3 * var(--space)); background: var(--page); color: var(--ink); font: 16px system-ui; }
+main { max-width: 480px; margin: auto; padding: calc(3 * var(--space)); background: var(--surface); }
+h1 { margin-top: 0; }
+form { display: grid; gap: calc(2 * var(--space)); }
+input, button { min-height: 44px; font: inherit; padding: var(--space); width: 100%; }
+button { background: var(--accent); color: var(--surface); border: 0; cursor: pointer; }
+button:disabled { opacity: .6; cursor: progress; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+[role=status] { min-height: 24px; margin: 0; }
+</style>
+</head>
+<body>
+<main>
+<h1>Name form</h1>
+<p>Send your name to the local fixture.</p>
+<form>
+<label for="name">Name</label>
+<input id="name" name="name" required autocomplete="name">
+<button type="submit">Submit</button>
+<p role="status" aria-live="polite" data-state="idle">Enter your name.</p>
+</form>
+</main>
+<script type="module">
+const form = document.querySelector('form');
+const input = document.querySelector('input');
+const button = document.querySelector('button');
+const status = document.querySelector('[role=status]');
+function show(state, message) { status.dataset.state = state; status.textContent = message; }
+form.addEventListener('submit', async event => {
+  event.preventDefault();
+  button.disabled = true;
+  show('loading', 'Submitting...');
+  try {
+    const response = await fetch('/submit', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: input.value }) });
+    if (!response.ok) throw new Error('Submission failed');
+    show('success', 'Your name was submitted.');
+  } catch {
+    show('error', 'Could not submit. Try again.');
+  } finally {
+    button.disabled = false;
+    input.focus();
+  }
+});
+</script>
+</body>
+</html>

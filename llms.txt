@@ -20,6 +20,12 @@
 
 ## Runtime and package verification surfaces
 
+- [Selective-loading verification](./evals/skill-loading/README.md): portable
+  registry checks, 42 localized documents, accounting, and explicit runtime/live
+  commands. It uses minimum context plus justified extra reads and quality-first
+  adoption; runtime distributions, plugin directories, and private auth data
+  are not package assets.
+
 - [Runtime projections](./core/projections.yaml): package/runtime projection targets.
 - [Skill contract manifest](./core/verification/skill-contract-manifest.mjs): verifier-owned required assets, disclosure maps, and package artifact expectations.
 - [Package verifier](./scripts/verify-package.mjs): npm artifact inclusion and release-safe verification gate.

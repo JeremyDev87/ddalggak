@@ -64,6 +64,19 @@ const duplicateBase = {
 assert(validateCommandContract(duplicateBase, "invalid").some((failure) => failure.includes("must not also be listed")));
 console.log("[PASS] schema fails closed on duplicate or base-overlapping assets");
 
+for (const kind of ["references", "templates"]) {
+  const required = `required_${kind}`;
+  const conditional = `conditional_${kind}`;
+  for (const invalid of ["../gate.md", "nested/gate.md", "nested\\gate.md", "gate.txt", "gate.md\n", "gate..md", "", null, 1]) {
+    assert(validateCommandContract({ ...byName.get("plan"), [required]: [invalid] }, "invalid").length > 0);
+  }
+  assert(validateCommandContract({ ...byName.get("plan"), [required]: ["gate.md", "gate.md"] }, "invalid").length > 0);
+  assert(validateCommandContract({ ...byName.get("plan"), [conditional]: ["alpha=gate.md", "alpha=gate.md"] }, "invalid").length > 0);
+  assert(validateCommandContract({ ...byName.get("plan"), [required]: ["gate.md"], [conditional]: ["alpha=gate.md"] }, "invalid").length > 0);
+  assert.deepEqual(validateCommandContract({ ...byName.get("plan"), [conditional]: ["alpha=gate.md", "beta=gate.md"] }, "valid"), []);
+}
+console.log("[PASS] schema validates required basenames/duplicates and preserves conditional OR declarations in both kinds");
+
 const packaged = new Set(requiredPackageFiles(commands));
 for (const doc of [byName.get("plan"), byName.get("start"), byName.get("review")]) {
   for (const reference of commandReferenceNames(doc)) {
@@ -92,27 +105,28 @@ for (const root of ["ddalggak", ".codex/skills/ddalggak"]) {
 }
 console.log("[PASS] deterministic review contract assets remain package-required in both roots");
 
-for (const skillPath of ["ddalggak/SKILL.md", ".codex/skills/ddalggak/SKILL.md"]) {
-  const skill = readFileSync(skillPath, "utf8");
-  assert(skill.includes("delegated-review→templates/review-brief.md"));
-  if (skillPath.startsWith("ddalggak/")) assert(skill.includes("activation evidence가 있을 때만"));
-  else assert(skill.includes("activation-bound optional gates"));
-  assert(!skill.includes("structured-review→templates/review-brief.md"));
+for (const root of ["ddalggak", ".codex/skills/ddalggak"]) {
+  const review = readFileSync(`${root}/references/command-review.md`, "utf8");
+  const metadata = JSON.parse(review.match(/^```json\n([\s\S]*?)\n```$/m)[1]);
+  assert(metadata.conditional_templates.includes("delegated-review=review-brief.md"));
+  assert(!metadata.conditional_templates.includes("structured-review=review-brief.md"));
+  if (root === "ddalggak") assert(review.includes("activation evidence applies"));
+  else assert(review.includes("activation-bound optional gates"));
 }
-console.log("[PASS] rendered skills keep conditional routing and prose aligned");
+console.log("[PASS] rendered command owners keep conditional routing and prose aligned");
 
 for (const root of ["ddalggak", ".codex/skills/ddalggak"]) {
   for (const asset of [
-    "SKILL.md",
+    "references/command-review.md",
     "references/cross-review-loop.md",
     "references/review-output-contract.md",
     "templates/review-brief.md",
   ]) {
     const text = readFileSync(`${root}/${asset}`, "utf8");
-    assert(text.includes("REVIEW_STOPPED_PR_MERGED"), `${root}/${asset}: merged-review stop sentinel must remain projected`);
+    assert(text.includes("REVIEW_STOPPED_PR_MERGED"), `${root}/${asset}: 머지된 리뷰 중단 sentinel이 투영되어야 함`);
   }
 }
-console.log("[PASS] merged-during-review hard stop remains projected across both runtime roots");
+console.log("[PASS] 리뷰 중 머지 감지 중단 규칙이 두 런타임 루트에 유지됨");
 
 const router = readFileSync("ddalggak/references/quality-lens-router.md", "utf8");
 assert(router.includes("`security-posture` | Package manifests/admission"));

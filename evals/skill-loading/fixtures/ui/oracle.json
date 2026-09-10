@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "id": "ui",
+  "checks": [
+    "required",
+    "loading",
+    "success",
+    "error",
+    "keyboard",
+    "screenshots",
+    "scope"
+  ],
+  "allowedFiles": [
+    "index.html"
+  ],
+  "seededFindings": [],
+  "cleanControls": [],
+  "states": [
+    "idle",
+    "invalid",
+    "loading",
+    "success",
+    "error",
+    "retry-success"
+  ],
+  "viewports": [
+    375,
+    768,
+    1280
+  ],
+  "input": {
+    "id": "name",
+    "label": "Name",
+    "required": true
+  },
+  "endpoint": "/submit"
+}

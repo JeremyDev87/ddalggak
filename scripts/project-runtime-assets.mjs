@@ -1,18 +1,20 @@
 #!/usr/bin/env node
 import { createProjectRuntimeContext, fatal } from "./project-runtime-assets/load-contracts.mjs";
 import { packageManifestProjection } from "./project-runtime-assets/render-package-manifest.mjs";
+import { assertCommandDocOwnership, commandDocProjections } from "./project-runtime-assets/render-command-docs.mjs";
 import { replaceGeneratedBlock, skillBlockProjections } from "./project-runtime-assets/render-skill-blocks.mjs";
 import {
   runTokenBudgetAdmissionChecks,
   runTokenBudgetReport,
 } from "./project-runtime-assets/token-budget-report.mjs";
 
-const usage = `Usage: node scripts/project-runtime-assets.mjs [--check|--write] [--report [--admission]]
+const usage = `Usage: node scripts/project-runtime-assets.mjs [--check|--write] [--report [--json] [--admission]]
 
 Options:
   --check      Check generated runtime assets for drift (default unless --write is set).
-  --write      Update generated runtime asset blocks.
+  --write      Update generated runtime asset blocks and command documents.
   --report     Print token budget report instead of checking generated blocks.
+  --json       With --report, print the same accounting rows as JSON only.
   --admission  With --report, fail if token budget admission findings exist.
   --help       Show this help message.`;
 
@@ -20,6 +22,7 @@ function parseArgs(argv) {
   const options = {
     writeMode: false,
     reportMode: false,
+    jsonMode: false,
     admissionMode: false,
     checkRequested: false,
   };
@@ -32,6 +35,8 @@ function parseArgs(argv) {
       options.writeMode = true;
     } else if (arg === "--report") {
       options.reportMode = true;
+    } else if (arg === "--json") {
+      options.jsonMode = true;
     } else if (arg === "--admission") {
       options.admissionMode = true;
     } else if (arg === "--check") {
@@ -49,50 +54,64 @@ function parseArgs(argv) {
     process.exit(1);
   }
 
+  if (options.jsonMode && !options.reportMode) {
+    console.error("[project-runtime-assets] --json requires --report");
+    process.exit(1);
+  }
+
   return {
     writeMode: options.writeMode,
     reportMode: options.reportMode,
+    jsonMode: options.jsonMode,
     admissionMode: options.admissionMode,
     checkMode: options.checkRequested || !options.writeMode,
   };
 }
 
-function runtimeProjections(commands) {
+function runtimeProjections(context) {
+  const { commands } = context;
   return [
     ...skillBlockProjections(commands),
     packageManifestProjection(commands),
+    ...commandDocProjections(context),
   ];
 }
 
-function checkOrWriteGeneratedBlocks({ commands, readText, writeText }, { writeMode, checkMode }) {
+function checkOrWriteGeneratedBlocks(context, { writeMode, checkMode }) {
+  const { readText, writeText } = context;
   const drift = [];
-  for (const projection of runtimeProjections(commands)) {
-    const current = readText(projection.path);
-    let next = current;
-    for (const [id, body] of projection.blocks) {
-      try {
-        next = replaceGeneratedBlock(next, id, body, projection.path);
-      } catch (error) {
-        fatal(error.message);
+  try {
+    for (const projection of runtimeProjections(context)) {
+      const wholeFile = projection.content !== undefined;
+      const current = readText(projection.path, { optional: wholeFile });
+      let next = projection.content;
+      if (wholeFile) {
+        assertCommandDocOwnership(current, projection);
+      } else {
+        next = current;
+        for (const [id, body] of projection.blocks) {
+          next = replaceGeneratedBlock(next, id, body, projection.path);
+        }
       }
+      if (next !== current) drift.push({ path: projection.path, content: next });
     }
-    if (next !== current) {
-      drift.push(projection.path);
-      if (writeMode) writeText(projection.path, next);
-    }
+  } catch (error) {
+    fatal(error.message);
   }
 
   if (drift.length > 0 && checkMode) {
-    console.error("[project-runtime-assets] generated block drift detected:");
-    for (const file of drift) console.error(`- ${file}`);
+    console.error("[project-runtime-assets] generated asset drift detected:");
+    for (const file of drift) console.error(`- ${file.path}`);
     console.error("Run: node scripts/project-runtime-assets.mjs --write");
     process.exit(1);
   }
 
   if (writeMode) {
+    // Validate every output before writing, so a collision cannot leave a partial projection.
+    for (const file of drift) writeText(file.path, file.content);
     console.log(`[project-runtime-assets] updated ${drift.length} file(s)`);
   } else {
-    console.log("[project-runtime-assets] generated blocks are up to date");
+    console.log("[project-runtime-assets] generated assets are up to date");
   }
 }
 
@@ -100,15 +119,19 @@ const options = parseArgs(process.argv.slice(2));
 const context = createProjectRuntimeContext(process.cwd());
 
 if (options.reportMode) {
-  const { overBudget, missingBudget } = runTokenBudgetReport(context);
+  let report;
   let extraFailures;
   try {
+    report = runTokenBudgetReport(context, { json: options.jsonMode });
     extraFailures = runTokenBudgetAdmissionChecks(context);
   } catch (error) {
     fatal(error.message);
   }
-  for (const failure of extraFailures) {
-    console.log(`[token-budget] warning: ${failure}`);
+  const { overBudget, missingBudget } = report;
+  if (options.jsonMode) {
+    console.log(JSON.stringify({ ...report, extraFailures }, null, 2));
+  } else {
+    for (const failure of extraFailures) console.log(`[token-budget] warning: ${failure}`);
   }
   if (options.admissionMode) {
     if (overBudget + missingBudget + extraFailures.length > 0) {
@@ -117,7 +140,7 @@ if (options.reportMode) {
       );
       process.exit(1);
     }
-    console.log("[token-budget] admission gate: pass");
+    if (!options.jsonMode) console.log("[token-budget] admission gate: pass");
   }
   process.exit(0);
 }

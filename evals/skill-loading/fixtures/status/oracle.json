@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "id": "status",
+  "checks": [
+    "live-state",
+    "no-writes"
+  ],
+  "allowedFiles": [],
+  "seededFindings": [],
+  "cleanControls": [],
+  "expected": {
+    "branch": "feature/quantity-total",
+    "clean": true,
+    "openPrs": [
+      17
+    ],
+    "pendingChecks": [
+      "unit"
+    ],
+    "blockers": [
+      "B-1"
+    ],
+    "ready": false
+  },
+  "nextAction": "resolve-blocker-and-await-ci"
+}

@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "id": "public-body-review",
+  "checks": [
+    "failure-handling",
+    "clean-controls",
+    "public-renderer",
+    "public-reads",
+    "no-external-writes"
+  ],
+  "allowedFiles": [],
+  "seededFindings": [
+    {
+      "id": "failure-handling",
+      "path": "src/load.mjs",
+      "line": 3,
+      "scenario": "provider-rejection",
+      "impact": "failure-disguised-as-empty-success"
+    }
+  ],
+  "cleanControls": [
+    {
+      "id": "optional-analytics",
+      "path": "src/analytics.mjs",
+      "line": 3,
+      "scenario": "analytics-rejection",
+      "expected": "primary-result-preserved-and-error-recorded"
+    }
+  ],
+  "outcome": "change request",
+  "publicBodyAllowed": true,
+  "externalWriteAuthorized": false
+}

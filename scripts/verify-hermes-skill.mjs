@@ -6,6 +6,8 @@ import path from "node:path";
 
 import { commandReferenceNames, commandTemplateNames } from "../core/conditional-assets.mjs";
 import { loadCommandContracts } from "../bin/lib/command-contracts.mjs";
+import { installationInventory } from "./project-runtime-assets/render-package-manifest.mjs";
+import { referencedSupportFiles } from "./verify-hermes-native-e2e.mjs";
 
 const rootDir = process.cwd();
 const skillRoot = path.join(rootDir, "ddalggak");
@@ -41,32 +43,26 @@ function scalar(block, key) {
 }
 
 function explicitSupportLinks(text) {
-  const links = new Set();
-  for (const match of text.matchAll(/(?:\]\(|`|(?:^|[\s"']))((?:references|templates|scripts|assets|examples)\/[^\s)`"'<>]+)/gm)) {
-    const relPath = match[1].replace(/[.,;:]+$/, "");
-    if (relPath.split("/").includes("..")) {
-      fail(`ddalggak/SKILL.md contains unsafe support path: ${relPath}`);
-      continue;
-    }
-    links.add(relPath);
+  try { return new Set(referencedSupportFiles(text)); } catch (error) {
+    fail(`ddalggak/SKILL.md contains ${error.message}`);
+    return new Set();
   }
-  return links;
 }
 
-function requiredCommandAssets(skillText) {
+function requiredCommandAssets(links) {
   const assets = new Set();
   for (const command of loadCommandContracts(rootDir)) {
     for (const reference of commandReferenceNames(command)) {
       const relPath = `references/${reference}`;
       assets.add(relPath);
-      if (!skillText.includes(relPath)) {
+      if (!links.has(relPath)) {
         fail(`ddalggak/SKILL.md does not link required asset for ${command.command}: ${relPath}`);
       }
     }
     for (const template of commandTemplateNames(command)) {
       const relPath = `templates/${template}`;
       assets.add(relPath);
-      if (!skillText.includes(relPath)) {
+      if (!links.has(relPath)) {
         fail(`ddalggak/SKILL.md does not link required asset for ${command.command}: ${relPath}`);
       }
     }
@@ -117,8 +113,17 @@ if (!description || !description.startsWith("Use ")) {
   fail("ddalggak/SKILL.md frontmatter description must be a non-empty 'Use ...' discovery trigger");
 }
 
-const requiredAssets = requiredCommandAssets(skillText);
-for (const linkedPath of explicitSupportLinks(skillText)) requiredAssets.add(linkedPath);
+const links = explicitSupportLinks(skillText);
+const requiredAssets = requiredCommandAssets(links);
+try {
+  for (const file of installationInventory(loadCommandContracts(rootDir), {
+    projectionsText: readText(path.join(rootDir, "core/projections.yaml")),
+  })) {
+    requiredAssets.add(file);
+    if (!links.has(file)) fail(`ddalggak/SKILL.md does not directly link installation asset: ${file}`);
+  }
+} catch (error) { fail(error.message); }
+for (const linkedPath of links) requiredAssets.add(linkedPath);
 
 for (const relPath of requiredAssets) {
   if (!existsSync(path.join(skillRoot, relPath))) {

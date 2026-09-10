@@ -44,6 +44,8 @@ Product-specific constraints outrank novelty. The brief should preserve existing
 
 Implementation Handoff:
 
+Before coding, locate and read existing task-local design/product requirement files (for example, `DESIGN.md`), using task references and the available file inventory. Include their paths in the worker brief; preserve their specified layout, typography, tokens, spacing, and interaction target sizes unless the task explicitly changes them. A missing or unread local specification is an evidence gap to resolve, not permission to invent a replacement design.
+
 For frontend implementation lanes, the worker brief must require the implementer to restate before coding:
 
 1. the aesthetic direction being executed;
@@ -83,7 +85,9 @@ For UI PRs, the review packet must include a `Frontend Design Review Gate` that 
 6. empty, loading, and error states;
 7. keyboard access, contrast, semantics, reduced motion, and focus states;
 8. minimal, reviewable code with no one-off abstraction;
-9. screenshot, viewport, Storybook/browser, or concrete manual evidence.
+9. actual screenshots at the required viewports compared against the task-local specification as well as semantic tests; use concrete manual browser/Storybook evidence when automation is unavailable.
+
+Read the local specification before judging compliance. Functionality-only evidence does not establish frontend completion.
 
 For component PRs, also check the component methodology gate: main component only assembles, large conditional UI fragments live in `ComponentName.parts.tsx` when extraction is justified, calculation/format/parse logic moves to `ComponentName.utils.ts` when non-trivial, variant/size/style maps use `satisfies Record<...>` when supported, tests focus on user behavior and public visual-contract classes, and no silent fallback hides unknown variants, sizes, states, or data shapes.
 

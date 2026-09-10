@@ -1,7 +1,7 @@
 import { readdirSync } from "node:fs";
 import path from "node:path";
 
-import { commandReferenceNames, commandTemplateNames } from "../../core/conditional-assets.mjs";
+import { commandContractReference, commandReferenceNames, commandTemplateNames } from "../../core/conditional-assets.mjs";
 
 import {
   parseReferenceBudgetExemptions,
@@ -46,11 +46,14 @@ function readReferenceBudgetExemptions(context) {
   return parseReferenceBudgetExemptions(readTokenBudgetsText(context));
 }
 
-export function runTokenBudgetReport(context) {
+export function runTokenBudgetReport(context, { json = false } = {}) {
   const { commands, fileSize } = context;
   const budgetsByRoot = readSubcommandTokenBudgets(context);
   const warnings = [];
   const allRows = [];
+  const commandDocs = new Set(commands.map((doc) => commandContractReference(doc.command)));
+  const sumTokens = (files) => files.reduce((sum, file) => sum + fileTokenEstimate(file, context), 0);
+  const sumBytes = (files) => files.reduce((sum, file) => sum + fileSize(file), 0);
   for (const { key, base } of tokenBudgetRoots) {
     const budgets = budgetsByRoot.get(key) ?? new Map();
     const skillBytes = fileSize(`${base}/SKILL.md`);
@@ -59,24 +62,26 @@ export function runTokenBudgetReport(context) {
     for (const doc of commands) {
       const references = commandReferenceNames(doc);
       const templates = commandTemplateNames(doc);
-      const referenceBytes = references.reduce(
-        (sum, ref) => sum + fileSize(`${base}/references/${ref}`),
-        0,
-      );
-      const referenceTokens = references.reduce(
-        (sum, ref) => sum + fileTokenEstimate(`${base}/references/${ref}`, context),
-        0,
-      );
-      const templateBytes = templates.reduce(
-        (sum, template) => sum + fileSize(`${base}/templates/${template}`),
-        0,
-      );
-      const templateTokens = templates.reduce(
-        (sum, template) => sum + fileTokenEstimate(`${base}/templates/${template}`, context),
-        0,
-      );
-      const totalBytes = skillBytes + referenceBytes + templateBytes;
-      const estTokens = Math.ceil(skillTokens + referenceTokens + templateTokens);
+      for (const reference of references) {
+        if (commandDocs.has(reference)) throw new Error(`${reference} is owned by its command base; must not be declared as a reference asset`);
+      }
+      const files = {
+        bootstrap: `${base}/SKILL.md`,
+        command_doc: `${base}/references/${commandContractReference(doc.command)}`,
+        required: ["references", "templates"].flatMap((kind) => doc[`required_${kind}`].map((name) => `${base}/${kind}/${name}`)),
+        conditional: [],
+      };
+      const referenceFiles = references.map((name) => `${base}/references/${name}`);
+      const templateFiles = templates.map((name) => `${base}/templates/${name}`);
+      const required = new Set(files.required);
+      files.conditional = [...referenceFiles, ...templateFiles].filter((file) => !required.has(file));
+      const commandDocTokens = fileTokenEstimate(files.command_doc, context);
+      const requiredTokens = sumTokens(files.required);
+      const conditionalTokens = sumTokens(files.conditional);
+      // Keep fractional estimates until each total is complete. Delta is the
+      // difference of rounded totals, not the rounded conditional subtotal.
+      const baseTokens = Math.ceil(skillTokens + commandDocTokens + requiredTokens);
+      const estTokens = Math.ceil(skillTokens + commandDocTokens + requiredTokens + conditionalTokens);
       const budget = budgets.get(doc.command);
       let status = "ok";
       if (budget === undefined) {
@@ -86,29 +91,42 @@ export function runTokenBudgetReport(context) {
         status = "OVER";
         warnings.push(`${key}/${doc.command}: ~${estTokens} tokens exceeds budget ${budget}`);
       }
-      rows.push({ root: key, command: doc.command, skillBytes, referenceBytes, templateBytes, totalBytes, estTokens, budget, status });
+      rows.push({
+        root: key, command: doc.command, files,
+        skill_md_bytes: skillBytes,
+        command_doc_bytes: fileSize(files.command_doc),
+        reference_bytes: sumBytes(referenceFiles),
+        template_bytes: sumBytes(templateFiles),
+        total_bytes: skillBytes + sumBytes([files.command_doc, ...referenceFiles, ...templateFiles]),
+        bootstrap_est_tokens: Math.ceil(skillTokens),
+        command_doc_est_tokens: Math.ceil(commandDocTokens),
+        required_est_tokens: Math.ceil(requiredTokens),
+        conditional_est_tokens: Math.ceil(conditionalTokens),
+        base_est_tokens: baseTokens,
+        conditional_delta_est_tokens: estTokens - baseTokens,
+        est_tokens: estTokens, budget_tokens: budget ?? null, status,
+      });
     }
 
-    console.log(`[token-budget] per-subcommand effective load (root: ${base}/, est tokens = ceil(ascii_chars / 4 + multibyte_chars x 1.5))`);
-    console.log("| subcommand | skill_md_bytes | reference_bytes | template_bytes | total_bytes | est_tokens | budget_tokens | status |");
-    console.log("| --- | --- | --- | --- | --- | --- | --- | --- |");
-    for (const row of rows) {
-      console.log(
-        `| ${row.command} | ${row.skillBytes} | ${row.referenceBytes} | ${row.templateBytes} | ${row.totalBytes} | ${row.estTokens} | ${row.budget ?? "-"} | ${row.status} |`,
-      );
+    if (!json) {
+      console.log(`[token-budget] per-subcommand declared load (root: ${base}/, est tokens = ceil(ascii_chars / 4 + multibyte_chars x 1.5)); base = entire SKILL + selected command document + required assets; declared = base + conditional union`);
+      const columns = ["command", "skill_md_bytes", "command_doc_bytes", "reference_bytes", "template_bytes", "total_bytes", "bootstrap_est_tokens", "command_doc_est_tokens", "required_est_tokens", "conditional_est_tokens", "base_est_tokens", "conditional_delta_est_tokens", "est_tokens", "budget_tokens", "status"];
+      console.log(`| ${columns.join(" | ")} |`);
+      console.log(`| ${columns.map(() => "---").join(" | ")} |`);
+      for (const row of rows) console.log(`| ${columns.map((column) => row[column] ?? "-").join(" | ")} |`);
     }
     allRows.push(...rows);
   }
   for (const warning of warnings) {
-    console.log(`[token-budget] warning: ${warning}`);
+    if (!json) console.log(`[token-budget] warning: ${warning}`);
   }
   const overBudget = allRows.filter((row) => row.status === "OVER").length;
   const missingBudget = allRows.filter((row) => row.status === "no-budget").length;
-  const maxRow = allRows.reduce((max, row) => (row.estTokens > max.estTokens ? row : max), allRows[0]);
-  console.log(
-    `[token-budget] summary: ${commands.length} subcommands x ${tokenBudgetRoots.length} roots, over-budget ${overBudget}, missing-budget ${missingBudget}, max ${maxRow.root}/${maxRow.command} ~${maxRow.estTokens} tokens`,
+  const maxRow = allRows.reduce((max, row) => (row.est_tokens > max.est_tokens ? row : max), allRows[0]);
+  if (!json) console.log(
+    `[token-budget] summary: ${commands.length} subcommands x ${tokenBudgetRoots.length} roots, over-budget ${overBudget}, missing-budget ${missingBudget}, max ${maxRow.root}/${maxRow.command} ~${maxRow.est_tokens} tokens`,
   );
-  return { overBudget, missingBudget };
+  return { rows: allRows, warnings, overBudget, missingBudget };
 }
 
 // Coverage + per-reference cap invariant (#283): every ddalggak/references/*.md
@@ -120,10 +138,12 @@ export function runTokenBudgetReport(context) {
 // conditional gate reachable only via the always-loaded quality-lens-router
 // cannot grow without bound.
 function runReferenceCoverageChecks(context) {
-  const { commands, fileExists, fileSize, rootDir } = context;
+  const { commands, fileExists, rootDir } = context;
   const failures = [];
   const measured = new Set();
   for (const doc of commands) {
+    // The selected command document belongs directly to its owning base load.
+    measured.add(commandContractReference(doc.command));
     for (const ref of commandReferenceNames(doc)) measured.add(ref);
   }
 

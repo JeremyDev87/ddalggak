@@ -8,6 +8,8 @@
     "human-review-feedback-loop.md",
     "ralplan-critic-consensus.md",
     "regression-library.md",
+    "review-comment-style.md",
+    "review-output-contract.md",
     "security-posture-gate.md",
     "simplicity-deletability-gate.md"
   ],

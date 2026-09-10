@@ -1,6 +1,7 @@
 import { readdirSync } from "node:fs";
 import path from "node:path";
 
+import { commandContractReference } from "../../../core/conditional-assets.mjs";
 import { parseSimpleYaml } from "../../../scripts/lib/parse-simple-yaml.mjs";
 import {
   contractRequiredList,
@@ -79,8 +80,17 @@ export function loadLayout(rootDir) {
         "required_references",
         findings,
       );
+      let commandReference = null;
+      try {
+        commandReference = commandContractReference(doc.command);
+      } catch (error) {
+        findings.push(`malformed command contract: ${label}: ${error.message}`);
+      }
       commands.push({
         file,
+        command: doc.command,
+        doc,
+        commandReference,
         malformed: findings.length > findingCountBeforeParse,
         requiredReferences,
         requiredTemplates: contractRequiredList(

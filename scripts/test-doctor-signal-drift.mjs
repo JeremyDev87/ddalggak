@@ -6,16 +6,27 @@
 // SKILL.md naming section, runs `ddalggak doctor` there, and asserts the gate's
 // pass/fail — so a refactor that re-collapses the spellings is caught instead of
 // quietly degrading the registry check to a no-op.
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, rmSync, writeFileSync } from "node:fs";
+import assert from "node:assert/strict";
+import { loadCommandContracts } from "../bin/lib/command-contracts.mjs";
+import { loadLayout } from "../bin/lib/doctor/layout.mjs";
+import { checkSignalRegistry } from "../bin/lib/doctor/signals.mjs";
 import path from "node:path";
 
 import { extractDocLinks, extractMarkdownSection } from "./lib/markdown-links.mjs";
 import { runNodeScript } from "./test-lib/process.mjs";
-import { withTempRepo } from "./test-lib/repo-fixture.mjs";
+import { withTempRepo as withRepo } from "./test-lib/repo-fixture.mjs";
+
+function withTempRepo(name, fn) {
+  return withRepo(name, (tempDir) => {
+    assertPass("temporary command projection", runNodeScript("scripts/project-runtime-assets.mjs", ["--write"], { cwd: tempDir }));
+    return fn(tempDir);
+  });
+}
 
 const rootDir = process.cwd();
 function runDoctor(tempDir) {
-  return runNodeScript("bin/ddalggak.js", ["doctor"], { cwd: tempDir, env: { ...process.env } });
+  return runNodeScript("bin/ddalggak.js", ["doctor"], { cwd: tempDir, env: { ...process.env, DDALGGAK_NO_UPDATE: "1" } });
 }
 
 function replaceInFile(filePath, from, to) {
@@ -67,6 +78,12 @@ const SKILL = "ddalggak/SKILL.md";
   console.log("[PASS] markdown doc link and section helpers are shared and deterministic");
 }
 
+withTempRepo("missing owning completion signal is rejected", (tempDir) => {
+  replaceInFile(path.join(tempDir, "ddalggak/references/command-status.md"),
+    '"completion_signal": "STATUS_DONE"', '"completion_signal": ""');
+  assertFail("missing owning completion signal is rejected", runDoctor(tempDir), "command metadata drift");
+});
+
 // Baseline: an unmutated copy must pass so the failing case proves the mutation,
 // not a broken temp tree.
 withTempRepo("baseline doctor passes on an unmutated copy", (tempDir) => {
@@ -87,6 +104,53 @@ withTempRepo("spaced completion signal in naming section is flagged", (tempDir) 
     runDoctor(tempDir),
     'undefined completion signal: "REVIEW DONE"',
   );
+});
+
+for (const mutation of ["missing-owner", "deleted-signal", "undefined-signal", "allowed-artifact"]) {
+  withTempRepo(`all 21 command owners reject ${mutation} in both roots`, (tempDir) => {
+    const commands = loadCommandContracts(tempDir);
+    assert.equal(commands.length, 21);
+    assert.deepEqual(checkSignalRegistry(loadLayout(tempDir)).findings, []);
+    const labels = [];
+    for (const root of ["ddalggak", ".codex/skills/ddalggak"]) {
+      for (const doc of commands) {
+        const label = `${root}/references/command-${doc.command}.md`;
+        labels.push(label);
+        const file = path.join(tempDir, label);
+        const text = readFileSync(file, "utf8");
+        if (mutation === "missing-owner") {
+          rmSync(file);
+        } else if (mutation === "undefined-signal") {
+          writeFileSync(file, `${text}\nUNREGISTERED_DONE\n`);
+        } else {
+          const block = text.match(/^```json\n([\s\S]*?)^```/m);
+          const metadata = JSON.parse(block[1]);
+          if (mutation === "deleted-signal") delete metadata.output_contract.completion_signal;
+          else metadata.allowed_artifact = "arbitrary repository edits";
+          writeFileSync(file, text.replace(block[1], `${JSON.stringify(metadata, null, 2)}\n`));
+        }
+      }
+    }
+    const result = runNodeScript("bin/ddalggak.js", ["doctor", "--json", "--no-update"], { cwd: tempDir });
+    assert.equal(result.status, 1, `${result.stdout}\n${result.stderr}`);
+    const findings = JSON.parse(result.stdout).checks["signal-registry"].findings;
+    for (const label of labels) {
+      assert.ok(findings.some((finding) => finding.includes(label) && finding.includes(mutation === "missing-owner" ? "missing required command owner" : mutation === "undefined-signal" ? "undefined completion signal" : "command metadata drift")), `${label}: ${findings.join("\n")}`);
+    }
+    console.log(`[PASS] 42 command owners reject ${mutation} through doctor CLI`);
+  });
+}
+
+withTempRepo("handoff signals require their template owner in both roots", (tempDir) => {
+  for (const root of ["ddalggak", ".codex/skills/ddalggak"]) {
+    for (const [file, signal] of [["worker-brief.md", "LANE_READY"], ["review-brief.md", "REVIEW_DONE"], ["fix-brief.md", "FIX_DONE"]]) {
+      replaceInFile(path.join(tempDir, root, "templates", file), signal, "REMOVED_TOKEN");
+    }
+  }
+  const result = runDoctor(tempDir);
+  for (const signal of ["LANE_READY", "REVIEW_DONE", "FIX_DONE"]) {
+    assertFail(`handoff ${signal} cannot inherit a YAML or sibling definition`, result, `missing handoff signal: "${signal}"`);
+  }
 });
 
 console.log("\n[test:doctor-signal-drift] passed");

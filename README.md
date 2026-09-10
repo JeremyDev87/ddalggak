@@ -108,6 +108,19 @@ GitHub Issue Forms (`.github/ISSUE_TEMPLATE/ddalggak-issue.yml`) provide a pre-a
 - Labels listed in form defaults must exist in the live repo; GitHub does not auto-create missing labels.
 - `verifier/verify-issue-forms.mjs` checks file existence, required field ids, non-empty labels/assignees, and caveat text presence at CI time.
 
+## Selective-loading verification
+
+`core/commands/*.yaml` is the metadata SSOT and the two generated roots contain
+42 localized command documents (21 per root). The selected command contract
+and its required references/templates are mandatory context and must be read
+before acting; additional evidence reads are allowed when justified. Only the
+installation inventory is not an unconditional reading list. Accounting
+separates declared JSON totals from base totals and conditional extra reads.
+Adoption is quality-first across correctness, completeness, evidence, and
+usability, not token reduction alone. Portable checks run in
+`npm run verify`; runtime integration, sandbox, browser, and live A/B checks are
+explicit commands documented in `evals/skill-loading/README.md`.
+
 ## Progressive Disclosure Budget
 
 The always-loaded skill body should remain a thin router. Keep `SKILL.md` focused on routing invariants, code-modification permissions, global guardrails, subcommand dispatch, required reference maps, stop conditions, and verification checklists. Move long procedures to `references/`, reusable prompt/body shapes to `templates/`, and mechanical regression checks to `scripts/` or future `fixtures/` / `evals/`.
@@ -119,11 +132,20 @@ Maintainer target after the #94 thin-router pass:
 
 These are budget targets, not permission to delete guardrails. Routing, source-edit permissions, manual merge policy, issue-PR topology, Evidence Contract, Simplicity / Deletability, and URL target resolution must remain discoverable from the hot path.
 
-Per-subcommand effective load (`ddalggak/SKILL.md` + required references + required templates, estimated tokens = ASCII chars / 4 + non-ASCII code points × 1.5) is measured against the budgets declared in `core/token-budgets.yaml` `subcommand_token_budgets`. The estimate is a zero-dependency heuristic, not a real tokenizer: plain `bytes / 4` undercounted multibyte content (a Korean syllable is 3 UTF-8 bytes but costs ~1.5–2 tokens), skewing files with ≥30% Korean content by ≥1.3x, so non-ASCII code points are weighted at 1.5 tokens each. Inside `npm run verify` the token budget step runs `node scripts/project-runtime-assets.mjs --report --admission` as an admission gate: any over-budget or missing-budget subcommand fails verify (exit 1). Running `node scripts/project-runtime-assets.mjs --report` on its own remains advisory and reports without failing.
+Per-subcommand effective load is the whole `SKILL.md` plus the selected command
+document and its required references/templates. `est_tokens` is the declared
+base total plus the union of conditional assets; fractional sums are rounded
+once, and `conditional_delta_est_tokens` is the rounded declared-total minus
+base-total delta. Command documents are counted in their owning command's base;
+conditional coverage remains measured against the applicable conditional union.
+The estimate is a zero-dependency heuristic: ASCII chars / 4 plus non-ASCII
+code points × 1.5. Budgets are declared in `core/token-budgets.yaml`
+`subcommand_token_budgets`; `npm run verify` runs the admission gate and fails
+on over-budget or missing-budget commands. A standalone report is advisory.
 
 Budget changes ship in a separate PR: a PR that changes the `subcommand_token_budgets` block in `core/token-budgets.yaml` must not also change measured skill content (`ddalggak/**`, `.codex/**`, `core/commands/**`), because raising the budget inside the same PR that grows the content would neutralize the admission gate's ratchet. Budget-only PRs, content-only PRs, and calibration PRs (budget plus non-measured files such as the estimation formula) are all allowed. CI enforces this on pull requests with `node scripts/check-budget-isolation.mjs --base <ref> --head <ref>`, which compares parsed budget values at the merge-base and head, so changes to other `core/token-budgets.yaml` blocks or comment-only edits never count as budget changes.
 
-Every `ddalggak/references/*.md` file must be either *measured* — named in some subcommand's `required_references`, so it counts against that subcommand's effective-load budget — or *exempt*, registered in `core/token-budgets.yaml` `reference_budget_exemptions` with an absolute `max_tokens` cap. The admission gate (`scripts/project-runtime-assets.mjs --report --admission`) fails closed if a reference is neither (unbudgeted), is redundantly both, names a missing file (stale), or exceeds its cap on any root. This closes the hole where the conditional gates reachable only through the always-loaded `references/quality-lens-router.md` pointer (`frontend-design-gate`, `react-code-quality-harness`, `vercel-agent-skills-gates`) sat outside every budget and could grow without bound. Separately, each declared budget must stay `<=` its `subcommand_token_ceilings` value — a frozen absolute ceiling (current budget × 1.5) that a budget-only PR cannot ratchet past, blocking the two-PR bypass (raise the budget in one PR, grow content up to it in the next) that the per-PR isolation check alone does not catch. The `reference_budget_exemptions` and `subcommand_token_ceilings` blocks are not `subcommand_token_budgets`, so editing them is never flagged as a budget change by `check-budget-isolation.mjs`.
+Every `ddalggak/references/*.md` file must be either *measured* or *exempt*. The selected command document is measured in its owning command's base; other references named in a command's `required_references` or conditional declarations are measured against that command's applicable load. References in neither set must be registered in `core/token-budgets.yaml` `reference_budget_exemptions` with an absolute `max_tokens` cap. The admission gate (`scripts/project-runtime-assets.mjs --report --admission`) fails closed if a reference is neither (unbudgeted), is redundantly both, names a missing file (stale), or exceeds its cap on any root. This closes the hole where the conditional gates reachable only through the always-loaded `references/quality-lens-router.md` pointer (`frontend-design-gate`, `react-code-quality-harness`, `vercel-agent-skills-gates`) sat outside every budget and could grow without bound. Separately, each declared budget must stay `<=` its `subcommand_token_ceilings` value — a frozen absolute ceiling (current budget × 1.5) that a budget-only PR cannot ratchet past, blocking the two-PR bypass (raise the budget in one PR, grow content up to it in the next) that the per-PR isolation check alone does not catch. The `reference_budget_exemptions` and `subcommand_token_ceilings` blocks are not `subcommand_token_budgets`, so editing them is never flagged as a budget change by `check-budget-isolation.mjs`.
 
 ## Claude Code
 
@@ -191,7 +213,7 @@ Package distribution, if any, is handled separately by maintainers. This usage g
 Common subcommand options:
 
 - `--print`: print only the `/ddalggak <subcommand> ...` slash command.
-- `--show-doc`: print the matching `SKILL.md` section for the subcommand.
+- `--show-doc`: print the matching command-document section for the subcommand.
 
 Workflow support subcommands:
 

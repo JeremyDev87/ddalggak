@@ -4,26 +4,28 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { commandContractReference } from "../../../core/conditional-assets.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const defaultSkillPath = path.join(__dirname, "..", "..", "..", "ddalggak", "SKILL.md");
+const referenceDir = path.join(__dirname, "..", "..", "..", "ddalggak", "references");
 
-// SKILL.md에서 첫 매칭 H2 섹션부터 다음 H2 직전까지 추출.
+// Select by command key, then extract the matching H2 through the next H2.
 export function extractDocSection(subcmd, docSection, options = {}) {
   const stderr = options.stderr || process.stderr;
   const stdout = options.stdout || process.stdout;
-  const skillPath = options.skillPath || defaultSkillPath;
-  const header = docSection[subcmd];
-  if (!header) {
+  if (!Object.hasOwn(docSection, subcmd)) {
     stderr.write(`no doc section for: ${subcmd}\n`);
     return 1;
   }
 
+  const header = docSection[subcmd];
+  const selectedDocumentPath = options.selectedDocumentPath
+    || path.join(referenceDir, commandContractReference(subcmd));
   let body;
   try {
-    body = readFileSync(skillPath, "utf8");
-  } catch {
-    stderr.write(`SKILL.md not found at ${skillPath}\n`);
+    body = readFileSync(selectedDocumentPath, "utf8");
+  } catch (error) {
+    stderr.write(`cannot read command document at ${selectedDocumentPath}: ${error.message}\n`);
     return 1;
   }
 
@@ -43,7 +45,7 @@ export function extractDocSection(subcmd, docSection, options = {}) {
   }
 
   if (startIdx === -1) {
-    stderr.write(`no doc section for: ${subcmd}\n`);
+    stderr.write(`no doc section for: ${subcmd} (${header}) in ${selectedDocumentPath}\n`);
     return 1;
   }
 

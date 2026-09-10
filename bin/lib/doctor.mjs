@@ -26,13 +26,12 @@ Usage:
 Checks:
   layout           core/projections.yaml, source SKILL.md, and core/commands
                    contracts are present and parseable.
-  reachability     references/templates unreachable from SKILL.md and
-                   core/commands required_references/required_templates.
+  reachability     references/templates unreachable from SKILL.md, owning
+                   command documents, and core/commands required entries.
   dead-pointer     references/*.md and templates/*.md pointers (and
                    core/commands required entries) that do not exist.
-  signal-registry  completion signals named in the SKILL.md naming-rules
-                   section without a core/commands completion_signal or a
-                   templates/*.md definition.
+  signal-registry  command-owner metadata/completion signals, named handoff
+                   templates, and global completion sections across projections.
   root-parity      file existence diff between projection roots over the
                    shared skill surface (SKILL.md, references/, templates/).
   wiki-wiring      every core/commands contract lists

@@ -1,7 +1,8 @@
 import { escapeRegExp } from "../lib/escape-regexp.mjs";
-import { conditionalAssets } from "../../core/conditional-assets.mjs";
+import { commandContractReference } from "../../core/conditional-assets.mjs";
+import { installationInventory } from "./render-package-manifest.mjs";
 
-const allowedArtifactByCommand = {
+export const allowedArtifactByCommand = {
   start: "worker agents may edit only files named in their brief",
   review: "author agents may apply accepted Critical/High review fixes only",
   "ulw-loop": "scoped edits; no GitHub",
@@ -50,214 +51,17 @@ export function replaceGeneratedBlock(text, id, body, relativePath) {
   return text.replace(pattern, generatedBlock(id, body, relativePath));
 }
 
-function mdList(items, prefix) {
-  if (!items?.length) return "-";
-  return items.map((item) => `\`${prefix}${item}\``).join(", ");
-}
-
-function mdConditionalList(doc, field, prefix) {
-  const entries = conditionalAssets(doc, field);
-  if (entries.length === 0) return "-";
-  return entries.map(({ activation, asset }) => `\`${activation}→${prefix}${asset}\``).join(", ");
-}
-
-function purpose(doc) {
-  return String(doc.purpose || "").replace(/\.$/, "");
-}
-
-function conditionalAssetSuffix(doc) {
-  const entries = [
-    ...conditionalAssets(doc, "conditional_references"),
-    ...conditionalAssets(doc, "conditional_templates"),
-  ];
-  return entries.length > 0 ? "; conditional: see conditional map" : "";
-}
-
-function renderCodexCodePermissionTable(commands) {
-  const lines = [
-    "| Subcommand | May modify source files | Allowed artifacts |",
-    "| --- | --- | --- |",
-  ];
-  for (const doc of commands) {
-    lines.push(
-      `| \`${doc.command}\` | ${doc.source_edit_allowed ? "yes" : "no"} | ${allowedArtifactByCommand[doc.command] || "response output only"} |`,
-    );
-  }
-  return lines.join("\n");
-}
-
-function renderClaudeCodePermissionTable(commands) {
-  const lines = [
-    "| 서브커맨드 | 소스 코드 수정 | 작성 가능한 산출물 |",
-    "|---|---|---|",
-  ];
-  for (const doc of commands) {
-    const allowed = doc.source_edit_allowed ? "✅" : "❌";
-    const artifact = allowedArtifactByCommand[doc.command] || "상태 보고";
-    lines.push(`| \`${doc.command}\` | ${allowed} | ${artifact} |`);
-  }
-  return lines.join("\n");
-}
-
-function renderCodexSubcommandTable(commands) {
-  const lines = [
-    "## Subcommand Contract Table",
-    "",
-    "| Subcommand | Mode | Show-doc heading | Purpose | Side effects | Stop condition | Required assets |",
-    "| --- | --- | --- | --- | --- | --- | --- |",
-  ];
-  for (const doc of commands) {
-    const refs = mdList(doc.required_references || [], "references/");
-    const templates = mdList(doc.required_templates || [], "templates/");
-    lines.push(`| \`${doc.command}\` | ${doc.mode || "read-only"} | ${doc.show_doc_heading} | ${purpose(doc)} | ${doc.write_side_effects || "response output only"} | ${doc.stop_condition || "Stop after reporting current state."} | refs: ${refs}; templates: ${templates}${conditionalAssetSuffix(doc)} |`);
-  }
-  return lines.join("\n");
-}
-
-function renderClaudeSubcommandTable(commands) {
-  const lines = [
-    "| subcommand | mode | show-doc heading | 목적 | side effects | stop condition | 상세 reference rule |",
-    "|---|---|---|---|---|---|---|",
-  ];
-  for (const doc of commands) {
-    const refs = mdList(doc.required_references || [], "references/");
-    const templates = mdList(doc.required_templates || [], "templates/");
-    lines.push(`| \`${doc.command}\` | ${doc.mode || "read-only"} | ${doc.show_doc_heading} | ${purpose(doc)} | ${doc.write_side_effects || "response output only"} | ${doc.stop_condition || "Stop after reporting current state."} | refs: ${refs}; templates: ${templates}${conditionalAssetSuffix(doc)} |`);
-  }
-  return lines.join("\n");
-}
-
-// Canonical grouping for the generated Required Reference Map (#379).
-// The group is semantic, not filename-derived:
-// - gates: preflight/admission/review/checklist gates that can block readiness or approval.
-// - wiki: wiki/getwiki/setwiki authority and retrieval/write-boundary references.
-// - workflow: procedural command workflows, shipping/status/cleanup/reporting steps, or support loops.
-// Keep each reference in exactly one group so generated tables cannot classify the
-// same reference differently across runtime surfaces.
-const referenceGroupByName = new Map([
-  ["agent-runtime-contract.md", "workflow"],
-  ["ci-failure-triage-loop.md", "workflow"],
-  ["core-invariants.md", "gates"],
-  ["cross-review-loop.md", "workflow"],
-  ["deep-interview-readiness-gate.md", "gates"],
-  ["evidence-contract.md", "gates"],
-  ["forge-goal.md", "workflow"],
-  ["gajae-code.md", "workflow"],
-  ["human-review-feedback-loop.md", "workflow"],
-  ["issue-ready-plan.md", "workflow"],
-  ["local-diff-check.md", "workflow"],
-  ["merge-cleanup.md", "workflow"],
-  ["plan-to-issues.md", "workflow"],
-  ["pr-check-evidence-bundle.md", "workflow"],
-  ["prompt-optimizer.md", "workflow"],
-  ["prompt-skill-optimization-staging.md", "workflow"],
-  ["quality-lens-router.md", "gates"],
-  ["ralplan-critic-consensus.md", "gates"],
-  ["regression-library.md", "gates"],
-  ["review-quality-contract.md", "gates"],
-  ["retrospective-workflow.md", "workflow"],
-  ["retrospective.md", "workflow"],
-  ["review-comment-style.md", "workflow"],
-  ["review-output-contract.md", "workflow"],
-  ["security-posture-gate.md", "gates"],
-  ["ship.md", "workflow"],
-  ["simplicity-deletability-gate.md", "gates"],
-  ["spark-goal.md", "workflow"],
-  ["start-workflow.md", "workflow"],
-  ["status.md", "workflow"],
-  ["tune-goal.md", "workflow"],
-  ["ulw-loop.md", "workflow"],
-  ["ulw-tier-triage.md", "workflow"],
-  ["ulw-plan.md", "workflow"],
-  ["ulw-intent-routing.md", "workflow"],
-  ["ulw-research.md", "workflow"],
-  ["ulw-epistemic-instrumentation.md", "workflow"],
-  ["wiki-bridge.md", "wiki"],
-  ["wiki-context-preflight.md", "wiki"],
-  ["wiki-growth-triage.md", "workflow"],
-  ["2026-06-04-brain-v0-wiki-authority-in-ddalggak.md", "wiki"],
-]);
-
-const referenceGroups = new Set(["workflow", "gates", "wiki"]);
-
-function referenceGroupOf(ref) {
-  const group = referenceGroupByName.get(ref);
-  if (!group) {
-    throw new Error(
-      `unclassified required reference: ${ref}; add it to referenceGroupByName in scripts/project-runtime-assets/render-skill-blocks.mjs`,
-    );
-  }
-  if (!referenceGroups.has(group)) {
-    throw new Error(`invalid reference group for ${ref}: ${group}`);
-  }
-  return group;
-}
-
-function splitReferencesByGroup(refs) {
-  const groups = { workflow: [], gates: [], wiki: [] };
-  for (const ref of refs || []) {
-    groups[referenceGroupOf(ref)].push(ref);
-  }
-  return groups;
-}
-
-function renderRequiredReferenceMap(commands) {
-  const lines = [
-    "| Subcommand | Base workflow reference | Base gate references | Base wiki/meta references | Base templates | Conditional references | Conditional templates |",
-    "| --- | --- | --- | --- | --- | --- | --- |",
-  ];
-  for (const doc of commands) {
-    const refs = splitReferencesByGroup(doc.required_references || []);
-    lines.push(
-      `| \`${doc.command}\` | ${mdList(refs.workflow, "references/")} | ${mdList(refs.gates, "references/")} | ${mdList(refs.wiki, "references/")} | ${mdList(doc.required_templates || [], "templates/")} | ${mdConditionalList(doc, "conditional_references", "references/")} | ${mdConditionalList(doc, "conditional_templates", "templates/")} |`,
-    );
-  }
-  return lines.join("\n");
-}
-
-function completionSignalOf(doc) {
-  const signal = doc.output_contract?.completion_signal;
-  if (!signal) {
-    throw new Error(`command contract missing output_contract.completion_signal: ${doc.command}`);
-  }
-  return signal;
-}
-
-function renderClaudeCompletionSignalTable(commands) {
-  const lines = ["| 서브커맨드 | 완료 신호 |", "|---|---|"];
-  for (const doc of commands) {
-    lines.push(`| \`${doc.command}\` | \`${completionSignalOf(doc)}\` |`);
-  }
-  return lines.join("\n");
-}
-
-function renderCodexCompletionSignalTable(commands) {
-  const lines = ["| Subcommand | Completion signal |", "| --- | --- |"];
-  for (const doc of commands) {
-    lines.push(`| \`${doc.command}\` | \`${completionSignalOf(doc)}\` |`);
-  }
-  return lines.join("\n");
-}
-
 export function skillBlockProjections(commands) {
-  return [
-    {
-      path: "ddalggak/SKILL.md",
-      blocks: [
-        ["code-permission-table", renderClaudeCodePermissionTable(commands)],
-        ["subcommand-table", renderClaudeSubcommandTable(commands)],
-        ["required-reference-map", renderRequiredReferenceMap(commands)],
-        ["completion-signal-table", renderClaudeCompletionSignalTable(commands)],
-      ],
-    },
-    {
-      path: ".codex/skills/ddalggak/SKILL.md",
-      blocks: [
-        ["code-permission-table", renderCodexCodePermissionTable(commands)],
-        ["subcommand-table", renderCodexSubcommandTable(commands)],
-        ["required-reference-map", renderRequiredReferenceMap(commands)],
-        ["completion-signal-table", renderCodexCompletionSignalTable(commands)],
-      ],
-    },
-  ];
+  const index = [
+    "| Command | Contract |",
+    "| --- | --- |",
+    ...commands.map((doc) => `| \`${doc.command}\` | \`references/${commandContractReference(doc.command)}\` |`),
+  ].join("\n");
+  return Object.entries({ claude: "ddalggak", codex: ".codex/skills/ddalggak" }).map(([root, prefix]) => ({
+    path: `${prefix}/SKILL.md`,
+    blocks: [
+      ["command-index", index],
+      ["installation-inventory", installationInventory(commands, { root }).map((file) => `- \`${file}\``).join("\n")],
+    ],
+  }));
 }

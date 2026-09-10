@@ -1,4 +1,9 @@
 import { pathToFileURL } from "node:url";
+import strictAssert from "node:assert/strict";
+import { extractDocSection } from "../bin/lib/dispatch/show-doc.mjs";
+import { extractMarkdownSection } from "./lib/markdown-links.mjs";
+import { withTempRepo } from "./test-lib/repo-fixture.mjs";
+import { runNodeScript } from "./test-lib/process.mjs";
 
 import {
   assert,
@@ -35,6 +40,105 @@ import {
 } from "./test-lib/cli-fixtures.mjs";
 
 export const cases = [
+  {
+    name: "show-doc extracts only the H2 from an explicit selected document and fails closed",
+    run() {
+      const temp = makeTempHome();
+      const selectedDocumentPath = path.join(temp, "command-review.md");
+      const headings = { review: "Cross-Review Loop" };
+      const capture = (command = "review") => {
+        let stdout = "";
+        let stderr = "";
+        const status = extractDocSection(command, headings, {
+          selectedDocumentPath,
+          stdout: { write(text) { stdout += text; } },
+          stderr: { write(text) { stderr += text; } },
+        });
+        return { status, stdout, stderr };
+      };
+      try {
+        writeFileSync(selectedDocumentPath, "# Command: review\nmetadata sentinel\n## CROSS-REVIEW LOOP\nSELECTED_REVIEW\n### Nested\nnested body\n## Other\nSIBLING_SENTINEL\n");
+        const selected = capture();
+        assertExit(selected, 0);
+        assertStdout(selected, "## CROSS-REVIEW LOOP\nSELECTED_REVIEW\n### Nested\nnested body\n");
+        strictAssert.equal(selected.stderr, "");
+        writeFileSync(selectedDocumentPath, "## Cross-Review Loop\nEOF_SENTINEL");
+        assertStdout(capture(), "## Cross-Review Loop\nEOF_SENTINEL\n");
+        writeFileSync(selectedDocumentPath, "## Other\nNO_SELECTED_H2\n");
+        const missingHeading = capture();
+        assertExit(missingHeading, 1);
+        assertStdout(missingHeading, "");
+        assertIncludes(missingHeading.stderr, selectedDocumentPath, "missing H2 diagnostic");
+        assertIncludes(missingHeading.stderr, headings.review, "missing H2 diagnostic");
+        rmSync(selectedDocumentPath);
+        const missingFile = capture();
+        assertExit(missingFile, 1);
+        assertStdout(missingFile, "");
+        assertIncludes(missingFile.stderr, selectedDocumentPath, "missing file diagnostic");
+        for (const command of ["unsupported", "../review", "toString"]) {
+          const unsupported = capture(command);
+          assertExit(unsupported, 1);
+          assertStdout(unsupported, "");
+          assertIncludes(unsupported.stderr, command, "unsupported diagnostic");
+          strictAssert(!unsupported.stderr.includes(selectedDocumentPath), "reject unsupported commands before I/O");
+        }
+      } finally {
+        rmSync(temp, { recursive: true, force: true });
+      }
+      strictAssert(!existsSync(temp));
+    },
+  },
+  {
+    name: "show-doc selects all 21 command filenames independently, including shared-heading GJC keys",
+    run() {
+      let disposable;
+      withTempRepo({ rootDir, prefix: "ddalggak-selected-cli-", run(repo) {
+        disposable = repo;
+        assertExit(runNodeScript("scripts/project-runtime-assets.mjs", ["--write"], { cwd: repo }), 0);
+        const cli = (command) => runNodeScript("bin/ddalggak.js", [command, "--show-doc", "--no-update"], { cwd: repo });
+        const contracts = loadCommandContracts(repo);
+        strictAssert.equal(contracts.length, 21);
+        for (const doc of contracts) {
+          // The expected path is independent of the production filename helper.
+          const file = path.join(repo, "ddalggak", "references", `command-${doc.command}.md`);
+          const text = readFileSync(file, "utf8");
+          writeFileSync(file, `${text}\nSELECTED_COMMAND_${doc.command}\n`);
+        }
+        for (const doc of contracts) {
+          const file = path.join(repo, "ddalggak", "references", `command-${doc.command}.md`);
+          const text = readFileSync(file, "utf8");
+          const result = cli(doc.command);
+          assertExit(result, 0);
+          assertStdout(result, extractMarkdownSection(text, doc.show_doc_heading));
+          assertIncludes(result.stdout, `SELECTED_COMMAND_${doc.command}\n`, "command-key sentinel");
+          strictAssert.equal(result.stderr, "");
+          if (doc.command === "review" || doc.command.startsWith("gjc-")) {
+            rmSync(file);
+            const missingFile = cli(doc.command);
+            assertExit(missingFile, 1);
+            assertStdout(missingFile, "");
+            assertIncludes(missingFile.stderr, file, "selected file diagnostic");
+            writeFileSync(file, text.replace(`## ${doc.show_doc_heading}`, "## UNSELECTED_H2"));
+            const missingHeading = cli(doc.command);
+            assertExit(missingHeading, 1);
+            assertStdout(missingHeading, "");
+            assertIncludes(missingHeading.stderr, file, "selected H2 diagnostic");
+            assertIncludes(missingHeading.stderr, doc.show_doc_heading, "selected H2 diagnostic");
+            writeFileSync(file, text);
+          }
+        }
+        rmSync(path.join(repo, "ddalggak", "SKILL.md"));
+        const withoutSkill = cli("review");
+        assertExit(withoutSkill, 0);
+        assertIncludes(withoutSkill.stdout, "SELECTED_COMMAND_review\n", "selected document without SKILL");
+        const unsupported = cli("unsupported");
+        assertExit(unsupported, 2);
+        assertStdout(unsupported, "");
+        assertIncludes(unsupported.stderr, "Unknown command: unsupported", "unsupported command");
+      } });
+      strictAssert(!existsSync(disposable), "selected CLI fixture must be removed");
+    },
+  },
 {
     name: "dispatch slash helpers quote ambiguous arguments without changing prefixes",
     run() {

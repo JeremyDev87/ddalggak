@@ -128,23 +128,17 @@ const specialInputs = JSON.parse(readFileSync(path.join(fixtureDir, "special-reg
     result.status === 0,
     `generator --write for reference grouping regression: expected exit 0, got ${result.status}\n${result.stdout}\n${result.stderr}`,
   );
-  const skill = readFileSync(path.join(tempDir, "ddalggak", "SKILL.md"), "utf8");
-  const requiredMap = skill.split("<!-- ddalggak:generated:start required-reference-map -->")[1]?.split("<!-- ddalggak:generated:end required-reference-map -->")[0];
-  assert(requiredMap, "expected generated required-reference-map block");
-  const reviewRow = requiredMap
-    .split("\n")
-    .find((line) => line.startsWith("| `review` |") && line.includes("cross-review-loop.md"));
-  assert(reviewRow, "expected generated required-reference review row");
-  const columns = reviewRow.split("|").map((part) => part.trim());
+  const review = readFileSync(path.join(tempDir, "ddalggak/references/command-review.md"), "utf8");
+  const metadata = JSON.parse(review.match(/^```json\n([\s\S]*?)\n```$/m)[1]);
+  assert(metadata.required_references.includes("cross-review-loop.md"), "review workflow stays required");
   assert(
-    columns[2].includes("cross-review-loop.md") && !columns[2].includes("security-posture-gate.md"),
-    `security posture gate must not be rendered as a workflow reference\n${reviewRow}`,
+    !metadata.required_references.includes("security-posture-gate.md"),
+    "security posture gate must not be rendered as a base workflow reference",
   );
   assert(
-    columns[3].includes("review-quality-contract.md")
-      && !columns[3].includes("security-posture-gate.md")
-      && columns[6].includes("package-workflow-release-or-security-posture→references/security-posture-gate.md"),
-    `review quality must be a base gate while security posture stays conditional\n${reviewRow}`,
+    metadata.required_references.includes("review-quality-contract.md")
+      && metadata.conditional_references.includes("package-workflow-release-or-security-posture=security-posture-gate.md"),
+    "review quality must be a base gate while security posture stays conditional",
   );
 }
 
@@ -202,7 +196,7 @@ const specialInputs = JSON.parse(readFileSync(path.join(fixtureDir, "special-reg
   const output = `${result.stdout}\n${result.stderr}`;
   assert(result.status === 1, `yaml/manifest stop_condition drift must fail, got exit ${result.status}\n${output}`);
   assert(
-    output.includes(".codex/skills/ddalggak/SKILL.md subcommand table stop condition for 'start' drifted"),
+    output.includes(".codex/skills/ddalggak/references/command-start.md: command metadata drift"),
     `expected yaml/skill stop condition drift diagnostic\n${output}`,
   );
 }
