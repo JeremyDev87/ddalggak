@@ -4,7 +4,7 @@
 Use when: Risk-adaptive current-head semantic review and accepted fix loop.
 Required by: `review` command.
 Side effects: Top-level review comment plus inline line-anchored review comments for every triage-passing finding in one COMMENT-event batch; accepted Critical/High fixes may edit source and push to the reviewed PR branch.
-Do not use when: Outside this command's scope or permissions. Stop before approve if intake is not ready, current-head CI is not terminal green/skipped, semantic coverage has gaps, blockers remain, or wiki/evidence preflight has blocking gaps.
+Do not use when: Outside this command's scope or permissions. Before writes, re-check lifecycle. state=MERGED/mergedAt emits REVIEW_STOPPED_PR_MERGED and stops; uncertainty is BLOCKED.
 
 This command document and its required assets are the minimum required context, not a reading allowlist.
 Read required assets before acting. Read conditional assets when their activation has supporting evidence; multiple activations for one asset are OR, and the asset need only be read once.
@@ -46,7 +46,7 @@ Conditional templates (activation -> asset):
   "purpose": "Risk-adaptive current-head semantic review and accepted fix loop.",
   "mode": "review-fix",
   "write_side_effects": "Top-level review comment plus inline line-anchored review comments for every triage-passing finding in one COMMENT-event batch; accepted Critical/High fixes may edit source and push to the reviewed PR branch.",
-  "stop_condition": "Stop before approve if intake is not ready, current-head CI is not terminal green/skipped, semantic coverage has gaps, blockers remain, or wiki/evidence preflight has blocking gaps.",
+  "stop_condition": "Before writes, re-check lifecycle. state=MERGED/mergedAt emits REVIEW_STOPPED_PR_MERGED and stops; uncertainty is BLOCKED.",
   "required_references": [
     "wiki-context-preflight.md",
     "2026-06-04-brain-v0-wiki-authority-in-ddalggak.md",
@@ -80,8 +80,8 @@ Conditional templates (activation -> asset):
 
 ## `review` - Cross-Review Loop
 
-Command contract: mode `review-fix`; source edits are allowed only for accepted Critical/High blockers; top-level review comments are allowed; stop before APPROVE when current-head CI/checks are not terminal, blockers remain, or evidence/wiki preflight has blocking gaps.
+Command contract: `review-fix`; accepted Critical/High fixes/comments only. Follow `cross-review-loop.md` lifecycle checkpoints; merged emits `REVIEW_STOPPED_PR_MERGED`, uncertainty is `BLOCKED`.
 
 Full procedure: `references/cross-review-loop.md`; public renderer: `references/review-output-contract.md` + `references/review-comment-style.md`; wiki authority: `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`; delegated review only loads `templates/review-brief.md`.
 
-Execution contract index: live PR/diff/files/checks/issue/head SHA, Wiki Context Preflight, base Router/Evidence, activation-bound optional gates, Admission schema v3, candidate disposition, lifecycle aggregate, publication authority, canonical-candidate-bound two-sentence findings, deterministic fixed summary, zero-finding substantive validation, and a top-level conclusion comment when formal approval is inappropriate.
+Execution contract index: live PR/diff/files/checks/issue/head SHA; lifecycle stop/readback; Wiki Context Preflight; base Router/Evidence; activation-bound optional gates; Admission schema v3; canonical-candidate-bound two-sentence findings; deterministic fixed summary.

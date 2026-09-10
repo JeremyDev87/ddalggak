@@ -7,6 +7,8 @@
 - checks Head SHA:
 - Linked issue contract / acceptance criteria:
 - Lifecycle:
+- Lifecycle checked at / evidence: intake; after delegated or long-running work; immediately before each fix, push, or GitHub write
+- Merge stop sentinel: `state=MERGED` or non-null `mergedAt` → `REVIEW_STOPPED_PR_MERGED`; record `state`, `mergedAt`, `mergeCommit`, `headRefOid`; stop delegation/probes/edits/pushes/GitHub writes
 - Authority boundary:
 - Purpose / non-goals:
 
@@ -66,6 +68,8 @@ Worker output has no publication authority.
 - Internal Review Quality sensor verdict: `approve | change request | comment | blocked`
 - Canonical lifecycle outcome and public rendering: `references/cross-review-loop.md` plus `references/review-output-contract.md`
 
-`REVIEW_DONE PR#<num>: <APPROVE|CHANGES_REQUESTED> critical=N high=N medium=N low=N head=<sha>`
+Open lifecycle completion: `REVIEW_DONE PR#<num>: <APPROVE|CHANGES_REQUESTED> critical=N high=N medium=N low=N head=<sha>`
+
+Merged lifecycle hard stop: `REVIEW_STOPPED_PR_MERGED PR#<num>: state=MERGED mergedAt=<timestamp> mergeCommit=<sha|null> head=<sha> outcome=NO_FOLLOW_UP`
 
 A zero-finding review is valid only with semantic coverage evidence. High/Critical zero-finding reviews additionally require the documented counterexample/challenger rule in `references/review-quality-contract.md`.

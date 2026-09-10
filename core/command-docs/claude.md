@@ -18,15 +18,16 @@ Execution contract index:
 
 ## Cross-Review Loop
 
-Command contract: mode `review-fix`; source edits are allowed only for accepted Critical/High blockers; top-level review comments are allowed; stop before APPROVE when current-head CI/checks are not terminal, blockers remain, or evidence/wiki preflight has blocking gaps.
+Command contract: `review-fix`; accepted Critical/High fixes/comments only. Follow `cross-review-loop.md` lifecycle checkpoints; merged emits `REVIEW_STOPPED_PR_MERGED`, uncertainty is `BLOCKED`.
 
 Full procedure: `references/cross-review-loop.md`; public renderer: `references/review-output-contract.md` + `references/review-comment-style.md`; wiki authority: `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`; delegated-review만 `templates/review-brief.md`를 로드한다.
 
 Execution contract index:
 - Re-read live PR state, diff/files/checks, linked issue, current head SHA, and wiki-context preflight.
+- Lifecycle: merged stops probes/delegation/edits/pushes/GitHub writes after authoritative readback; default `MERGED / NO_FOLLOW_UP`. Lookup ambiguity is `BLOCKED`.
 - Gates: Router/Evidence는 base; 나머지는 activation evidence applies일 때만 로드한다.
 - Findings must separate live evidence, wiki-strengthened rationale, non-wiki inference, and retrieval gaps.
-- Run admission schema v3 and the finding signal gate first (`references/cross-review-loop.md`): only conductor-promoted admitted findings become inline comments in one `COMMENT`-event batch; each finding is rendered from its aggregate-member canonical candidate, filtered Low/nit notes stay internal, and the top-level body is the deterministic fixed summary. A zero-finding review with substantive validation evidence is valid.
+- Apply admission schema v3 first: only aggregate-member canonical candidate findings publish, filtered notes stay internal, deterministic fixed summary renders, and zero-finding needs substantive evidence.
 
 ---
 

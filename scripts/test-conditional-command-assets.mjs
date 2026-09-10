@@ -30,6 +30,8 @@ assert(byName.get("plan").conditional_references.includes("ambiguous-intent=deep
 assert.equal(byName.get("start").required_templates.length, 0);
 assert(byName.get("start").conditional_templates.includes("delegated-work=worker-brief.md"));
 assert(byName.get("review").conditional_references.includes("package-workflow-release-or-security-posture=security-posture-gate.md"));
+assert(byName.get("review").stop_condition.includes("REVIEW_STOPPED_PR_MERGED"));
+assert(byName.get("review").stop_condition.includes("state=MERGED"));
 console.log("[PASS] expensive gates/templates are absent from the base hot path and activation-bound");
 
 assert.deepEqual(parseConditionalAssetSpec("package-workflow-release-or-security-posture=security-posture-gate.md"), {
@@ -112,6 +114,19 @@ for (const root of ["ddalggak", ".codex/skills/ddalggak"]) {
   else assert(review.includes("activation-bound optional gates"));
 }
 console.log("[PASS] rendered command owners keep conditional routing and prose aligned");
+
+for (const root of ["ddalggak", ".codex/skills/ddalggak"]) {
+  for (const asset of [
+    "references/command-review.md",
+    "references/cross-review-loop.md",
+    "references/review-output-contract.md",
+    "templates/review-brief.md",
+  ]) {
+    const text = readFileSync(`${root}/${asset}`, "utf8");
+    assert(text.includes("REVIEW_STOPPED_PR_MERGED"), `${root}/${asset}: 머지된 리뷰 중단 sentinel이 투영되어야 함`);
+  }
+}
+console.log("[PASS] 리뷰 중 머지 감지 중단 규칙이 두 런타임 루트에 유지됨");
 
 const router = readFileSync("ddalggak/references/quality-lens-router.md", "utf8");
 assert(router.includes("`security-posture` | Package manifests/admission"));

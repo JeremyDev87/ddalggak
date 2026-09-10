@@ -34,7 +34,7 @@ Public output excludes internal evidence inventories. Wiki Context Manifest, gat
 - MERGED: `no follow-up`, `follow-up required`, `blocked`
 - CLOSED_UNMERGED: `no action`, `follow-up required`, `blocked`
 
-Do not reuse `change request` for MERGED or CLOSED_UNMERGED. Merged/closed reviews default to no GitHub mutation; an authorized follow-up comment requires a reproducible or deterministic residual defect with material impact.
+Do not reuse `change request` for MERGED or CLOSED_UNMERGED. Immediately before rendering or publishing, re-read lifecycle. If `state=MERGED` or `mergedAt` is present, emit `REVIEW_STOPPED_PR_MERGED`, stop rendering/publication, and perform no GitHub mutation; report `MERGED / NO_FOLLOW_UP` by default. An authorized follow-up comment requires a reproducible or deterministic residual defect with material impact and is a separate action, not continuation of the stopped review. Lifecycle lookup failure or ambiguity is `BLOCKED`.
 
 ## Substantive gate requirement
 

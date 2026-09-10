@@ -12,11 +12,11 @@ Execution contract index: target repo/base freshness, issue body+comments, base 
 
 ## `review` - Cross-Review Loop
 
-Command contract: mode `review-fix`; source edits are allowed only for accepted Critical/High blockers; top-level review comments are allowed; stop before APPROVE when current-head CI/checks are not terminal, blockers remain, or evidence/wiki preflight has blocking gaps.
+Command contract: `review-fix`; accepted Critical/High fixes/comments only. Follow `cross-review-loop.md` lifecycle checkpoints; merged emits `REVIEW_STOPPED_PR_MERGED`, uncertainty is `BLOCKED`.
 
 Full procedure: `references/cross-review-loop.md`; public renderer: `references/review-output-contract.md` + `references/review-comment-style.md`; wiki authority: `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`; delegated review only loads `templates/review-brief.md`.
 
-Execution contract index: live PR/diff/files/checks/issue/head SHA, Wiki Context Preflight, base Router/Evidence, activation-bound optional gates, Admission schema v3, candidate disposition, lifecycle aggregate, publication authority, canonical-candidate-bound two-sentence findings, deterministic fixed summary, zero-finding substantive validation, and a top-level conclusion comment when formal approval is inappropriate.
+Execution contract index: live PR/diff/files/checks/issue/head SHA; lifecycle stop/readback; Wiki Context Preflight; base Router/Evidence; activation-bound optional gates; Admission schema v3; canonical-candidate-bound two-sentence findings; deterministic fixed summary.
 
 # status
 
