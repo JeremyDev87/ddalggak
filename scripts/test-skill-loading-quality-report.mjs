@@ -427,6 +427,12 @@ export async function testToolFailureClassification({ caseName } = {}) {
     ["unsupported-read-gh", "status", "gh", { args: ["pr", "view", "17", "--json", "number"] }, "capability"],
     ["api-get", "status", "gh", { args: ["api", "repos/fixture/prs", "-X", "GET", "-H", "Authorization: " + secret] }, "capability"],
     ["missing-file", "status", "read", { path: "missing.mjs", reason: "inspect" }, "input"],
+    ["file", "status", "read", { path: "state.json", reason: "inspect" }, undefined],
+    ...[".", "./"].map((input, i) => ["unsupported-root-" + i, "status", "read", { path: input, reason: "inspect" }, "capability"]),
+    ["unsupported-directory", "status", "read", { path: "ddalggak", reason: "inspect" }, "capability"],
+    ...[".", "./"].map((input, i) => ["forbidden-root-write-" + i, "status", "write", { path: input, content: secret }, "authority"]),
+    ...["./state.json", "./../outside", "./.git/config", "state.json/", ".//"].map((input, i) =>
+      ["unchanged-path-denial-" + i, "status", "read", { path: input, reason: "inspect" }, "authority"]),
     ["not-directory", "status", "read", { path: "state.json/child", reason: "inspect" }, "input"],
     ["misleading-error-text", "status", "read", { path: "denied:not-a-write", reason: "inspect" }, "input"],
     ...[null, {}, { path: 42, reason: "inspect" }, { path: "", reason: "inspect" }, { path: "bad\0path", reason: "inspect" }, { path: "state.json", reason: 42 }]
@@ -435,6 +441,7 @@ export async function testToolFailureClassification({ caseName } = {}) {
       .map((args, i) => ["malformed-gh-" + i, "status", "gh", args, "input"]),
     ["traversal", "status", "read", { path: "../outside", reason: "inspect" }, "authority"],
     ["absolute", "status", "read", { path: path.join(temp, "outside"), reason: "inspect" }, "authority"],
+    ["absolute-root", "status", "read", { reason: "inspect" }, "authority"],
     ["git-private", "status", "read", { path: ".git/config", reason: "inspect" }, "authority"],
     ["symlink", "status", "read", { path: "escape/outside", reason: "inspect" }, "authority"],
     ["symlink-missing", "status", "read", { path: "escape/missing", reason: "inspect" }, "authority"],
@@ -473,12 +480,15 @@ export async function testToolFailureClassification({ caseName } = {}) {
       if (label.startsWith("symlink")) symlinkSync(temp, path.join(sandbox.workspace, "escape"));
       if (label === "unknown-read-error") chmodSync(target, 0);
       let failure, result;
-      try { result = await invoke(kind, args); } catch (error) { failure = error; }
+      try { result = await invoke(kind, label === "absolute-root" ? { ...args, path: sandbox.workspace } : args); } catch (error) { failure = error; }
       finally {
         if (label.startsWith("symlink")) unlinkSync(path.join(sandbox.workspace, "escape"));
         if (label === "unknown-read-error") chmodSync(target, mode);
       }
-      if (label === "directory") {
+      if (label === "file") {
+        assert.ifError(failure);
+        assert.equal(result.content[0].text, readFileSync(target, "utf8"));
+      } else if (label === "directory") {
         assert.equal(failure, undefined);
         assert.deepEqual(JSON.parse(result.content[0].text), { type: "directory", paths: Object.keys(sandbox.before).filter(file => file.startsWith("before/")).sort() });
         assert.equal(result.details.type, "directory");

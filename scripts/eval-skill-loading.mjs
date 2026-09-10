@@ -106,6 +106,7 @@ export function createFixtureTools({ config, slot, sandbox, directory, browser, 
   let observation, verification, verificationActionId, submitted = false;
   const file = (relative, allowDirectory = false) => {
     if (typeof relative !== "string" || !relative || relative.includes("\0")) fail("input", "invalid-path");
+    if (allowDirectory && [".", "./"].includes(relative)) fail("capability", "not-a-public-source-directory");
     const parts = relative.split(/[\\/]/);
     if (path.isAbsolute(relative) || parts.some(part => !part || part === "." || part === ".." || part === ".git")) fail("authority", "path-outside-fixture");
     let target = root, stat;
@@ -331,7 +332,8 @@ export function createFixtureTools({ config, slot, sandbox, directory, browser, 
             action.evidence = partial;
           }
           const { category, code } = partial.failure;
-          throw Object.assign(new Error(`${category}: ${code}`, { cause: primary ?? persistenceError }), { fixtureFailure: { category, code } });
+          // The SDK delivers only error.message; reuse the safe receipt inline, not guest error/cause text.
+          throw Object.assign(new Error(`${category}: ${code}\n${JSON.stringify({ uiFailure: partial })}`, { cause: primary ?? persistenceError }), { fixtureFailure: { category, code } });
         }
       } else if (fixture.id === "status") {
         const git = args => {

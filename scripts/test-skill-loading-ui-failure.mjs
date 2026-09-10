@@ -51,7 +51,7 @@ if (!args.includes('--child')) {
       const { chromium } = await import(pathToFileURL(path.resolve(option('--browser-module'))));
       browser = await chromium.launch({ channel: 'chrome', headless: true, args: ['--disable-background-networking', '--disable-component-update'] });
     }
-    const scenarios = args.includes('--integration-only') || args.includes('--final-json-only') ? [] : mode === 'portable' ? ['context-create-failure'] : [
+    const scenarios = args.includes('--feedback-only') || args.includes('--integration-only') || args.includes('--final-json-only') ? [] : mode === 'portable' ? ['context-create-failure'] : [
       'missing-loading-state', 'missing-submission', 'context-create-failure', 'route-failure', 'context-close-failure',
       ...red ? [] : ['required', 'runtime', 'network', 'png', 'screenshot-failure', 'capture-focus-failure', 'forged', 'inherited-forgery', 'private-state', 'sample-failure', 'sample-timeout', 'close-after-success', 'success'],
     ];
@@ -163,7 +163,48 @@ if (!args.includes('--child')) {
         console.log(JSON.stringify({ scenario, beforeRescue, checkerReceipt: !!error?.uiFailure && !error.uiFailure.forged, pngs: evidence.pngs.length }));
       }
     }
-    if (mode === 'browser' && !red && !args.includes('--integration-only') && !args.includes('--final-json-only')) {
+    if (mode === 'browser' && args.includes('--feedback-only')) {
+      const { createFixtureTools, confineBrowser } = await import('./eval-skill-loading.mjs');
+      for (const operation of ['required-attribute', 'label-count', 'await-loading']) {
+        const directory = path.join(output ?? process.env.HOME, operation); mkdirSync(directory);
+        const workspace = path.join(process.env.HOME, operation + '-workspace'); mkdirSync(workspace);
+        const html = operation === 'required-attribute' ? source.replace(' required autocomplete', ' autocomplete') :
+          operation === 'label-count' ? source.replace('>Name</label>', '>' + sentinel + '</label>') :
+          source.replace("show('loading', 'Submitting...');", "show('" + sentinel + "', 'Submitting...');");
+        writeFileSync(path.join(workspace, 'index.html'), html);
+        own = { submissions: 0, contextClosed: false };
+        const secure = confineBrowser(browser), surface = { async newContext() {
+          const context = await secure.newContext(); own.context = context; own.close = context.close.bind(context);
+          context.once('close', () => { own.contextClosed = true; }); return context;
+        } };
+        const state = createFixtureTools({ slot: { fixtureId: 'ui' }, sandbox: { workspace }, directory, browser: surface, capture: { requests: [], reads: [] } });
+        let error;
+        try { await state.tools.find(tool => tool.name === 'verify').execute('failed-verify', {}); } catch (caught) { error = caught; }
+        const action = state.actions[0], partial = readArtifact(directory, action.evidence);
+        const submitted = JSON.parse((await state.tools.find(tool => tool.name === 'submit').execute('submit', { observation: {} })).content[0].text);
+        rmSync(workspace, { recursive: true });
+        // Characterize saved A21 evidence independently of the new model-visible assertion below.
+        assert.equal(partial.failure.operation, operation); assert.equal(action.status, 'failure');
+        assert.equal(partial.receipts.length, operation === 'await-loading' ? 2 : 0);
+        assert.equal(submitted.verificationActionId, null);
+        assert.equal(partial.cleanup.context.closed, true); assert.equal(partial.cleanup.server.closed, true);
+        assert.equal(error.fixtureFailure.category, operation === 'await-loading' ? 'execution' : 'verification');
+        assert.throws(() => checkToolActions(state.actions), /tool execution failure/);
+        assert(!error.message.includes(sentinel));
+        save(operation + '.json', { action, partial, errorText: error.message, submitted, workspaceRemoved: !existsSync(workspace) });
+        try {
+          const delivered = JSON.parse(error.message.slice(error.message.indexOf('\n') + 1)).uiFailure;
+          assert.deepEqual(delivered, partial, 'safe saved receipt missing from thrown tool feedback');
+          assert.deepEqual(delivered.failure.viewport, { width: 375, height: 720 });
+          if (operation === 'await-loading') {
+            assert.equal(delivered.failure.expectedState, 'loading'); assert.equal(delivered.failure.state, 'loading-success');
+            assert.equal(delivered.observed.status, 'other'); assert.equal(delivered.observed.submissionObserved, true);
+          }
+        } catch (failure) { failures.push(operation + ': ' + failure.message); }
+        console.log(JSON.stringify({ operation, category: action.failure.category, partialCaptures: partial.receipts.length }));
+      }
+    }
+    if (mode === 'browser' && !args.includes('--feedback-only') && !red && !args.includes('--integration-only') && !args.includes('--final-json-only')) {
       const directory = path.join(output ?? process.env.HOME, 'cli'); mkdirSync(directory);
       const child = spawn(process.execPath, [fileURLToPath(new URL('../evals/skill-loading/fixtures/ui/browser-check.mjs', import.meta.url)),
         '--browser-module', option('--browser-module'), '--evidence', directory, '--html', path.join(output ?? process.env.HOME, 'missing-loading-state/source-index.html')], { stdio: ['ignore', 'ignore', 'pipe'] });
@@ -176,7 +217,7 @@ if (!args.includes('--child')) {
       assert.equal(cleanup.browserClosed, true); assert.equal(cleanup.serverClosed, true); assert.equal(cleanup.contextClosed, true);
       save('cli.json', { exitCode: code, receipt, cleanup });
     }
-    if (mode === 'browser' && (!red || args.includes('--integration-only')) && !args.includes('--final-json-only')) {
+    if (mode === 'browser' && !args.includes('--feedback-only') && (!red || args.includes('--integration-only')) && !args.includes('--final-json-only')) {
       const { confineBrowser, copyResultArtifacts, runReservedSession } = await import('./eval-skill-loading.mjs');
       const root = fileURLToPath(new URL('../', import.meta.url));
       // Scripted createSession seam, not an SDK session or model result. Real tools, HTTP, Chrome and persistence.
@@ -242,6 +283,8 @@ if (!args.includes('--child')) {
           const failed = record.actions.find(action => action.kind === 'verify' && action.status === 'failure');
           assert(failed.source && failed.evidence, 'runner discarded failed attempt source/evidence');
           const partial = failed.evidence.path ? readArtifact(directory, failed.evidence) : failed.evidence;
+          assert.deepEqual(JSON.parse(primary.message.slice(primary.message.indexOf('\n') + 1)).uiFailure, partial);
+          assert(!primary.message.includes(sentinel), 'private value escaped through thrown tool feedback');
           assert.equal(readArtifact(directory, failed.source, false).toString(), broken);
           assert.deepEqual(partial.source, failed.source);
           assert.equal(partial.cleanup?.server.closed ?? partial.serverClosed, true); assert.equal(partial.cleanup?.context.closed ?? partial.contextClosed, true);
@@ -283,7 +326,7 @@ if (!args.includes('--child')) {
         console.log(JSON.stringify({ scenario: `runner-${scenario}`, status: result.status, primaryReceipt: !!primary?.cause?.uiFailure, sandboxRemoved: !existsSync(workspace) }));
       }
     }
-    if (mode === 'browser' && (!red || args.includes('--final-json-only'))) {
+    if (mode === 'browser' && !args.includes('--feedback-only') && (!red || args.includes('--final-json-only'))) {
       const { createFixtureTools, confineBrowser, copyResultArtifacts } = await import('./eval-skill-loading.mjs');
       for (const privateDom of [false, true]) {
         const name = `final-json-${privateDom ? 'private' : 'clean'}`, directory = path.join(output ?? process.env.HOME, name);
@@ -322,6 +365,8 @@ if (!args.includes('--child')) {
           assert.equal(action.evidence.contextClosed, true); assert.equal(action.evidence.serverClosed, true);
           assert(['EEXIST', 'EISDIR'].includes(error.cause?.code), 'original persistence error lost');
           assert(!JSON.stringify(action.evidence).includes(sentinel));
+          assert.deepEqual(JSON.parse(error.message.slice(error.message.indexOf('\n') + 1)).uiFailure, action.evidence);
+          assert(!error.message.includes(sentinel), 'private value escaped through thrown tool feedback');
           assert.equal(readArtifact(copied, action.source, false).toString(), html);
           for (const capture of action.evidence.receipts) readArtifact(copied, capture.screenshot, false);
           assert.equal(evidence.neighborCopied, false); assert.equal(evidence.contextClosed, true); assert.equal(evidence.serverClosed, true);
