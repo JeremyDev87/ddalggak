@@ -11,7 +11,7 @@ Do not use when: task scope or default identity is unknown, synchronization fail
 2. **Synchronize safely.** Inspect the current worktree's tracked/index/submodule changes, untracked/ignored files, and in-progress Git operations such as merge/rebase/cherry-pick. Use `git status --porcelain=v1 --untracked-files=all --ignored --ignore-submodules=none` and inspect submodules explicitly; configuration must not hide files or changes. Tracked/index/submodule changes or an in-progress operation block synchronization. Resolve `clean_remote` and `clean_default` only from step 1; never eval command strings. Fetch only the selected default tip:
 
    ```sh
-   git fetch --no-prune --no-prune-tags --no-tags --refmap= -- "$clean_remote" "refs/heads/$clean_default"
+   git fetch --no-prune --no-prune-tags --no-tags --recurse-submodules=no --refmap= -- "$clean_remote" "refs/heads/$clean_default"
    ```
 
    Read the successful `FETCH_HEAD` as a commit SHA. The fetch must not update local heads, tags, unrelated refs, or prune. Record the local default's pre-sync SHA and require it to be an ancestor of that fetched SHA before fast-forwarding; ahead/diverged defaults stop here. Any needed switch must use `--no-overwrite-ignore`; fast-forward must use `--ff-only --no-overwrite-ignore --no-autostash`. Preserve nonconflicting untracked/ignored files, including existing `.omo/`. Unsupported options, conflicts, fetch failure, or failed post-sync equality of local default SHA and fetched SHA stop all deletion, including temporary paths. Repository/default failures and conflicting state that invalidates the inventory have the same effect. Never delete files to make synchronization succeed or use reset/rebase to repair it.
