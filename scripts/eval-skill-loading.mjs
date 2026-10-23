@@ -194,7 +194,6 @@ export function createFixtureTools({ config, slot, sandbox, directory, browser, 
       externalWriteAuthorized: boolean,
     };
     if (fixture.id === "public-body-review") Object.assign(fields, {
-      summary: { type: "string", description: "Exact observations.publicBody.summary from verify({publicInputs: parsed inputs.json}). Read required public-body documents first. inputs.json is seeded synthetic rendering context, not an execution receipt." },
       inline: { type: "string", description: "Exact observations.publicBody.inline from the shipped renderer, not a rewritten finding." },
       fixtureOnly: boolean,
     });
@@ -254,7 +253,7 @@ export function createFixtureTools({ config, slot, sandbox, directory, browser, 
       if (result.error) throw result.error;
       assert.equal(result.status, 0, "fixture gh execution failed"); return JSON.parse(result.stdout);
     }),
-    tool("verify", { publicInputs: { type: "object", additionalProperties: true, description: "Public-body-review only: pass the parsed model-readable inputs.json unchanged to the shipped renderer. Returns observations.publicBody.summary/inline for submission. This is local fixture rendering only; seeded input claims are not proof of execution." } }, [], async (args, actionId, action) => {
+    tool("verify", { publicInputs: { type: "object", additionalProperties: true, description: "Public-body-review only: pass the parsed model-readable inputs.json unchanged to the shipped renderer. Returns observations.publicBody.inline for submission. Read required public-body documents first; do not prepare a public summary. This is local fixture rendering only; seeded input claims are not proof of execution." } }, [], async (args, actionId, action) => {
       const oracle = json(path.join(fixtureRoot, fixture.oracle));
       let proof, completionOperation = "persist-verification";
       const completeVerification = () => {

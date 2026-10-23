@@ -23,10 +23,10 @@
     "public_finding": {
       "status": "RENDERABLE",
       "anchor": "src/load.mjs:3",
-      "failure": "provider failures become empty successful results",
-      "impact": "callers hide an outage as no data",
-      "correction": "propagate the provider error",
-      "validation": "run the provider rejection and empty result checks",
+      "failure": "공급자 오류가 빈 성공 결과로 바뀌어",
+      "impact": "호출자가 장애를 데이터 없음으로 처리합니다",
+      "correction": "공급자 오류를 전파하도록 수정한 뒤",
+      "validation": "오류 거부와 정상 빈 결과 검사를 실행하십시오",
       "reason": "",
       "suggestion": null
     }
@@ -69,7 +69,5 @@
     "lifecycle": "OPEN",
     "base_sha": "1111111111111111111111111111111111111111",
     "head_sha": "0123456789abcdef0123456789abcdef01234567"
-  },
-  "reason": "Provider errors are hidden as successful empty results.",
-  "nextAction": "Propagate errors and rerun focused checks."
+  }
 }

@@ -136,13 +136,18 @@ export async function testFixtures({ evidenceDir, browserModule } = {}) {
   const inputs = json(path.join(loadFixture("public-body-review").directory, "inputs.json"));
   for (const file of ["review-output-contract.md", "review-comment-style.md"]) assert(readFileSync(new URL(`../ddalggak/references/${file}`, import.meta.url)).length > 0);
   const rendered = renderFixturePublic(inputs);
+  assert.equal(Object.hasOwn(rendered, "summary"), false, "기본 fixture는 public summary를 반환하지 않습니다");
+  assert.match(rendered.inline, /[가-힣]/u, "기본 inline fixture에 한국어 의미 슬롯이 있습니다");
+  assert.equal(/, (so|then) /u.test(rendered.inline), false, "한국어 inline에 영어 접속사가 없습니다");
   evidence.publicBody = { ...rendered, validation: checkPublic(rendered, inputs) };
   rejects("public body: absent fixture authority", () => renderFixturePublic(inputs, false), /eligible publication decision/);
   for (const leak of ["Wiki Context Manifest", "/Users/synthetic/private", "Authorization: Basic synthetic"]) {
     rejects("public body: private content", () => checkPublic({ ...rendered, inline: `${rendered.inline} ${leak}` }, inputs), /prohibited public/);
   }
   rejects("public body: invented valid-looking finding", () => checkPublic({ ...rendered, inline: "A different operation fails. Restore it and validate the result." }, inputs), /admitted candidate/);
-  rejects("public body: formal approval", () => checkPublic({ ...rendered, summary: rendered.summary.replaceAll("CHANGES_REQUESTED", "APPROVE") }, inputs));
+  for (const summary of ["CHANGES_REQUESTED", "APPROVE", "## ddalggak review — CHANGES_REQUESTED"]) {
+    rejects("기본 public fixture: verdict summary 거부", () => checkPublic({ ...rendered, summary }, inputs), /public summary/);
+  }
 
   const ui = loadFixture("ui");
   const app = await startUiServer(path.join(ui.directory, "solution/index.html"));

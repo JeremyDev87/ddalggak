@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import {
   aggregateReview, decidePublication, evaluateCandidate, evaluateChecksEvidence,
   evaluatePublicationReceipt, evaluateReviewEvidence, renderPublicFinding,
-  renderPublicReview, validatePublicFinding, validatePublicReview,
+  validatePublicFinding,
 } from "../../../../ddalggak/scripts/review-contract-policy.mjs";
 
 export function renderFixturePublic(inputs, writeAuthorized = true) {
@@ -13,21 +13,18 @@ export function renderFixturePublic(inputs, writeAuthorized = true) {
     reviewEvidence: evaluateReviewEvidence(inputs.reviewEvidence), checksEvidence: evaluateChecksEvidence(inputs.checksEvidence) });
   const publicationDecision = decidePublication({ aggregate,
     publicationReceipt: evaluatePublicationReceipt(inputs.publicationReceipt), writeAuthorized });
-  // Authorization belongs ONLY to this local fixture sink, never to gh or a network runner.
-  const summary = renderPublicReview({ publicationDecision, evidenceGapCount: aggregate.evidenceGapCount,
-    reason: inputs.reason, nextAction: inputs.nextAction });
+  // 권한은 로컬 fixture에만 적용하며 외부 게시 권한을 부여하지 않습니다.
   const inline = renderPublicFinding({ publicationDecision, candidate });
-  return { summary, inline, fixtureOnly: true, externalWriteAuthorized: false, outcome: aggregate.outcome };
+  return { inline, fixtureOnly: true, externalWriteAuthorized: false, outcome: aggregate.outcome };
 }
 
 export function checkPublic(observed, inputs) {
   assert.equal(observed.fixtureOnly, true);
   assert.equal(observed.externalWriteAuthorized, false);
-  assert.equal(validatePublicReview(observed.summary).outcome, "CHANGES_REQUESTED");
+  assert.equal(Object.hasOwn(observed, "summary"), false, "기본 fixture는 public summary를 허용하지 않습니다");
   assert.equal(validatePublicFinding(observed.inline).valid, true);
   const expected = renderFixturePublic(inputs);
-  // Shipped renderer equality binds the valid text to the admitted candidate, not arbitrary prose.
-  assert.equal(observed.summary, expected.summary, "summary is not the shipped renderer output");
+  // 렌더러 일치로 공개 문구를 승인된 후보에 연결합니다.
   assert.equal(observed.inline, expected.inline, "inline is not the admitted candidate output");
-  return { summaryValid: true, inlineValid: true, fixtureOnly: true, externalWriteAuthorized: false };
+  return { inlineValid: true, fixtureOnly: true, externalWriteAuthorized: false };
 }
