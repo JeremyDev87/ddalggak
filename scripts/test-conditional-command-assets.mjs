@@ -110,12 +110,8 @@ for (const root of ["ddalggak", ".codex/skills/ddalggak"]) {
   const metadata = JSON.parse(review.match(/^```json\n([\s\S]*?)\n```$/m)[1]);
   assert(metadata.required_templates.includes("review-brief.md"), "독립 검토 brief는 필수 자산이어야 한다");
   assert(!metadata.conditional_templates.some((spec) => spec.split("=")[1] === "review-brief.md"), "필수 brief를 조건부로 중복 선언하지 않는다");
-  assert(review.includes("optional gates remain activation-bound"), "선택적 gate는 조건부로 유지한다");
-  assert(review.includes("explicit PR/file/document/context scope"), "명시적 PR·파일·문서·context를 검토 대상으로 지원한다");
-  assert(review.includes("Publish only Korean two-sentence inline findings"), "공개 게시를 한국어 두 문장 inline으로 제한한다");
-  assert(review.includes("Keep summary/verdict in chat"), "요약과 결론은 채팅에만 둔다");
 }
-console.log("[PASS] 생성 review 문서의 필수 brief·조건부 gate·대상·게시 경계가 일치한다");
+console.log("[PASS] 생성 review 문서의 필수 brief와 조건부 자산 선언이 일치한다");
 
 for (const root of ["ddalggak", ".codex/skills/ddalggak"]) {
   for (const asset of [

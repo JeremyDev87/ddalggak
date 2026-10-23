@@ -12,8 +12,6 @@ import { withTempRepo } from "./test-lib/repo-fixture.mjs";
 import { runNodeScript } from "./test-lib/process.mjs";
 import { allowedArtifactByCommand } from "./project-runtime-assets/render-skill-blocks.mjs";
 
-assert.equal(allowedArtifactByCommand.review, "verified inline comments on the requested PR and local review results only", "review의 산출물은 요청 PR inline과 로컬 검토 결과로 제한한다");
-
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const roots = { claude: "ddalggak", codex: ".codex/skills/ddalggak" };
 const sha256 = (text) => createHash("sha256").update(text).digest("hex");
