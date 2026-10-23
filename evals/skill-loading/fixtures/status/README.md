@@ -56,8 +56,10 @@ the baseline. Wiki availability is explicitly unavailable, not successful.
   shipped admission/aggregate/publication/renderer/validators with same-process
   provenance. Local fixture authorization is required by the existing renderer;
   it never grants external GitHub authorization. `inputs.json` is a known-good
-  executable control. Public summaries and inline bodies must equal their
-  admitted candidate's shipped renderer output, not merely look valid.
+  executable control. The default returns only an inline body, which must equal
+  its admitted candidate's shipped renderer output, not merely look valid.
+  Public summaries are rejected here; the legacy summary renderer API remains
+  available separately for compatibility.
 - `ui/browser-check.mjs`: `checkUi(browser, htmlPath, options)` exercises actual
   keyboard/required/loading/success/error/retry behavior at 375/768/1280 widths.
   The baseline/candidate gets the same functional oracle. Source-only success

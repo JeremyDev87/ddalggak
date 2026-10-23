@@ -19,10 +19,10 @@ const HEAD_SHA = "4444444444444444444444444444444444444444";
 const PUBLIC_FINDING = {
   status: "RENDERABLE",
   anchor: "src/payment.js:42",
-  failure: "The changed assertion accepts a declined card as success",
-  impact: "invalid charges can be treated as completed",
-  correction: "Restore the rejection assertion and add the declined-card negative case",
-  validation: "run the focused payment test",
+  failure: "변경된 검증이 거절된 카드를 성공으로 처리하여",
+  impact: "잘못된 결제가 완료된 것으로 표시됩니다",
+  correction: "거절 검증을 복원하고 실패 사례를 추가한 뒤",
+  validation: "결제 테스트를 실행하십시오",
   reason: "",
   suggestion: null,
 };
@@ -100,10 +100,25 @@ const publication = decidePublication({
 assert.equal(evaluated.disposition, "BLOCKING");
 assert.equal(aggregate.admittedFindingCount, 1);
 const body = renderPublicFinding({ publicationDecision: publication, candidate: evaluated });
-assert.equal(body, "The changed assertion accepts a declined card as success, so invalid charges can be treated as completed. Restore the rejection assertion and add the declined-card negative case, then run the focused payment test.");
+assert.equal(body, "변경된 검증이 거절된 카드를 성공으로 처리하여, 잘못된 결제가 완료된 것으로 표시됩니다. 거절 검증을 복원하고 실패 사례를 추가한 뒤, 결제 테스트를 실행하십시오.", "한국어 네 의미 슬롯을 두 문장으로 조립합니다");
 assert.equal(validatePublicFinding(body).valid, true);
+assert.equal(/, (so|then) /u.test(body), false, "영어 접속사를 삽입하지 않습니다");
+assert.throws(() => renderPublicFinding({ publicationDecision: publication, candidate: { ...evaluated } }), /candidate lacks evaluator provenance/, "복사된 후보의 provenance를 거부합니다");
+assert.throws(() => renderPublicFinding({ publicationDecision: { ...publication }, candidate: evaluated }), /eligible publication decision/, "복사된 게시 결정의 provenance를 거부합니다");
 assert.equal(body.split(/[.!?]+/u).filter(Boolean).length, 2);
 assert.equal(/severity|confidence|candidate|evidence-gap|gate/iu.test(body), false);
+
+for (const [설명, field, value, pattern] of [
+  ["빈 anchor", "anchor", "", /anchor must be path:line/],
+  ["0번 줄 anchor", "anchor", "src/payment.js:0", /anchor line is invalid/],
+  ["238자 의미 슬롯", "failure", "가".repeat(238), /exceeds 237 characters/],
+  ["개행 주입", "correction", "수정한 뒤\n검증합니다", /must be one line/],
+  ["합성 비밀값", "failure", "api key = synthetic-secret", /prohibited public pattern|two valid sentences/],
+]) {
+  assert.throws(() => evaluateCandidate(candidate({ public_finding: { ...PUBLIC_FINDING, [field]: value } })), pattern, 설명);
+}
+assert.equal(validatePublicFinding(`${"가".repeat(479)}. 다음 문장입니다.`).valid, true, "480자 문장을 허용합니다");
+assert.throws(() => validatePublicFinding(`${"가".repeat(480)}. 다음 문장입니다.`), /exceeds 480 characters/, "481자 문장을 거부합니다");
 
 const unrenderable = evaluateCandidate(candidate({
   candidate_id: "finding-unrenderable",

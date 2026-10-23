@@ -189,11 +189,11 @@ function token(value) {
 }
 
 function assemblePublicFindingBody(finding) {
-  return `${finding.failure}, so ${finding.impact}. ${finding.correction}, then ${finding.validation}.`;
+  return `${finding.failure}, ${finding.impact}. ${finding.correction}, ${finding.validation}.`;
 }
 
 const FINDING_SENTENCE_MAX = 480;
-// The renderer adds ", so " or ", then " between clauses.
+// Keep the conservative 237-character clause budget when joining with ", ".
 const FINDING_CLAUSE_MAX = Math.floor((FINDING_SENTENCE_MAX - 6) / 2);
 
 function validatePublicFindingInput(finding) {
@@ -230,8 +230,8 @@ function validatePublicFindingInput(finding) {
     if (finding.reason.trim()) throw new Error("RENDERABLE public finding cannot include an unrenderable reason");
     // Reject combinations the renderer cannot publish so admission never outruns
     // the final public-body length limit.
-    validateSingleLine("public finding sentence 1", `${finding.failure}, so ${finding.impact}`, FINDING_SENTENCE_MAX);
-    validateSingleLine("public finding sentence 2", `${finding.correction}, then ${finding.validation}`, FINDING_SENTENCE_MAX);
+    validateSingleLine("public finding sentence 1", `${finding.failure}, ${finding.impact}`, FINDING_SENTENCE_MAX);
+    validateSingleLine("public finding sentence 2", `${finding.correction}, ${finding.validation}`, FINDING_SENTENCE_MAX);
     // Fail closed before evaluateCandidate can mark publication_eligible: a RENDERABLE
     // record must already assemble into the deterministic two-sentence public body.
     try {

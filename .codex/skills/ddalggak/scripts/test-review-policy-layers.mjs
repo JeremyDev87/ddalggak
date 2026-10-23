@@ -330,15 +330,15 @@ const boundaryCandidate = evaluateCandidate(candidate({
     ...candidate().public_finding,
     failure: `A${"A".repeat(236)}`,
     impact: `I${"I".repeat(236)}`,
-    correction: `C${"C".repeat(235)}`,
-    validation: `V${"V".repeat(235)}`,
+    correction: `C${"C".repeat(236)}`,
+    validation: `V${"V".repeat(236)}`,
   },
 }));
 const boundaryAggregate = aggregateReview({ lifecycle: "OPEN", candidates: [boundaryCandidate], reviewEvidence: completeReviewEvidence, checksEvidence: checks() });
 const boundaryPublication = publish(boundaryAggregate);
 const boundaryBody = renderPublicFinding({ publicationDecision: boundaryPublication, candidate: boundaryCandidate });
 assert.equal(validatePublicFinding(boundaryBody).valid, true);
-assert.equal(`${boundaryCandidate.public_finding.failure}, so ${boundaryCandidate.public_finding.impact}`.length, 479);
+assert.deepEqual(boundaryBody.match(/[^.!?]+[.!?]+/gu).map(sentence => sentence.trim().length), [477, 477], "237자 슬롯 두 개와 쉼표·공백·마침표의 실제 길이를 확인합니다");
 assert.throws(
   () => evaluateCandidate(candidate({
     candidate_id: "candidate-session-leak",

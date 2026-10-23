@@ -1015,7 +1015,7 @@ export async function testSubmissionContract({ execute = false, validateArgument
     backend: { implementationComplete: "boolean", published: "boolean", remainingGates: "array" },
     ui: {},
     "internal-review": { outcome: "string", findings: "array", cleanControls: "array", externalWriteAuthorized: "boolean" },
-    "public-body-review": { outcome: "string", findings: "array", cleanControls: "array", externalWriteAuthorized: "boolean", summary: "string", inline: "string", fixtureOnly: "boolean" },
+    "public-body-review": { outcome: "string", findings: "array", cleanControls: "array", externalWriteAuthorized: "boolean", inline: "string", fixtureOnly: "boolean" },
   };
   let sequence = 0;
   async function exercise(fixture, mutate, failure) {
@@ -1028,6 +1028,7 @@ export async function testSubmissionContract({ execute = false, validateArgument
       assert(schema.required?.includes(field), fixture.id + ": missing required submission field " + field);
       assert.equal(schema.properties[field].type, type);
     }
+    if (fixture.id === "public-body-review") assert.equal(Object.hasOwn(schema.properties, "summary"), false, "기본 제출 schema에서 public summary를 제외합니다");
     assert.deepEqual(schema.properties.claims.items.required, ["checkId", "actionId"]);
     assert.deepEqual(schema.properties.claims.items.properties.checkId.enum, fixture.oracleIds, "claim vocabulary must match this fixture, not other fixtures or finding answers");
     if (fixture.id === "status") {
@@ -1079,9 +1080,10 @@ export async function testSubmissionContract({ execute = false, validateArgument
       }
       const proof = JSON.parse((await invoke("verify", inputs ? { publicInputs: inputs } : {})).content[0].text).observations;
       if (inputs) {
-        assert.deepEqual(checkPublic(proof.publicBody, inputs), { summaryValid: true, inlineValid: true, fixtureOnly: true, externalWriteAuthorized: false });
-        const { summary, inline, fixtureOnly } = proof.publicBody;
-        Object.assign(observation, { summary, inline, fixtureOnly });
+        assert.deepEqual(checkPublic(proof.publicBody, inputs), { inlineValid: true, fixtureOnly: true, externalWriteAuthorized: false });
+        assert.equal(Object.hasOwn(proof.publicBody, "summary"), false, "기본 검증 응답은 inline만 반환합니다");
+        const { inline, fixtureOnly } = proof.publicBody;
+        Object.assign(observation, { inline, fixtureOnly });
       }
     }
     observation.claims = [{ checkId: fixture.oracleIds[0], actionId: "verify" }];
