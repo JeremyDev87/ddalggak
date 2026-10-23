@@ -88,7 +88,7 @@ user-invocable: true
 | `plan-only` | 계획/브리프만; source/GitHub/git 무변경. |
 | `read-only` | 보고만; source/GitHub/git 무변경. |
 | `repo-external-write` | repo 무변경; 외부 note/memory artifact만 허용. |
-| `local-destructive` | repo/GitHub 무변경; merge-검증 local cleanup만. |
+| `local-destructive` | 직접 소스 편집/GitHub 쓰기 금지; 계약으로 검증된 Git 동기화와 merged-task local cleanup만 허용. |
 | `github-write` | GitHub artifact와 ship commit/push만; source edit 없음. |
 | `approval-gated-write` | 명시 승인 후 외부 wiki write만. |
 

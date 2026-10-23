@@ -4,10 +4,10 @@ command_order: "060"
 show_doc_heading: "Merge Cleanup"
 source_edit_allowed: false
 github_write_allowed: false
-purpose: "Post-merge local cleanup after live merge evidence."
+purpose: "Safely sync the default branch and clean merged-task local leftovers."
 mode: "local-destructive"
-write_side_effects: "Local branch/worktree cleanup only after live merge evidence; no GitHub mutation."
-stop_condition: "Stop on dirty, ambiguous, unmerged, or non-ancestor worktrees/branches."
+write_side_effects: "Verified safe fast-forward sync; merge-verified task local branch/worktree and proven task-owned disposable path cleanup; no authored source edits or GitHub mutation."
+stop_condition: "Stop all deletion on failed repository/default/fetch/sync verification, invalid inventory, or unknown task scope. Preserve unsafe, ambiguous, unmerged, or non-ancestor targets; process independent safe targets but withhold CLEAN_DONE for unresolved requests. Verified empty scope may complete after sync."
 required_references:
   - wiki-context-preflight.md
   - merge-cleanup.md

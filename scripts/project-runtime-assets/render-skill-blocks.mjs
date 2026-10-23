@@ -20,7 +20,7 @@ export const allowedArtifactByCommand = {
   status: "response output only",
   check: "local review notes only; no repository edits",
   ship: "commit, push, and draft PR for existing changes only",
-  clean: "local branch and worktree cleanup only after merge verification",
+  clean: "verified safe default-branch fast-forward; merge-verified task local branches/worktrees and proven task-owned disposable paths only; no authored source edits or GitHub mutation",
   retro: "retrospective notes and memory update request artifacts only",
   getwiki: "delegate to dedicated `/getwiki` read-only retrieval",
   setwiki: "delegate to dedicated `/setwiki` approval-gated write workflow",
