@@ -12,6 +12,6 @@ Markdown surgery discipline: frontmatter, routing, code permission, fenced block
 
 ## Approval comment와 formal approval 경계
 
-Formal approval이 부적절하거나 불가능한 자동화 리뷰에서는 top-level PR comment로 `Hermes Independent Review — APPROVE conclusion` 또는 `CHANGES_REQUESTED` 결론을 남길 수 있다. 이 comment에는 current head SHA, review scope, validation evidence, blocking finding count, conclusion을 포함해야 한다.
+`review`는 formal approval이나 top-level verdict를 게시하지 않는다. 요청된 PR의 검증된 inline finding만 권한 범위에서 게시하고, current head SHA 또는 원문 버전, review scope, validation evidence, blocking finding count와 conclusion은 채팅에 남긴다.
 
-하지만 이 comment는 GitHub의 formal review approval이 아니다. 최종 상태 보고와 PR body evidence에서는 `CI/check 상태`, `reviewDecision`, `mergeStateStatus`, branch protection, manual merge boundary를 분리한다. CI success와 top-level APPROVE comment만으로 "merge 가능"을 암시하지 않는다.
+기존 top-level comment는 GitHub의 formal review approval이 아니다. 최종 상태 보고와 PR body evidence에서는 `CI/check 상태`, `reviewDecision`, `mergeStateStatus`, branch protection, manual merge boundary를 분리한다. CI success와 top-level APPROVE comment만으로 "merge 가능"을 암시하지 않는다.

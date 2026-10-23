@@ -18,7 +18,6 @@ export const requiredSimplicityReferenceAnchors = [
   "small direct change first",
   "Why is this abstraction necessary?",
   "one-off abstraction",
-  "default severity: High",
   "human readability",
   "SOLID",
   "do not outrank human readability",

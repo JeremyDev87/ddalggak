@@ -43,20 +43,18 @@ Worker instructions should prefer deleting, inlining, or clarifying boundaries b
 
 Review Gate:
 
-Reviewers should treat the following as blocking targets:
+Reviewers should investigate the following for concrete impact, not treat their shape alone as a blocking finding:
 
 - helper/provider/wrapper/component/module without real reuse or boundary clarification;
-- one-off abstraction, default severity: High unless the PR proves a real boundary or repeated-code reduction;
+- one-off abstraction that obscures intent without meaningful boundary clarification or repeated-code reduction;
 - SOLID or pattern application that lowers human readability;
 - code volume pretending to be architecture;
 - client-side patch masking server/request/auth/data boundary ownership;
 - structure that will be hard to delete or modify in six months.
 
-## Severity Defaults
+## Impact-Based Severity
 
-- High: one-off abstraction; abstraction hard to delete or modify; forced modularization; client-side patch that hides server/request/auth/data boundary defects; pattern use that makes intent materially harder to read.
-- Medium: naming or ownership confusion, unnecessary helper/local state/fallback, duplicate path, or subtle readability loss that is easy to reverse.
-- Low: comments, naming, or formatting nits that do not affect readability, deletability, or ownership.
+Judge severity from the evidenced failure, affected callers, and consequence under the existing review admission and evidence contracts. A one-off abstraction or forced modularization is not automatically High. A single-use helper that clarifies a real boundary, or side effects at an I/O boundary, may need no change. Readability/deletability concerns need a concrete maintenance consequence; speculative preference alone is not a blocking finding.
 
 ## Non-Goals
 

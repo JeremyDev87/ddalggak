@@ -33,7 +33,7 @@ Example invocations:
 ddalggak supports these subcommands across all three execution runtimes:
 
 - `start`: run issue-based implementation lanes.
-- `review`: run independent review as an AI code quality gate, checking not only correctness but also scope, existing patterns, failure semantics, simplicity, and human reviewability before accepted-fix loops.
+- `review`: independently review an explicit PR, local file, document, or context; report evidence and verdict in chat and publish only authorized verified Korean inline findings on the requested PR.
 - `status`: inspect current lane, worktree, and PR state.
 - `plan`: create an issue-ready implementation plan.
 - `issue`: convert a plan into GitHub issues.
@@ -73,7 +73,7 @@ For guardrail coverage, ddalggak also requires frontend rendered evidence gates,
 
 The Quality Lens Router chooses applicable gate families from request text, issue body/comments, PR files, and diff paths before plan, start, or review work. It records both applicable gates and skipped gates so backend-only work does not inherit frontend, deployment, or mobile review requirements by accident.
 
-Review runs as a closed loop, not a one-shot pass. Accepted human-review feedback and failing-check triage are folded back into bounded accepted-fix iterations before APPROVE (human review feedback loop, CI failure triage loop). Before a PR is marked ready, ddalggak confirms the branch is rebased on a fresh base and that the ready conditions hold (rebase and ready gates).
+Review requires an actual independent reviewer result and parent source/counterevidence recheck. Compatibility change: `review` no longer edits/pushes accepted fixes, posts formal approval or top-level verdicts, replies/resolves threads, or reruns CI; human review feedback loop and CI failure triage loop only read, classify, and report. Corrections go to a separate implementation task. The `review-fix` mode definition and summary renderer APIs remain for compatibility, not invocation authority. Non-PR review cites exact source/version/section without invented PR metadata; PR review preserves current-head, lifecycle, checks, and v3 admission gates. Zero findings require no GitHub write, and summary/verdict stays in chat. Implementation readiness retains rebase and ready gates.
 
 ## Quality Defaults
 

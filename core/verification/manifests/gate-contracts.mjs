@@ -73,8 +73,8 @@ export const routerGateFamilies = [
   },
   {
     name: "simplicity-deletability",
-    activateWhen: "Any implementation or review may add code, abstractions, helpers, wrappers, providers, fallbacks, or patterns.",
-    skipWhen: "Almost never; if skipped, record why the work is read-only.",
+    activateWhen: "Code-shape decisions in an implementation, plan, or review involve code, abstractions, helpers, wrappers, providers, fallbacks, or patterns.",
+    skipWhen: "Documents, context, or metadata with no code-shape decision; record `N_A` and the reason.",
     reference: "references/simplicity-deletability-gate.md",
   },
   {

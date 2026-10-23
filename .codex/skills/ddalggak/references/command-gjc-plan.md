@@ -15,9 +15,12 @@ Paths below and in the locale notes are relative to the installed skill root.
 
 Required references:
 - `references/wiki-context-preflight.md`
+- `references/quality-lens-router.md`
+- `references/evidence-contract.md`
+- `references/ralplan-critic-consensus.md`
 - `references/gajae-code.md`
 Conditional references (activation -> asset):
-- None.
+- `code-shape` -> `references/simplicity-deletability-gate.md`
 
 Required templates:
 - None.
@@ -37,14 +40,19 @@ Conditional templates (activation -> asset):
   "stop_condition": "Stop after evidence/blocker.",
   "required_references": [
     "wiki-context-preflight.md",
+    "quality-lens-router.md",
+    "evidence-contract.md",
+    "ralplan-critic-consensus.md",
     "gajae-code.md"
+  ],
+  "conditional_references": [
+    "code-shape=simplicity-deletability-gate.md"
   ],
   "required_templates": [],
   "output_contract": {
     "completion_signal": "GJC_PLAN_DONE",
     "evidence_required": true
   },
-  "conditional_references": [],
   "conditional_templates": [],
   "allowed_artifact": "coordinator evidence"
 }

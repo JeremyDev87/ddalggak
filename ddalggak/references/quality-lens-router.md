@@ -1,6 +1,6 @@
 # Quality Lens Router
-Use when: `plan`, `start`, or `review` routes quality gates for the current issue, PR, or diff.
-Required by: `plan`, `start`, `review`; gate-family routing.
+Use when: `plan`, `ulw-plan`, `gjc-plan`, `start`, or `review` routes quality gates for code, documents, or explicit context.
+Required by: `plan`, `ulw-plan`, `gjc-plan`, `start`, `review`; gate-family routing.
 Side effects: none
 Do not use when: pure `status`, `clean`, `ship`, `check`, or issue metadata work has no quality-gate decision.
 
@@ -39,9 +39,27 @@ Every routed plan, implementation brief, or review packet should include:
 
 If a gate is skipped, keep it in `Skipped gates` with a concrete reason such as `backend-only: no rendered, deploy, mobile, auth/security, data privacy, or performance surface`. Skipped gates are review evidence, not missing context.
 
+## Common Quality Criteria
+
+This section owns the shared checks for planning and independent review. Assess every row against the requested scope; record applicable evidence or `N_A` with a concrete reason. Plans record expected risks and validation methods, never unexecuted checks as passing. Read the applicable Evidence Contract and Simplicity / Deletability Gate details through the mapping below.
+
+| Criterion | Code / design | Documents / explicit context |
+| --- | --- | --- |
+| Overengineering / YAGNI | Abstractions, options, or layers unnecessary for the requirement. | Policies, procedures, or explanations beyond the requested scope. |
+| DRY | Actual duplication with the same reason to change; reuse existing implementation. | Duplicate rules, conflicting authorities, or repeated explanations. |
+| Security | Trust boundaries, permissions, inputs, secrets, and failure handling. | Sensitive information, incorrect authority, or unsafe commands. |
+| Bugs / side effects / intent | Callers, failure paths, regressions, and intended scope. | Actions caused by factual errors, contradictions, ambiguity, or omissions. |
+| Single responsibility / pure functions | Responsibility boundaries and separable computation / side effects. | Code-only checks are `N_A` unless execution design is discussed. |
+| Modules / objects / structure | Fit with existing structure; clarity of understanding and change. | Document ownership, information order, and reference relationships. |
+| Repository patterns | Concrete need for an exception to existing conventions. | Terms, format, source authority, and documentation conventions. |
+| Unnecessary code / files | Minimum change needed for the task. | Unnecessary documents, duplicate artifacts, or explanations. |
+| Other findings | Proven impact beyond this checklist. | Evidence freshness, source authority, and logical connections. |
+
+Do not mechanically require purity, classes, module splits, or DRY extraction. I/O boundaries may need side effects; a single-use function can express a meaningful boundary. Do not propose a change that obscures responsibility or flow. Severity follows demonstrated impact, never a code-shape category. An author-known defect remains actionable when evidenced; omit only restatements that add no evidence or action.
+
 ## Domain Gate Integration Rule
 
-`plan`, `start`, and `review` must use the router output to decide which domain gates are included:
+`plan`, `ulw-plan`, `gjc-plan`, `start`, and `review` must use the router output to decide which domain gates are included:
 
 - Include only applicable gate families and the required reference files for those families.
 - Keep applicable gates scoped to the changed surface; use lightweight gates when only one subfamily applies.
@@ -65,7 +83,7 @@ Use these stable names so future issue-specific gates can plug into the same con
 | `deploy-token-safety` | Vercel deploy, preview URL, production deploy, env vars, project linking, or token CLI usage is in scope. | No deploy or environment mutation occurs. |
 | `react-native-expo` | React Native, Expo, native modules, mobile lists, gestures, or device behavior is in scope. | Web-only or backend-only work. |
 | `tdd-systematic-debugging` | Bugfix, regression, flaky behavior, incident recovery, or root-cause analysis is requested. | Pure documentation or planning with no code change. |
-| `simplicity-deletability` | Any implementation or review may add code, abstractions, helpers, wrappers, providers, fallbacks, or patterns. | Almost never; if skipped, record why the work is read-only. |
+| `simplicity-deletability` | Code-shape decisions in an implementation, plan, or review involve code, abstractions, helpers, wrappers, providers, fallbacks, or patterns. | Documents, context, or metadata with no code-shape decision; record `N_A` and the reason. |
 | `evidence-contract` | Any work claims completion, readiness, review approval, performance, deploy, UI, security, or data behavior. | Almost never; if skipped, record why no completion claim is being made. |
 | `regression-library` | A review finds a repeated Medium/High failure pattern or a retrospective generalizes a failure class. | One-off incident with no generalized detection signal. |
 | `security-posture` | Package manifests/admission, install/update, CI/workflows, release/publish, repo posture, auth/credentials, dependencies/supply chain, or explicit security surfaces. | Application-only code/docs/tests touching none of those surfaces. |
@@ -111,7 +129,7 @@ This priority is exact. For example, generic upstream React, design, Vercel, or 
 
 ## Required Behavior by Subcommand
 
-- `plan`: include the router output before implementation units so work can be split without hidden gates; list applicable gates, skipped gates, required references, repo/product conventions, and any lightweight gate limits.
+- `plan`, `ulw-plan`, `gjc-plan`: include the router output before implementation units so work can be split without hidden gates; list applicable gates, skipped gates, required references, repo/product conventions, and any lightweight gate limits.
 - `start`: include applicable and skipped gates in every worker brief, plus the reason each gate applies or is omitted, the required references each worker must read, and any backend-only skip reason.
 - `review`: include the router output in the review packet so reviewers do not apply UI, deploy, or mobile gates to unrelated backend-only diffs. Reviewers should treat a domain gate as a lens and inspect only the applicable bullets.
 

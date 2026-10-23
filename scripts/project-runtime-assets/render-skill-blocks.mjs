@@ -4,7 +4,7 @@ import { installationInventory } from "./render-package-manifest.mjs";
 
 export const allowedArtifactByCommand = {
   start: "worker agents may edit only files named in their brief",
-  review: "author agents may apply accepted Critical/High review fixes only",
+  review: "verified inline comments on the requested PR and local review results only",
   "ulw-loop": "scoped edits; no GitHub",
   "ulw-plan": "plan output only",
   "ulw-research": "research output only",

@@ -4,7 +4,7 @@ Required by: `review`
 Side effects: none
 Do not use when: only reporting CI/status or running the local read-only `check` command.
 
-This contract makes AI review a measured sensor. The conductor owns the final verdict from live PR/repo evidence, current-head state, human authority, and applicable deterministic gates.
+This contract makes AI review a measured sensor. The conductor owns the final verdict from target source/version evidence, PR current-head state when applicable, human authority, and applicable deterministic gates.
 
 ## Review Intake
 
@@ -12,7 +12,7 @@ Classify before line-by-line review. Intake is not approval.
 
 - Risk tier: `low | medium | high | critical`.
 - Tier evidence: blast radius, expected code lifetime, future owner count, and sensitive boundaries.
-- Required inputs: purpose/non-goals, linked acceptance criteria, current head SHA, reviewable diff scope, execution evidence, and accountable human owner for High/Critical changes.
+- Required inputs: purpose/non-goals, requirements, exact source/version/section, reviewable scope, available evidence, and accountable human owner for High/Critical changes. PR targets additionally require current head SHA, diff, linked issue/body/comments and current-head checks; non-PR targets do not fabricate them.
 - Intake decision: `ready-for-review | needs-intent | needs-evidence | needs-split | blocked-human-owner`.
 
 Use `needs-split` when mixed or oversized scope prevents reliable semantic tracing. Auth, money, PII, migrations, permissions, credentials, security boundaries, or on-call blast radius are Critical unless live evidence justifies a narrower tier. Author identity and whether AI wrote the code never lower the tier.
@@ -52,27 +52,27 @@ A quality-sensor finding must include all fields:
 
 - `severity`: `critical | high | medium | low`;
 - `claim`: the broken invariant or incorrect behavior;
-- `anchor`: changed `path:line` or an explicit file-level anchor;
+- `anchor`: exact source/version/section, or changed `path:line` for PR targets;
 - `failing scenario`: reproducible inputs/state and observed wrong outcome;
 - `impact`: affected user, data, security, compatibility, operation, or maintainer cost;
 - `minimal fix`: smallest in-scope correction, not a broad redesign;
 - `confidence`: `high | medium | low` with uncertainty stated;
 - `counterevidence checked`: evidence that could have disproved the claim.
 
-These fields are deterministic Review Quality sensor inputs, not the canonical finding admission or public renderer schema. Before aggregation or publication, the conductor must independently reproduce the observation and map it into the exact 21-field Admission schema v3 record in `references/cross-review-loop.md`; sensor acceptance grants no publication eligibility or write authority.
+These fields are deterministic Review Quality sensor inputs, not the canonical finding admission or public renderer schema. For PR targets, before aggregation or publication, the conductor must independently reproduce the observation and map it into the exact 21-field Admission schema v3 record in `references/cross-review-loop.md`; sensor acceptance grants no publication eligibility, source-edit, or write authority. Non-PR findings remain source-bound sensor inputs and chat results.
 
-Missing fields, hypothetical concerns without a reproducible scenario, restated PR text, and style preferences without repo/product evidence do not pass the finding signal gate. Evidence gaps stay in the top-level gap list unless they map to a changed-line defect.
+Missing fields, hypothetical concerns without a reproducible scenario, mere restatement without defect evidence, and style preferences without repo/product evidence do not pass the finding signal gate. Evidence gaps stay in the top-level gap list unless they map to a changed-line defect.
 
 ## Stable Verdict Vocabulary
 
 The internal Review Quality sensor verdict is exactly one of:
 
-- `approve`: intake ready, current head fresh, all in-scope semantic rows covered, deterministic checks terminal, no Critical/High blockers, and required human ownership present;
-- `change request`: one or more actionable code findings require changes;
+- `approve`: intake ready, target version fresh, all in-scope semantic rows covered, deterministic checks terminal, no Critical/High blockers, and required human ownership present;
+- `change request`: one or more actionable findings require changes;
 - `comment`: substantive review completed with non-blocking observations only, but formal approval is not being asserted;
 - `blocked`: intent, evidence, scope, current-head, checks, human ownership, or publication authority prevents a reliable verdict.
 
-Within `review.final_verdict`, do not substitute `APPROVE`, `CHANGES_REQUESTED`, `LGTM`, or model-specific labels. This restriction does not redefine the separate v3 lifecycle outcome, deterministic public renderer, `REVIEW_DONE` completion marker, or GitHub formal-review conclusion. A GitHub request-changes state is not a proven merge blocker unless live branch protection says so.
+Within `review.final_verdict`, do not substitute `APPROVE`, `CHANGES_REQUESTED`, `LGTM`, or model-specific labels. This restriction does not redefine the separate v3 lifecycle outcome, deterministic public renderer, `REVIEW_DONE` completion marker, or the inspect-only GitHub formal-review conclusion. This command posts no formal review or top-level verdict. A GitHub request-changes state is not a proven merge blocker unless live branch protection says so.
 
 Persist this four-value result in session state as `review.final_verdict`. Keep `review.latest_conclusion` as the separate GitHub formal-review axis (`none | pending | approve | changes_requested`); never treat the API conclusion as the Review v2 verdict or vice versa.
 

@@ -11,8 +11,14 @@ runtime_entrypoint: "core/ulw-plan/runtime.mjs"
 runtime_subcommands: "scaffold,approve,review-init,review-receipt,finalize,status"
 required_references:
   - wiki-context-preflight.md
+  - quality-lens-router.md
+  - evidence-contract.md
+  - ralplan-critic-consensus.md
   - ulw-plan.md
   - ulw-intent-routing.md
+
+conditional_references:
+  - code-shape=simplicity-deletability-gate.md
 
 required_templates:
   []

@@ -38,18 +38,18 @@ user-invocable: true
 - GitHub mutation은 raw UTF-8 title/body 파일을 사용하고 live payload를 재조회해 literal Unicode escape가 저장되지 않았는지 검증한다.
 
 - URL beats cwd: GitHub URL 처리 기준은 owner/repo/number 파싱 후 cwd remote 검증이다. cwd remote가 URL repo와 다르면 mutation을 멈춘다.
-- Issue comments matter: issue body와 comments는 모두 source-of-truth 후보이며 최신 명시 comment가 stale body보다 우선한다.
-- Issue-PRs by default: 독립 이슈는 기본적으로 issue PR 하나를 만든다. hard conflict만 single PR + serial commit fallback이 가능하다.
+- Issue comments matter (issue/PR targets only): issue body와 comments는 모두 source-of-truth 후보이며 최신 명시 comment가 stale body보다 우선한다.
+- Issue-PRs by default (implementation lanes only): 독립 이슈는 기본적으로 issue PR 하나를 만든다. hard conflict만 single PR + serial commit fallback이 가능하다.
 - Manual merge only: 주인님 PR은 merge/auto-merge 금지. green + APPROVE도 ready for manual merge 보고까지만 허용한다.
-- approval-comment policy: top-level PR comment에 current head SHA, review scope, validation evidence, blocking finding count, conclusion을 담고 `CI/check`, `formal review/branch protection`, `merge blocker`, `human action`을 분리한다.
+- approval-comment policy: `review`의 요약/verdict는 채팅에만 둔다. `CI/check`, `formal review/branch protection`, `merge blocker`, `human action`은 별도 상태로 보고하며 top-level verdict와 formal approval을 게시하지 않는다.
 - Runtime contract language: `references/agent-runtime-contract.md` owns Task Scope Contract, Context Assembly Manifest, Resume Snapshot, Control-flow ownership, tool capability boundary, task scope contract, out-of-scope diff, scope-expansion failure.
 - Quality Lens Router Output: `references/quality-lens-router.md` owns Applicable gate families, Skipped gates, Required references, Repo/product conventions, backend-only skip. Domain gate is a lens, not a mandate.
 - React Code Quality Harness: React/Next.js, AI-generated React diff, component/hook/state/fallback/rendering boundary면 `react-code-quality-harness`와 `references/react-code-quality-harness.md`; hot path에 gate 복사 금지.
 - Wiki Context First for all subcommands: `references/wiki-context-preflight.md`; wiki-derived claim은 source path/evidence gap. `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`: broad `qmd://wiki` is discovery only; current-answer claims route through Brain P0/P1/domain/SSOT/control docs; raw/imported/hidden/index/log/redirect alias hits are evidence-only unless canonical/distilled.
 - Wiki Bridge: `getwiki` read-only retrieval, `setwiki` approval-gated write; `references/wiki-bridge.md` owns admission/approval boundary.
 - Evidence Contract: `references/evidence-contract.md` 기준이며 Blocking evidence gaps가 있으면 PR ready/APPROVE 금지다.
-- Conditional gate loading: `plan`/`start`/`review`는 Router와 Evidence Contract만 base로 둔다. Simplicity/Core Invariants, deep-interview, RALPLAN, frontend/React/Vercel, regression/security는 activation evidence가 있을 때만 로드하고 skip/lightweight reason을 남긴다. Code-shape: small direct change first; why is this abstraction necessary?
-- Review policy layers: 모든 review 후보는 Admission schema v3를 통과한 뒤 candidate disposition, lifecycle aggregate outcome, publication authority를 분리한다. Aggregate와 public renderer는 same-process provenance를 요구하며, canonical-candidate-bound two-sentence finding과 summary는 `references/review-output-contract.md`의 deterministic validator만 사용한다.
+- Conditional gate loading: 선택 command contract의 required assets를 모두 로드한다. conditional assets만 activation evidence에 따라 로드하고 skip/lightweight reason을 남긴다. Code-shape: small direct change first; why is this abstraction necessary?
+- Review policy layers: PR 후보만 Admission schema v3 → candidate disposition → lifecycle aggregate → publication authority를 거친다. Aggregate와 inline renderer는 same-process provenance와 `references/review-output-contract.md`를 유지한다. 비PR은 원문/버전/section과 sensor verdict로 검토하며 PR/SHA를 꾸미지 않는다.
 
 ## 서브커맨드 분기
 
@@ -84,7 +84,7 @@ user-invocable: true
 | mode | 정의 |
 |---|---|
 | `source-edit` | issue scope 안에서만 repo 소스 수정 가능. |
-| `review-fix` | 수용된 리뷰 수정만 PR 브랜치에 edit/push 가능. |
+| `review-fix` | 호환용 정의: 수용된 리뷰 수정만 PR 브랜치에 edit/push 가능. 현재 `review`는 이 mode를 사용하지 않는다. |
 | `plan-only` | 계획/브리프만; source/GitHub/git 무변경. |
 | `read-only` | 보고만; source/GitHub/git 무변경. |
 | `repo-external-write` | repo 무변경; 외부 note/memory artifact만 허용. |
@@ -96,7 +96,7 @@ user-invocable: true
 
 Read the selected command document linked in the command index before acting: its full metadata owns permissions, allowed artifacts, side effects, required/conditional assets, stop conditions, and completion signals. Missing or malformed selected contracts are blockers; never infer permission from sibling commands or a corpus search.
 
-The selected contract and required assets are minimum required context, not a reading allowlist. Read required assets before action, including wiki preflight for every command. Load conditional assets when activation evidence applies; record activation and skip reasons. Unknown conditions require investigation or stopping the affected action, never unknown=false. Additional reads and re-reads are allowed with a reason when new evidence warrants them. Load each later phase's command contract and applicable assets on transition, without inheriting permissions. Read public-body assets before preparing public-ready summaries/findings, including previews and zero-finding summaries; reading never grants publication rights.
+The selected contract and required assets are minimum required context, not a reading allowlist. Read required assets before action, including wiki preflight for every command. Load conditional assets when activation evidence applies; record activation and skip reasons. Unknown conditions require investigation or stopping the affected action, never unknown=false. Additional reads and re-reads are allowed with a reason when new evidence warrants them. Load each later phase's command contract and applicable assets on transition, without inheriting permissions. Read public-body assets before preparing public-ready findings or previews; reading never grants publication rights. `review` publishes no summary, and zero findings make no GitHub write.
 
 ### Global reference obligations
 
@@ -116,7 +116,7 @@ Full procedure: `references/wake-resume.md`. Resume from state, then re-read liv
 
 ## 공통 규칙
 
-Full procedure: `references/common-rules.md`. Korean by default, no AI trailer, no secrets, no auto-merge, no unsafe force push, exact validation evidence.
+Full procedure: `references/common-rules.md`. Korean by default, no AI trailer, no secrets, no auto-merge, no unsafe force push, exact validation evidence. `review`는 source read-only이며 요청된 PR의 검증 inline 및 로컬 검토 결과만 허용한다. ship 권한·자동 수정·formal approval·top-level verdict·thread reply/resolve·CI rerun은 상속하지 않는다.
 
 ## 실패 모드 예방
 
@@ -124,7 +124,7 @@ Full procedure: `references/failure-prevention.md`. Prevent stale repo judgments
 
 ## Verification Checklist
 
-Full procedure: `references/verification-checklist.md`. Verify base freshness, issue body+comments, file tracking/local-only status, validation evidence, reviewer isolation, and Markdown fence integrity.
+Full procedure: `references/verification-checklist.md`. Git/PR 대상에만 base freshness와 issue body+comments를 적용하고 validation evidence, reviewer isolation, Markdown fence를 확인한다. 명시 context/local-only 검토는 원문·버전으로 계속하며 Git/PR 부재나 PR 표현 불가능 자체로 중단하지 않는다. `clean`의 scoped no-prune/disposable 예외와 다른 명령의 stop은 유지한다.
 
 ## 명명 규칙
 

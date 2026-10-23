@@ -67,7 +67,7 @@ If a non-writing subcommand would need a source edit to continue, report the nee
 | Mode | Definition |
 | --- | --- |
 | `source-edit` | Edit repo source only inside issue-owned scope. |
-| `review-fix` | Edit/push only accepted review fixes on the reviewed PR branch. |
+| `review-fix` | Compatibility definition: edit/push only accepted review fixes on the reviewed PR branch; not used by current `review`. |
 | `plan-only` | Plan/brief artifacts only; no source, GitHub, or git mutation. |
 | `read-only` | Report only; no source, GitHub, or git mutation. |
 | `repo-external-write` | Repo unchanged; repo-external notes/memory artifacts allowed. |
@@ -81,12 +81,12 @@ Use Codex App orchestration names in briefs/state: `spawn_agent`, `send_input`, 
 
 ## Global Guardrails
 
-- **Base freshness first**: know branch and ahead/behind state before validation, review, ship, or cleanup. Run `git fetch --prune` except for `clean`, which must use the selected scoped no-prune procedure in `references/merge-cleanup.md`.
+- **Base freshness first**: for Git-backed targets know branch and ahead/behind state before validation, review, ship, or cleanup. Explicit context/local-only read-only review uses source/version without requiring Git. Run `git fetch --prune` except for `clean`, which must use the selected scoped no-prune procedure in `references/merge-cleanup.md`.
 - **URL beats cwd**: parse GitHub owner/repo/number from issue, PR, or repo URL before mutation. If cwd remote does not match, stop and switch/clone the matching checkout.
-- **Issue comments matter**: issue body and comments are both source-of-truth candidates; latest explicit comment wins over stale body text.
+- **Issue comments matter** (issue/PR targets): issue body and comments are both source-of-truth candidates; latest explicit comment wins over stale body text.
 - **Manual merge only**: never merge or enable auto-merge unless explicitly asked in the current turn. Green checks plus review only mean ready for manual merge.
-- **Approval-comment policy**: top-level APPROVE comments are evidence, not GitHub formal approval; report `CI/check`, `reviewDecision`, `mergeStateStatus`, branch protection, and human action separately.
-- **Issue-PRs by default**: one issue PR per independent issue; only proven hard conflicts may use one PR with separate commits.
+- **Approval-comment policy**: `review` summary/verdict stays in chat; no top-level verdict or formal approval. Report `CI/check`, `reviewDecision`, `mergeStateStatus`, branch protection, and human action separately.
+- **Issue-PRs by default** (implementation lanes): one issue PR per independent issue; only proven hard conflicts may use one PR with separate commits.
 - **Runtime contract language**: `references/agent-runtime-contract.md` owns Task Scope Contract, Context Assembly Manifest, Resume Snapshot, Control-flow ownership, tool capability boundary, task scope contract, out-of-scope diff, and scope-expansion failure.
 - **Quality Lens Router**: `references/quality-lens-router.md` owns Applicable gate families, Skipped gates, Required references, lightweight/limited gates, backend-only skip, and Repo/product conventions. Domain gate is a lens, not a mandate.
 - **React Code Quality Harness**: when React/Next.js code quality, AI-generated React diffs, component/hook/state/fallback/rendering boundaries are in scope, route `react-code-quality-harness` and read `references/react-code-quality-harness.md`; do not copy gate conditions into the hot path.
@@ -96,13 +96,13 @@ Use Codex App orchestration names in briefs/state: `spawn_agent`, `send_input`, 
 - **Simplicity / Deletability Gate**: `references/simplicity-deletability-gate.md` is mandatory for code-shape decisions. Start with small direct change first and ask why any proposed abstraction is necessary.
 - **Core Invariants Reference**: `references/core-invariants.md` owns long-form guardrail rationale for Counterargument Pass, privacy, knowledge extraction, rendered evidence, component methodology gate, raw UTF-8, Self-created complexity is a defect, and no silent fallback.
 - **Conditional gates stay conditional**: frontend design, Vercel agent skills, and regression-library references load only when applicable; React code quality references also load only when applicable, with explicit backend-only or lightweight skip reasons.
-- **Review policy layers**: every review candidate passes Admission schema v3 before candidate disposition, lifecycle aggregate outcome, and publication authority are evaluated separately. Aggregates and public renderers require same-process provenance; canonical two-sentence findings use the deterministic validator in `references/review-output-contract.md`.
+- **Review policy layers**: every PR review candidate passes Admission schema v3 before candidate disposition, lifecycle aggregate outcome, and publication authority are evaluated separately. Aggregates and public renderers require same-process provenance; canonical two-sentence findings use the deterministic validator in `references/review-output-contract.md`. Non-PR review uses source/version/section and sensor verdict without invented PR metadata.
 
 ## Selected Command Context
 
 Read the selected command document linked in the command index before acting: its full metadata owns permissions, allowed artifacts, side effects, required/conditional assets, stop conditions, and completion signals. Missing or malformed selected contracts are blockers; never infer permission from sibling commands or a corpus search.
 
-The selected contract and required assets are minimum required context, not a reading allowlist. Read required assets before action, including wiki preflight for every command. Load conditional assets when activation evidence applies; record activation and skip reasons. Unknown conditions require investigation or stopping the affected action, never unknown=false. Additional reads and re-reads are allowed with a reason when new evidence warrants them. Load each later phase's command contract and applicable assets on transition, without inheriting permissions. Read public-body assets before preparing public-ready summaries/findings, including previews and zero-finding summaries; reading never grants publication rights.
+The selected contract and required assets are minimum required context, not a reading allowlist. Read required assets before action, including wiki preflight for every command. Load conditional assets when activation evidence applies; record activation and skip reasons. Unknown conditions require investigation or stopping the affected action, never unknown=false. Additional reads and re-reads are allowed with a reason when new evidence warrants them. Load each later phase's command contract and applicable assets on transition, without inheriting permissions. Read public-body assets before preparing public-ready findings or previews; reading never grants publication rights. `review` publishes no summary, and zero findings make no GitHub write.
 
 ## Shared Workflow Rules
 
@@ -114,7 +114,7 @@ The selected contract and required assets are minimum required context, not a re
 
 ## Review Gate Contract
 
-Normal finish pipeline: local validation, publish evidence when requested, fresh adversarial review, triage, accepted Critical/High fixes, revalidation, and top-level review comment when formal approval is inappropriate. Return gate_result, blocking_summary, next_action, and lane_completion_state.
+Implementation lanes retain local validation, requested publication, adversarial review, authorized fixes, and revalidation. Within `review`, require a fresh independent reviewer result and parent source/counterevidence recheck; remediation is a separate implementation handoff. Allow only local results and authorized verified inline findings on the requested PR; no ship rights, edits/pushes, formal approval, top-level verdict, thread reply/resolve, or CI rerun. Return gate_result, blocking_summary, next_action, and lane_completion_state.
 
 ## Common Pitfalls
 
@@ -122,8 +122,8 @@ Pitfalls: stale repo, missing comments, hallucinated deps, force-push loops, tes
 
 ## Verification Checklist
 
-- Base freshness and ahead/behind state known.
-- Issue body and comments inspected.
+- For Git-backed targets, base freshness and ahead/behind state known.
+- For issue/PR targets, issue body and comments inspected.
 - Allowed, forbidden, inspect-only, and Must not touch files explicit.
 - New dependencies avoided or proven.
 - Subagent side effects rechecked with git/GitHub.
@@ -137,7 +137,7 @@ Per-subcommand completion signals live in the selected command document's `outpu
 
 ## Stop Conditions
 
-Stop when source edits fall outside the routed subcommand, a lane needs files outside its allowed list, a hard blocker would force an unauthorized topology, validation mutates unexpectedly, release/publish automation lacks explicit confirmation, state contradicts live git/GitHub, base freshness cannot be established, the issue is fundamentally thin, or the target is ignored/local-only/repo-external and cannot be represented safely in PR workflow. Only this last PR-representation condition exempts exact disposable paths explicitly allowed by the selected `clean` contract and `references/merge-cleanup.md`; all other stop conditions remain.
+Stop when source edits fall outside the routed subcommand, a lane needs files outside its allowed list, a hard blocker would force an unauthorized topology, validation mutates unexpectedly, release/publish automation lacks explicit confirmation, state contradicts live git/GitHub, required Git base freshness cannot be established, a required issue is fundamentally thin, or an implementation/PR-publication target cannot be represented safely in PR workflow. Explicit context/local-only read-only review proceeds with exact source/version and does not require Git/PR metadata. Only this last PR-representation condition exempts exact disposable paths explicitly allowed by the selected `clean` contract and `references/merge-cleanup.md`; all other stop conditions remain.
 
 ## Installation Inventory
 

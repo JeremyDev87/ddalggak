@@ -25,14 +25,7 @@ Do not silently fill gaps with plausible assumptions. If the plan would require 
 
 ## Ralplan-style critic consensus
 
-After the first implementation strategy, run a lightweight critic pass before finalizing:
-
-1. `Planner view` — smallest deployable units and expected validation evidence.
-2. `Architect view` — coupling, ownership boundaries, migration/rollback risk.
-3. `Critic view` — simplest deletion/subtraction alternative, missing evidence, and most likely failure mode.
-
-The final plan must include `Consensus decision` with either `ACCEPT`, `NARROW`, or `REWORK`, plus the one change made after the critic pass. If no change was needed, state the evidence-backed reason.
-
+After the first implementation strategy, apply the shared criteria in `references/quality-lens-router.md` and obtain the actual independent critic result required by `references/ralplan-critic-consensus.md` before `PLAN_DONE`. Include its reviewed version, identity/result, parent reconciliation, `ACCEPT | NARROW | REWORK`, change or evidence-backed no-change reason, and residual dissent. Planner/architect/critic viewpoints written by the author do not establish independence. Keep planned validation separate from executed evidence.
 
 ## Wiki Context Preflight
 

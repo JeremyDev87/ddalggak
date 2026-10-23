@@ -1,10 +1,10 @@
 <!-- ddalggak:generated:file command-doc:review -->
 # Command: review
 
-Use when: Risk-adaptive current-head semantic review and accepted fix loop.
+Use when: Independent semantic review of an explicit PR, file, document, or context.
 Required by: `review` command.
-Side effects: Top-level review comment plus inline line-anchored review comments for every triage-passing finding in one COMMENT-event batch; accepted Critical/High fixes may edit source and push to the reviewed PR branch.
-Do not use when: Outside this command's scope or permissions. Before writes, re-check lifecycle. state=MERGED/mergedAt emits REVIEW_STOPPED_PR_MERGED and stops; uncertainty is BLOCKED.
+Side effects: Only verified inline findings on the requested PR when authorized; local review results otherwise. No source edits, commit/push, formal approval, top-level verdict, thread reply/resolve, or CI rerun.
+Do not use when: Outside this command's scope or permissions. For PR targets, before writes re-check lifecycle. state=MERGED/mergedAt emits REVIEW_STOPPED_PR_MERGED and stops; uncertainty is BLOCKED.
 
 This command document and its required assets are the minimum required context, not a reading allowlist.
 Read required assets before acting. Read conditional assets when their activation has supporting evidence; multiple activations for one asset are OR, and the asset need only be read once.
@@ -31,22 +31,21 @@ Conditional references (activation -> asset):
 - `public-body` -> `references/review-comment-style.md`
 
 Required templates:
-- None.
+- `templates/review-brief.md`
 Conditional templates (activation -> asset):
-- `delegated-review` -> `templates/review-brief.md`
-- `accepted-critical-high-fix` -> `templates/fix-brief.md`
+- None.
 
 ```json
 {
   "command": "review",
   "command_order": "020",
   "show_doc_heading": "Cross-Review Loop",
-  "source_edit_allowed": true,
+  "source_edit_allowed": false,
   "github_write_allowed": true,
-  "purpose": "Risk-adaptive current-head semantic review and accepted fix loop.",
-  "mode": "review-fix",
-  "write_side_effects": "Top-level review comment plus inline line-anchored review comments for every triage-passing finding in one COMMENT-event batch; accepted Critical/High fixes may edit source and push to the reviewed PR branch.",
-  "stop_condition": "Before writes, re-check lifecycle. state=MERGED/mergedAt emits REVIEW_STOPPED_PR_MERGED and stops; uncertainty is BLOCKED.",
+  "purpose": "Independent semantic review of an explicit PR, file, document, or context.",
+  "mode": "github-write",
+  "write_side_effects": "Only verified inline findings on the requested PR when authorized; local review results otherwise. No source edits, commit/push, formal approval, top-level verdict, thread reply/resolve, or CI rerun.",
+  "stop_condition": "For PR targets, before writes re-check lifecycle. state=MERGED/mergedAt emits REVIEW_STOPPED_PR_MERGED and stops; uncertainty is BLOCKED.",
   "required_references": [
     "wiki-context-preflight.md",
     "2026-06-04-brain-v0-wiki-authority-in-ddalggak.md",
@@ -65,23 +64,27 @@ Conditional templates (activation -> asset):
     "public-body=review-output-contract.md",
     "public-body=review-comment-style.md"
   ],
-  "required_templates": [],
-  "conditional_templates": [
-    "delegated-review=review-brief.md",
-    "accepted-critical-high-fix=fix-brief.md"
+  "required_templates": [
+    "review-brief.md"
   ],
+  "conditional_templates": [],
   "output_contract": {
     "completion_signal": "REVIEW_DONE",
     "evidence_required": true
   },
-  "allowed_artifact": "author agents may apply accepted Critical/High review fixes only"
+  "allowed_artifact": "verified inline comments on the requested PR and local review results only"
 }
 ```
 
 ## `review` - Cross-Review Loop
 
-Command contract: `review-fix`; accepted Critical/High fixes/comments only. Follow `cross-review-loop.md` lifecycle checkpoints; merged emits `REVIEW_STOPPED_PR_MERGED`, uncertainty is `BLOCKED`.
+Command contract: `github-write`, `source_edit_allowed: false`; local review results and authorized verified inline comments on the requested PR only. Compatibility change: automatic accepted-fix loops and top-level verdict/summary publication are removed; `review-fix` and summary renderer APIs remain inspect-only compatibility.
 
-Full procedure: `references/cross-review-loop.md`; public renderer: `references/review-output-contract.md` + `references/review-comment-style.md`; wiki authority: `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`; delegated review only loads `templates/review-brief.md`.
+Full procedure: `references/cross-review-loop.md`; public renderer: `references/review-output-contract.md` + `references/review-comment-style.md`; wiki authority: `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`; mandatory independent review brief: `templates/review-brief.md`.
 
-Execution contract index: live PR/diff/files/checks/issue/head SHA; lifecycle stop/readback; Wiki Context Preflight; base Router/Evidence; activation-bound optional gates; Admission schema v3; canonical-candidate-bound two-sentence findings; deterministic fixed summary.
+Execution contract index:
+- Resolve explicit PR/file/document/context scope and exact source/version/section; never fabricate Git/PR metadata for non-PR review.
+- Require a fresh independent reviewer result and parent source/counterevidence recheck. Missing result blocks completion.
+- PR only: live lifecycle/head/diff/files/checks/requirements and v3 admission/aggregate/provenance remain required. Merged emits `REVIEW_STOPPED_PR_MERGED`; uncertain lifecycle is `BLOCKED`.
+- Run Wiki Context Preflight and Router/Evidence; optional gates remain activation-bound. Findings separate live evidence, wiki rationale, inference, and retrieval gaps.
+- Publish only Korean two-sentence inline findings with exact anchor and body/location/URL readback; zero findings/read-only/non-PR means no writes. Keep summary/verdict in chat. No source fix, commit/push, formal approval, top-level verdict, thread reply/resolve, or CI rerun.

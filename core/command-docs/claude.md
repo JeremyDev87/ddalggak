@@ -18,18 +18,16 @@ Execution contract index:
 
 ## Cross-Review Loop
 
-Command contract: `review-fix`; accepted Critical/High fixes/comments only. Follow `cross-review-loop.md` lifecycle checkpoints; merged emits `REVIEW_STOPPED_PR_MERGED`, uncertainty is `BLOCKED`.
+Command contract: `github-write`, `source_edit_allowed: false`; local review results and authorized verified inline comments on the requested PR only. Compatibility change: automatic accepted-fix loops and top-level verdict/summary publication are removed; `review-fix` and summary renderer APIs remain inspect-only compatibility.
 
-Full procedure: `references/cross-review-loop.md`; public renderer: `references/review-output-contract.md` + `references/review-comment-style.md`; wiki authority: `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`; delegated-review만 `templates/review-brief.md`를 로드한다.
+Full procedure: `references/cross-review-loop.md`; public renderer: `references/review-output-contract.md` + `references/review-comment-style.md`; wiki authority: `references/2026-06-04-brain-v0-wiki-authority-in-ddalggak.md`; mandatory independent review brief: `templates/review-brief.md`.
 
 Execution contract index:
-- Re-read live PR state, diff/files/checks, linked issue, current head SHA, and wiki-context preflight.
-- Lifecycle: merged stops probes/delegation/edits/pushes/GitHub writes after authoritative readback; default `MERGED / NO_FOLLOW_UP`. Lookup ambiguity is `BLOCKED`.
-- Gates: Router/Evidence는 base; 나머지는 activation evidence applies일 때만 로드한다.
-- Findings must separate live evidence, wiki-strengthened rationale, non-wiki inference, and retrieval gaps.
-- Apply admission schema v3 first: only aggregate-member canonical candidate findings publish, filtered notes stay internal, deterministic fixed summary renders, and zero-finding needs substantive evidence.
-
----
+- Resolve explicit PR/file/document/context scope and exact source/version/section; never fabricate Git/PR metadata for non-PR review.
+- Require a fresh independent reviewer result and parent source/counterevidence recheck. Missing result blocks completion.
+- PR only: live lifecycle/head/diff/files/checks/requirements and v3 admission/aggregate/provenance remain required. Merged emits `REVIEW_STOPPED_PR_MERGED`; uncertain lifecycle is `BLOCKED`.
+- Run Wiki Context Preflight and Router/Evidence; optional gates remain activation-bound. Findings separate live evidence, wiki rationale, inference, and retrieval gaps.
+- Publish only Korean two-sentence inline findings with exact anchor and body/location/URL readback; zero findings/read-only/non-PR means no writes. Keep summary/verdict in chat. No source fix, commit/push, formal approval, top-level verdict, thread reply/resolve, or CI rerun.
 
 # status
 

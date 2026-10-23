@@ -12,6 +12,8 @@ import { withTempRepo } from "./test-lib/repo-fixture.mjs";
 import { runNodeScript } from "./test-lib/process.mjs";
 import { allowedArtifactByCommand } from "./project-runtime-assets/render-skill-blocks.mjs";
 
+assert.equal(allowedArtifactByCommand.review, "verified inline comments on the requested PR and local review results only", "review의 산출물은 요청 PR inline과 로컬 검토 결과로 제한한다");
+
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const roots = { claude: "ddalggak", codex: ".codex/skills/ddalggak" };
 const sha256 = (text) => createHash("sha256").update(text).digest("hex");
@@ -118,9 +120,9 @@ withTempRepo({ rootDir, prefix: "ddalggak-command-docs-", run(repo) {
   }
 
   const output = "ddalggak/references/command-review.md";
-  for (const permission of ["source_edit_allowed", "github_write_allowed"]) {
-    rejectMutation(`${permission} metadata drift`, output,
-      (text) => text.replace(`"${permission}": true`, `"${permission}": false`), /command-review\.md/, { repairable: true });
+  for (const [permission, expected] of [["source_edit_allowed", false], ["github_write_allowed", true]]) {
+    rejectMutation(`${permission} 권한 메타데이터 변조`, output,
+      (text) => text.replace(`"${permission}": ${expected}`, `"${permission}": ${!expected}`), /command-review\.md/, { repairable: true });
   }
   rejectMutation("completion metadata drift", output,
     (text) => text.replace('"completion_signal": "REVIEW_DONE"', '"completion_signal": "WRONG_DONE"'),
