@@ -2,12 +2,12 @@
 command: review
 command_order: "020"
 show_doc_heading: "Cross-Review Loop"
-source_edit_allowed: true
+source_edit_allowed: false
 github_write_allowed: true
-purpose: "Risk-adaptive current-head semantic review and accepted fix loop."
-mode: "review-fix"
-write_side_effects: "Top-level review comment plus inline line-anchored review comments for every triage-passing finding in one COMMENT-event batch; accepted Critical/High fixes may edit source and push to the reviewed PR branch."
-stop_condition: "Before writes, re-check lifecycle. state=MERGED/mergedAt emits REVIEW_STOPPED_PR_MERGED and stops; uncertainty is BLOCKED."
+purpose: "Independent semantic review of an explicit PR, file, document, or context."
+mode: "github-write"
+write_side_effects: "Only verified inline findings on the requested PR when authorized; local review results otherwise. No source edits, commit/push, formal approval, top-level verdict, thread reply/resolve, or CI rerun."
+stop_condition: "For PR targets, before writes re-check lifecycle. state=MERGED/mergedAt emits REVIEW_STOPPED_PR_MERGED and stops; uncertainty is BLOCKED."
 required_references:
   - wiki-context-preflight.md
   - 2026-06-04-brain-v0-wiki-authority-in-ddalggak.md
@@ -27,11 +27,10 @@ conditional_references:
   - public-body=review-comment-style.md
 
 required_templates:
-  []
+  - review-brief.md
 
 conditional_templates:
-  - delegated-review=review-brief.md
-  - accepted-critical-high-fix=fix-brief.md
+  []
 
 output_contract:
   completion_signal: "REVIEW_DONE"

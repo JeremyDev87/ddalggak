@@ -12,9 +12,11 @@ Do not use when: the task can be completed directly inside ddalggak without dele
 
 Pass the current project `cwd` and the user task to the coordinator. Keep `allow_mutation: false` unless the user explicitly approved mutation for this turn and the coordinator mutation class is enabled.
 
+For `gjc-plan`, include the shared criteria from `references/quality-lens-router.md` and the independent critic contract from `references/ralplan-critic-consensus.md` in the delegated request. Require the returned plan artifact to identify the actual fresh critic session, reviewed version, findings/no-findings with coverage, and parent reconciliation. Keep code-shape criteria conditional and distinguish proposed validation from executed checks.
+
 ## Evidence
 
-Record the returned `turn_id`, then poll bounded coordinator state with `gjc_coordinator_await_turn` or `gjc_coordinator_watch_events`. Treat terminal turn state and artifacts as source of truth, not terminal scrollback.
+Record the returned `turn_id`, then poll bounded coordinator state with `gjc_coordinator_await_turn` or `gjc_coordinator_watch_events`. Treat terminal turn state and artifacts as source of truth, not terminal scrollback. A terminal state alone is not independent review evidence: for `gjc-plan`, inspect the actual critic result and current plan artifact, recheck candidate findings against source evidence/counterexamples, and record adoption/rejection reasons and residual dissent. Missing, stale, or mismatched critic artifacts leave the plan incomplete; report the gap without `GJC_PLAN_DONE`.
 
 ## Visible tmux sessions
 
@@ -26,4 +28,4 @@ Never hard-code channel ids, mentions, tokens, credentials, or private host path
 
 ## Completion
 
-End with `GJC_PLAN_DONE`, `GJC_EXECUTE_DONE`, or `GJC_TEAM_DONE` after coordinator evidence and cleanup are recorded.
+End with `GJC_PLAN_DONE`, `GJC_EXECUTE_DONE`, or `GJC_TEAM_DONE` after coordinator evidence and cleanup are recorded; `GJC_PLAN_DONE` additionally requires the verified independent critic result and parent reconciliation above.

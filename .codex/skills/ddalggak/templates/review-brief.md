@@ -1,13 +1,24 @@
 # Review Brief Template
 
-## PR / Issue
+## Target and independent reviewer
+- Original request / purpose / non-goals:
+- Exact source / version or snapshot / section / scope:
+- Applicable quality criteria:
+- Fresh reviewer session/context identity (distinct from author):
+- Actual independent result / evidence:
+- Parent source recheck / counterevidence after result:
+- Authority: read-only source; only authorized verified inline findings on the requested PR may publish.
+- Forbidden side effects: source edits, commit/push, formal approval, top-level verdict, thread reply/resolve, CI rerun.
+- Give original sources and criteria, not parent conclusions/canned findings. Missing independent result blocks completion.
+
+## PR / Issue (PR targets only; never fabricate for non-PR review)
 - PR number:
 - Base SHA:
 - Head SHA:
 - checks Head SHA:
 - Linked issue contract / acceptance criteria:
 - Lifecycle:
-- Lifecycle checked at / evidence: intake; after delegated or long-running work; immediately before each fix, push, or GitHub write
+- Lifecycle checked at / evidence: intake; after delegated or long-running work; immediately before each inline POST
 - Merge stop sentinel: `state=MERGED` or non-null `mergedAt` → `REVIEW_STOPPED_PR_MERGED`; record `state`, `mergedAt`, `mergeCommit`, `headRefOid`; stop delegation/probes/edits/pushes/GitHub writes
 - Authority boundary:
 - Purpose / non-goals:
@@ -54,9 +65,9 @@
 - High/Critical zero-finding challenger: used / not-triggered / blocked
 
 ## Quality sensor findings (internal)
-For each observed quality finding record severity, claim, changed-line/file anchor, reproducible failing scenario, impact, minimal fix, confidence, and counterevidence checked. These are sensor inputs only. Before aggregation, the conductor must map a reproduced finding into the exact 21-field Admission schema v3 record in `references/cross-review-loop.md`; this section defines neither publication eligibility nor write authority.
+For each observed quality finding record severity, claim, source/version/section or changed-line/file anchor, reproducible failing scenario, impact, minimal fix, confidence, and counterevidence checked. These are sensor inputs only. For PR targets before aggregation, the conductor must map a reproduced finding into the exact 21-field Admission schema v3 record in `references/cross-review-loop.md`; this section defines neither publication eligibility nor write authority.
 
-## Candidate defaults (non-publication)
+## Candidate defaults (PR targets only, non-publication)
 ```yaml
 authority: SUBREVIEW
 disposition: CANDIDATE
@@ -66,7 +77,9 @@ Worker output has no publication authority.
 
 ## Output
 - Internal Review Quality sensor verdict: `approve | change request | comment | blocked`
-- Canonical lifecycle outcome and public rendering: `references/cross-review-loop.md` plus `references/review-output-contract.md`
+- Chat: findings/impact/location, validation/gaps, publication status, target version and separate verdict.
+- Non-PR completion: `REVIEW_DONE` with exact source/version and actual independent result plus parent recheck; no GitHub write.
+- PR canonical lifecycle outcome and inline rendering: `references/cross-review-loop.md` plus `references/review-output-contract.md`
 
 Open lifecycle completion: `REVIEW_DONE PR#<num>: <APPROVE|CHANGES_REQUESTED> critical=N high=N medium=N low=N head=<sha>`
 

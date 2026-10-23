@@ -25,8 +25,9 @@ The behavioral reference is oh-my-openagent `v3.8.3` at `84e103c41f9863ea32533b9
 5. List owned files, must-not-touch files, success criteria, and validation commands.
 6. Identify parallel lanes only when write surfaces are independent.
 7. When delegated work is part of the plan, emit a `Delegation Recommendation` using the semantic task category and the available runtime boundary; do not imply that the plan executed the delegation.
-8. Name blockers instead of guessing.
-9. End with `ULW_PLAN_DONE`.
+8. Apply `references/quality-lens-router.md` and obtain the actual independent critic result and parent reconciliation from `references/ralplan-critic-consensus.md`; record planned validation without claiming it ran.
+9. Name blockers, including absent/stale critic evidence, instead of guessing.
+10. End with `ULW_PLAN_DONE` only after those gates pass.
 
 ## Phase Execution Ledger
 
@@ -79,7 +80,7 @@ Use `Terra` as the normal standard-work default. Escalate to `Sol` when requirem
 
 - `delegate_task` has no profile-selection parameter in the current runtime contract. Recommend a model lane/category only; never report profile isolation as executed.
 - Recommend `Kanban` when the work is long-running, multi-turn, retryable, profile-isolated, or needs durable task state. A worker profile may be named only when its live availability is verified.
-- The recommendation is advisory. `ulw-plan` does not spawn workers, choose credentials, mutate runtime configuration, or claim that a child ran.
+- The implementation-worker recommendation is advisory: it does not execute implementation delegation, choose credentials, or mutate runtime configuration. Required read-only plan critic execution is separate; record only the actual reviewer result, never claim a recommended worker ran.
 - If category support or profile availability is unresolved, report the gap explicitly and preserve the plan-only boundary.
 
 ## Intent routing summary
@@ -90,7 +91,7 @@ See `references/ulw-intent-routing.md` for the ddalggak translation of lazycodex
 - **UNCLEAR**: desired outcome is fuzzy; research, adopt defensible best-practice defaults, record assumptions/reversibility, then present the approval brief.
 - **ON-THE-FENCE**: ask exactly one highest-leverage question rather than silently choosing.
 
-Topology lock happens before detailed planning: list the 1-6 independent components, dependencies, owned surfaces, and forbidden side effects. Approval gate is `grounding -> brief_presented -> awaiting-approval -> approved` with `scope_changed` looping back to a fresh brief. `review_required` uses `ralplan-critic-consensus.md` / critic review before finalizing.
+Topology lock happens before detailed planning: list the 1-6 independent components, dependencies, owned surfaces, and forbidden side effects. Approval gate is `grounding -> brief_presented -> awaiting-approval -> approved` with `scope_changed` looping back to a fresh brief. The agent workflow always requires `references/ralplan-critic-consensus.md` before finalizing. The CLI optional `--review-required` two-lane receipt state machine is unchanged; a CLI terminal status alone does not prove that the agent obtained its independent critic result.
 
 ## Non-goals
 

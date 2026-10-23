@@ -120,14 +120,19 @@ assert.deepEqual(assets.selectCommandAssets(review, ["public-body"]), {
   references: [...review.required_references, ...publicBodyReferences],
   templates: review.required_templates,
 });
-for (const activation of [[], ["code-shape"], ["delegated-review"], ["accepted-critical-high-fix"]]) {
+for (const activation of [[], ["code-shape"], ["human-feedback"], ["failing-ci"]]) {
   const selected = assets.selectCommandAssets(review, activation);
   for (const reference of publicBodyReferences) assert(!selected.references.includes(reference));
 }
 for (const command of commands.filter((command) => command.command !== "review")) {
   assert.throws(() => assets.selectCommandAssets(command, ["public-body"]), TypeError);
 }
-assert.equal(review.source_edit_allowed, true);
+assert.equal(review.source_edit_allowed, false, "review는 소스 수정 권한을 부여하지 않는다");
 assert.equal(review.github_write_allowed, true);
-console.log("[PASS] public-body selects both renderer contracts only for review, not internal or unrelated activations");
+assert.equal(review.mode, "github-write", "review는 기존 게시 권한 분류를 사용한다");
+assert.deepEqual(review.required_templates, ["review-brief.md"], "독립 검토 brief는 항상 로드한다");
+for (const activation of ["delegated-review", "accepted-critical-high-fix"]) {
+  assert.throws(() => assets.selectCommandAssets(review, [activation]), TypeError, "선택적 위임과 자동 수정 활성화는 제거한다");
+}
+console.log("[PASS] review의 공개 본문 자산과 독립 검토 brief를 선택하며 자동 수정 권한은 없다");
 console.log("\n[test:selected-command-assets] passed");

@@ -20,11 +20,11 @@ Required references:
 - `references/quality-lens-router.md`
 - `references/evidence-contract.md`
 - `references/issue-ready-plan.md`
+- `references/ralplan-critic-consensus.md`
 Conditional references (activation -> asset):
 - `code-shape` -> `references/simplicity-deletability-gate.md`
 - `scope-or-privacy` -> `references/core-invariants.md`
 - `ambiguous-intent` -> `references/deep-interview-readiness-gate.md`
-- `high-risk` -> `references/ralplan-critic-consensus.md`
 
 Required templates:
 - None.
@@ -48,13 +48,13 @@ Conditional templates (activation -> asset):
     "wiki-bridge.md",
     "quality-lens-router.md",
     "evidence-contract.md",
-    "issue-ready-plan.md"
+    "issue-ready-plan.md",
+    "ralplan-critic-consensus.md"
   ],
   "conditional_references": [
     "code-shape=simplicity-deletability-gate.md",
     "scope-or-privacy=core-invariants.md",
-    "ambiguous-intent=deep-interview-readiness-gate.md",
-    "high-risk=ralplan-critic-consensus.md"
+    "ambiguous-intent=deep-interview-readiness-gate.md"
   ],
   "required_templates": [],
   "conditional_templates": [],

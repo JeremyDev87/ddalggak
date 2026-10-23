@@ -9,7 +9,13 @@ write_side_effects: "Coordinator only."
 stop_condition: "Stop after evidence/blocker."
 required_references:
   - wiki-context-preflight.md
+  - quality-lens-router.md
+  - evidence-contract.md
+  - ralplan-critic-consensus.md
   - gajae-code.md
+
+conditional_references:
+  - code-shape=simplicity-deletability-gate.md
 
 required_templates:
   []

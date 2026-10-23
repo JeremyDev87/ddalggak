@@ -111,15 +111,15 @@ function exactRows(tempDir) {
   return report;
 }
 
-withTempRepo("exact generated command accounting", (tempDir) => {
-  assertPass("generate isolated command documents", runNodeScript("scripts/project-runtime-assets.mjs", ["--write"], { cwd: tempDir }));
+withTempRepo("생성 명령의 정확한 토큰 계산", (tempDir) => {
+  assertPass("격리된 명령 문서 생성", runNodeScript("scripts/project-runtime-assets.mjs", ["--write"], { cwd: tempDir }));
   exactRows(tempDir);
-  // Force quarter-token edges and same basename across kinds. All real command
-  // contracts remain loaded; only review's assets are controlled here.
+  // 0.25 토큰 경계와 종류별 같은 basename을 검증한다. 실제 명령은 유지하고
+  // 격리 fixture의 review 자산만 필수 1개, 조건부 2개(OR 중복 포함)로 통제한다.
   const reviewPath = path.join(tempDir, "core/commands/review.yaml");
   replaceInFile(reviewPath, "  - code-shape=simplicity-deletability-gate.md", "  - code-shape=simplicity-deletability-gate.md\n  - another-shape=simplicity-deletability-gate.md");
-  replaceInFile(reviewPath, "  - delegated-review=review-brief.md", "  - delegated-review=review-brief.md\n  - another-review=review-brief.md");
-  replaceInFile(reviewPath, "required_templates:\n  []", "required_templates:\n  - review-quality-contract.md");
+  replaceInFile(reviewPath, "conditional_templates:\n  []", "conditional_templates:\n  - delegated-review=review-brief.md\n  - another-review=review-brief.md\n  - accepted-critical-high-fix=fix-brief.md");
+  replaceInFile(reviewPath, "required_templates:\n  - review-brief.md", "required_templates:\n  - review-quality-contract.md");
   for (const base of ["ddalggak", ".codex/skills/ddalggak"]) {
     writeFileSync(path.join(tempDir, base, "SKILL.md"), "a");
     writeFileSync(path.join(tempDir, base, "references/command-review.md"), "한😀a");
@@ -137,7 +137,7 @@ withTempRepo("exact generated command accounting", (tempDir) => {
     assert.equal(row.conditional_delta_est_tokens, 2);
     assert.equal(row.conditional_est_tokens, 3);
   }
-  console.log("[PASS] OR assets counted once, kinds distinct, sum before ceil, delta is rounded declared minus base");
+  console.log("[PASS] OR 자산은 한 번만 계산하고 종류를 구분하며 합산 후 올림 및 declared-base 차이를 유지한다");
 });
 
 // Baseline: an unmutated copy must pass so the failing cases prove the mutation,
