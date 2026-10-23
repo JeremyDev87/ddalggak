@@ -71,7 +71,7 @@ Each generated issue body must preserve Owned files, Must not touch, Paralleliza
 
 Full procedure: `references/merge-cleanup.md`.
 
-Verify merge evidence first, then clean only matching branches/worktrees/artifacts. Never delete dirty or ambiguous worktrees. Never merge or enable auto-merge.
+First verify default-branch synchronization, then remove only verified merged-task local branches/worktrees and exact disposable paths. Preserve unsafe requested targets and withhold `CLEAN_DONE` while any requested target remains unresolved. Never merge pull requests, enable auto-merge, or mutate remote branches.
 
 ---
 

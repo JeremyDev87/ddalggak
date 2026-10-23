@@ -44,7 +44,7 @@ Issue titles and bodies must be submitted as raw UTF-8, not JSON-escaped text. B
 
 ## `clean` - Post-Merge Cleanup
 
-Verify live PR merge evidence first, fetch, inspect dirty state, then clean only safe local branches/worktrees/state artifacts. Stop on uncommitted work or contradictory live state.
+Follow `references/merge-cleanup.md`: first verify default-branch synchronization, then remove only verified merged-task local branches/worktrees and exact disposable paths. Preserve unsafe requested targets and withhold `CLEAN_DONE` while any requested target remains unresolved. Never merge pull requests, enable auto-merge, or mutate remote branches.
 
 # ship
 

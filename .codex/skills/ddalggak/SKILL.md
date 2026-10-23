@@ -71,7 +71,7 @@ If a non-writing subcommand would need a source edit to continue, report the nee
 | `plan-only` | Plan/brief artifacts only; no source, GitHub, or git mutation. |
 | `read-only` | Report only; no source, GitHub, or git mutation. |
 | `repo-external-write` | Repo unchanged; repo-external notes/memory artifacts allowed. |
-| `local-destructive` | Repo/GitHub unchanged; merge-verified local cleanup only. |
+| `local-destructive` | No authored source edits or GitHub writes; only contract-verified Git sync and merged-task local cleanup. |
 | `github-write` | GitHub artifacts plus ship commit/push only; no source edits. |
 | `approval-gated-write` | External wiki write only after explicit approval. |
 
@@ -81,7 +81,7 @@ Use Codex App orchestration names in briefs/state: `spawn_agent`, `send_input`, 
 
 ## Global Guardrails
 
-- **Base freshness first**: run `git fetch --prune`; know branch and ahead/behind state before validation, review, ship, or cleanup.
+- **Base freshness first**: know branch and ahead/behind state before validation, review, ship, or cleanup. Run `git fetch --prune` except for `clean`, which must use the selected scoped no-prune procedure in `references/merge-cleanup.md`.
 - **URL beats cwd**: parse GitHub owner/repo/number from issue, PR, or repo URL before mutation. If cwd remote does not match, stop and switch/clone the matching checkout.
 - **Issue comments matter**: issue body and comments are both source-of-truth candidates; latest explicit comment wins over stale body text.
 - **Manual merge only**: never merge or enable auto-merge unless explicitly asked in the current turn. Green checks plus review only mean ready for manual merge.
@@ -137,7 +137,7 @@ Per-subcommand completion signals live in the selected command document's `outpu
 
 ## Stop Conditions
 
-Stop when source edits fall outside the routed subcommand, a lane needs files outside its allowed list, a hard blocker would force an unauthorized topology, validation mutates unexpectedly, release/publish automation lacks explicit confirmation, state contradicts live git/GitHub, base freshness cannot be established, the issue is fundamentally thin, or the target is ignored/local-only/repo-external and cannot be represented safely in PR workflow.
+Stop when source edits fall outside the routed subcommand, a lane needs files outside its allowed list, a hard blocker would force an unauthorized topology, validation mutates unexpectedly, release/publish automation lacks explicit confirmation, state contradicts live git/GitHub, base freshness cannot be established, the issue is fundamentally thin, or the target is ignored/local-only/repo-external and cannot be represented safely in PR workflow. Only this last PR-representation condition exempts exact disposable paths explicitly allowed by the selected `clean` contract and `references/merge-cleanup.md`; all other stop conditions remain.
 
 ## Installation Inventory
 
