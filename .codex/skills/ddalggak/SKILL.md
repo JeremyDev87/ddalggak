@@ -27,7 +27,7 @@ Parse only the first whitespace-separated word from the invocation arguments.
 4. If the first word is a CLI-only command (`doctor`, `setup`, or any command handled by `bin/ddalggak.js`), do not route; reply that it is a terminal CLI command to run as `ddalggak <command>` in the shell, and stop.
 5. Otherwise, when the first word is neither a supported subcommand, an issue reference, nor a CLI-only command (a typo or unrecognized word), do not fall through to `start` (fail-closed). Return `NEEDS_CLARIFICATION` with the supported subcommand list from the generated table below and ask for intent.
 6. Once a route is selected, later arguments must never reroute the request, even if they look like an implementation request.
-7. Immediately print exactly one route line before doing work: `-> <subcommand> 실행`.
+7. Chat: after the request summary, before work, print exactly `-> <subcommand> 실행` once per invocation; never repeat in progress/final replies. Repeat only for a new invocation. Exact-output exceptions take precedence.
 8. The routed subcommand must stay inside the code modification permissions in the selected command contract.
 9. If arguments request changes to this skill, its routing rules, its subcommand definitions, or the skill artifact itself, stop with: `메타 요청 감지 - 이 작업은 ddalggak 서브커맨드 범위 밖입니다. /ddalggak 외부 일반 메시지로 다시 요청해 주세요.`
 
@@ -103,6 +103,16 @@ Use Codex App orchestration names in briefs/state: `spawn_agent`, `send_input`, 
 Read the selected command document linked in the command index before acting: its full metadata owns permissions, allowed artifacts, side effects, required/conditional assets, stop conditions, and completion signals. Missing or malformed selected contracts are blockers; never infer permission from sibling commands or a corpus search.
 
 The selected contract and required assets are minimum required context, not a reading allowlist. Read required assets before action, including wiki preflight for every command. Load conditional assets when activation evidence applies; record activation and skip reasons. Unknown conditions require investigation or stopping the affected action, never unknown=false. Additional reads and re-reads are allowed with a reason when new evidence warrants them. Load each later phase's command contract and applicable assets on transition, without inheriting permissions. Read public-body assets before preparing public-ready findings or previews; reading never grants publication rights. `review` publishes no summary, and zero findings make no GitHub write.
+
+## Common Response Rules
+
+Chat replies (progress/questions/final): start `**요청 요약:**` with current goal/target/key constraints (one sentence; two if complex), then answer/status; do not repeat the summary. Omitted constraints still bind. Corrections/resume retain goal + latest changes; drop cancelled/replaced goals. Never substitute other tasks, agent plans or guesses. Summaries confer no approval/authority or execution/verification evidence; do authorized work without reapproval; retain permission gates.
+
+Explicit language/opt-out/exact-output requests win. JSON-only/code-only replies: no prose/fences/extra fields. Format-bound artifacts: allowed chat stays outside; preserve JSON/code, PR inline bodies and completion markers.
+
+Default Korean: familiar consistent terms, separate actions, prerequisites first. Preserve conditions, negation, values, units, comparisons, identifiers, uncertainty and simultaneity. STE-inspired, not ASD-STE100 compliance/certification.
+
+Details: `references/common-rules.md`.
 
 ## Shared Workflow Rules
 

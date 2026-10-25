@@ -29,7 +29,7 @@ user-invocable: true
 4. 첫 단어가 CLI 전용 명령(`doctor`, `setup` 등 `bin/ddalggak.js`가 처리하는 명령)이면 route하지 않고 "터미널 CLI 명령입니다 — 셸에서 `ddalggak <명령>`을 실행하세요"로 안내한 뒤 멈춘다.
 5. 첫 단어가 지원 subcommand도, issue 참조도, CLI 전용 명령도 아니면(오타·미인식 단어) `start`로 자동 진입하지 않는다(fail-closed). `NEEDS_CLARIFICATION`으로 아래 생성 테이블의 지원 subcommand 목록을 제시하고 의도를 되묻는다.
 6. Route가 결정된 뒤 후속 인자는 절대 route를 바꾸지 않는다.
-7. 작업 전 정확히 한 줄 `-> <subcommand> 실행`을 출력한다.
+7. Chat: after the request summary, before work, print exactly `-> <subcommand> 실행` once per invocation; never repeat in progress/final replies. Repeat only for a new invocation. Exact-output exceptions take precedence.
 8. 선택된 subcommand는 선택 command contract의 코드 수정 권한을 넘지 않는다.
 9. skill/routing/subcommand/artifact 자체 변경 요청은 ddalggak subcommand 밖 일반 repo edit 요청으로 분리한다.
 
@@ -100,7 +100,7 @@ The selected contract and required assets are minimum required context, not a re
 
 ### Global reference obligations
 
-`plan`, `start`, `review`는 Quality Lens Router Output으로 적용 gate와 skipped gate를 먼저 기록한다. 모든 subcommand는 `references/wiki-context-preflight.md`를 먼저 읽고 Wiki Context Manifest를 남긴다. Wiki lookup/write admission은 `references/wiki-bridge.md`를 따른다. Evidence Contract, Simplicity / Deletability Gate, Core Invariants Reference는 readiness, code-shape, scope, privacy, knowledge-growth 판단이 있으면 필수다. Frontend/Vercel/Regression references는 조건부로만 읽고 backend-only skip reason을 남긴다.
+`plan`/`start`/`review`: record applicable/skipped gates first via Quality Lens Router Output. Every subcommand: read `references/wiki-context-preflight.md` first; record Wiki Context Manifest. Wiki lookup/write admission: `references/wiki-bridge.md`. Evidence Contract, Simplicity / Deletability Gate and Core Invariants Reference are required for readiness/code-shape/scope/privacy/knowledge-growth judgments. Frontend/Vercel/Regression: conditional; record backend-only skip reasons.
 
 ## Conductor State File
 
@@ -116,7 +116,13 @@ Full procedure: `references/wake-resume.md`. Resume from state, then re-read liv
 
 ## 공통 규칙
 
-Full procedure: `references/common-rules.md`. Korean by default, no AI trailer, no secrets, no auto-merge, no unsafe force push, exact validation evidence. `review`는 source read-only이며 요청된 PR의 검증 inline 및 로컬 검토 결과만 허용한다. ship 권한·자동 수정·formal approval·top-level verdict·thread reply/resolve·CI rerun은 상속하지 않는다.
+Full procedure: `references/common-rules.md`. No AI trailer, secrets, auto-merge or unsafe force push; exact validation evidence. `review` is source read-only: only verified inline on the requested PR and local results; no ship rights, automatic fixes, formal approval, top-level verdict, thread reply/resolve or CI rerun.
+
+Chat replies (progress/questions/final): start `**요청 요약:**` with current goal/target/key constraints (one sentence; two if complex), then answer/status; do not repeat the summary. Omitted constraints still bind. Corrections/resume retain goal + latest changes; drop cancelled/replaced goals. Never substitute other tasks, agent plans or guesses. Summaries confer no approval/authority or execution/verification evidence; do authorized work without reapproval; retain permission gates.
+
+Explicit language/opt-out/exact-output requests win. JSON-only/code-only replies: no prose/fences/extra fields. Format-bound artifacts: allowed chat stays outside; preserve JSON/code, PR inline bodies and completion markers.
+
+Default Korean: familiar consistent terms, separate actions, prerequisites first. Preserve conditions, negation, values, units, comparisons, identifiers, uncertainty and simultaneity. STE-inspired, not ASD-STE100 compliance/certification.
 
 ## 실패 모드 예방
 
@@ -124,7 +130,7 @@ Full procedure: `references/failure-prevention.md`. Prevent stale repo judgments
 
 ## Verification Checklist
 
-Full procedure: `references/verification-checklist.md`. Git/PR 대상에만 base freshness와 issue body+comments를 적용하고 validation evidence, reviewer isolation, Markdown fence를 확인한다. 명시 context/local-only 검토는 원문·버전으로 계속하며 Git/PR 부재나 PR 표현 불가능 자체로 중단하지 않는다. `clean`의 scoped no-prune/disposable 예외와 다른 명령의 stop은 유지한다.
+Full procedure: `references/verification-checklist.md`. Only Git/PR targets need base freshness and issue body/comments. Check validation evidence/reviewer isolation/Markdown fences. Explicit context/local-only review proceeds with source/version despite absent Git/PR or impossible PR representation. Keep `clean` scoped no-prune/disposable exceptions and other commands' stops.
 
 ## 명명 규칙
 
