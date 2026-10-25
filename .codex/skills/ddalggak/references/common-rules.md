@@ -6,6 +6,8 @@ Do not use when: the task is outside ddalggak workflow execution and does not ne
 
 Korean responses by default, no AI trailers, no secrets, no merge/auto-merge without explicit current-turn request, raw UTF-8 GitHub metadata, issue comments as source-of-truth candidates, and exact validation evidence.
 
+Use active voice only for known actors; never turn explanations into commands. Do not mechanically apply English grammar, dictionaries or word limits to Korean.
+
 ## Approval comment versus formal approval
 
 `review` posts no formal approval or top-level verdict. Only authorized verified inline findings on the requested PR may publish; current head SHA or source version, review scope, validation evidence, blocking finding count, and conclusion stay in chat.

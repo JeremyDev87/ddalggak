@@ -10,6 +10,8 @@ Do not use when: the task is outside ddalggak workflow execution and does not ne
 
 Markdown surgery discipline: frontmatter, routing, code permission, fenced block, heading, numbering을 보존한다. 새 dependency는 증명 전 금지. ignored/local-only/repo-external 파일은 PR에 넣지 않는다.
 
+Use active voice only for known actors; never turn explanations into commands. Do not mechanically apply English grammar, dictionaries or word limits to Korean.
+
 ## Approval comment와 formal approval 경계
 
 `review`는 formal approval이나 top-level verdict를 게시하지 않는다. 요청된 PR의 검증된 inline finding만 권한 범위에서 게시하고, current head SHA 또는 원문 버전, review scope, validation evidence, blocking finding count와 conclusion은 채팅에 남긴다.
