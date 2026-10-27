@@ -14,4 +14,4 @@ Treat these as missing readiness / ordering input, not automation-rule rejection
 - an overlapping verifier surface or another open automation PR can change the same contract;
 - a human standard/decision is missing, so acceptance criteria or validation evidence cannot be safely fixed.
 
-Do not create a branch or PR in that state. Dobby schedulers should leave one deduped Korean needs-info/waiting comment and must not mislabel it as `dobby:rejected`. Re-evaluate only after a newer human body/comment supplies the decision or prerequisite evidence.
+Do not create a branch or PR in that state. Dobby schedulers should leave one deduped needs-info/waiting comment (SKILL.md response language policy) and must not mislabel it as `dobby:rejected`. Re-evaluate only after a newer human body/comment supplies the decision or prerequisite evidence.

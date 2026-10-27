@@ -8,6 +8,8 @@ Do not use when: the task is outside ddalggak workflow execution and does not ne
 
 ## 공통 규칙
 
+Response language: follow SKILL.md.
+
 Markdown surgery discipline: frontmatter, routing, code permission, fenced block, heading, numbering을 보존한다. 새 dependency는 증명 전 금지. ignored/local-only/repo-external 파일은 PR에 넣지 않는다.
 
 Use active voice only for known actors; never turn explanations into commands. Do not mechanically apply English grammar, dictionaries or word limits to Korean.

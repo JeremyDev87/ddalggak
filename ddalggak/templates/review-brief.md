@@ -1,5 +1,7 @@
 # Review Brief Template
 
+- Response language: Korean; user-requested override: __.
+
 ## Target and independent reviewer
 - Original request / purpose / non-goals:
 - Exact source / version or snapshot / section / scope:

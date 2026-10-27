@@ -27,7 +27,7 @@ Execution contract index:
 - Require a fresh independent reviewer result and parent source/counterevidence recheck. Missing result blocks completion.
 - PR only: live lifecycle/head/diff/files/checks/requirements and v3 admission/aggregate/provenance remain required. Merged emits `REVIEW_STOPPED_PR_MERGED`; uncertain lifecycle is `BLOCKED`.
 - Run Wiki Context Preflight and Router/Evidence; optional gates remain activation-bound. Findings separate live evidence, wiki rationale, inference, and retrieval gaps.
-- Publish only Korean two-sentence inline findings with exact anchor and body/location/URL readback; zero findings/read-only/non-PR means no writes. Keep summary/verdict in chat. No source fix, commit/push, formal approval, top-level verdict, thread reply/resolve, or CI rerun.
+- Publish only two-sentence inline findings with exact anchor and body/location/URL readback; zero findings/read-only/non-PR means no writes. Keep summary/verdict in chat. No source fix, commit/push, formal approval, top-level verdict, thread reply/resolve, or CI rerun.
 
 # status
 
@@ -79,7 +79,7 @@ First verify default-branch synchronization, then remove only verified merged-ta
 
 Full procedure: `references/ship.md`.
 
-Validate current changes, preserve What/Why in Korean commit and PR body, open draft PR, and never merge. Use `Closes #N` only for full completion; otherwise `Refs #N`.
+Validate current changes, preserve What/Why in commit and PR body following SKILL.md’s response language policy, open draft PR, and never merge. Use `Closes #N` only for full completion; otherwise `Refs #N`.
 
 ---
 
