@@ -1,5 +1,7 @@
 # Worker Brief Template
 
+- Response language: Korean; user-requested override: __.
+
 ## Task
 - Issue:
 - Goal:

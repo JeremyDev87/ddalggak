@@ -10,7 +10,7 @@ Do not use when: the task can be completed directly inside ddalggak without dele
 - `gjc-execute` calls `gjc_delegate_execute` for approved implementation and verification.
 - `gjc-team` calls `gjc_delegate_team` for parallel team execution.
 
-Pass the current project `cwd` and the user task to the coordinator. Keep `allow_mutation: false` unless the user explicitly approved mutation for this turn and the coordinator mutation class is enabled.
+Pass the current project `cwd`, user task, and effective language/explicit override to the coordinator. Keep `allow_mutation: false` unless the user explicitly approved mutation for this turn and the coordinator mutation class is enabled.
 
 For `gjc-plan`, include the shared criteria from `references/quality-lens-router.md` and the independent critic contract from `references/ralplan-critic-consensus.md` in the delegated request. Require the returned plan artifact to identify the actual fresh critic session, reviewed version, findings/no-findings with coverage, and parent reconciliation. Keep code-shape criteria conditional and distinguish proposed validation from executed checks.
 

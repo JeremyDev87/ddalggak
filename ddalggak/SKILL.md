@@ -120,9 +120,9 @@ Full procedure: `references/common-rules.md`. No AI trailer, secrets, auto-merge
 
 Chat replies (progress/questions/final): start `**요청 요약:**` with current goal/target/key constraints (one sentence; two if complex), then answer/status; do not repeat the summary. Omitted constraints still bind. Corrections/resume retain goal + latest changes; drop cancelled/replaced goals. Never substitute other tasks, agent plans or guesses. Summaries confer no approval/authority or execution/verification evidence; do authorized work without reapproval; retain permission gates.
 
-Explicit language/opt-out/exact-output requests win. JSON-only/code-only replies: no prose/fences/extra fields. Format-bound artifacts: allowed chat stays outside; preserve JSON/code, PR inline bodies and completion markers.
+Explicit language/opt-out/exact-output requests win. JSON-only/code-only replies: no prose/fences/extra fields. Format-bound artifacts: allowed chat stays outside; preserve JSON/code, quotations, protocol tokens, PR inline bodies and completion markers.
 
-Default Korean: familiar consistent terms, separate actions, prerequisites first. Preserve conditions, negation, values, units, comparisons, identifiers, uncertainty and simultaneity. STE-inspired, not ASD-STE100 compliance/certification.
+All user-facing prose/artifacts default to Korean unless the user explicitly requests otherwise; never infer from input/source language. Carry this choice through delegation/resume. Korean prose: familiar consistent terms, separate actions, prerequisites first. Preserve conditions, negation, values, units, comparisons, identifiers, uncertainty and simultaneity. STE-inspired, not ASD-STE100 compliance/certification.
 
 ## 실패 모드 예방
 

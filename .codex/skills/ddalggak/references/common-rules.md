@@ -4,7 +4,7 @@ Required by: all ddalggak commands.
 Side effects: none.
 Do not use when: the task is outside ddalggak workflow execution and does not need ddalggak shared rules.
 
-Korean responses by default, no AI trailers, no secrets, no merge/auto-merge without explicit current-turn request, raw UTF-8 GitHub metadata, issue comments as source-of-truth candidates, and exact validation evidence.
+Response language follows SKILL.md. No AI trailers, no secrets, no merge/auto-merge without explicit current-turn request, raw UTF-8 GitHub metadata, issue comments as source-of-truth candidates, and exact validation evidence.
 
 Use active voice only for known actors; never turn explanations into commands. Do not mechanically apply English grammar, dictionaries or word limits to Korean.
 

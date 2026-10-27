@@ -8,7 +8,7 @@ Lifecycle and finding admission are owned by `references/cross-review-loop.md`.
 
 ## Required public surface
 
-Only verified Korean inline findings may be posted to the requested PR. Summary and substantive verdict stay in chat. Zero findings and read-only/non-PR targets require no GitHub write. The top-level summary renderer remains a compatibility API, not a default publication path.
+Only verified inline findings may be posted to the requested PR. Summary and substantive verdict stay in chat. Zero findings and read-only/non-PR targets require no GitHub write. The top-level summary renderer remains a compatibility API, not a default publication path.
 
 Conductor and renderer responsibilities remain separate: the candidate preserves exact finding identity and evidence, aggregate preserves admitted finding count, and publication preserves same-process authority. Finding output is one plain-text line with exactly two complete sentences. Sentence one states what fails and who/what is affected; sentence two states the smallest correction and how it will be validated. Internal workflow labels, candidate IDs, severity/confidence labels, evidence inventories, and private paths never appear.
 

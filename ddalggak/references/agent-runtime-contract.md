@@ -37,7 +37,7 @@ Out-of-scope diff, unrelated cleanup/refactor, config or credential changes, mig
 
 Before dispatching a worker or reviewer, the conductor records the context sources that define the task:
 
-- source issue body and comments;
+- source issue body/comments and effective language/explicit override;
 - repo conventions and relevant files inspected;
 - loaded skills and reference docs;
 - applicable quality gates and skipped gates with reasons;
@@ -49,7 +49,7 @@ The manifest prevents workers from treating whatever happens to fit in the conte
 
 Before idle waits, CI waits, review/fix loops, wave transitions, and handoff rescue, record a compact snapshot with:
 
-- current phase and iteration;
+- current phase, iteration, and effective language/explicit override;
 - issue, branch, PR, and worktree path;
 - changed files and validation evidence;
 - blocking evidence gaps;

@@ -54,6 +54,6 @@ Conditional templates (activation -> asset):
 
 Full procedure: `references/ship.md`.
 
-Validate current changes, preserve What/Why in Korean commit and PR body, open draft PR, and never merge. Use `Closes #N` only for full completion; otherwise `Refs #N`.
+Validate current changes, preserve What/Why in commit and PR body following SKILL.md’s response language policy, open draft PR, and never merge. Use `Closes #N` only for full completion; otherwise `Refs #N`.
 
 ---

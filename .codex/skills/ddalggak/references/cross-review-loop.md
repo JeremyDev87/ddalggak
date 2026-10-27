@@ -177,7 +177,7 @@ Apply the two-sentence meaning slots, fail-closed validation, and optional ancho
 
 ## Deterministic public renderer
 
-Load `review-output-contract.md` and `review-comment-style.md` immediately before constructing a public body. Only Korean inline findings publish. Each derives exactly two complete sentences from its canonical aggregate-member candidate. The summary renderer remains inspect-only compatibility and is not invoked by this command. Internal manifests never enter the public review body. Public output excludes internal evidence inventories, Wiki paths, gate labels, candidate IDs, raw ledger fields, arbitrary sections, and caller-supplied suggestions.
+Load `review-output-contract.md` and `review-comment-style.md` immediately before constructing a public body. Each derives exactly two complete sentences from its canonical aggregate-member candidate. The summary renderer remains inspect-only compatibility and is not invoked by this command. Internal manifests never enter the public review body. Public output excludes internal evidence inventories, Wiki paths, gate labels, candidate IDs, raw ledger fields, arbitrary sections, and caller-supplied suggestions.
 
 Apply the shared raw/NFKC privacy validator and deny rules in `review-output-contract.md` to both renderer APIs. Filtered Low/nit notes remain internal.
 
@@ -187,7 +187,7 @@ Complete `templates/review-brief.md`, including actual independent result and pa
 
 ## Chat result
 
-Return short Korean bullets in this order: findings with impact/location; actual validation and gaps; publication result (including partial/unknown/not requested); target version and separate sensor verdict. Keep substantive summary/verdict in chat. Emit `REVIEW_DONE` only with actual independent results, parent recheck, and applicable completion gates satisfied; never equate a proposed correction with a completed fix.
+Return short bullets in the effective language, in this order: findings with impact/location; actual validation and gaps; publication result (including partial/unknown/not requested); target version and separate sensor verdict. Keep substantive summary/verdict in chat. Emit `REVIEW_DONE` only with actual independent results, parent recheck, and applicable completion gates satisfied; never equate a proposed correction with a completed fix.
 
 ## Packaged contract regression
 

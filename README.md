@@ -4,6 +4,8 @@
 
 ddalggak is a workflow skill for turning GitHub issues into planned, parallel, reviewed, and recoverable implementation work. This repository projects one skill to three execution runtimes across two physical roots: Codex App uses `.codex/skills/ddalggak/`, while Claude Code and Hermes Agent share `ddalggak/`. `npm run verify:projections` enforces the runtime-to-root contract and parity between the two physical roots.
 
+All ddalggak responses and prose artifacts default to Korean unless the user explicitly requests another language, regardless of input/source language.
+
 > npm release status: this package is being prepared for publication, but this README does not claim a live npm package until registry visibility is proven by the release follow-up audit.
 
 ## AI-readable Documentation Index
@@ -33,7 +35,7 @@ Example invocations:
 ddalggak supports these subcommands across all three execution runtimes:
 
 - `start`: run issue-based implementation lanes.
-- `review`: independently review an explicit PR, local file, document, or context; report evidence and verdict in chat and publish only authorized verified Korean inline findings on the requested PR.
+- `review`: independently review an explicit PR, local file, document, or context; report evidence and verdict in chat and publish only authorized verified inline findings on the requested PR.
 - `status`: inspect current lane, worktree, and PR state.
 - `plan`: create an issue-ready implementation plan.
 - `issue`: convert a plan into GitHub issues.

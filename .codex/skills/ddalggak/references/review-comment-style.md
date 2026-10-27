@@ -8,8 +8,8 @@ Do not use when: 게시 없는 read-only 판단.
 
 ## 공개 finding 문체 계약
 
-- 한국어 평문 한 줄에 정확히 두 문장: 첫 문장은 실패와 영향, 둘째 문장은 수정과 검증이다.
-- 의미 슬롯은 한국어 연결 표현을 포함한다. renderer가 문법을 추론하거나 영어 `so`/`then`을 붙이지 않는다.
+- Use the selected response language. One plain-text line, exactly two sentences: failure/impact, then correction/validation.
+- Supply connective wording in semantic slots; the renderer never infers grammar or inserts `so`/`then`.
 - `severity`, `confidence`, `candidate`, `evidence-gap`, `gate`는 쓰지 않는다.
 - 의미 슬롯이 빠지거나 불확실하면 줄이지 말고 `UNRENDERABLE`로 막는다.
 - suggestion은 단일 치환과 focused validation이 확인된 경우에만 허용한다.
