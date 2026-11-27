@@ -2,6 +2,7 @@ import { readdirSync } from "node:fs";
 import path from "node:path";
 
 import { commandContractReference, commandReferenceNames, commandTemplateNames } from "../../core/conditional-assets.mjs";
+import { estimateTextTokens, IPGAEL_POLICY_TOKEN_BUDGET, readIpgaelPolicy } from "../../bin/lib/ipgael-policy.mjs";
 
 import {
   parseReferenceBudgetExemptions,
@@ -14,20 +15,8 @@ const tokenBudgetRoots = [
   { key: "codex", base: ".codex/skills/ddalggak" },
 ];
 
-// `bytes / 4` systematically undercounts multibyte content: a Hangul syllable
-// is 3 UTF-8 bytes (~0.75 tokens under that rule) while real tokenizers spend
-// ~1.5-2 tokens per syllable. Count ASCII at 4 chars per token and every
-// non-ASCII code point (string iteration yields code points, so a 4-byte
-// emoji counts once) at 1.5 tokens — a zero-dependency heuristic, not a
-// tokenizer (#266).
 function fileTokenEstimate(relativePath, { readText }) {
-  let asciiChars = 0;
-  let multibyteChars = 0;
-  for (const char of readText(relativePath)) {
-    if (char.codePointAt(0) <= 0x7f) asciiChars += 1;
-    else multibyteChars += 1;
-  }
-  return asciiChars / 4 + multibyteChars * 1.5;
+  return estimateTextTokens(readText(relativePath));
 }
 
 function readTokenBudgetsText(context) {
@@ -57,7 +46,11 @@ export function runTokenBudgetReport(context, { json = false } = {}) {
   for (const { key, base } of tokenBudgetRoots) {
     const budgets = budgetsByRoot.get(key) ?? new Map();
     const skillBytes = fileSize(`${base}/SKILL.md`);
-    const skillTokens = fileTokenEstimate(`${base}/SKILL.md`, context);
+    const skillText = context.readText(`${base}/SKILL.md`);
+    const ipgael = readIpgaelPolicy(skillText);
+    // Reserve the full allowance because the updater can refresh this block independently.
+    const skillTokens = estimateTextTokens(skillText)
+      + (ipgael ? IPGAEL_POLICY_TOKEN_BUDGET - estimateTextTokens(ipgael.text) : 0);
     const rows = [];
     for (const doc of commands) {
       const references = commandReferenceNames(doc);

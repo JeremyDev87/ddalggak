@@ -31,6 +31,8 @@ projection_roots:
 parity_ledger:
   - path: SKILL.md
     class: may-localize
+  - path: LICENSE.ipgael
+    class: must-match
   - path: references/command-start.md
     class: may-localize
   - path: references/command-review.md

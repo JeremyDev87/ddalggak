@@ -1,5 +1,6 @@
 import { spawn, spawnSync } from "node:child_process";
 import {
+  chmodSync,
   cpSync,
   existsSync,
   mkdirSync,
@@ -7,6 +8,7 @@ import {
   readFileSync,
   readdirSync,
   realpathSync,
+  statSync,
   renameSync,
   rmSync,
   writeFileSync,
@@ -14,6 +16,7 @@ import {
 import os from "node:os";
 import path from "node:path";
 
+import { readIpgaelPolicy } from "../bin/lib/ipgael-policy.mjs";
 import { stripNoUpdateFlag } from "../bin/lib/auto-update.mjs";
 import { assert, rootDir } from "./test-lib/cli-fixtures.mjs";
 
@@ -91,6 +94,7 @@ function createRemote({
   version = "0.1.0-test-a",
   contextEcho = false,
   bootstrapPause = false,
+  ipgael = false,
 } = {}) {
   const root = temp("ddalggak-update-remote-");
   const repo = path.join(root, "repo");
@@ -106,6 +110,12 @@ function createRemote({
       );
     },
   });
+  if (!ipgael) {
+    for (const rel of ["ddalggak/SKILL.md", ".codex/skills/ddalggak/SKILL.md"]) {
+      const file = path.join(repo, rel);
+      writeFileSync(file, readFileSync(file, "utf8").replace(/^<!-- ddalggak:ipgael-policy [a-f0-9]{40} -->\n[\s\S]*?^<!-- \/ddalggak:ipgael-policy -->$/gm, ""));
+    }
+  }
   writeVersion(repo, version);
   if (contextEcho) addContextEcho(repo);
   if (bootstrapPause) addBootstrapPause(repo);
@@ -229,6 +239,104 @@ async function waitForPath(target, timeoutMs = 10000) {
 }
 
 export const cases = [
+  {
+    name: "입갤 정책만 변경되어도 기존 런처의 캐시 재실행에서 두 설치와 상태가 갱신된다",
+    run() {
+      const remote = createRemote({ ipgael: true });
+      const upstream = temp("ipgael-upstream-");
+      git(upstream, ["init", "--quiet", "--initial-branch=main"]);
+      git(upstream, ["config", "user.email", "fixture@example.invalid"]);
+      git(upstream, ["config", "user.name", "policy fixture"]);
+      function publish(text) {
+        writeFileSync(path.join(upstream, "policy.md"), text);
+        git(upstream, ["add", "policy.md"]);
+        git(upstream, ["commit", "--quiet", "-m", "정책 픽스처 갱신"]);
+        return git(upstream, ["rev-parse", "HEAD"]);
+      }
+      const policyA = "# 입갤 응답 정책\n\n정책 A $& 그대로\n";
+      const shaA = publish(policyA);
+      const env = fixtureEnv(remote, { DDALGGAK_IPGAEL_REMOTE: upstream });
+      const gitWrapper = path.join(env.HOME, "git-trace");
+      const gitLog = path.join(env.HOME, "git.log");
+      writeFileSync(gitWrapper, '#!/bin/sh\nprintf \'%s\\n\' "$*" >> "$DDALGGAK_TEST_GIT_LOG"\nexec git "$@"\n');
+      chmodSync(gitWrapper, 0o755);
+      env.DDALGGAK_GIT_BIN = gitWrapper;
+      env.DDALGGAK_TEST_GIT_LOG = gitLog;
+      const fetchCount = () => readFileSync(gitLog, "utf8").split("\n").filter((line) => line.startsWith("fetch ") && line.includes(upstream)).length;
+      const targets = [env.CLAUDE_HOME, env.CODEX_HOME].map((home) => path.join(home, "skills", "ddalggak"));
+      for (const target of targets) {
+        mkdirSync(target, { recursive: true });
+        writeFileSync(path.join(target, "SKILL.md"), "old\n");
+      }
+      // 기존 npm 런처처럼 갱신된 캐시 코드로 넘긴 뒤 기존 guard는 즉시 반환한다.
+      const oldLauncher = temp("ipgael-old-launcher-");
+      for (const rel of ["bin", "scripts", "core", "ddalggak", ".codex"]) {
+        cpSync(path.join(rootDir, rel), path.join(oldLauncher, rel), { recursive: true });
+      }
+      cpSync(path.join(rootDir, "package.json"), path.join(oldLauncher, "package.json"));
+      const updater = path.join(oldLauncher, "bin/lib/auto-update.mjs");
+      writeFileSync(updater, readFileSync(updater, "utf8").replace("await refreshIpgaelPolicy(config, guardedSha);", "// 이전 런처에는 정책 갱신이 없다."));
+      const launcher = path.join(oldLauncher, "bin/ddalggak.js");
+      const invoke = (args = ["status", "--local", "--json"], extra = {}) => command(process.execPath, [launcher, ...args], { cwd: rootDir, env: { ...env, ...extra } });
+      function check(result, sha, text) {
+        assertExit(result, 0, "입갤 갱신 CLI");
+        const report = JSON.parse(result.stdout);
+        assert(report.state === "ok", `설치 상태 불일치: ${result.stdout}`);
+        assert(report.autoUpdate.ipgaelSha === sha, "상태의 정책 SHA 불일치");
+        assert(report.autoUpdate.activeSha === remote.sha, "ddalggak SHA가 변경됨");
+        for (const target of targets) {
+          const policy = readIpgaelPolicy(readFileSync(path.join(target, "SKILL.md"), "utf8"));
+          assert(policy.sha === sha && policy.text === text, "설치된 정책의 SHA 또는 원문 바이트 불일치");
+        }
+      }
+      check(invoke(), shaA, policyA);
+      const policyB = "# 입갤 응답 정책\n\n정책 B 정확히 보존\n";
+      const shaB = publish(policyB);
+      check(invoke(), shaB, policyB);
+      const before = targets.map((target) => statSync(path.join(target, "SKILL.md")).mtimeMs);
+      const savedPolicy = path.join(env.DDALGGAK_UPDATE_CACHE_DIR, "ipgael-policy.json");
+      const savedMtime = statSync(savedPolicy).mtimeMs;
+      const fetches = fetchCount();
+      check(invoke(), shaB, policyB);
+      assert(fetchCount() === fetches, "동일 SHA가 원격 blob을 다시 fetch함");
+      assert(statSync(savedPolicy).mtimeMs === savedMtime, "동일 SHA가 정책 캐시를 다시 씀");
+      const derived = path.join(env.DDALGGAK_UPDATE_CACHE_DIR, "payloads", `${remote.sha}-${shaB}`);
+      rmSync(path.join(derived, "ddalggak/references"), { recursive: true });
+      check(invoke(), shaB, policyB);
+      assert(existsSync(path.join(derived, "ddalggak/references")), "불완전한 파생 캐시를 복구하지 못함");
+      const otherHome = temp("ipgael-other-profile-");
+      const otherTargets = ["claude", "codex"].map((runtime) => path.join(otherHome, runtime));
+      for (const home of otherTargets) {
+        mkdirSync(path.join(home, "skills/ddalggak"), { recursive: true });
+        writeFileSync(path.join(home, "skills/ddalggak/SKILL.md"), "stale\n");
+      }
+      assertExit(invoke(["--version"], { CLAUDE_HOME: otherTargets[0], CODEX_HOME: otherTargets[1] }), 0, "별도 프로필 갱신");
+      for (const home of otherTargets) {
+        assert(readIpgaelPolicy(readFileSync(path.join(home, "skills/ddalggak/SKILL.md"), "utf8")).sha === shaB, "다른 프로필의 정책 SHA 불일치");
+      }
+      const freshHome = path.join(otherHome, "fresh");
+      assertExit(invoke(["setup", "--target", freshHome]), 0, "첫 설치 정책 선택");
+      assert(readIpgaelPolicy(readFileSync(path.join(freshHome, "skills/ddalggak/SKILL.md"), "utf8")).sha === shaB, "첫 설치가 오래된 정책을 사용함");
+      publish("# 입갤 응답 정책\n\n롤백할 정책 C\n");
+      check(invoke(undefined, { DDALGGAK_UPDATE_TEST_FAIL_RUNTIME_SYNC: "codex" }), shaB, policyB);
+      assert(targets.every((target, i) => statSync(path.join(target, "SKILL.md")).mtimeMs === before[i]), "동일 SHA가 설치를 다시 씀");
+      publish(Buffer.from([0xff, 0xfe]));
+      check(invoke(), shaB, policyB);
+      renameSync(upstream, `${upstream}-offline`);
+      roots.push(`${upstream}-offline`);
+      check(invoke(), shaB, policyB);
+      renameSync(remote.repo, `${remote.repo}-offline`);
+      check(invoke(), shaB, policyB);
+      for (const extra of [{ args: ["--no-update", "--version"] }, { env: { DDALGGAK_NO_UPDATE: "1" } }]) {
+        const result = invoke(extra.args || ["--version"], extra.env || {});
+        assertExit(result, 0, "입갤 갱신 명시적 제외");
+        assert(!result.stderr.includes("warning"), "갱신 제외가 원격 조회를 수행함");
+      }
+      assert(targets.every((target, i) => statSync(path.join(target, "SKILL.md")).mtimeMs === before[i]), "실패 또는 갱신 제외가 설치를 변경함");
+      const cached = path.join(env.DDALGGAK_UPDATE_CACHE_DIR, "versions", remote.sha);
+      assert(git(cached, ["diff", "--exit-code"]) === "", "불변 Git 캐시를 변경함");
+    },
+  },
   {
     name: "auto-update opt-out parser strips only pre-passthrough --no-update",
     run() {
