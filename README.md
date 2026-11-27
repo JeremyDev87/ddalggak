@@ -67,7 +67,7 @@ hermes -p <profile> skills update ddalggak
 
 After installation or update, run `/reload-skills` in the current Hermes session. Use `/reset` or start a new session when the routing index or current conversation context must also be rebuilt. Skills and lock state are isolated by Hermes profile; installing into one named profile does not install ddalggak into another.
 
-Hermes receives the committed policy snapshot through its native skill update. Maintainers refresh that snapshot directly from `JeremyDev87/ipgael` with `npm run update:ipgael`, verify both projections with `npm run verify`, and commit the resulting `SKILL.md` changes. The same snapshot is the offline fallback for packaged installations.
+Hermes receives the committed policy snapshot through its native skill update. Start a session with `hermes -p <profile> --skills ddalggak` to preload the skill before its first reply. Maintainers refresh that snapshot directly from `JeremyDev87/ipgael` with `npm run update:ipgael`, verify both projections with `npm run verify`, and commit the resulting `SKILL.md` changes. The same snapshot is the offline fallback for packaged installations.
 
 `npm run verify:hermes-skill` validates the shared root's required frontmatter, command-asset reachability, and npm package inclusion without depending on extension fields such as `user-invocable` or `argument-hint`. `npm run test:hermes-native-e2e` exercises the fail-closed evidence contract; the online verifier additionally checks immutable/raw and repository/profile lifecycle lanes. Repository-local JSON can prove schema and Git binding but cannot attest that the native run occurred, so the runtime ledger remains `verified: false`; promotion requires a separately implemented trusted external attestation verifier.
 
@@ -270,7 +270,7 @@ After loading the cached CLI, the updater checks `JeremyDev87/ipgael` `main` and
 
 If GitHub is offline, rate-limited, invalid, or serves an incomplete checkout, ddalggak keeps the last validated cache (or the installed package when no cache exists) and prints a warning to stderr. Concurrent invocations share an atomic update lock, and failed activation restores the previous cache. Use `--no-update` for one invocation or `DDALGGAK_NO_UPDATE=1` for an environment-level opt-out. The cache defaults to `$XDG_CACHE_HOME/ddalggak` or `~/.cache/ddalggak`; `DDALGGAK_UPDATE_CACHE_DIR` overrides it.
 
-`ddalggak status --local --json` reports the active cached SHA, last update state/time, and a redacted last error. Auto-update never merges, tags, publishes, deploys, or mutates a caller's Git repository.
+`ddalggak status --local --json` reports the active cached SHA, the selected policy commit in `autoUpdate.ipgaelSha`, last update state/time, and a redacted last error. Auto-update never merges, tags, publishes, deploys, or mutates a caller's Git repository.
 
 ## Release Helper Scripts
 
