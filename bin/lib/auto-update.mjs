@@ -230,6 +230,7 @@ async function refreshIpgaelPolicy(config, sha) {
   let staging = null;
   let sync = null;
   try {
+    if (await readActiveSha(config) !== sha) return;
     const lastGoodPath = join(config.cacheRoot, "ipgael-policy.json");
     let previousPolicy = null;
     try {

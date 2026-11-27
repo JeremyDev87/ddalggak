@@ -240,6 +240,36 @@ async function waitForPath(target, timeoutMs = 10000) {
 
 export const cases = [
   {
+    name: "이전 SHA 캐시 런처는 새 활성 SHA의 설치 payload를 덮어쓰지 않는다",
+    run() {
+      const remote = createRemote({ ipgael: true });
+      const env = fixtureEnv(remote, { DDALGGAK_IPGAEL_REMOTE: path.join(remote.root, "missing-ipgael") });
+      const targets = [env.CLAUDE_HOME, env.CODEX_HOME].map((home) => path.join(home, "skills/ddalggak/SKILL.md"));
+      for (const target of targets) {
+        mkdirSync(path.dirname(target), { recursive: true });
+        writeFileSync(target, "old\n");
+      }
+      assertExit(command(process.execPath, [cliPath, "--version"], { cwd: rootDir, env }), 0, "이전 SHA 설치");
+      const previousSha = remote.sha;
+      const previousRoot = path.join(env.DDALGGAK_UPDATE_CACHE_DIR, "versions", previousSha);
+      advanceRemote(remote, "0.1.0-test-b", { skillMarker: "NEW_ACTIVE_PAYLOAD" });
+      assertExit(command(process.execPath, [cliPath, "--version"], { cwd: rootDir, env }), 0, "새 SHA 설치");
+      const before = targets.map((target) => readFileSync(target, "utf8"));
+      assert(before.every((text) => text.includes("NEW_ACTIVE_PAYLOAD")), "새 SHA 설치 마커가 없음");
+      const pinned = command(process.execPath, [path.join(previousRoot, "bin/ddalggak.js"), "--version"], {
+        cwd: rootDir,
+        env: { ...env, DDALGGAK_REEXEC_SHA: previousSha, DDALGGAK_UPDATE_ACTIVE_ROOT: previousRoot },
+      });
+      assertExit(pinned, 0, "이전 SHA에 고정된 실행 완료");
+      assert(pinned.stdout.trim() === "0.1.0-test-a", "고정된 실행이 다른 버전으로 바뀜");
+      assert(activeSha(env.DDALGGAK_UPDATE_CACHE_DIR) === remote.sha, "활성 SHA 포인터가 되돌아감");
+      for (const [index, target] of targets.entries()) {
+        assert(readFileSync(target, "utf8") === before[index], "이전 캐시 런처가 새 설치 payload를 덮어씀");
+      }
+      assert(!pinned.stderr.includes("ipgael warning"), "비활성 캐시 런처가 정책 원격 조회를 수행함");
+    },
+  },
+  {
     name: "입갤 정책만 변경되어도 기존 런처의 캐시 재실행에서 두 설치와 상태가 갱신된다",
     run() {
       const remote = createRemote({ ipgael: true });
