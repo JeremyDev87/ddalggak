@@ -29,7 +29,7 @@ user-invocable: true
 4. 첫 단어가 CLI 전용 명령(`doctor`, `setup` 등 `bin/ddalggak.js`가 처리하는 명령)이면 route하지 않고 "터미널 CLI 명령입니다 — 셸에서 `ddalggak <명령>`을 실행하세요"로 안내한 뒤 멈춘다.
 5. 첫 단어가 지원 subcommand도, issue 참조도, CLI 전용 명령도 아니면(오타·미인식 단어) `start`로 자동 진입하지 않는다(fail-closed). `NEEDS_CLARIFICATION`으로 아래 생성 테이블의 지원 subcommand 목록을 제시하고 의도를 되묻는다.
 6. Route가 결정된 뒤 후속 인자는 절대 route를 바꾸지 않는다.
-7. Chat: after the request summary, before work, print exactly `-> <subcommand> 실행` once per invocation; never repeat in progress/final replies. Repeat only for a new invocation. Exact-output exceptions take precedence.
+7. After the request summary and before work, print exactly `-> <subcommand> 실행` once per invocation, never again in progress/final replies. Response-format exceptions win.
 8. 선택된 subcommand는 선택 command contract의 코드 수정 권한을 넘지 않는다.
 9. skill/routing/subcommand/artifact 자체 변경 요청은 ddalggak subcommand 밖 일반 repo edit 요청으로 분리한다.
 
@@ -118,11 +118,13 @@ Full procedure: `references/wake-resume.md`. Resume from state, then re-read liv
 
 Full procedure: `references/common-rules.md`. No AI trailer, secrets, auto-merge or unsafe force push; exact validation evidence. `review` is source read-only: only verified inline on the requested PR and local results; no ship rights, automatic fixes, formal approval, top-level verdict, thread reply/resolve or CI rerun.
 
-Chat replies (progress/questions/final): start `**요청 요약:**` with current goal/target/key constraints (one sentence; two if complex), then answer/status; do not repeat the summary. Omitted constraints still bind. Corrections/resume retain goal + latest changes; drop cancelled/replaced goals. Never substitute other tasks, agent plans or guesses. Summaries confer no approval/authority or execution/verification evidence; do authorized work without reapproval; retain permission gates.
+Ordinary progress/questions/final chat starts `**요청 요약:**` with goal/target/key constraints (1–2 concise sentences), then answer/status once. Omitted constraints bind. Resume/corrections keep goal/latest changes, never cancelled/replaced goals or other tasks/plans/guesses. Summary grants no approval/authority/evidence. Do authorized work without reapproval. Retain gates.
 
-Explicit language/opt-out/exact-output requests win. JSON-only/code-only replies: no prose/fences/extra fields. Format-bound artifacts: allowed chat stays outside; preserve JSON/code, quotations, protocol tokens, PR inline bodies and completion markers.
+Korean chat uses ipgael's short, direct, natural 반말 from first reply. Issue/blocker reports replace summary/route with three unlabelled lines — event/blocker, response, next action.
 
-All user-facing prose/artifacts default to Korean unless the user explicitly requests otherwise; never infer from input/source language. Carry this choice through delegation/resume. Korean prose: familiar consistent terms, separate actions, prerequisites first. Preserve conditions, negation, values, units, comparisons, identifiers, uncertainty and simultaneity. STE-inspired, not ASD-STE100 compliance/certification.
+User language/style/opt-out/exact-output wins. JSON/code-only has no prose/fences/extra fields. Chat stays outside artifacts. Preserve code/quotes/protocol tokens/PR inline bodies/completion markers. PR/commit text follows audience/repo contracts. No tool-argument/scope/permission changes.
+
+Default Korean across user-facing prose/artifacts/delegation/resume, regardless of input/source language. Use familiar consistent terms, separate actions, prerequisites first. Preserve conditions/negation/values/units/comparisons/identifiers/uncertainty/simultaneity. STE-inspired, not ASD-STE100 compliance/certification.
 
 ## 실패 모드 예방
 
