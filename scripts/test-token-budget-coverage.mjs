@@ -73,8 +73,18 @@ function exactRows(tempDir) {
   const tables = human.stdout.split("\n").filter((line) => line.startsWith("| "));
   const commands = loadCommandContracts(tempDir);
   assert.equal(report.rows.length, 42);
-  const estimate = (files) => Math.ceil(files.reduce((sum, file) => sum + Array.from(readFileSync(path.join(tempDir, file), "utf8"))
-    .reduce((tokens, char) => tokens + (char.codePointAt(0) <= 127 ? 0.25 : 1.5), 0), 0));
+  const textEstimate = (text) => Array.from(text)
+    .reduce((tokens, char) => tokens + (char.codePointAt(0) <= 127 ? 0.25 : 1.5), 0);
+  const estimate = (files) => Math.ceil(files.reduce((sum, file) => {
+    const text = readFileSync(path.join(tempDir, file), "utf8");
+    const lines = text.split("\n");
+    const start = lines.findIndex((line) => line.startsWith("<!-- ddalggak:ipgael-policy "));
+    if (!file.endsWith("/SKILL.md") || start < 0) return sum + textEstimate(text);
+    const end = lines.indexOf("<!-- /ddalggak:ipgael-policy -->", start + 1);
+    assert.ok(end > start, "입갤 정책 블록 끝이 있어야 한다");
+    const body = `${lines.slice(start + 1, end).join("\n")}\n`;
+    return sum + textEstimate(text) - textEstimate(body) + 1800;
+  }, 0));
   for (const [index, row] of report.rows.entries()) {
     const root = index < 21 ? "claude" : "codex";
     const base = root === "claude" ? "ddalggak" : ".codex/skills/ddalggak";
@@ -113,7 +123,21 @@ function exactRows(tempDir) {
 
 withTempRepo("생성 명령의 정확한 토큰 계산", (tempDir) => {
   assertPass("격리된 명령 문서 생성", runNodeScript("scripts/project-runtime-assets.mjs", ["--write"], { cwd: tempDir }));
-  exactRows(tempDir);
+  const original = exactRows(tempDir);
+  for (const base of ["ddalggak", ".codex/skills/ddalggak"]) {
+    const skillPath = path.join(tempDir, base, "SKILL.md");
+    const skill = readFileSync(skillPath, "utf8");
+    writeFileSync(skillPath, skill.replace(
+      /(^<!-- ddalggak:ipgael-policy [\da-f]{40} -->\n)[\s\S]*?(?=^<!-- \/ddalggak:ipgael-policy -->$)/m,
+      "$1# 입갤 응답 정책\n\n짧은 정책\n",
+    ));
+  }
+  const refreshed = jsonReport(tempDir).report;
+  for (const [index, row] of refreshed.rows.entries()) {
+    assert.equal(row.est_tokens, original.rows[index].est_tokens, "원문 길이와 무관하게 갱신 예산을 예약해야 한다");
+    assert.ok(row.total_bytes < original.rows[index].total_bytes, "더 짧은 원문으로 바뀌어야 한다");
+  }
+  console.log("[PASS] 원문 길이가 바뀌어도 입갤 정책용 토큰 예산을 예약한다");
   // 0.25 토큰 경계와 종류별 같은 basename을 검증한다. 실제 명령은 유지하고
   // 격리 fixture의 review 자산만 필수 1개, 조건부 2개(OR 중복 포함)로 통제한다.
   const reviewPath = path.join(tempDir, "core/commands/review.yaml");
