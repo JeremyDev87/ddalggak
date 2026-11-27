@@ -6,6 +6,8 @@ ddalggak is a workflow skill for turning GitHub issues into planned, parallel, r
 
 All ddalggak responses and prose artifacts default to Korean unless the user explicitly requests another language, regardless of input/source language.
 
+Human-facing Korean chat follows [ipgael](https://github.com/JeremyDev87/ipgael)'s [response policy](https://github.com/JeremyDev87/ipgael/blob/main/policy.md) from the first reply, with ddalggak's request summary and format exceptions. Both skill roots include the policy without a separate installation or dependency.
+
 > npm release status: this package is being prepared for publication, but this README does not claim a live npm package until registry visibility is proven by the release follow-up audit.
 
 ## AI-readable Documentation Index
