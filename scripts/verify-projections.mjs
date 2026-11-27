@@ -10,6 +10,7 @@ import { commandContractReference, commandReferenceNames, commandTemplateNames }
 import { sideEffectBoundaryAgentsForbiddenSentinels } from "../core/verification/side-effect-boundary-policy.mjs";
 import { requiredReferenceAdmissionHeaderFields } from "../core/verification/skill-contract-manifest.mjs";
 import { loadCommandContracts } from "../bin/lib/command-contracts.mjs";
+import { readIpgaelPolicy } from "../bin/lib/ipgael-policy.mjs";
 import { assertValidCommandContract } from "./lib/command-contract-schema.mjs";
 import { parseSimpleYaml } from "./lib/parse-simple-yaml.mjs";
 
@@ -383,6 +384,16 @@ function runProjectionArtifactGuard() {
 
 runGeneratedBlockCheck();
 runProjectionArtifactGuard();
+
+try {
+  const sharedPolicy = readIpgaelPolicy(readText(path.join(sourceSkillRoot, "SKILL.md")));
+  const codexPolicy = readIpgaelPolicy(readText(path.join(codexSkillRoot, "SKILL.md")));
+  if (!sharedPolicy || !isDeepStrictEqual(sharedPolicy, codexPolicy)) {
+    fail("Codex and shared SKILL.md must embed the same ipgael SHA and policy bytes");
+  }
+} catch (error) {
+  fail(error.message);
+}
 
 const projectionsText = readText(projectionPath);
 if (!projectionsText.includes("source_root: ddalggak")) {

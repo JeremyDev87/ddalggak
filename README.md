@@ -6,7 +6,7 @@ ddalggak is a workflow skill for turning GitHub issues into planned, parallel, r
 
 All ddalggak responses and prose artifacts default to Korean unless the user explicitly requests another language, regardless of input/source language.
 
-Human-facing Korean chat follows [ipgael](https://github.com/JeremyDev87/ipgael)'s [response policy](https://github.com/JeremyDev87/ipgael/blob/main/policy.md) from the first reply, with ddalggak's request summary and format exceptions. Both skill roots include the policy without a separate installation or dependency.
+Human-facing Korean chat follows the verbatim [ipgael response policy](https://github.com/JeremyDev87/ipgael/blob/main/policy.md). Both `SKILL.md` files embed the original text and its source commit, so the first ddalggak reply has the policy when the skill loads. User-selected output formats and command output contracts take precedence. The upstream MIT notice ships as `LICENSE.ipgael` in both roots.
 
 > npm release status: this package is being prepared for publication, but this README does not claim a live npm package until registry visibility is proven by the release follow-up audit.
 
@@ -66,6 +66,8 @@ hermes -p <profile> skills update ddalggak
 ```
 
 After installation or update, run `/reload-skills` in the current Hermes session. Use `/reset` or start a new session when the routing index or current conversation context must also be rebuilt. Skills and lock state are isolated by Hermes profile; installing into one named profile does not install ddalggak into another.
+
+Hermes receives the committed policy snapshot through its native skill update. Maintainers refresh that snapshot directly from `JeremyDev87/ipgael` with `npm run update:ipgael`, verify both projections with `npm run verify`, and commit the resulting `SKILL.md` changes. The same snapshot is the offline fallback for packaged installations.
 
 `npm run verify:hermes-skill` validates the shared root's required frontmatter, command-asset reachability, and npm package inclusion without depending on extension fields such as `user-invocable` or `argument-hint`. `npm run test:hermes-native-e2e` exercises the fail-closed evidence contract; the online verifier additionally checks immutable/raw and repository/profile lifecycle lanes. Repository-local JSON can prove schema and Git binding but cannot attest that the native run occurred, so the runtime ledger remains `verified: false`; promotion requires a separately implemented trusted external attestation verifier.
 
@@ -263,6 +265,8 @@ Install path priority is `--target <path>`, then `$CLAUDE_HOME`, then `~/.claude
 Packaged installations check `https://github.com/JeremyDev87/ddalggak.git` `master` before each CLI invocation. The updater resolves an exact commit SHA, validates a detached Git checkout in a SHA-keyed immutable cache, atomically switches the active SHA pointer, syncs already-installed Claude and Codex `ddalggak` skill payloads, and re-executes the original command once from that immutable SHA path with its argv, working directory, environment, and exit status preserved. Source/development checkouts containing `.git` skip this bootstrap so branch-local work is never replaced. Hermes installations are intentionally excluded: `hermes skills check/update` owns their profile lock, update, and rollback semantics.
 
 Existing installations need one bootstrap update containing this updater. After that, CLI, `core/`, Claude skill, and Codex skill changes on GitHub `master` are used without rerunning `setup`. An absent runtime skill is not created implicitly; run `setup` for the first Claude installation, install the Codex skill through its normal runtime path, or use Hermes Skills Hub for a Hermes profile.
+
+After loading the cached CLI, the updater checks `JeremyDev87/ipgael` `main` and reads `policy.md` at its exact commit when it changes, even when the ddalggak commit stays the same. It validates the policy, stages a separate skill payload and refreshes the installed Codex and Claude skill copies before dispatch. A failed lookup or invalid response retains the last validated policy, with the committed snapshot available for a fresh installation. Start a new session or reload the skill to pick up the refreshed copy.
 
 If GitHub is offline, rate-limited, invalid, or serves an incomplete checkout, ddalggak keeps the last validated cache (or the installed package when no cache exists) and prints a warning to stderr. Concurrent invocations share an atomic update lock, and failed activation restores the previous cache. Use `--no-update` for one invocation or `DDALGGAK_NO_UPDATE=1` for an environment-level opt-out. The cache defaults to `$XDG_CACHE_HOME/ddalggak` or `~/.cache/ddalggak`; `DDALGGAK_UPDATE_CACHE_DIR` overrides it.
 

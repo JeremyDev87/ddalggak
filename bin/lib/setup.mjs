@@ -17,6 +17,7 @@
 //   - Exit codes: 0 success/no-op, 1 IO failure, 2 argv error or safety failure.
 //   - Zero external dependencies; ESM; Node standard library only.
 
+import { resolveRuntimePayloadRoot } from "./auto-update.mjs";
 import { fileURLToPath } from "node:url";
 import { dirname, join, resolve } from "node:path";
 import { homedir } from "node:os";
@@ -31,9 +32,6 @@ import { resolvePhysicalPath, safetyCheck } from "./setup/path-safety.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PKG_ROOT = resolve(__dirname, "..", "..");
-const SOURCE_SKILLS = [
-  { name: "ddalggak", sourceRoot: join(PKG_ROOT, "ddalggak") },
-];
 const PKG_JSON = join(PKG_ROOT, "package.json");
 
 const HELP_TEXT = `ddalggak setup — install Claude Code skills to <CLAUDE_HOME>/skills/
@@ -138,7 +136,7 @@ export async function run(args) {
   }
 
   const claudeHomeResolved = await resolvePhysicalPath(claudeHomeInput);
-  const skillPayloads = SOURCE_SKILLS.map((skill) => ({
+  const skillPayloads = [{ name: "ddalggak", sourceRoot: join(resolveRuntimePayloadRoot(PKG_ROOT), "ddalggak") }].map((skill) => ({
     ...skill,
     dstDir: resolve(claudeHomeResolved, "skills", skill.name),
   }));

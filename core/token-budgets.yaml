@@ -18,14 +18,17 @@
 # force renumbering the claude baseline.
 # All values: #266 recalibration (2026-06-12 measurement on master c7f35f2
 # with the multibyte-aware formula + 25% headroom, rounded up to 500).
+# PR #459: reserve 1800 tokens for inline upstream ipgael policy updates.
+# Raise only the seven exceeded budgets to the next 500-token boundary;
+# reference caps and absolute ceilings remain unchanged.
 subcommand_token_budgets:
   claude:
     start: 23000
-    review: 33000
+    review: 35000
     status: 10500
     plan: 20000
     issue: 10000
-    clean: 9500
+    clean: 10000
     ship: 10000
     retro: 14500
     prompt: 13000
@@ -36,14 +39,14 @@ subcommand_token_budgets:
     getwiki: 11500
     setwiki: 13500
     ulw-loop: 17000
-    ulw-plan: 15500
+    ulw-plan: 17000
     ulw-research: 14500
-    gjc-plan: 13000
+    gjc-plan: 14500
     gjc-execute: 14000
     gjc-team: 14000
   codex:
     start: 24000
-    review: 33500
+    review: 35000
     status: 11000
     plan: 21000
     issue: 10500
@@ -58,9 +61,9 @@ subcommand_token_budgets:
     getwiki: 12000
     setwiki: 14000
     ulw-loop: 18500
-    ulw-plan: 16500
+    ulw-plan: 17000
     ulw-research: 15500
-    gjc-plan: 14000
+    gjc-plan: 14500
     gjc-execute: 15000
     gjc-team: 15000
 # Per-reference effective-load exemptions. The token budget admission gate

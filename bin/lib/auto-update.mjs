@@ -2,6 +2,8 @@ import { spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { existsSync, realpathSync } from "node:fs";
 import {
+  cp,
+  mkdtemp,
   mkdir,
   readFile,
   rename,
@@ -11,6 +13,15 @@ import {
 } from "node:fs/promises";
 import { devNull, homedir } from "node:os";
 import { join, resolve } from "node:path";
+
+import { listPayloadFiles, payloadChecksum } from "./local-payload.mjs";
+import { readIpgaelPolicy, renderIpgaelPolicy, validateIpgaelPolicy } from "./ipgael-policy.mjs";
+
+let runtimePayloadRoot = null;
+let runtimePolicySha = null;
+export function resolveRuntimePayloadRoot(packageRoot) {
+  return runtimePayloadRoot || packageRoot;
+}
 
 export const UPDATE_REMOTE = "https://github.com/JeremyDev87/ddalggak.git";
 export const UPDATE_REF = "refs/heads/master";
@@ -125,13 +136,14 @@ function run(config, command, args, options = {}) {
   const result = spawnSync(command, args, {
     cwd: options.cwd,
     env: childEnv,
-    encoding: "utf8",
+    encoding: options.binary ? null : "utf8",
+    maxBuffer: options.maxBuffer || 1024 * 1024,
     stdio: options.inherit ? "inherit" : ["ignore", "pipe", "pipe"],
     timeout: options.timeoutMs || config.timeoutMs,
   });
   if (result.error) throw result.error;
   if (result.status !== 0) {
-    const detail = (result.stderr || result.stdout || "").trim();
+    const detail = String(result.stderr || result.stdout || "").trim();
     throw new Error(
       `${command} ${args.join(" ")} failed with exit ${result.status}${
         detail ? `: ${detail}` : ""
@@ -157,6 +169,118 @@ function lookupRemoteSha(config) {
     config.ref,
   ]);
   return parseRemoteSha(result.stdout);
+}
+
+export async function fetchIpgaelPolicy({ env = process.env, cacheRoot, previousPolicy } = {}) {
+  const config = resolveUpdateConfig({ env, packageRoot: process.cwd() });
+  if (cacheRoot) config.cacheRoot = cacheRoot;
+  const remote = config.testMode && env.DDALGGAK_IPGAEL_REMOTE
+    ? env.DDALGGAK_IPGAEL_REMOTE
+    : "https://github.com/JeremyDev87/ipgael.git";
+  const sha = parseRemoteSha(run(config, config.gitBin, [
+    "ls-remote", "--exit-code", remote, "refs/heads/main",
+  ]).stdout);
+  if (previousPolicy?.sha === sha) {
+    return validateIpgaelPolicy(sha, Buffer.from(previousPolicy.text, "utf8"));
+  }
+  await mkdir(config.cacheRoot, { recursive: true });
+  const staging = await mkdtemp(join(config.cacheRoot, ".ipgael-fetch-"));
+  try {
+    run(config, config.gitBin, ["init", "--quiet"], { cwd: staging });
+    run(config, config.gitBin, ["fetch", "--quiet", "--depth", "1", remote, sha], { cwd: staging });
+    const head = run(config, config.gitBin, ["rev-parse", "FETCH_HEAD"], { cwd: staging }).stdout.trim();
+    if (head !== sha) throw new Error("ipgael fetched SHA mismatch");
+    const entry = run(config, config.gitBin, ["ls-tree", sha, "--", "policy.md"], { cwd: staging }).stdout;
+    if (!/^100644 blob [a-f0-9]{40}\tpolicy\.md\n$/.test(entry)) {
+      throw new Error("ipgael policy.md must be a regular file");
+    }
+    const bytes = run(config, config.gitBin, ["show", `${sha}:policy.md`], {
+      cwd: staging, binary: true, maxBuffer: 64 * 1024,
+    }).stdout;
+    return validateIpgaelPolicy(sha, bytes);
+  } finally {
+    await rm(staging, { recursive: true, force: true });
+  }
+}
+
+async function validPolicyPayload(root, paths, texts, policy, sourceRoot) {
+  try {
+    for (const [index, rel] of paths.entries()) {
+      if (await readFile(join(root, rel), "utf8") !== renderIpgaelPolicy(texts[index], policy)) return false;
+    }
+    for (const rel of ["ddalggak", ".codex/skills/ddalggak"]) {
+      const source = join(sourceRoot, rel);
+      const target = join(root, rel);
+      const files = await listPayloadFiles(source);
+      if (JSON.stringify(files) !== JSON.stringify(await listPayloadFiles(target))) return false;
+      const unchanged = files.filter((file) => file !== "SKILL.md");
+      if ((await payloadChecksum(source, unchanged)).sha256 !== (await payloadChecksum(target, unchanged)).sha256) return false;
+    }
+    return await readFile(join(root, "package.json"), "utf8") === await readFile(join(sourceRoot, "package.json"), "utf8");
+  } catch {
+    return false;
+  }
+}
+
+async function refreshIpgaelPolicy(config, sha) {
+  const sourcePaths = ["ddalggak/SKILL.md", ".codex/skills/ddalggak/SKILL.md"];
+  const sourceTexts = await Promise.all(sourcePaths.map((rel) => readFile(join(config.packageRoot, rel), "utf8")));
+  if (sourceTexts.some((text) => !readIpgaelPolicy(text))) return;
+  const releaseLock = await acquireLock(config);
+  let staging = null;
+  let sync = null;
+  try {
+    const lastGoodPath = join(config.cacheRoot, "ipgael-policy.json");
+    let previousPolicy = null;
+    try {
+      const saved = JSON.parse(await readFile(lastGoodPath, "utf8"));
+      previousPolicy = validateIpgaelPolicy(saved.sha, Buffer.from(saved.text, "utf8"));
+    } catch {}
+    if (previousPolicy) {
+      const previousRoot = join(config.cacheRoot, "payloads", `${sha}-${previousPolicy.sha}`);
+      if (await validPolicyPayload(previousRoot, sourcePaths, sourceTexts, previousPolicy, config.packageRoot)) {
+        runtimePayloadRoot = previousRoot;
+        runtimePolicySha = previousPolicy.sha;
+      }
+    }
+    let policy;
+    let fetched = false;
+    try {
+      policy = await fetchIpgaelPolicy({ env: config.env, cacheRoot: config.cacheRoot, previousPolicy });
+      fetched = previousPolicy?.sha !== policy.sha;
+    } catch (error) {
+      process.stderr.write(`ddalggak ipgael warning: ${sanitizeError(errorMessage(error))}; retaining last good policy.\n`);
+      policy = previousPolicy || readIpgaelPolicy(sourceTexts[0]);
+    }
+    const current = join(config.cacheRoot, "payloads", `${sha}-${policy.sha}`);
+    if (!(await validPolicyPayload(current, sourcePaths, sourceTexts, policy, config.packageRoot))) {
+      await rm(current, { recursive: true, force: true });
+      await mkdir(join(config.cacheRoot, "payloads"), { recursive: true });
+      staging = await mkdtemp(join(config.cacheRoot, ".ipgael-payload-"));
+      for (const rel of ["package.json", "ddalggak", ".codex/skills/ddalggak"]) {
+        await cp(join(config.packageRoot, rel), join(staging, rel), { recursive: true });
+      }
+      for (const [index, rel] of sourcePaths.entries()) {
+        await writeFile(join(staging, rel), renderIpgaelPolicy(sourceTexts[index], policy), "utf8");
+      }
+      await rename(staging, current);
+      staging = null;
+    }
+    sync = await syncExistingRuntimeSkills(config, current);
+    if (fetched) {
+      const temp = `${lastGoodPath}.tmp-${process.pid}`;
+      await writeFile(temp, JSON.stringify(policy), "utf8");
+      await rename(temp, lastGoodPath);
+    }
+    runtimePayloadRoot = current;
+    runtimePolicySha = policy.sha;
+    await sync.finalize();
+    sync = null;
+  } finally {
+    if (sync) await sync.rollback();
+    if (staging) await rm(staging, { recursive: true, force: true });
+    await releaseLock();
+  }
 }
 
 async function pathExists(path) {
@@ -459,6 +583,7 @@ export async function readAutoUpdateStatus({ env = process.env } = {}) {
   }
   return {
     enabled: !truthy(env.DDALGGAK_NO_UPDATE),
+    ipgaelSha: runtimePolicySha,
     cacheRoot: config.cacheRoot,
     activeSha: await readActiveSha(config),
     lastStatus: state?.status || "never-checked",
@@ -487,10 +612,18 @@ export async function maybeAutoUpdate({ argv, packageRoot, env = process.env }) 
   if (
     stripped.optedOut ||
     truthy(env.DDALGGAK_NO_UPDATE) ||
-    validReexecGuard ||
-    (sourceCheckout && !config.testMode)
+    (sourceCheckout && !config.testMode && !validReexecGuard)
   ) {
     return { args: stripped.args, handled: false, reason: "skipped" };
+  }
+
+  if (validReexecGuard) {
+    try {
+      await refreshIpgaelPolicy(config, guardedSha);
+    } catch (error) {
+      process.stderr.write(`ddalggak ipgael warning: ${sanitizeError(errorMessage(error))}; retaining installed payload.\n`);
+    }
+    return { args: stripped.args, handled: false, reason: "cached" };
   }
 
   let remoteSha;

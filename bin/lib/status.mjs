@@ -6,15 +6,13 @@
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { readAutoUpdateStatus } from "./auto-update.mjs";
+import { readAutoUpdateStatus, resolveRuntimePayloadRoot } from "./auto-update.mjs";
 import { collectInstallParity } from "./status/install-parity.mjs";
 import { collectSessionStateEvidence } from "./status/session-state.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PKG_ROOT = resolve(__dirname, "..", "..");
 const PKG_JSON = join(PKG_ROOT, "package.json");
-const SOURCE_PAYLOAD_ROOT = join(PKG_ROOT, "ddalggak");
-const CODEX_PAYLOAD_ROOT = join(PKG_ROOT, ".codex", "skills", "ddalggak");
 const SESSION_STATE_SCHEMA_PATH = join(
   PKG_ROOT,
   "core",
@@ -80,13 +78,15 @@ function resolveClaudeHome() {
 
 
 export async function collectStatus() {
+  const sourcePayloadRoot = join(resolveRuntimePayloadRoot(PKG_ROOT), "ddalggak");
+  const codexPayloadRoot = join(resolveRuntimePayloadRoot(PKG_ROOT), ".codex", "skills", "ddalggak");
   const claudeHome = resolveClaudeHome();
   const installedClaudeSkillPath = join(claudeHome, "skills", "ddalggak");
   const [installParity, sessionState, autoUpdate] = await Promise.all([
     collectInstallParity({
       packageJsonPath: PKG_JSON,
-      sourcePayloadRoot: SOURCE_PAYLOAD_ROOT,
-      codexPayloadRoot: CODEX_PAYLOAD_ROOT,
+      sourcePayloadRoot,
+      codexPayloadRoot,
       installedClaudeSkillPath,
       minimumNodeMajor: MINIMUM_NODE_MAJOR,
     }),
@@ -96,8 +96,8 @@ export async function collectStatus() {
 
   return {
     ...installParity,
-    sourcePayloadRoot: SOURCE_PAYLOAD_ROOT,
-    codexPayloadRoot: CODEX_PAYLOAD_ROOT,
+    sourcePayloadRoot,
+    codexPayloadRoot,
     installedClaudeSkillPath,
     sourceChecksum: installParity.sourceChecksum
       ? installParity.sourceChecksum.sha256
