@@ -237,13 +237,6 @@ async function refreshIpgaelPolicy(config, sha) {
       const saved = JSON.parse(await readFile(lastGoodPath, "utf8"));
       previousPolicy = validateIpgaelPolicy(saved.sha, Buffer.from(saved.text, "utf8"));
     } catch {}
-    if (previousPolicy) {
-      const previousRoot = join(config.cacheRoot, "payloads", `${sha}-${previousPolicy.sha}`);
-      if (await validPolicyPayload(previousRoot, sourcePaths, sourceTexts, previousPolicy, config.packageRoot)) {
-        runtimePayloadRoot = previousRoot;
-        runtimePolicySha = previousPolicy.sha;
-      }
-    }
     let policy;
     let fetched = false;
     try {
@@ -253,8 +246,17 @@ async function refreshIpgaelPolicy(config, sha) {
       process.stderr.write(`ddalggak ipgael warning: ${sanitizeError(errorMessage(error))}; retaining last good policy.\n`);
       policy = previousPolicy || readIpgaelPolicy(sourceTexts[0]);
     }
+    let verifiedRoot = null;
+    if (previousPolicy) {
+      const previousRoot = join(config.cacheRoot, "payloads", `${sha}-${previousPolicy.sha}`);
+      if (await validPolicyPayload(previousRoot, sourcePaths, sourceTexts, previousPolicy, config.packageRoot)) {
+        verifiedRoot = previousRoot;
+        runtimePayloadRoot = previousRoot;
+        runtimePolicySha = previousPolicy.sha;
+      }
+    }
     const current = join(config.cacheRoot, "payloads", `${sha}-${policy.sha}`);
-    if (!(await validPolicyPayload(current, sourcePaths, sourceTexts, policy, config.packageRoot))) {
+    if (current !== verifiedRoot && !(await validPolicyPayload(current, sourcePaths, sourceTexts, policy, config.packageRoot))) {
       await rm(current, { recursive: true, force: true });
       await mkdir(join(config.cacheRoot, "payloads"), { recursive: true });
       staging = await mkdtemp(join(config.cacheRoot, ".ipgael-payload-"));
