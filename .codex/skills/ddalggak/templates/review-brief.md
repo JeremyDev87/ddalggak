@@ -5,7 +5,8 @@
 ## Target and independent reviewer
 - Original request / purpose / non-goals:
 - Exact source / version or snapshot / section / scope:
-- Applicable quality criteria:
+- Applicable quality criteria: assess every row of `references/quality-lens-router.md#common-quality-criteria`, with evidence or a concrete `N_A` reason.
+- PR-specific assessment: identify speculative or overthought complexity. Start with the simplest existing/direct option meeting requirements and repository patterns. Compare viable alternatives on concrete correctness, risk, and maintenance tradeoffs, even when simplicity is not their benefit. Do not invent alternatives.
 - Fresh reviewer session/context identity (distinct from author):
 - Actual independent result / evidence:
 - Parent source recheck / counterevidence after result:
@@ -67,7 +68,7 @@
 - High/Critical zero-finding challenger: used / not-triggered / blocked
 
 ## Quality sensor findings (internal)
-For each observed quality finding record severity, claim, source/version/section or changed-line/file anchor, reproducible failing scenario, impact, minimal fix, confidence, and counterevidence checked. These are sensor inputs only. For PR targets before aggregation, the conductor must map a reproduced finding into the exact 21-field Admission schema v3 record in `references/cross-review-loop.md`; this section defines neither publication eligibility nor write authority.
+Record each finding's severity, claim, source/version/section or changed-line/file anchor, reproducible failure, impact, minimal fix, confidence, and checked counterevidence. These sensor inputs grant no publication eligibility or write authority. Before PR aggregation, the conductor maps reproduced findings into the exact 21-field Admission schema v3 in `references/cross-review-loop.md`.
 
 ## Candidate defaults (PR targets only, non-publication)
 ```yaml
@@ -79,7 +80,7 @@ Worker output has no publication authority.
 
 ## Output
 - Internal Review Quality sensor verdict: `approve | change request | comment | blocked`
-- Chat: findings/impact/location, validation/gaps, publication status, target version and separate verdict.
+- Chat output: follow `references/cross-review-loop.md#chat-result`.
 - Non-PR completion: `REVIEW_DONE` with exact source/version and actual independent result plus parent recheck; no GitHub write.
 - PR canonical lifecycle outcome and inline rendering: `references/cross-review-loop.md` plus `references/review-output-contract.md`
 
@@ -87,4 +88,4 @@ Open lifecycle completion: `REVIEW_DONE PR#<num>: <APPROVE|CHANGES_REQUESTED> cr
 
 Merged lifecycle hard stop: `REVIEW_STOPPED_PR_MERGED PR#<num>: state=MERGED mergedAt=<timestamp> mergeCommit=<sha|null> head=<sha> outcome=NO_FOLLOW_UP`
 
-A zero-finding review is valid only with semantic coverage evidence. High/Critical zero-finding reviews additionally require the documented counterexample/challenger rule in `references/review-quality-contract.md`.
+Zero findings require semantic coverage. High/Critical also require `references/review-quality-contract.md` counterexample/challenger rules.
